@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Maps History",
+    "slug": "Maps-History",
+    "scheme": "mapshistory",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#E7D8B8",
+    "ios": {
+      "bundleIdentifier": "com.mapshistory.app",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.mapshistory.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#E7D8B8",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "@maplibre/maplibre-react-native",
+      "expo-status-bar"
+    ]
+  }
+}
