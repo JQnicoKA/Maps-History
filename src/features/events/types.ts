@@ -52,9 +52,16 @@ export type EventDraft = {
   photos: { uri: string; base64: string; mimeType: string }[];
 };
 
-export type EventFilters = {
-  folderId: string | null;
+/** One line of the filter popup: a folder, and how much it must matter there. */
+export type FolderFilter = {
+  folderId: string;
+  /** `null` means every importance — the default. */
   importance: Importance | null;
 };
 
-export const NO_FILTERS: EventFilters = { folderId: null, importance: null };
+export type EventFilters = {
+  /** Empty means no filtering at all: every event is shown. */
+  folders: FolderFilter[];
+};
+
+export const NO_FILTERS: EventFilters = { folders: [] };

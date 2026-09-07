@@ -1,15 +1,10 @@
 import { useState } from "react";
-import { Alert, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, StyleSheet, TextInput, View } from "react-native";
 
-import { Chip, InkButton } from "../../../components/ui";
+import { ImportanceRow } from "./ImportanceRow";
+import { InkButton, SelectField } from "../../../components/ui";
 import type { EventFolderLink, Folder, Importance } from "../types";
 import { palette } from "../../../theme/palette";
-
-const IMPORTANCES: { value: Importance; label: string }[] = [
-  { value: "high", label: "Élevée" },
-  { value: "medium", label: "Moyenne" },
-  { value: "low", label: "Faible" },
-];
 
 export type FolderSelectorProps = {
   folders: Folder[];
@@ -32,9 +27,8 @@ export function FolderSelector({
   const [creating, setCreating] = useState(false);
 
   const toggle = (folderId: string) => {
-    const existing = value.find((link) => link.folderId === folderId);
     onChange(
-      existing
+      value.some((link) => link.folderId === folderId)
         ? value.filter((link) => link.folderId !== folderId)
         : [...value, { folderId, importance: "medium" }],
     );
@@ -68,71 +62,52 @@ export function FolderSelector({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Classeurs</Text>
-
-      {folders.length > 0 ? (
-        <View style={styles.chips}>
-          {folders.map((folder) => (
-            <Chip
-              key={folder.id}
-              label={folder.name}
-              selected={value.some((link) => link.folderId === folder.id)}
-              onPress={() => toggle(folder.id)}
+      <SelectField
+        label="Classeurs"
+        title="Classeurs"
+        placeholder="Choisir un classeur…"
+        options={folders.map((folder) => ({
+          value: folder.id,
+          label: folder.name,
+        }))}
+        selected={value.map((link) => link.folderId)}
+        onToggle={toggle}
+        emptyMessage="Aucun classeur. Créez le premier ci-dessous."
+        footer={
+          <View style={styles.createRow}>
+            <TextInput
+              value={newFolder}
+              onChangeText={setNewFolder}
+              placeholder="Nouveau classeur…"
+              placeholderTextColor={palette.inkFaint}
+              style={styles.createInput}
+              onSubmitEditing={() => void create()}
             />
-          ))}
-        </View>
-      ) : null}
-
-      <View style={styles.createRow}>
-        <TextInput
-          value={newFolder}
-          onChangeText={setNewFolder}
-          placeholder="Nouveau classeur…"
-          placeholderTextColor={palette.inkFaint}
-          style={styles.createInput}
-          onSubmitEditing={() => void create()}
-        />
-        <InkButton
-          label={creating ? "…" : "Créer"}
-          disabled={creating || newFolder.trim() === ""}
-          onPress={() => void create()}
-        />
-      </View>
-
-      {value.map((link) => {
-        const name =
-          folders.find((f) => f.id === link.folderId)?.name ?? "Classeur";
-        return (
-          <View key={link.folderId} style={styles.importanceRow}>
-            <Text style={styles.folderName} numberOfLines={1}>
-              {name}
-            </Text>
-            <View style={styles.chips}>
-              {IMPORTANCES.map((option) => (
-                <Chip
-                  key={option.value}
-                  label={option.label}
-                  selected={link.importance === option.value}
-                  onPress={() => setImportance(link.folderId, option.value)}
-                />
-              ))}
-            </View>
+            <InkButton
+              label={creating ? "…" : "Créer"}
+              disabled={creating || newFolder.trim() === ""}
+              onPress={() => void create()}
+            />
           </View>
-        );
-      })}
+        }
+      />
+
+      {value.map((link) => (
+        <ImportanceRow
+          key={link.folderId}
+          name={folders.find((f) => f.id === link.folderId)?.name ?? "Classeur"}
+          value={link.importance}
+          onChange={(importance) =>
+            setImportance(link.folderId, importance ?? "medium")
+          }
+        />
+      ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { gap: 8 },
-  label: {
-    fontSize: 10,
-    letterSpacing: 1.3,
-    textTransform: "uppercase",
-    color: palette.inkSoft,
-  },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   createRow: { flexDirection: "row", alignItems: "flex-end", gap: 8 },
   createInput: {
     flex: 1,
@@ -142,11 +117,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: palette.ink,
   },
-  importanceRow: {
-    gap: 5,
-    paddingTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: palette.inkFaint,
-  },
-  folderName: { fontSize: 12, color: palette.ink },
 });

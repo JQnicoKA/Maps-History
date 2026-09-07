@@ -5,43 +5,16 @@ import { useEvents } from "../events/EventsProvider";
 import { formatYear, toSortKey } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
 
-function Arrow({
-  direction,
-  disabled,
-  onPress,
-}: {
-  direction: "previous" | "next";
-  disabled: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={
-        direction === "previous" ? "Événement précédent" : "Événement suivant"
-      }
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.arrow,
-        pressed && styles.pressed,
-        disabled && styles.disabled,
-      ]}
-    >
-      <Text style={styles.arrowGlyph}>
-        {direction === "previous" ? "‹" : "›"}
-      </Text>
-    </Pressable>
-  );
-}
+/** Alternating fills, the way a scale bar is engraved on an atlas plate. */
+const GRADUATIONS = 24;
 
 /**
- * The chronological span of whatever the filters currently select, with one
- * tick per event. Positions are a share of the span, so the track needs no
- * measurement to lay itself out.
+ * The chronological span of whatever the filters select, drawn as the graduated
+ * scale bar of an old map: events are lozenges above the rule, the one under
+ * the reader's eye is inked in wax and carries its year.
  */
 export function Timeline() {
-  const { visibleEvents, selectedEvent, selectEvent, step } = useEvents();
+  const { visibleEvents, selectedEvent, selectEvent } = useEvents();
 
   if (visibleEvents.length === 0) {
     return (
@@ -55,20 +28,32 @@ export function Timeline() {
   const first = Math.min(...keys);
   const last = Math.max(...keys);
   const span = last - first;
+  const shareOf = (index: number) =>
+    span === 0 ? 0.5 : (keys[index]! - first) / span;
+
+  const selectedIndex = visibleEvents.findIndex(
+    (event) => event.id === selectedEvent?.id,
+  );
 
   return (
     <Paper>
       <View style={styles.body}>
-        <Arrow
-          direction="previous"
-          disabled={visibleEvents[0]?.id === selectedEvent?.id}
-          onPress={() => step(-1)}
-        />
+        <View style={styles.caption}>
+          {selectedEvent && selectedIndex !== -1 ? (
+            <Text
+              style={[
+                styles.captionText,
+                { left: `${shareOf(selectedIndex) * 100}%` },
+              ]}
+              numberOfLines={1}
+            >
+              {formatYear(selectedEvent.start.year)}
+            </Text>
+          ) : null}
+        </View>
 
-        <View style={styles.track}>
-          <View style={styles.rule} />
+        <View style={styles.markers}>
           {visibleEvents.map((event, index) => {
-            const share = span === 0 ? 0.5 : (keys[index]! - first) / span;
             const selected = event.id === selectedEvent?.id;
             return (
               <Pressable
@@ -76,68 +61,103 @@ export function Timeline() {
                 accessibilityRole="button"
                 accessibilityLabel={event.title}
                 onPress={() => selectEvent(event.id)}
-                style={[styles.tickTarget, { left: `${share * 100}%` }]}
+                style={[styles.target, { left: `${shareOf(index) * 100}%` }]}
               >
-                <View style={[styles.tick, selected && styles.tickSelected]} />
+                <View
+                  style={[styles.lozenge, selected && styles.lozengeSelected]}
+                />
               </Pressable>
             );
           })}
-          <Text style={[styles.bound, styles.boundStart]}>
+        </View>
+
+        <View style={styles.scale}>
+          {Array.from({ length: GRADUATIONS }, (_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.graduation,
+                index % 2 === 0 ? styles.graduationInked : null,
+              ]}
+            />
+          ))}
+        </View>
+
+        <View style={styles.bounds}>
+          <Text style={styles.bound}>
             {formatYear(visibleEvents[0]!.start.year)}
           </Text>
-          <Text style={[styles.bound, styles.boundEnd]}>
+          <Text style={styles.bound}>
             {formatYear(visibleEvents[visibleEvents.length - 1]!.start.year)}
           </Text>
         </View>
-
-        <Arrow
-          direction="next"
-          disabled={
-            visibleEvents[visibleEvents.length - 1]?.id === selectedEvent?.id
-          }
-          onPress={() => step(1)}
-        />
       </View>
     </Paper>
   );
 }
 
-const TICK_TARGET = 24;
+const TARGET = 28;
+const CAPTION = 90;
 
 const styles = StyleSheet.create({
-  body: {
+  body: { paddingHorizontal: 14, paddingTop: 6, paddingBottom: 8 },
+  caption: { height: 15 },
+  captionText: {
+    position: "absolute",
+    width: CAPTION,
+    marginLeft: -CAPTION / 2,
+    textAlign: "center",
+    fontSize: 11,
+    letterSpacing: 1.2,
+    color: palette.wax,
+  },
+  markers: { height: 18, justifyContent: "flex-end" },
+  target: {
+    position: "absolute",
+    width: TARGET,
+    marginLeft: -TARGET / 2,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  lozenge: {
+    width: 8,
+    height: 8,
+    marginBottom: 2,
+    backgroundColor: palette.paperLight,
+    borderWidth: 1,
+    borderColor: palette.ink,
+    transform: [{ rotate: "45deg" }],
+  },
+  lozengeSelected: {
+    width: 11,
+    height: 11,
+    backgroundColor: palette.wax,
+    borderColor: palette.waxDeep,
+  },
+  scale: {
     flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 6,
-    paddingVertical: 6,
+    height: 8,
+    borderWidth: 1,
+    borderColor: palette.ink,
+    backgroundColor: palette.paperLight,
+    overflow: "hidden",
   },
-  arrow: { paddingHorizontal: 10, paddingVertical: 2 },
-  arrowGlyph: { fontSize: 26, lineHeight: 30, color: palette.ink },
-  pressed: { opacity: 0.5 },
-  disabled: { opacity: 0.25 },
-  track: { flex: 1, height: 44, justifyContent: "center" },
-  rule: { height: 1, backgroundColor: palette.inkFaint },
-  tickTarget: {
-    position: "absolute",
-    width: TICK_TARGET,
-    marginLeft: -TICK_TARGET / 2,
-    height: 30,
-    alignItems: "center",
-    justifyContent: "center",
+  graduation: { flex: 1 },
+  graduationInked: { backgroundColor: palette.ink },
+  bounds: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 4,
   },
-  tick: { width: 1.5, height: 13, backgroundColor: palette.inkSoft },
-  tickSelected: { width: 3, height: 22, backgroundColor: palette.wax },
   bound: {
-    position: "absolute",
-    bottom: -2,
     fontSize: 9,
-    letterSpacing: 0.6,
+    letterSpacing: 1,
+    textTransform: "uppercase",
     color: palette.inkFaint,
   },
-  boundStart: { left: 0 },
-  boundEnd: { right: 0 },
   empty: {
-    paddingVertical: 14,
+    paddingVertical: 16,
     textAlign: "center",
     fontSize: 12,
     color: palette.inkSoft,

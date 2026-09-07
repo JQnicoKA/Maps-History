@@ -18,8 +18,9 @@ import {
 } from "../../features/events/components/EventMarkers";
 import { EventSummaryCard } from "../../features/events/components/EventSummaryCard";
 import { LocationReticle } from "../../features/events/components/LocationReticle";
-import { FilterBar } from "../../features/filters/FilterBar";
+import { FilterButton } from "../../features/filters/FilterButton";
 import { Timeline } from "../../features/timeline/Timeline";
+import { TimelineArrow } from "../../features/timeline/TimelineArrow";
 import { palette } from "../../theme/palette";
 
 type DraftLocation = { longitude: number; latitude: number };
@@ -89,7 +90,7 @@ export function MapScreen() {
         mapRef={mapRef}
         center={center}
         onPress={handleMapPress}
-        attributionOffset={placing ? 0 : 96}
+        attributionOffset={placing ? 0 : insets.bottom + 78}
       >
         <EventMarkers />
       </WorldMap>
@@ -102,11 +103,14 @@ export function MapScreen() {
         />
       ) : (
         <>
-          <View style={[styles.top, { top: insets.top + 8 }]} pointerEvents="box-none">
-            <View style={styles.filters}>
-              <FilterBar />
+          <View
+            style={[styles.top, { top: insets.top + 8 }]}
+            pointerEvents="box-none"
+          >
+            <FilterButton />
+            <View style={styles.topRight}>
+              <AddEventButton onPress={() => setComposing(true)} />
             </View>
-            <AddEventButton onPress={() => setComposing(true)} />
           </View>
 
           <View
@@ -125,7 +129,13 @@ export function MapScreen() {
                 onDismiss={() => selectEvent(null)}
               />
             ) : null}
-            <Timeline />
+            <View style={styles.timelineRow} pointerEvents="box-none">
+              <TimelineArrow direction="previous" />
+              <View style={styles.timeline}>
+                <Timeline />
+              </View>
+              <TimelineArrow direction="next" />
+            </View>
           </View>
         </>
       )}
@@ -160,12 +170,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 10,
     right: 10,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
+    alignItems: "center",
   },
-  filters: { flex: 1 },
+  topRight: { position: "absolute", right: 0, top: 0 },
   bottom: { position: "absolute", left: 10, right: 10, gap: 8 },
+  timelineRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  timeline: { flex: 1 },
   error: {
     padding: 10,
     fontSize: 12,

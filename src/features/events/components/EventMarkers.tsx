@@ -37,7 +37,7 @@ export function EventMarkers() {
         type: "Feature",
         properties: {
           id: event.id,
-          importance: effectiveImportance(event, filters.folderId),
+          importance: effectiveImportance(event, filters),
           selected: event.id === selectedEvent?.id,
         },
         geometry: {
@@ -46,7 +46,7 @@ export function EventMarkers() {
         },
       })),
     }),
-    [visibleEvents, filters.folderId, selectedEvent],
+    [visibleEvents, filters, selectedEvent],
   );
 
   return (

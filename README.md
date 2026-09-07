@@ -230,16 +230,20 @@ src/
         EventFormModal.tsx        formulaire de création
         EventDetailModal.tsx      fiche complète
         EventSummaryCard.tsx      tuile de résumé
-        FolderSelector.tsx        classeurs + importance par classeur
+        FolderSelector.tsx        classeurs (liste déroulante) + importance
+        ImportanceRow.tsx         élevée / moyenne / faible pour un classeur
         PhotoPicker.tsx           sélection des photos
         LocationReticle.tsx       placement du lieu au réticule
         AddEventButton.tsx        le bouton +
     filters/
-      FilterBar.tsx               classeur + importance
+      FilterButton.tsx            le mot « Tous » en haut de l'écran
+      FilterModal.tsx             classeurs + importance de chacun
     timeline/
-      Timeline.tsx                frise + flèches précédent/suivant
+      Timeline.tsx                frise en barre d'échelle graduée
+      TimelineArrow.tsx           flèches, de part et d'autre de la frise
   components/
-    ui/                           primitives parchemin (Paper, InkButton…)
+    ui/                           primitives parchemin (Paper, InkButton,
+                                  SelectField : liste déroulante…)
     WorldMap/
       WorldMap.tsx                le composant carte, isolé
       ParchmentOverlay.tsx        grain de papier + vignettage
@@ -295,19 +299,25 @@ coordonnées, la saisie intacte.
 (`330 av`) signifie avant J.-C. L'interrupteur *Période* ajoute une date de fin
 pour ce qui dure.
 
-**Classeurs et importance.** On coche les classeurs auxquels l'événement
-appartient — ou on en crée un à la volée — puis chaque classeur coché reçoit sa
-propre importance. C'est là que se matérialise le modèle : un événement majeur
-pour un sujet et secondaire pour un autre.
+**Classeurs et importance.** Le champ *Classeurs* ouvre une liste déroulante —
+elle reste lisible quel que soit le nombre de sujets — et on y crée un classeur
+à la volée. Chaque classeur coché reçoit ensuite sa propre importance. C'est là
+que se matérialise le modèle : un événement majeur pour un sujet et secondaire
+pour un autre.
 
-**Filtrer.** La barre du haut : un classeur, une importance, « Tous » par
-défaut. Le filtre pilote la carte *et* la frise.
+**Filtrer.** Un seul mot en haut de l'écran, « Tous » par défaut, qui prend le
+nom du classeur choisi ou compte ceux qui le sont. Il ouvre une popup : la même
+liste déroulante de classeurs, puis pour chaque classeur coché son importance,
+« Toutes » par défaut. Plusieurs classeurs se cumulent en union — leurs
+événements s'additionnent. Le filtre pilote la carte *et* la frise.
 
-**Parcourir.** La frise du bas couvre l'intervalle des événements sélectionnés,
-une barre par événement. Les flèches passent au précédent ou au suivant. Cliquer
-un événement — sur la carte, sur la frise ou via les flèches — recentre la
-planche **sans changer le zoom** et fait apparaître une tuile de résumé ;
-la tuile ouvre la fiche complète.
+**Parcourir.** La frise du bas est la barre d'échelle graduée d'une carte
+ancienne : elle couvre l'intervalle des événements sélectionnés, chacun posé
+dessus en losange, celui qu'on regarde encré à la cire et surmonté de son année.
+Les flèches l'encadrent, à gauche et à droite de l'écran. Cliquer un événement —
+sur la carte, sur la frise ou via les flèches — recentre la planche **sans
+changer le zoom** et fait apparaître une tuile de résumé ; la tuile ouvre la
+fiche complète.
 
 ---
 
@@ -435,3 +445,5 @@ imposent ce crédit visible : ne pas le supprimer.
   pour que la carte et la frise aient de quoi s'afficher au premier lancement.
   Ils se suppriment depuis la fiche de chaque événement.
 - Le rendu des événements n'a pas encore été vu à l'écran.
+- Le remaniement visuel (frise, filtres, listes déroulantes) est purement
+  JS/TS : un rechargement Metro suffit, pas de reconstruction native.
