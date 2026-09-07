@@ -33,4 +33,8 @@ export const palette = {
 
   /** Border wash printed under the plate line. */
   borderWash: "#B08A5E",
+
+  /** Sealing wax — marks the event currently under the reader's eye. */
+  wax: "#8C3A2B",
+  waxDeep: "#6E2C21",
 } as const;

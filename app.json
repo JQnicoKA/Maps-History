@@ -24,7 +24,13 @@
     },
     "plugins": [
       "@maplibre/maplibre-react-native",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Maps History accède à vos photos pour illustrer les événements historiques que vous ajoutez."
+        }
+      ]
     ]
   }
 }

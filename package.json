@@ -4,11 +4,15 @@
   "main": "index.ts",
   "dependencies": {
     "@maplibre/maplibre-react-native": "^11.3.9",
+    "@supabase/supabase-js": "^2.109.0",
     "expo": "~56.0.21",
+    "expo-image-picker": "~56.0.25",
     "expo-status-bar": "~56.0.4",
     "expo-system-ui": "~56.0.5",
     "react": "19.2.3",
-    "react-native": "0.85.3"
+    "react-native": "0.85.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-url-polyfill": "^4.0.0"
   },
   "devDependencies": {
     "@maplibre/maplibre-gl-style-spec": "26.2.1",

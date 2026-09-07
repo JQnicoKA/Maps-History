@@ -4,8 +4,10 @@ Prototype React Native : une carte du monde plein écran, géographiquement
 exacte (données OpenStreetMap via MapTiler), rendue comme une planche d'atlas
 ancien gravée sur parchemin.
 
-Une seule fonctionnalité : la carte. Déplacement au doigt, pinch-to-zoom,
-double-tap, du monde entier jusqu'au niveau régional.
+Deux couches : une carte du monde manipulable au doigt, et des **événements
+historiques** posés dessus — géographiquement, chronologiquement, classés par
+sujet et par importance. Backend Supabase, sans comptes utilisateurs pour
+l'instant.
 
 ---
 
@@ -33,6 +35,9 @@ volontairement git-ignorés — la configuration native vit dans `app.json`.
 | `react` | `19.2.3` | |
 | `@maplibre/maplibre-react-native` | `^11.3.9` | peer deps : `expo >=54`, `react-native >=0.80`, `react >=19.1` |
 | `expo-system-ui` | `~56.0.5` | fond parchemin au lancement (évite le flash blanc) |
+| `@supabase/supabase-js` | `^2.109.0` | base de données + stockage des photos |
+| `expo-image-picker` | `~56.0.25` | photos des événements |
+| `react-native-safe-area-context` | `~5.7.0` | encoches et barre d'accueil |
 | `typescript` | `~6.0.3` | mode `strict` + options additionnelles |
 
 `@maplibre/maplibre-react-native` v11 supporte la New Architecture (Fabric /
@@ -79,6 +84,33 @@ tuiles d'élévation `terrain-rgb-v2` pour l'ombrage du relief.
 Le style est **100 % maison** (`src/map/style/`) : géographie moderne, rendu
 ancien. Aucun style MapTiler prêt à l'emploi n'est chargé.
 
+### Backend : Supabase
+
+Quatre tables, un bucket. Le point de conception qui structure tout le reste :
+**l'importance n'appartient pas à l'événement mais au couple événement/classeur**.
+
+```
+folders         id, name
+events          id, title, description, dates…, longitude, latitude
+event_folders   (event_id, folder_id) → importance    ← clé primaire composite
+event_photos    id, event_id, storage_path, position
+bucket          event-photos (public)
+```
+
+La prise de Constantinople est ainsi « élevée » dans *Empire ottoman* et
+« moyenne » dans *Renaissance*, sans dupliquer l'événement.
+
+**Les dates ne sont pas des `date` SQL.** L'histoire a besoin d'années avant
+J.-C. et de dates imprécises — « 1299 », « mars 1453 » — qu'une colonne `date`
+ne sait pas exprimer. On stocke donc une année signée (négative = av. J.-C.)
+plus un mois et un jour facultatifs, avec les contraintes qui vont avec : un
+jour sans son mois est refusé, une fin antérieure au début aussi. `end_*` est
+renseigné pour les événements qui durent (une guerre, un règne).
+
+RLS est **activé** sur les quatre tables, avec une policy permissive pour `anon`
+explicitement marquée comme temporaire. Le jour où les comptes arrivent, ce sont
+ces quatre policies qui changent — pas le schéma.
+
 ---
 
 ## 2. Installation
@@ -105,7 +137,19 @@ EXPO_PUBLIC_MAPTILER_API_KEY=votre_cle_ici
 > En code, il faut toujours écrire `process.env.EXPO_PUBLIC_MAPTILER_API_KEY`
 > en notation pointée : `process.env[nom]` n'est pas remplacé par le bundler.
 
-Sans clé, l'app affiche un écran d'explication au lieu d'une carte vide.
+Puis les identifiants Supabase (tableau de bord > Project Settings > API) :
+
+```
+EXPO_PUBLIC_SUPABASE_URL=https://xxxxxxxx.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_xxxxxxxx
+```
+
+La clé *publishable* est faite pour vivre dans un client : l'accès réel est
+gouverné par les policies RLS, pas par le secret de la clé. La clé
+`service_role`, elle, contourne RLS — elle ne doit jamais entrer dans ce fichier.
+
+Sans ces variables, l'app affiche un écran listant ce qui manque au lieu d'une
+carte vide.
 
 ---
 
@@ -171,33 +215,103 @@ src/
         graticule.ts              rendu de la grille
         boundaries.ts             frontières actuelles
         labels.ts                 toponymie
+  lib/
+    supabase.ts                   client (construit paresseusement)
+    base64.ts                     décodeur pour l'upload des photos
+  features/
+    events/
+      types.ts                    modèle de domaine
+      api.ts                      requêtes Supabase
+      historicalDate.ts           années signées, dates imprécises, formatage
+      filtering.ts                importance effective + filtres
+      EventsProvider.tsx          état partagé (Context + hooks)
+      components/
+        EventMarkers.tsx          source GeoJSON + couches MapLibre
+        EventFormModal.tsx        formulaire de création
+        EventDetailModal.tsx      fiche complète
+        EventSummaryCard.tsx      tuile de résumé
+        FolderSelector.tsx        classeurs + importance par classeur
+        PhotoPicker.tsx           sélection des photos
+        LocationReticle.tsx       placement du lieu au réticule
+        AddEventButton.tsx        le bouton +
+    filters/
+      FilterBar.tsx               classeur + importance
+    timeline/
+      Timeline.tsx                frise + flèches précédent/suivant
   components/
+    ui/                           primitives parchemin (Paper, InkButton…)
     WorldMap/
       WorldMap.tsx                le composant carte, isolé
       ParchmentOverlay.tsx        grain de papier + vignettage
       MapAttribution.tsx          crédit MapTiler/OSM (obligatoire)
   screens/
     MapScreen/
-      MapScreen.tsx
-      MissingApiKeyNotice.tsx
+      MapScreen.tsx               compose carte, filtres, frise, modales
+      MissingConfigNotice.tsx
 ```
+
+### Décisions d'implémentation
+
+- **Les événements sont une source GeoJSON, pas N marqueurs React.** Une seule
+  source, quatre couches MapLibre, l'importance devient une expression de style.
+  Le rendu reste fluide quel que soit le nombre d'événements, et le clic passe
+  par `queryRenderedFeatures` sur une couche de touche invisible de 18 pt —
+  une pastille de 6 pt n'est pas une cible tactile.
+- **Le lieu se place au réticule, pas au tap.** Viser du doigt une carte qu'on
+  est en train de déplacer est un combat ; on amène le lieu sous une croix fixe
+  puis on confirme.
+- **Pas de bibliothèque d'état.** Un Context et des `useMemo` suffisent :
+  filtres, sélection et liste dérivée tiennent dans un seul fournisseur.
+- **L'upload passe par base64.** React Native n'a ni `atob` ni `Buffer`, et
+  `fetch('file://')` est peu fiable ; le décodeur maison de `lib/base64.ts`
+  évite une dépendance pour quinze lignes.
 
 ### Où brancher la suite
 
-- **Marqueurs, régions interactives, lieux** : `<WorldMap>` accepte des
-  `children` MapLibre (`<Marker>`, `<GeoJSONSource>` + `<Layer>`,
-  `<ViewAnnotation>`). Rien à toucher dans `WorldMap.tsx`.
+- **Comptes utilisateurs** : les quatre policies RLS `prototype open access` et
+  les trois policies du bucket sont les seuls endroits à changer. Le schéma
+  gagne une colonne `owner_id` et les policies la comparent à `auth.uid()`.
 - **Nouvelles couches de style** : un fichier dans `src/map/style/layers/`,
   branché dans `createOldAtlasStyle` — l'ordre du tableau `layers` est l'ordre
   d'impression (papier → lavis → relief → eau → grille → frontières → texte).
-- **Interactions** : `<Map onPress>` + `mapRef.queryRenderedFeatures()` pour
-  récupérer le pays sous le doigt.
-- **Écrans supplémentaires** : ajouter un dossier dans `src/screens/` et un
-  routeur au-dessus de `App.tsx`.
+- **Régions interactives, overlays** : `<WorldMap>` accepte des `children`
+  MapLibre, comme `<EventMarkers>`. Rien à toucher dans `WorldMap.tsx`.
+- **Édition d'un événement** : `api.ts` a déjà `createEvent` et `deleteEvent` ;
+  un `updateEvent` suit le même moule, et `EventFormModal` accepte un état
+  initial.
 
 ---
 
-## 5. Le style « atlas ancien »
+## 5. Les événements historiques
+
+**Ajouter.** Le bouton `+` en haut à droite ouvre le formulaire : titre,
+description, date, photos, classeurs et lieu. « Placer sur la carte » masque le
+formulaire, affiche un réticule fixe au centre — on déplace la carte pour
+amener le lieu dessous — puis « Confirmer » revient au formulaire avec les
+coordonnées, la saisie intacte.
+
+**Dates.** Trois champs : jour, mois, année. Seule l'année est obligatoire ;
+« 1453 » seul est une date valide. Une année négative (`-330`) ou suffixée
+(`330 av`) signifie avant J.-C. L'interrupteur *Période* ajoute une date de fin
+pour ce qui dure.
+
+**Classeurs et importance.** On coche les classeurs auxquels l'événement
+appartient — ou on en crée un à la volée — puis chaque classeur coché reçoit sa
+propre importance. C'est là que se matérialise le modèle : un événement majeur
+pour un sujet et secondaire pour un autre.
+
+**Filtrer.** La barre du haut : un classeur, une importance, « Tous » par
+défaut. Le filtre pilote la carte *et* la frise.
+
+**Parcourir.** La frise du bas couvre l'intervalle des événements sélectionnés,
+une barre par événement. Les flèches passent au précédent ou au suivant. Cliquer
+un événement — sur la carte, sur la frise ou via les flèches — recentre la
+planche **sans changer le zoom** et fait apparaître une tuile de résumé ;
+la tuile ouvre la fiche complète.
+
+---
+
+## 6. Le style « atlas ancien »
 
 Tout est dans `src/map/style/`. Les partis pris :
 
@@ -252,7 +366,7 @@ Aucune couche `transportation`, `building` ou `poi` n'est chargée.
 
 ---
 
-## 6. Pièges iOS / Android
+## 7. Pièges iOS / Android
 
 **Expo Go affiche une erreur de module natif.**
 Attendu : MapLibre ne fait pas partie du SDK Expo. Il faut une dev build
@@ -307,15 +421,17 @@ imposent ce crédit visible : ne pas le supprimer.
 
 ---
 
-## 7. État
+## 8. État
 
-- Build iOS device : **réussie**, 0 erreur, `MapLibre.framework` embarqué,
-  signée `com.mapshistory.app`.
+- Build iOS device : **réussie** avant l'ajout des événements ; deux modules
+  natifs ont été ajoutés depuis (`expo-image-picker`,
+  `react-native-safe-area-context`), donc **une reconstruction est nécessaire**.
 - `npm run typecheck` : OK.
-- `npx expo-doctor` : 21/22 (le check restant est la régression mémoire Hermes V1
-  du SDK 56, documentée ci-dessus).
-- Le style généré est validé contre la spec MapLibre (`validateStyleMin`) :
-  21 couches, 3 sources, aucune erreur.
-- Le rendu n'a **pas** encore été vu à l'écran. La palette de
-  `src/theme/palette.ts` est le premier endroit à ajuster une fois la carte
-  sous les yeux.
+- Bundle Metro : OK (750 modules).
+- Schéma Supabase appliqué, `get_advisors` (sécurité) : aucune alerte.
+- Chaîne complète vérifiée à travers RLS avec la clé publishable : lecture avec
+  les jointures imbriquées, écriture, et rejet des dates incohérentes.
+- Quatre événements de démonstration sont en base (987, 1214, 1453, 1520–1566)
+  pour que la carte et la frise aient de quoi s'afficher au premier lancement.
+  Ils se suppriment depuis la fiche de chaque événement.
+- Le rendu des événements n'a pas encore été vu à l'écran.
