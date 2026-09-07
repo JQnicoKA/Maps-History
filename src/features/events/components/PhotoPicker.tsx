@@ -1,5 +1,13 @@
 import * as ImagePicker from "expo-image-picker";
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { InkButton } from "../../../components/ui";
 import type { EventPhoto, PickedPhoto } from "../types";
@@ -10,13 +18,51 @@ export type PhotoPickerProps = {
   onChange: (photos: PickedPhoto[]) => void;
   /** Pictures already in storage — present when editing. */
   existing?: EventPhoto[];
+  onChangeExisting?: (photos: EventPhoto[]) => void;
   onRemoveExisting?: (photo: EventPhoto) => void;
 };
+
+function PhotoRow({
+  uri,
+  source,
+  onChangeSource,
+  onRemove,
+}: {
+  uri: string;
+  source: string;
+  onChangeSource: (source: string) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <View style={styles.row}>
+      <Image source={{ uri }} style={styles.thumb} />
+      <TextInput
+        value={source}
+        onChangeText={onChangeSource}
+        placeholder="Source (lien ou référence)"
+        placeholderTextColor={palette.inkFaint}
+        style={styles.source}
+        autoCapitalize="none"
+        multiline
+      />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Retirer cette photo"
+        hitSlop={8}
+        onPress={onRemove}
+        style={({ pressed }) => [styles.remove, pressed && styles.pressed]}
+      >
+        <Text style={styles.removeGlyph}>×</Text>
+      </Pressable>
+    </View>
+  );
+}
 
 export function PhotoPicker({
   photos,
   onChange,
   existing = [],
+  onChangeExisting,
   onRemoveExisting,
 }: PhotoPickerProps) {
   const pick = async () => {
@@ -46,6 +92,7 @@ export function PhotoPicker({
               uri: asset.uri,
               base64: asset.base64,
               mimeType: asset.mimeType ?? "image/jpeg",
+              source: "",
             },
           ]
         : [],
@@ -60,36 +107,39 @@ export function PhotoPicker({
         <InkButton label="Ajouter" onPress={() => void pick()} />
       </View>
 
-      {existing.length + photos.length > 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.strip}>
-            {existing.map((photo) => (
-              <Pressable
-                key={photo.id}
-                accessibilityRole="button"
-                accessibilityLabel="Retirer cette photo"
-                onPress={() => onRemoveExisting?.(photo)}
-              >
-                <Image source={{ uri: photo.url }} style={styles.thumb} />
-                <Text style={styles.remove}>×</Text>
-              </Pressable>
-            ))}
-            {photos.map((photo, index) => (
-              <Pressable
-                key={photo.uri}
-                accessibilityRole="button"
-                accessibilityLabel="Retirer cette photo"
-                onPress={() =>
-                  onChange(photos.filter((_, position) => position !== index))
-                }
-              >
-                <Image source={{ uri: photo.uri }} style={styles.thumb} />
-                <Text style={styles.remove}>×</Text>
-              </Pressable>
-            ))}
-          </View>
-        </ScrollView>
-      ) : null}
+      {existing.map((photo) => (
+        <PhotoRow
+          key={photo.id}
+          uri={photo.url}
+          source={photo.source ?? ""}
+          onChangeSource={(source) =>
+            onChangeExisting?.(
+              existing.map((current) =>
+                current.id === photo.id ? { ...current, source } : current,
+              ),
+            )
+          }
+          onRemove={() => onRemoveExisting?.(photo)}
+        />
+      ))}
+
+      {photos.map((photo, index) => (
+        <PhotoRow
+          key={photo.uri}
+          uri={photo.uri}
+          source={photo.source}
+          onChangeSource={(source) =>
+            onChange(
+              photos.map((current, position) =>
+                position === index ? { ...current, source } : current,
+              ),
+            )
+          }
+          onRemove={() =>
+            onChange(photos.filter((_, position) => position !== index))
+          }
+        />
+      ))}
     </View>
   );
 }
@@ -107,20 +157,23 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     color: palette.inkSoft,
   },
-  strip: { flexDirection: "row", gap: 8 },
+  row: { flexDirection: "row", alignItems: "center", gap: 10 },
   thumb: {
-    width: 76,
-    height: 76,
+    width: 58,
+    height: 58,
     borderWidth: 1,
     borderColor: palette.inkFaint,
   },
-  remove: {
-    position: "absolute",
-    top: 1,
-    right: 4,
-    fontSize: 18,
-    color: palette.paperLight,
-    textShadowColor: palette.ink,
-    textShadowRadius: 3,
+  source: {
+    flex: 1,
+    minHeight: 40,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.inkFaint,
+    fontSize: 13,
+    color: palette.ink,
   },
+  remove: { paddingHorizontal: 4 },
+  pressed: { opacity: 0.5 },
+  removeGlyph: { fontSize: 20, color: palette.inkFaint },
 });

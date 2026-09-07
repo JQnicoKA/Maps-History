@@ -82,6 +82,8 @@ export type EventPhoto = {
   id: string;
   path: string;
   url: string;
+  /** Where the picture came from — a URL or a free-text reference. */
+  source: string | null;
 };
 
 /** A picture chosen in the picker, not yet uploaded. */
@@ -89,6 +91,7 @@ export type PickedPhoto = {
   uri: string;
   base64: string;
   mimeType: string;
+  source: string;
 };
 
 export type HistoricalEvent = {

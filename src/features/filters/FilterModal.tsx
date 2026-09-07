@@ -43,9 +43,15 @@ export function FilterModal({ visible, onClose }: FilterModalProps) {
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <View style={styles.backdrop}>
+        {/* A sibling, not a wrapper: a Pressable around the sheet would win the
+            touch responder and stop the list inside from scrolling. */}
         <Pressable
-          onPress={() => undefined}
+          accessibilityLabel="Fermer"
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+        />
+        <View
           style={[
             styles.wrapper,
             { marginTop: insets.top + 32, marginBottom: insets.bottom + 32 },
@@ -100,8 +106,8 @@ export function FilterModal({ visible, onClose }: FilterModalProps) {
               </View>
             </ScrollView>
           </Paper>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }

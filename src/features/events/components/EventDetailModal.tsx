@@ -11,10 +11,16 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { PhotoViewer } from "./PhotoViewer";
 import { InkButton, Paper } from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
 import { formatEventPeriod } from "../historicalDate";
-import { describeType, type HistoricalEvent, type Importance } from "../types";
+import {
+  describeType,
+  type EventPhoto,
+  type HistoricalEvent,
+  type Importance,
+} from "../types";
 import { palette } from "../../../theme/palette";
 
 const IMPORTANCE_LABEL: Record<Importance, string> = {
@@ -39,6 +45,7 @@ export function EventDetailModal({
   const { folders, removeEvent } = useEvents();
   const insets = useSafeAreaInsets();
   const [deleting, setDeleting] = useState(false);
+  const [viewing, setViewing] = useState<EventPhoto | null>(null);
 
   if (!event) return null;
 
@@ -120,11 +127,15 @@ export function EventDetailModal({
               >
                 <View style={styles.photos}>
                   {event.photos.map((photo) => (
-                    <Image
+                    <Pressable
                       key={photo.id}
-                      source={{ uri: photo.url }}
-                      style={styles.photo}
-                    />
+                      accessibilityRole="imagebutton"
+                      accessibilityLabel="Agrandir la photo"
+                      onPress={() => setViewing(photo)}
+                      style={({ pressed }) => (pressed ? styles.dim : undefined)}
+                    >
+                      <Image source={{ uri: photo.url }} style={styles.photo} />
+                    </Pressable>
                   ))}
                 </View>
               </ScrollView>
@@ -157,6 +168,8 @@ export function EventDetailModal({
           </ScrollView>
         </Paper>
       </View>
+
+      <PhotoViewer photo={viewing} onClose={() => setViewing(null)} />
     </Modal>
   );
 }
@@ -195,6 +208,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.inkFaint,
   },
+  dim: { opacity: 0.6 },
   coordinates: { fontSize: 11, color: palette.inkFaint, marginTop: 6 },
   actions: {
     flexDirection: "row",

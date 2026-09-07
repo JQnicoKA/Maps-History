@@ -94,7 +94,7 @@ Quatre tables, un bucket. Le point de conception qui structure tout le reste :
 folders         id, name
 events          id, title, type, description, dates…, longitude, latitude
 event_folders   (event_id, folder_id) → importance    ← clé primaire composite
-event_photos    id, event_id, storage_path, position
+event_photos    id, event_id, storage_path, position, source
 bucket          event-photos (public)
 ```
 
@@ -237,6 +237,8 @@ src/
         EventFormModal.tsx        création et modification
         EventDetailModal.tsx      fiche complète, modifier, supprimer
         EventSummaryCard.tsx      tuile de résumé
+        HistoricalDateField.tsx   sélecteur de date à molettes
+        PhotoViewer.tsx           photo plein écran + sa source
         FolderSelector.tsx        classeurs (liste déroulante) + importance
         ImportanceRow.tsx         élevée / moyenne / faible pour un classeur
         PhotoPicker.tsx           sélection des photos
@@ -313,6 +315,19 @@ elle reste lisible quel que soit le nombre de sujets — et on y crée un classe
 à la volée. Chaque classeur coché reçoit ensuite sa propre importance. C'est là
 que se matérialise le modèle : un événement majeur pour un sujet et secondaire
 pour un autre.
+
+**Dates.** Le sélecteur est à trois molettes — jour, mois, année — et non le
+sélecteur de date du système. Ce dernier a été écarté pour une raison de fond :
+il ne sait exprimer *aucune* des trois choses que cette app stocke. Pas d'année
+seule (« 1299 » deviendrait le 1ᵉʳ janvier 1299, une donnée fausse), pas de mois
+sans jour, et pas d'année avant J.-C. Le tiret en tête des molettes jour et mois
+est précisément ce qui laisse une date imprécise le rester. Un aperçu sous les
+molettes montre la date en toutes lettres avant de valider.
+
+**Sources des photos.** Chaque photo porte une source facultative — un lien ou
+une référence libre. Dans la fiche, toucher une photo l'ouvre en grand
+par-dessus, avec sa source en dessous ; quand c'est une URL, elle s'ouvre dans
+le navigateur.
 
 **Types.** Chaque événement porte un type parmi seize — naissance, mort,
 mariage, sacre, bataille, conquête, traité, révolution, indépendance, loi,
@@ -456,6 +471,20 @@ Ces expressions se vérifient hors appareil avec `validateStyleMin` de
 crash. Le style de base est validé ainsi ; les couches déclarées en JSX
 (`EventMarkers`) échappent en revanche à ce contrôle.
 
+**Une liste ou une molette refuse de défiler dans une popup.**
+Le contenu de la feuille est enveloppé dans un `Pressable` — celui qui sert
+à absorber les taps pour qu'un appui à l'intérieur ne referme pas la popup. Ce
+`Pressable` gagne le *touch responder* et le `ScrollView` ou la `FlatList` qu'il
+contient ne voit jamais le geste. Le remède : faire du fond un **frère** et non
+un parent.
+
+```tsx
+<View style={styles.backdrop}>
+  <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+  <View>{/* la feuille, sans enveloppe pressable */}</View>
+</View>
+```
+
 **iOS : la build reste bloquée sur `Connecting to: <votre iPhone>`.**
 La compilation est terminée à ce stade ; c'est l'installation sur l'appareil qui
 attend. iPhone déverrouillé, Mode développeur activé (Réglages → Confidentialité
@@ -509,6 +538,8 @@ imposent ce crédit visible : ne pas le supprimer.
   Ils se suppriment depuis la fiche de chaque événement.
 - Démarrage sur iPhone vérifié après correction : l'app tourne plus de 50 s
   sans terminer, là où elle mourait en 5 s.
+- Colonne `source` sur les photos, aller-retour vérifié via la requête
+  imbriquée de l'app.
 - Modification vérifiée contre la base : PATCH de l'événement, remplacement des
   liens de classeur, relecture, et le trigger `updated_at` se déclenche.
 - Les quatre événements de démonstration n'ont pas de photo : ils s'affichent

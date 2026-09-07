@@ -24,7 +24,12 @@ type EventRow = {
   longitude: number;
   latitude: number;
   event_folders: { folder_id: string; importance: Importance }[];
-  event_photos: { id: string; storage_path: string; position: number }[];
+  event_photos: {
+    id: string;
+    storage_path: string;
+    position: number;
+    source: string | null;
+  }[];
 };
 
 const EVENT_COLUMNS = `
@@ -33,7 +38,7 @@ const EVENT_COLUMNS = `
   end_year, end_month, end_day,
   longitude, latitude,
   event_folders ( folder_id, importance ),
-  event_photos ( id, storage_path, position )
+  event_photos ( id, storage_path, position, source )
 `;
 
 function toDate(
@@ -75,6 +80,7 @@ function toEvent(row: EventRow): HistoricalEvent {
         id: photo.id,
         path: photo.storage_path,
         url: publicUrl(photo.storage_path),
+        source: photo.source,
       })),
   };
 }
@@ -125,17 +131,18 @@ async function uploadPhotos(
         contentType: photo.mimeType,
       });
       if (error) throw new Error(error.message);
-      return path;
+      return { path, source: photo.source.trim() || null };
     }),
   );
 
   const { error } = await supabase()
     .from("event_photos")
     .insert(
-      paths.map((path, position) => ({
+      paths.map((photo, position) => ({
         event_id: eventId,
-        storage_path: path,
+        storage_path: photo.path,
         position: startAt + position,
+        source: photo.source,
       })),
     );
   if (error) throw new Error(error.message);
@@ -246,6 +253,15 @@ export async function updateEvent(
     await client.storage
       .from(PHOTO_BUCKET)
       .remove(droppedPhotos.map((photo) => photo.path));
+  }
+
+  // Sources are editable on photos that are staying.
+  for (const photo of keptPhotos) {
+    const { error: sourceError } = await client
+      .from("event_photos")
+      .update({ source: photo.source?.trim() || null })
+      .eq("id", photo.id);
+    if (sourceError) throw new Error(sourceError.message);
   }
 
   if (draft.photos.length > 0) {

@@ -71,10 +71,15 @@ export function SelectField({
         statusBarTranslucent
         onRequestClose={() => setOpen(false)}
       >
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
-          {/* Swallows taps so a press inside the sheet never closes it. */}
+        <View style={styles.backdrop}>
+          {/* A sibling, not a wrapper: a Pressable around the sheet would win
+              the touch responder and stop the list inside from scrolling. */}
           <Pressable
-            onPress={() => undefined}
+            accessibilityLabel="Fermer"
+            style={StyleSheet.absoluteFill}
+            onPress={() => setOpen(false)}
+          />
+          <View
             style={[
               styles.sheetWrapper,
               { marginTop: insets.top + 40, marginBottom: insets.bottom + 40 },
@@ -130,8 +135,8 @@ export function SelectField({
                 </View>
               </View>
             </Paper>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </View>
   );

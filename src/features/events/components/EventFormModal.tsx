@@ -13,21 +13,18 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FolderSelector } from "./FolderSelector";
+import { HistoricalDateField } from "./HistoricalDateField";
 import { PhotoPicker } from "./PhotoPicker";
 import { InkButton, InkField, Paper, SelectField } from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
-import {
-  EMPTY_DATE_FIELDS,
-  buildHistoricalDate,
-  toDateFields,
-  type DateFields,
-} from "../historicalDate";
+
 import {
   EVENT_TYPES,
   type EventDraft,
   type EventFolderLink,
   type EventPhoto,
   type EventType,
+  type HistoricalDate,
   type HistoricalEvent,
   type PickedPhoto,
 } from "../types";
@@ -46,48 +43,6 @@ export type EventFormModalProps = {
   onSaved: () => void;
 };
 
-function DateRow({
-  legend,
-  fields,
-  onChange,
-}: {
-  legend: string;
-  fields: DateFields;
-  onChange: (fields: DateFields) => void;
-}) {
-  return (
-    <View style={styles.dateRow}>
-      <View style={styles.dateSmall}>
-        <InkField
-          label="Jour"
-          value={fields.day}
-          onChangeText={(day) => onChange({ ...fields, day })}
-          keyboardType="number-pad"
-          placeholder="—"
-        />
-      </View>
-      <View style={styles.dateSmall}>
-        <InkField
-          label="Mois"
-          value={fields.month}
-          onChangeText={(month) => onChange({ ...fields, month })}
-          keyboardType="number-pad"
-          placeholder="—"
-        />
-      </View>
-      <View style={styles.dateYear}>
-        <InkField
-          label={legend}
-          value={fields.year}
-          onChangeText={(year) => onChange({ ...fields, year })}
-          keyboardType={Platform.OS === "ios" ? "numbers-and-punctuation" : "default"}
-          placeholder="1453 · -330"
-        />
-      </View>
-    </View>
-  );
-}
-
 export function EventFormModal({
   visible,
   event,
@@ -102,11 +57,9 @@ export function EventFormModal({
   const [title, setTitle] = useState(event?.title ?? "");
   const [type, setType] = useState<EventType>(event?.type ?? "other");
   const [description, setDescription] = useState(event?.description ?? "");
-  const [start, setStart] = useState<DateFields>(
-    event ? toDateFields(event.start) : EMPTY_DATE_FIELDS,
-  );
+  const [start, setStart] = useState<HistoricalDate | null>(event?.start ?? null);
   const [isPeriod, setIsPeriod] = useState(event?.end != null);
-  const [end, setEnd] = useState<DateFields>(toDateFields(event?.end ?? null));
+  const [end, setEnd] = useState<HistoricalDate | null>(event?.end ?? null);
   const [links, setLinks] = useState<EventFolderLink[]>(event?.folders ?? []);
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
   const [keptPhotos, setKeptPhotos] = useState<EventPhoto[]>(event?.photos ?? []);
@@ -117,9 +70,9 @@ export function EventFormModal({
     setTitle("");
     setType("other");
     setDescription("");
-    setStart(EMPTY_DATE_FIELDS);
+    setStart(null);
     setIsPeriod(false);
-    setEnd(EMPTY_DATE_FIELDS);
+    setEnd(null);
     setLinks([]);
     setPhotos([]);
     setKeptPhotos([]);
@@ -136,28 +89,21 @@ export function EventFormModal({
       return;
     }
 
-    const startResult = buildHistoricalDate(start);
-    if ("error" in startResult) {
-      Alert.alert("Date de début", startResult.error);
+    if (!start) {
+      Alert.alert("Date manquante", "Choisissez au moins une année.");
       return;
     }
-
-    let endDate: EventDraft["end"] = null;
-    if (isPeriod) {
-      const endResult = buildHistoricalDate(end);
-      if ("error" in endResult) {
-        Alert.alert("Date de fin", endResult.error);
-        return;
-      }
-      endDate = endResult.date;
+    if (isPeriod && !end) {
+      Alert.alert("Date de fin manquante", "Choisissez la fin de la période.");
+      return;
     }
 
     const draft: EventDraft = {
       title,
       type,
       description,
-      start: startResult.date,
-      end: endDate,
+      start,
+      end: isPeriod ? end : null,
       longitude: location.longitude,
       latitude: location.latitude,
       folders: links,
@@ -236,7 +182,7 @@ export function EventFormModal({
               placeholder="Ce que l'on en retient…"
             />
 
-            <DateRow legend="Année" fields={start} onChange={setStart} />
+            <HistoricalDateField label="Date" value={start} onChange={setStart} />
 
             <View style={styles.periodRow}>
               <Text style={styles.periodLabel}>Période (date de fin)</Text>
@@ -247,7 +193,11 @@ export function EventFormModal({
               />
             </View>
             {isPeriod ? (
-              <DateRow legend="Année de fin" fields={end} onChange={setEnd} />
+              <HistoricalDateField
+                label="Date de fin"
+                value={end}
+                onChange={setEnd}
+              />
             ) : null}
 
             <FolderSelector
@@ -261,6 +211,7 @@ export function EventFormModal({
               photos={photos}
               onChange={setPhotos}
               existing={keptPhotos}
+              onChangeExisting={setKeptPhotos}
               onRemoveExisting={(photo) => {
                 setKeptPhotos((current) =>
                   current.filter((kept) => kept.id !== photo.id),
@@ -323,9 +274,6 @@ const styles = StyleSheet.create({
     color: palette.ink,
     textAlign: "center",
   },
-  dateRow: { flexDirection: "row", gap: 10, alignItems: "flex-end" },
-  dateSmall: { width: 58 },
-  dateYear: { flex: 1 },
   periodRow: {
     flexDirection: "row",
     alignItems: "center",
