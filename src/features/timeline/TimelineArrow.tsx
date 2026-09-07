@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
+import { GlyphButton } from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import { palette } from "../../theme/palette";
 
@@ -18,45 +19,19 @@ export function TimelineArrow({ direction }: TimelineArrowProps) {
   const disabled = visibleEvents.length === 0 || edge?.id === selectedEvent?.id;
 
   return (
-    <Pressable
-      accessibilityRole="button"
+    <GlyphButton
       accessibilityLabel={
         direction === "previous" ? "Événement précédent" : "Événement suivant"
       }
+      size={40}
       disabled={disabled}
       onPress={() => step(direction === "previous" ? -1 : 1)}
-      style={({ pressed }) => [
-        styles.button,
-        pressed && styles.pressed,
-        disabled && styles.disabled,
-      ]}
     >
-      <Text style={styles.glyph}>
-        {direction === "previous" ? "‹" : "›"}
-      </Text>
-    </Pressable>
+      <Text style={styles.glyph}>{direction === "previous" ? "‹" : "›"}</Text>
+    </GlyphButton>
   );
 }
 
-const SIZE = 40;
-
 const styles = StyleSheet.create({
-  button: {
-    width: SIZE,
-    height: SIZE,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: palette.paperLight,
-    borderWidth: 1,
-    borderColor: palette.ink,
-    borderRadius: 2,
-    shadowColor: palette.ink,
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
-  },
-  pressed: { opacity: 0.55 },
-  disabled: { opacity: 0.3 },
   glyph: { fontSize: 24, lineHeight: 28, color: palette.ink },
 });

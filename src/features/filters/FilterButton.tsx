@@ -41,7 +41,7 @@ export function FilterButton() {
 
 const styles = StyleSheet.create({
   button: {
-    maxWidth: 240,
+    maxWidth: 190,
     paddingHorizontal: 20,
     paddingVertical: 9,
     backgroundColor: palette.paperLight,

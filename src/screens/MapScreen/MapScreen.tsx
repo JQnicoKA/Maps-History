@@ -5,14 +5,16 @@ import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MissingConfigNotice } from "./MissingConfigNotice";
+import { ViewToggleButton, type ScreenView } from "./ViewToggleButton";
 import { Paper } from "../../components/ui";
-import { WorldMap } from "../../components/WorldMap";
+import { ParchmentOverlay, WorldMap } from "../../components/WorldMap";
 import { env } from "../../config/env";
 import { useEvents } from "../../features/events/EventsProvider";
 import type { HistoricalEvent } from "../../features/events/types";
 import { AddEventButton } from "../../features/events/components/AddEventButton";
 import { EventDetailModal } from "../../features/events/components/EventDetailModal";
 import { EventFormModal } from "../../features/events/components/EventFormModal";
+import { EventListView } from "../../features/events/components/EventListView";
 import { EventMarkers } from "../../features/events/components/EventMarkers";
 import { EventSummaryCard } from "../../features/events/components/EventSummaryCard";
 import { LocationReticle } from "../../features/events/components/LocationReticle";
@@ -30,6 +32,7 @@ export function MapScreen() {
   // The opening shot should not fly across the world; every later move should.
   const hasFramed = useRef(false);
 
+  const [view, setView] = useState<ScreenView>("map");
   const [composing, setComposing] = useState(false);
   const [editing, setEditing] = useState<HistoricalEvent | null>(null);
   const [placing, setPlacing] = useState(false);
@@ -78,14 +81,29 @@ export function MapScreen() {
     <View style={styles.screen}>
       <StatusBar style="dark" />
 
-      <WorldMap
-        mapRef={mapRef}
-        center={center}
-        centerAnimationDuration={hasFramed.current ? 650 : 0}
-        attributionOffset={placing ? 0 : insets.bottom + 78}
-      >
-        <EventMarkers />
-      </WorldMap>
+      {/* Both stages stay mounted: unmounting the map would throw away the
+          camera the reader had set up, and reloading its tiles on every switch. */}
+      <View style={[styles.stage, view === "map" ? null : styles.hidden]}>
+        <WorldMap
+          mapRef={mapRef}
+          center={center}
+          centerAnimationDuration={hasFramed.current ? 650 : 0}
+          attributionOffset={placing ? 0 : insets.bottom + 78}
+        >
+          <EventMarkers />
+        </WorldMap>
+      </View>
+
+      <View style={[styles.stage, view === "list" ? null : styles.hidden]}>
+        <EventListView
+          onOpen={() => setDetailOpen(true)}
+          contentPadding={{
+            top: insets.top + 62,
+            bottom: insets.bottom + 82,
+          }}
+        />
+        <ParchmentOverlay />
+      </View>
 
       {placing ? (
         <LocationReticle
@@ -99,6 +117,9 @@ export function MapScreen() {
             style={[styles.top, { top: insets.top + 8 }]}
             pointerEvents="box-none"
           >
+            <View style={styles.topLeft}>
+              <ViewToggleButton view={view} onChange={setView} />
+            </View>
             <FilterButton />
             <View style={styles.topRight}>
               <AddEventButton
@@ -120,7 +141,7 @@ export function MapScreen() {
                 <Text style={styles.error}>{error}</Text>
               </Paper>
             ) : null}
-            {selectedEvent ? (
+            {selectedEvent && view === "map" ? (
               <EventSummaryCard
                 event={selectedEvent}
                 onOpen={() => setDetailOpen(true)}
@@ -143,7 +164,10 @@ export function MapScreen() {
         visible={composing && !placing}
         event={editing}
         location={draftLocation}
-        onRequestPlacement={() => setPlacing(true)}
+        onRequestPlacement={() => {
+          setView("map");
+          setPlacing(true);
+        }}
         onCancel={() => {
           setComposing(false);
           setEditing(null);
@@ -184,7 +208,10 @@ const styles = StyleSheet.create({
     right: 10,
     alignItems: "center",
   },
+  topLeft: { position: "absolute", left: 0, top: 0 },
   topRight: { position: "absolute", right: 0, top: 0 },
+  stage: { flex: 1 },
+  hidden: { display: "none" },
   bottom: { position: "absolute", left: 10, right: 10, gap: 8 },
   timelineRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   timeline: { flex: 1 },

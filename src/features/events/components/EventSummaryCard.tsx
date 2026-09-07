@@ -9,9 +9,15 @@ import { palette } from "../../../theme/palette";
 export type EventSummaryCardProps = {
   event: HistoricalEvent;
   onOpen: () => void;
+  /** Marks the event being read when the tile sits among others in the list. */
+  highlighted?: boolean;
 };
 
-export function EventSummaryCard({ event, onOpen }: EventSummaryCardProps) {
+export function EventSummaryCard({
+  event,
+  onOpen,
+  highlighted = false,
+}: EventSummaryCardProps) {
   const { folders } = useEvents();
 
   const names = event.folders
@@ -19,7 +25,7 @@ export function EventSummaryCard({ event, onOpen }: EventSummaryCardProps) {
     .filter((name): name is string => name !== undefined);
 
   return (
-    <Paper>
+    <Paper style={highlighted ? styles.highlighted : undefined}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Détail de ${event.title}`}
@@ -50,6 +56,7 @@ export function EventSummaryCard({ event, onOpen }: EventSummaryCardProps) {
 }
 
 const styles = StyleSheet.create({
+  highlighted: { borderColor: palette.wax, borderWidth: 2 },
   body: { flexDirection: "row", alignItems: "center", padding: 10, gap: 10 },
   pressed: { opacity: 0.75 },
   thumb: {

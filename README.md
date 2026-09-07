@@ -237,6 +237,7 @@ src/
         EventFormModal.tsx        création et modification
         EventDetailModal.tsx      fiche complète, modifier, supprimer
         EventSummaryCard.tsx      tuile de résumé
+        EventListView.tsx         la même tuile, empilée et défilante
         HistoricalDateField.tsx   sélecteur de date à molettes
         PhotoViewer.tsx           photo plein écran + sa source
         FolderSelector.tsx        classeurs (liste déroulante) + importance
@@ -252,14 +253,15 @@ src/
       TimelineArrow.tsx           flèches, de part et d'autre de la frise
   components/
     ui/                           primitives parchemin (Paper, InkButton,
-                                  SelectField : liste déroulante…)
+                                  GlyphButton, SelectField…)
     WorldMap/
       WorldMap.tsx                le composant carte, isolé
       ParchmentOverlay.tsx        grain de papier + vignettage
       MapAttribution.tsx          crédit MapTiler/OSM (obligatoire)
   screens/
     MapScreen/
-      MapScreen.tsx               compose carte, filtres, frise, modales
+      MapScreen.tsx               compose les deux vues, filtres, frise, modales
+      ViewToggleButton.tsx        bascule carte ↔ liste
       MissingConfigNotice.tsx
 ```
 
@@ -352,6 +354,18 @@ courant.
 Le formulaire reçoit une `key` liée à l'identité de l'événement : changer
 d'événement remonte le composant, et tous les champs se ré-amorcent sans effet
 de bord.
+
+**Deux vues.** Le bouton en haut à gauche remplace la carte par une liste
+défilante des mêmes tuiles, et inversement. Il montre toujours la vue vers
+laquelle il mène, jamais celle où l'on est. Filtres, bouton `+`, frise et
+flèches sont communs aux deux : ce sont deux fenêtres sur la même sélection, et
+avancer d'un événement dans l'une fait défiler l'autre.
+
+Les deux scènes restent **montées** en permanence, la cachée mise à
+`display: "none"`. Démonter la carte reviendrait à jeter le cadrage que vous
+aviez posé et à retélécharger ses tuiles à chaque bascule. Dans la vue liste, la
+tuile de résumé au-dessus de la frise disparaît — elle ferait doublon — et
+l'événement courant est cerné de cire dans la liste à la place.
 
 **Filtrer.** Un seul mot en haut de l'écran, « Tous » par défaut, qui prend le
 nom du classeur choisi ou compte ceux qui le sont. Il ouvre une popup : la même
