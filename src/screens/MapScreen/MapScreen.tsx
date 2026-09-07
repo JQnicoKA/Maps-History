@@ -1,6 +1,6 @@
 import type { LngLat, MapRef } from "@maplibre/maplibre-react-native";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -9,13 +9,11 @@ import { Paper } from "../../components/ui";
 import { WorldMap } from "../../components/WorldMap";
 import { env } from "../../config/env";
 import { useEvents } from "../../features/events/EventsProvider";
+import type { HistoricalEvent } from "../../features/events/types";
 import { AddEventButton } from "../../features/events/components/AddEventButton";
 import { EventDetailModal } from "../../features/events/components/EventDetailModal";
 import { EventFormModal } from "../../features/events/components/EventFormModal";
-import {
-  EVENT_HIT_LAYER,
-  EventMarkers,
-} from "../../features/events/components/EventMarkers";
+import { EventMarkers } from "../../features/events/components/EventMarkers";
 import { EventSummaryCard } from "../../features/events/components/EventSummaryCard";
 import { LocationReticle } from "../../features/events/components/LocationReticle";
 import { FilterButton } from "../../features/filters/FilterButton";
@@ -28,9 +26,12 @@ type DraftLocation = { longitude: number; latitude: number };
 export function MapScreen() {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapRef>(null);
-  const { selectedEvent, selectEvent, error } = useEvents();
+  const { selectedEvent, error } = useEvents();
+  // The opening shot should not fly across the world; every later move should.
+  const hasFramed = useRef(false);
 
   const [composing, setComposing] = useState(false);
+  const [editing, setEditing] = useState<HistoricalEvent | null>(null);
   const [placing, setPlacing] = useState(false);
   const [draftLocation, setDraftLocation] = useState<DraftLocation | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -45,18 +46,9 @@ export function MapScreen() {
     [selectedEvent],
   );
 
-  const handleMapPress = useCallback(
-    async (nativeEvent: { nativeEvent: { point: [number, number] } }) => {
-      if (placing) return;
-      const features = await mapRef.current?.queryRenderedFeatures(
-        nativeEvent.nativeEvent.point,
-        { layers: [EVENT_HIT_LAYER] },
-      );
-      const id = features?.[0]?.properties?.["id"];
-      selectEvent(typeof id === "string" ? id : null);
-    },
-    [placing, selectEvent],
-  );
+  useEffect(() => {
+    if (center) hasFramed.current = true;
+  }, [center]);
 
   const confirmPlacement = useCallback(async () => {
     const centre = await mapRef.current?.getCenter();
@@ -89,7 +81,7 @@ export function MapScreen() {
       <WorldMap
         mapRef={mapRef}
         center={center}
-        onPress={handleMapPress}
+        centerAnimationDuration={hasFramed.current ? 650 : 0}
         attributionOffset={placing ? 0 : insets.bottom + 78}
       >
         <EventMarkers />
@@ -109,7 +101,13 @@ export function MapScreen() {
           >
             <FilterButton />
             <View style={styles.topRight}>
-              <AddEventButton onPress={() => setComposing(true)} />
+              <AddEventButton
+                onPress={() => {
+                  setEditing(null);
+                  setDraftLocation(null);
+                  setComposing(true);
+                }}
+              />
             </View>
           </View>
 
@@ -126,7 +124,6 @@ export function MapScreen() {
               <EventSummaryCard
                 event={selectedEvent}
                 onOpen={() => setDetailOpen(true)}
-                onDismiss={() => selectEvent(null)}
               />
             ) : null}
             <View style={styles.timelineRow} pointerEvents="box-none">
@@ -141,15 +138,20 @@ export function MapScreen() {
       )}
 
       <EventFormModal
+        // Remounting on identity re-seeds every field from the event.
+        key={editing?.id ?? "new"}
         visible={composing && !placing}
+        event={editing}
         location={draftLocation}
         onRequestPlacement={() => setPlacing(true)}
         onCancel={() => {
           setComposing(false);
+          setEditing(null);
           setDraftLocation(null);
         }}
         onSaved={() => {
           setComposing(false);
+          setEditing(null);
           setDraftLocation(null);
         }}
       />
@@ -157,6 +159,16 @@ export function MapScreen() {
       {detailOpen ? (
         <EventDetailModal
           event={selectedEvent}
+          onEdit={() => {
+            if (!selectedEvent) return;
+            setDetailOpen(false);
+            setEditing(selectedEvent);
+            setDraftLocation({
+              longitude: selectedEvent.longitude,
+              latitude: selectedEvent.latitude,
+            });
+            setComposing(true);
+          }}
           onClose={() => setDetailOpen(false)}
         />
       ) : null}

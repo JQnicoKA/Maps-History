@@ -1,94 +1,43 @@
-import type { ExpressionSpecification } from "@maplibre/maplibre-gl-style-spec";
-import { GeoJSONSource, Layer } from "@maplibre/maplibre-react-native";
-import type { FeatureCollection, Point } from "geojson";
-import { useMemo } from "react";
+import { Marker } from "@maplibre/maplibre-react-native";
 
+import { EventMarker, type MarkerVariant } from "./EventMarker";
 import { useEvents } from "../EventsProvider";
-import { effectiveImportance } from "../filtering";
-import { palette } from "../../../theme/palette";
-
-/** Layer the map is hit-tested against when the reader taps an event. */
-export const EVENT_HIT_LAYER = "events-hit";
-const SOURCE = "events";
-
-/** Radius in points, by how much the event matters in the current view. */
-const RADIUS: ExpressionSpecification = [
-  "match",
-  ["get", "importance"],
-  "high", 7,
-  "medium", 5.5,
-  4,
-];
-
-const grown = (by: number): ExpressionSpecification => ["+", RADIUS, by];
+import type { HistoricalEvent } from "../types";
 
 /**
- * Every event is drawn from a single GeoJSON source rather than as N React
- * annotations: the renderer keeps pan and zoom smooth no matter how many
- * events are on the plate, and importance becomes a styling expression.
+ * At most three markers stand on the plate at once — the event being read, the
+ * one before and the one after. Capping it there is what buys us real
+ * photographs as markers instead of the flat glyphs a whole collection would
+ * have forced.
+ *
+ * The current one is rendered last so it sits above its neighbours.
  */
 export function EventMarkers() {
-  const { visibleEvents, filters, selectedEvent } = useEvents();
+  const { neighbours, selectEvent } = useEvents();
 
-  const data = useMemo<FeatureCollection<Point>>(
-    () => ({
-      type: "FeatureCollection",
-      features: visibleEvents.map((event) => ({
-        type: "Feature",
-        properties: {
-          id: event.id,
-          importance: effectiveImportance(event, filters),
-          selected: event.id === selectedEvent?.id,
-        },
-        geometry: {
-          type: "Point",
-          coordinates: [event.longitude, event.latitude],
-        },
-      })),
-    }),
-    [visibleEvents, filters, selectedEvent],
-  );
+  const shown: { event: HistoricalEvent; variant: MarkerVariant }[] = [
+    ...(neighbours.previous
+      ? [{ event: neighbours.previous, variant: "previous" as const }]
+      : []),
+    ...(neighbours.next
+      ? [{ event: neighbours.next, variant: "next" as const }]
+      : []),
+    ...(neighbours.current
+      ? [{ event: neighbours.current, variant: "current" as const }]
+      : []),
+  ];
 
   return (
-    <GeoJSONSource id={SOURCE} data={data}>
-      {/* Invisible and generous: a 6pt dot is not a tap target. */}
-      <Layer
-        id={EVENT_HIT_LAYER}
-        type="circle"
-        paint={{ "circle-radius": 18, "circle-opacity": 0 }}
-      />
-      <Layer
-        id="events-halo"
-        type="circle"
-        paint={{
-          "circle-radius": grown(4),
-          "circle-color": palette.paperLight,
-          "circle-opacity": 0.55,
-          "circle-blur": 0.4,
-        }}
-      />
-      <Layer
-        id="events-dot"
-        type="circle"
-        paint={{
-          "circle-radius": RADIUS,
-          "circle-color": palette.paperLight,
-          "circle-stroke-color": palette.ink,
-          "circle-stroke-width": 1.5,
-        }}
-      />
-      {/* Sealing wax marks the event under the reader's eye. */}
-      <Layer
-        id="events-selected"
-        type="circle"
-        filter={["==", ["get", "selected"], true]}
-        paint={{
-          "circle-radius": grown(1.5),
-          "circle-color": palette.wax,
-          "circle-stroke-color": palette.paperLight,
-          "circle-stroke-width": 2,
-        }}
-      />
-    </GeoJSONSource>
+    <>
+      {shown.map(({ event, variant }) => (
+        <Marker key={event.id} lngLat={[event.longitude, event.latitude]}>
+          <EventMarker
+            event={event}
+            variant={variant}
+            onPress={() => selectEvent(event.id)}
+          />
+        </Marker>
+      ))}
+    </>
   );
 }

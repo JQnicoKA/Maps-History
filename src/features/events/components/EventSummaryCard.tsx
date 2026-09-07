@@ -3,20 +3,15 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Paper } from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
 import { formatEventPeriod } from "../historicalDate";
-import type { HistoricalEvent } from "../types";
+import { describeType, type HistoricalEvent } from "../types";
 import { palette } from "../../../theme/palette";
 
 export type EventSummaryCardProps = {
   event: HistoricalEvent;
   onOpen: () => void;
-  onDismiss: () => void;
 };
 
-export function EventSummaryCard({
-  event,
-  onOpen,
-  onDismiss,
-}: EventSummaryCardProps) {
+export function EventSummaryCard({ event, onOpen }: EventSummaryCardProps) {
   const { folders } = useEvents();
 
   const names = event.folders
@@ -31,12 +26,14 @@ export function EventSummaryCard({
         onPress={onOpen}
         style={({ pressed }) => [styles.body, pressed && styles.pressed]}
       >
-        {event.photoUrls[0] !== undefined ? (
-          <Image source={{ uri: event.photoUrls[0] }} style={styles.thumb} />
+        {event.photos[0] !== undefined ? (
+          <Image source={{ uri: event.photos[0].url }} style={styles.thumb} />
         ) : null}
 
         <View style={styles.text}>
-          <Text style={styles.period}>{formatEventPeriod(event)}</Text>
+          <Text style={styles.period}>
+            {describeType(event.type).emoji} {formatEventPeriod(event)}
+          </Text>
           <Text style={styles.title} numberOfLines={2}>
             {event.title}
           </Text>
@@ -47,15 +44,6 @@ export function EventSummaryCard({
           ) : null}
         </View>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Fermer"
-          hitSlop={10}
-          onPress={onDismiss}
-          style={styles.close}
-        >
-          <Text style={styles.closeGlyph}>×</Text>
-        </Pressable>
       </Pressable>
     </Paper>
   );
@@ -79,6 +67,4 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 15, color: palette.ink },
   folders: { fontSize: 11, color: palette.inkFaint },
-  close: { paddingHorizontal: 4 },
-  closeGlyph: { fontSize: 20, lineHeight: 22, color: palette.inkFaint },
 });

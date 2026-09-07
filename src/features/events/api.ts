@@ -3,6 +3,8 @@ import type {
   Folder,
   HistoricalDate,
   HistoricalEvent,
+  EventPhoto,
+  EventType,
   Importance,
 } from "./types";
 import { decodeBase64 } from "../../lib/base64";
@@ -11,6 +13,7 @@ import { PHOTO_BUCKET, supabase } from "../../lib/supabase";
 type EventRow = {
   id: string;
   title: string;
+  type: EventType;
   description: string | null;
   start_year: number;
   start_month: number | null;
@@ -21,16 +24,16 @@ type EventRow = {
   longitude: number;
   latitude: number;
   event_folders: { folder_id: string; importance: Importance }[];
-  event_photos: { storage_path: string; position: number }[];
+  event_photos: { id: string; storage_path: string; position: number }[];
 };
 
 const EVENT_COLUMNS = `
-  id, title, description,
+  id, title, type, description,
   start_year, start_month, start_day,
   end_year, end_month, end_day,
   longitude, latitude,
   event_folders ( folder_id, importance ),
-  event_photos ( storage_path, position )
+  event_photos ( id, storage_path, position )
 `;
 
 function toDate(
@@ -53,6 +56,7 @@ function toEvent(row: EventRow): HistoricalEvent {
   return {
     id: row.id,
     title: row.title,
+    type: row.type,
     description: row.description,
     start: toDate(row.start_year, row.start_month, row.start_day),
     end:
@@ -65,9 +69,13 @@ function toEvent(row: EventRow): HistoricalEvent {
       folderId: link.folder_id,
       importance: link.importance,
     })),
-    photoUrls: [...row.event_photos]
+    photos: [...row.event_photos]
       .sort((a, b) => a.position - b.position)
-      .map((photo) => publicUrl(photo.storage_path)),
+      .map((photo) => ({
+        id: photo.id,
+        path: photo.storage_path,
+        url: publicUrl(photo.storage_path),
+      })),
   };
 }
 
@@ -105,13 +113,14 @@ export async function fetchEvents(): Promise<HistoricalEvent[]> {
 async function uploadPhotos(
   eventId: string,
   photos: EventDraft["photos"],
+  startAt = 0,
 ): Promise<void> {
   const storage = supabase().storage.from(PHOTO_BUCKET);
 
   const paths = await Promise.all(
     photos.map(async (photo, index) => {
       const extension = photo.mimeType.split("/")[1] ?? "jpg";
-      const path = `${eventId}/${index}-${Date.now()}.${extension}`;
+      const path = `${eventId}/${startAt + index}-${Date.now()}.${extension}`;
       const { error } = await storage.upload(path, decodeBase64(photo.base64), {
         contentType: photo.mimeType,
       });
@@ -126,7 +135,7 @@ async function uploadPhotos(
       paths.map((path, position) => ({
         event_id: eventId,
         storage_path: path,
-        position,
+        position: startAt + position,
       })),
     );
   if (error) throw new Error(error.message);
@@ -137,6 +146,7 @@ export async function createEvent(draft: EventDraft): Promise<void> {
     .from("events")
     .insert({
       title: draft.title.trim(),
+      type: draft.type,
       description: draft.description.trim() || null,
       start_year: draft.start.year,
       start_month: draft.start.month ?? null,
@@ -173,6 +183,73 @@ export async function createEvent(draft: EventDraft): Promise<void> {
     // the foreign keys cascade, so this cleans up whatever did land.
     await supabase().from("events").delete().eq("id", eventId);
     throw cause;
+  }
+}
+
+function toRow(draft: EventDraft) {
+  return {
+    title: draft.title.trim(),
+    type: draft.type,
+    description: draft.description.trim() || null,
+    start_year: draft.start.year,
+    start_month: draft.start.month ?? null,
+    start_day: draft.start.day ?? null,
+    end_year: draft.end?.year ?? null,
+    end_month: draft.end?.month ?? null,
+    end_day: draft.end?.day ?? null,
+    longitude: draft.longitude,
+    latitude: draft.latitude,
+  };
+}
+
+/**
+ * Saves an edit. Folder links are replaced wholesale rather than diffed — the
+ * set is tiny and a replace cannot drift out of sync. Photos the reader dropped
+ * are removed from both the table and the bucket.
+ */
+export async function updateEvent(
+  id: string,
+  draft: EventDraft,
+  keptPhotos: EventPhoto[],
+  droppedPhotos: EventPhoto[],
+): Promise<void> {
+  const client = supabase();
+
+  const { error } = await client.from("events").update(toRow(draft)).eq("id", id);
+  if (error) throw new Error(error.message);
+
+  const { error: unlinkError } = await client
+    .from("event_folders")
+    .delete()
+    .eq("event_id", id);
+  if (unlinkError) throw new Error(unlinkError.message);
+
+  if (draft.folders.length > 0) {
+    const { error: linkError } = await client.from("event_folders").insert(
+      draft.folders.map((link) => ({
+        event_id: id,
+        folder_id: link.folderId,
+        importance: link.importance,
+      })),
+    );
+    if (linkError) throw new Error(linkError.message);
+  }
+
+  if (droppedPhotos.length > 0) {
+    const { error: photoError } = await client
+      .from("event_photos")
+      .delete()
+      .in("id", droppedPhotos.map((photo) => photo.id));
+    if (photoError) throw new Error(photoError.message);
+
+    // Best effort: an orphaned object costs storage, a failed save costs work.
+    await client.storage
+      .from(PHOTO_BUCKET)
+      .remove(droppedPhotos.map((photo) => photo.path));
+  }
+
+  if (draft.photos.length > 0) {
+    await uploadPhotos(id, draft.photos, keptPhotos.length);
   }
 }
 

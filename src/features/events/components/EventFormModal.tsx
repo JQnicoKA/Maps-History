@@ -14,18 +14,32 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FolderSelector } from "./FolderSelector";
 import { PhotoPicker } from "./PhotoPicker";
-import { InkButton, InkField, Paper } from "../../../components/ui";
+import { InkButton, InkField, Paper, SelectField } from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
 import {
   EMPTY_DATE_FIELDS,
   buildHistoricalDate,
+  toDateFields,
   type DateFields,
 } from "../historicalDate";
-import type { EventDraft, EventFolderLink } from "../types";
+import {
+  EVENT_TYPES,
+  type EventDraft,
+  type EventFolderLink,
+  type EventPhoto,
+  type EventType,
+  type HistoricalEvent,
+  type PickedPhoto,
+} from "../types";
 import { palette } from "../../../theme/palette";
 
 export type EventFormModalProps = {
   visible: boolean;
+  /**
+   * The event being edited, if any. The parent gives this modal a `key` tied to
+   * it, so switching events remounts the form and the state below re-seeds.
+   */
+  event?: HistoricalEvent | null;
   location: { longitude: number; latitude: number } | null;
   onRequestPlacement: () => void;
   onCancel: () => void;
@@ -76,31 +90,40 @@ function DateRow({
 
 export function EventFormModal({
   visible,
+  event,
   location,
   onRequestPlacement,
   onCancel,
   onSaved,
 }: EventFormModalProps) {
-  const { folders, addFolder, addEvent } = useEvents();
+  const { folders, addFolder, addEvent, editEvent } = useEvents();
   const insets = useSafeAreaInsets();
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [start, setStart] = useState<DateFields>(EMPTY_DATE_FIELDS);
-  const [isPeriod, setIsPeriod] = useState(false);
-  const [end, setEnd] = useState<DateFields>(EMPTY_DATE_FIELDS);
-  const [links, setLinks] = useState<EventFolderLink[]>([]);
-  const [photos, setPhotos] = useState<EventDraft["photos"]>([]);
+  const [title, setTitle] = useState(event?.title ?? "");
+  const [type, setType] = useState<EventType>(event?.type ?? "other");
+  const [description, setDescription] = useState(event?.description ?? "");
+  const [start, setStart] = useState<DateFields>(
+    event ? toDateFields(event.start) : EMPTY_DATE_FIELDS,
+  );
+  const [isPeriod, setIsPeriod] = useState(event?.end != null);
+  const [end, setEnd] = useState<DateFields>(toDateFields(event?.end ?? null));
+  const [links, setLinks] = useState<EventFolderLink[]>(event?.folders ?? []);
+  const [photos, setPhotos] = useState<PickedPhoto[]>([]);
+  const [keptPhotos, setKeptPhotos] = useState<EventPhoto[]>(event?.photos ?? []);
+  const [droppedPhotos, setDroppedPhotos] = useState<EventPhoto[]>([]);
   const [saving, setSaving] = useState(false);
 
   const reset = () => {
     setTitle("");
+    setType("other");
     setDescription("");
     setStart(EMPTY_DATE_FIELDS);
     setIsPeriod(false);
     setEnd(EMPTY_DATE_FIELDS);
     setLinks([]);
     setPhotos([]);
+    setKeptPhotos([]);
+    setDroppedPhotos([]);
   };
 
   const save = async () => {
@@ -129,19 +152,26 @@ export function EventFormModal({
       endDate = endResult.date;
     }
 
+    const draft: EventDraft = {
+      title,
+      type,
+      description,
+      start: startResult.date,
+      end: endDate,
+      longitude: location.longitude,
+      latitude: location.latitude,
+      folders: links,
+      photos,
+    };
+
     setSaving(true);
     try {
-      await addEvent({
-        title,
-        description,
-        start: startResult.date,
-        end: endDate,
-        longitude: location.longitude,
-        latitude: location.latitude,
-        folders: links,
-        photos,
-      });
-      reset();
+      if (event) {
+        await editEvent(event.id, draft, keptPhotos, droppedPhotos);
+      } else {
+        await addEvent(draft);
+        reset();
+      }
       onSaved();
     } catch (cause) {
       Alert.alert(
@@ -175,7 +205,9 @@ export function EventFormModal({
             contentContainerStyle={styles.body}
             keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.heading}>Nouvel événement</Text>
+            <Text style={styles.heading}>
+              {event ? "Modifier l'événement" : "Nouvel événement"}
+            </Text>
 
             <InkField
               label="Titre"
@@ -183,6 +215,19 @@ export function EventFormModal({
               onChangeText={setTitle}
               placeholder="Prise de Constantinople"
             />
+            <SelectField
+              label="Type"
+              title="Type d'événement"
+              placeholder="Autre"
+              single
+              options={EVENT_TYPES.map((entry) => ({
+                value: entry.value,
+                label: `${entry.emoji}  ${entry.label}`,
+              }))}
+              selected={[type]}
+              onToggle={(value) => setType(value as EventType)}
+            />
+
             <InkField
               label="Description"
               value={description}
@@ -212,7 +257,17 @@ export function EventFormModal({
               onCreate={addFolder}
             />
 
-            <PhotoPicker photos={photos} onChange={setPhotos} />
+            <PhotoPicker
+              photos={photos}
+              onChange={setPhotos}
+              existing={keptPhotos}
+              onRemoveExisting={(photo) => {
+                setKeptPhotos((current) =>
+                  current.filter((kept) => kept.id !== photo.id),
+                );
+                setDroppedPhotos((current) => [...current, photo]);
+              }}
+            />
 
             <View style={styles.locationRow}>
               <View style={styles.locationText}>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Alert,
   Image,
+  Pressable,
   Modal,
   ScrollView,
   StyleSheet,
@@ -13,7 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { InkButton, Paper } from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
 import { formatEventPeriod } from "../historicalDate";
-import type { HistoricalEvent, Importance } from "../types";
+import { describeType, type HistoricalEvent, type Importance } from "../types";
 import { palette } from "../../../theme/palette";
 
 const IMPORTANCE_LABEL: Record<Importance, string> = {
@@ -22,12 +23,19 @@ const IMPORTANCE_LABEL: Record<Importance, string> = {
   low: "faible",
 };
 
+const TRASH = require("../../../../assets/icons/trash.png");
+
 export type EventDetailModalProps = {
   event: HistoricalEvent | null;
+  onEdit: () => void;
   onClose: () => void;
 };
 
-export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
+export function EventDetailModal({
+  event,
+  onEdit,
+  onClose,
+}: EventDetailModalProps) {
   const { folders, removeEvent } = useEvents();
   const insets = useSafeAreaInsets();
   const [deleting, setDeleting] = useState(false);
@@ -80,6 +88,9 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
           <ScrollView contentContainerStyle={styles.body}>
             <Text style={styles.period}>{formatEventPeriod(event)}</Text>
             <Text style={styles.title}>{event.title}</Text>
+            <Text style={styles.type}>
+              {describeType(event.type).emoji} {describeType(event.type).label}
+            </Text>
 
             {event.description ? (
               <Text style={styles.description}>{event.description}</Text>
@@ -101,15 +112,19 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
               </View>
             ) : null}
 
-            {event.photoUrls.length > 0 ? (
+            {event.photos.length > 0 ? (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 style={styles.section}
               >
                 <View style={styles.photos}>
-                  {event.photoUrls.map((url) => (
-                    <Image key={url} source={{ uri: url }} style={styles.photo} />
+                  {event.photos.map((photo) => (
+                    <Image
+                      key={photo.id}
+                      source={{ uri: photo.url }}
+                      style={styles.photo}
+                    />
                   ))}
                 </View>
               </ScrollView>
@@ -120,13 +135,24 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
             </Text>
 
             <View style={styles.actions}>
-              <InkButton
-                label={deleting ? "Suppression…" : "Supprimer"}
-                variant="quiet"
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Supprimer cet événement"
                 disabled={deleting}
+                hitSlop={8}
                 onPress={confirmDelete}
-              />
-              <InkButton label="Fermer" variant="solid" onPress={onClose} />
+                style={({ pressed }) => [
+                  styles.trash,
+                  (pressed || deleting) && styles.trashPressed,
+                ]}
+              >
+                <Image source={TRASH} style={styles.trashGlyph} resizeMode="contain" />
+              </Pressable>
+
+              <View style={styles.buttons}>
+                <InkButton label="Modifier" onPress={onEdit} />
+                <InkButton label="Fermer" variant="solid" onPress={onClose} />
+              </View>
             </View>
           </ScrollView>
         </Paper>
@@ -151,6 +177,7 @@ const styles = StyleSheet.create({
     color: palette.wax,
   },
   title: { fontSize: 21, color: palette.ink, letterSpacing: 0.4 },
+  type: { fontSize: 12, color: palette.inkFaint, letterSpacing: 0.4 },
   description: { fontSize: 14, lineHeight: 21, color: palette.inkSoft },
   section: { marginTop: 6, gap: 4 },
   legend: {
@@ -171,8 +198,12 @@ const styles = StyleSheet.create({
   coordinates: { fontSize: 11, color: palette.inkFaint, marginTop: 6 },
   actions: {
     flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 8,
+    alignItems: "center",
+    justifyContent: "space-between",
     marginTop: 8,
   },
+  trash: { padding: 6 },
+  trashPressed: { opacity: 0.45 },
+  trashGlyph: { width: 20, height: 20 },
+  buttons: { flexDirection: "row", gap: 8 },
 });

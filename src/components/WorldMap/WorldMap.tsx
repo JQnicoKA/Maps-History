@@ -24,6 +24,8 @@ export type WorldMapProps = {
   /** Recentres the plate without touching the zoom level. */
   center?: LngLat;
   onPress?: MapProps["onPress"];
+  /** 0 recentres instantly — used for the very first framing. */
+  centerAnimationDuration?: number;
   /** Lifts the credit line clear of whatever chrome sits at the bottom. */
   attributionOffset?: number;
 };
@@ -33,6 +35,7 @@ export function WorldMap({
   mapRef,
   center,
   onPress,
+  centerAnimationDuration = 650,
   attributionOffset,
 }: WorldMapProps) {
   const mapStyle = useMemo(
@@ -60,7 +63,13 @@ export function WorldMap({
           initialViewState={INITIAL_VIEW}
           minZoom={ZOOM.min}
           maxZoom={ZOOM.max}
-          {...(center ? { center, animationDuration: 650, easing: "ease" as const } : {})}
+          {...(center
+            ? {
+                center,
+                animationDuration: centerAnimationDuration,
+                easing: "ease" as const,
+              }
+            : {})}
         />
         {children}
       </Map>

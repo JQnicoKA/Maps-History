@@ -39,6 +39,7 @@ volontairement git-ignorés — la configuration native vit dans `app.json`.
 | `expo-image-picker` | `~56.0.25` | photos des événements |
 | `react-native-safe-area-context` | `~5.7.0` | encoches et barre d'accueil |
 | `typescript` | `~6.0.3` | mode `strict` + options additionnelles |
+| `@resvg/resvg-js` | `2.6.2` | **devDependency** : rasterise les icônes hors-ligne |
 
 `@maplibre/maplibre-react-native` v11 supporte la New Architecture (Fabric /
 TurboModules, `codegenConfig` présent) et ses peer deps demandent `expo >= 54`,
@@ -91,7 +92,7 @@ Quatre tables, un bucket. Le point de conception qui structure tout le reste :
 
 ```
 folders         id, name
-events          id, title, description, dates…, longitude, latitude
+events          id, title, type, description, dates…, longitude, latitude
 event_folders   (event_id, folder_id) → importance    ← clé primaire composite
 event_photos    id, event_id, storage_path, position
 bucket          event-photos (public)
@@ -182,6 +183,7 @@ npm start            # serveur Metro (dev build déjà installée)
 npm run typecheck    # tsc --noEmit
 npm run prebuild     # régénère ios/ et android/ de zéro
 npm run textures     # régénère les textures parchemin
+npm run icons        # rasterise assets/icons/src/*.svg → assets/icons/*.png
 ```
 
 ---
@@ -193,7 +195,10 @@ index.ts                          point d'entrée Expo
 app.json                          config Expo + config plugin MapLibre
 .env.example                      modèle de configuration
 scripts/generate-textures.mjs     génère les PNG de parchemin (sans dépendance)
+scripts/generate-icons.mjs        rasterise les icônes de type d'événement
 assets/textures/                  paper-grain.png, vignette.png
+assets/icons/src/*.svg            les 16 glyphes de type + l'icône corbeille
+assets/icons/*.png                sortie de build, 192 px
 
 src/
   App.tsx
@@ -223,12 +228,14 @@ src/
       types.ts                    modèle de domaine
       api.ts                      requêtes Supabase
       historicalDate.ts           années signées, dates imprécises, formatage
+      icons.ts                    table type → PNG
       filtering.ts                importance effective + filtres
       EventsProvider.tsx          état partagé (Context + hooks)
       components/
-        EventMarkers.tsx          source GeoJSON + couches MapLibre
-        EventFormModal.tsx        formulaire de création
-        EventDetailModal.tsx      fiche complète
+        EventMarkers.tsx          les trois marqueurs ancrés sur la carte
+        EventMarker.tsx           le médaillon : photo, ou glyphe à défaut
+        EventFormModal.tsx        création et modification
+        EventDetailModal.tsx      fiche complète, modifier, supprimer
         EventSummaryCard.tsx      tuile de résumé
         FolderSelector.tsx        classeurs (liste déroulante) + importance
         ImportanceRow.tsx         élevée / moyenne / faible pour un classeur
@@ -256,11 +263,12 @@ src/
 
 ### Décisions d'implémentation
 
-- **Les événements sont une source GeoJSON, pas N marqueurs React.** Une seule
-  source, quatre couches MapLibre, l'importance devient une expression de style.
-  Le rendu reste fluide quel que soit le nombre d'événements, et le clic passe
-  par `queryRenderedFeatures` sur une couche de touche invisible de 18 pt —
-  une pastille de 6 pt n'est pas une cible tactile.
+- **Trois marqueurs au maximum, et ce sont de vraies photos.** La carte ne
+  porte jamais plus que l'événement lu, le précédent et le suivant. Ce plafond
+  est ce qui permet des `<Marker>` React — des vues ancrées, avec une image
+  dedans — là où une collection entière aurait imposé une source GeoJSON et des
+  glyphes plats. C'est un renversement assumé de la première version : le coût
+  d'un marqueur riche ne se paie que trois fois.
 - **Le lieu se place au réticule, pas au tap.** Viser du doigt une carte qu'on
   est en train de déplacer est un combat ; on amène le lieu sous une croix fixe
   puis on confirme.
@@ -280,9 +288,10 @@ src/
   d'impression (papier → lavis → relief → eau → grille → frontières → texte).
 - **Régions interactives, overlays** : `<WorldMap>` accepte des `children`
   MapLibre, comme `<EventMarkers>`. Rien à toucher dans `WorldMap.tsx`.
-- **Édition d'un événement** : `api.ts` a déjà `createEvent` et `deleteEvent` ;
-  un `updateEvent` suit le même moule, et `EventFormModal` accepte un état
-  initial.
+- **Suppression en masse, réorganisation des photos** : `updateEvent` remplace
+  les liens de classeur en bloc plutôt que de les comparer un à un — l'ensemble
+  est minuscule et un remplacement ne peut pas se désynchroniser. Le même moule
+  vaut pour ce qui viendra.
 
 ---
 
@@ -305,14 +314,42 @@ elle reste lisible quel que soit le nombre de sujets — et on y crée un classe
 que se matérialise le modèle : un événement majeur pour un sujet et secondaire
 pour un autre.
 
+**Types.** Chaque événement porte un type parmi seize — naissance, mort,
+mariage, sacre, bataille, conquête, traité, révolution, indépendance, loi,
+construction, exploration, découverte, culture, catastrophe, autre — qui
+détermine le glyphe gravé au centre du marqueur. Le sélecteur les liste avec
+leur emoji ; la carte, elle, dessine le glyphe à l'encre.
+
+Les glyphes sont écrits en SVG dans `assets/icons/src/` et rasterisés par
+`npm run icons`. Sur la carte ils servent de **repli** : le marqueur montre la
+première photo de l'événement, et le glyphe de son type quand il n'y en a pas.
+Deux choix de dessin méritent d'être signalés : la naissance est un astérisque
+et la mort une croix, la notation généalogique classique — ils se répondent.
+
+**Modifier.** La fiche complète porte *Modifier*, qui rouvre le formulaire
+pré-rempli — y compris le lieu, qu'on peut redéplacer au réticule. Les photos
+déjà stockées y apparaissent aux côtés des nouvelles ; en retirer une la
+supprime de la table **et** du bucket à l'enregistrement. La suppression de
+l'événement, elle, est passée en petite corbeille en bas à gauche : c'est une
+action rare et irréversible, elle n'a pas à occuper la même place qu'un bouton
+courant.
+
+Le formulaire reçoit une `key` liée à l'identité de l'événement : changer
+d'événement remonte le composant, et tous les champs se ré-amorcent sans effet
+de bord.
+
 **Filtrer.** Un seul mot en haut de l'écran, « Tous » par défaut, qui prend le
 nom du classeur choisi ou compte ceux qui le sont. Il ouvre une popup : la même
 liste déroulante de classeurs, puis pour chaque classeur coché son importance,
 « Toutes » par défaut. Plusieurs classeurs se cumulent en union — leurs
 événements s'additionnent. Le filtre pilote la carte *et* la frise.
 
-**Parcourir.** La frise du bas est la barre d'échelle graduée d'une carte
-ancienne : elle couvre l'intervalle des événements sélectionnés, chacun posé
+**Parcourir.** La carte ne montre jamais plus de trois événements : celui qu'on
+lit, cerné de cire, le précédent estompé et le suivant assombri. Passer au
+suivant fait glisser la fenêtre d'un cran. Au lancement, le plus ancien de la
+période filtrée est sélectionné d'office, sans animation de caméra.
+
+La frise du bas est la barre d'échelle graduée d'une carte ancienne : elle couvre l'intervalle des événements sélectionnés, chacun posé
 dessus en losange, celui qu'on regarde encré à la cire et surmonté de son année.
 Les flèches l'encadrent, à gauche et à droite de l'écran. Cliquer un événement —
 sur la carte, sur la frise ou via les flèches — recentre la planche **sans
@@ -393,6 +430,32 @@ Rester en SDK 56 (voir « Pourquoi le SDK 56 et pas le 57 »). Le projet ne port
 aucun patch local d'Expo — si vous en ajoutez un, il sera à retirer dès qu'Expo
 publiera le correctif.
 
+**L'app se ferme immédiatement, sans rien dans le terminal Metro.**
+C'est un crash natif : le JS n'a pas la main, donc rien ne remonte à Metro. Le
+log est côté appareil — branchez l'iPhone et lancez depuis le Mac :
+
+```bash
+xcrun devicectl device process launch --device <UDID> --console \
+  --terminate-existing com.mapshistory.app
+```
+
+Deux causes déjà rencontrées, toutes deux dans les couches MapLibre :
+
+- `"zoom" expression may only be used as input to a top-level "step" or
+  "interpolate" expression` — une expression de zoom **doit être l'expression la
+  plus externe** d'une propriété. La glisser dans un `["*", …]` ou un `["+", …]`
+  fait planter le rendu au chargement du style. Mettez l'`interpolate` au sommet
+  et le `match` sur la donnée *à l'intérieur* de chaque palier.
+- `FilterPropsConversions.h: react_native_expect failure: isMap` — la prop
+  `filter` de `<Layer>` entre en collision avec la prop de style `filter` de
+  React Native (les filtres CSS). Exprimez la condition dans la peinture
+  (`["case", ["get", "x"], a, b]`) plutôt que dans un `filter` de couche.
+
+Ces expressions se vérifient hors appareil avec `validateStyleMin` de
+`@maplibre/maplibre-gl-style-spec` — il rend exactement le message d'erreur du
+crash. Le style de base est validé ainsi ; les couches déclarées en JSX
+(`EventMarkers`) échappent en revanche à ce contrôle.
+
 **iOS : la build reste bloquée sur `Connecting to: <votre iPhone>`.**
 La compilation est terminée à ce stade ; c'est l'installation sur l'appareil qui
 attend. iPhone déverrouillé, Mode développeur activé (Réglages → Confidentialité
@@ -444,6 +507,16 @@ imposent ce crédit visible : ne pas le supprimer.
 - Quatre événements de démonstration sont en base (987, 1214, 1453, 1520–1566)
   pour que la carte et la frise aient de quoi s'afficher au premier lancement.
   Ils se suppriment depuis la fiche de chaque événement.
+- Démarrage sur iPhone vérifié après correction : l'app tourne plus de 50 s
+  sans terminer, là où elle mourait en 5 s.
+- Modification vérifiée contre la base : PATCH de l'événement, remplacement des
+  liens de classeur, relecture, et le trigger `updated_at` se déclenche.
+- Les quatre événements de démonstration n'ont pas de photo : ils s'affichent
+  donc avec le glyphe de repli. Il faut en créer un avec une photo pour voir le
+  médaillon.
 - Le rendu des événements n'a pas encore été vu à l'écran.
-- Le remaniement visuel (frise, filtres, listes déroulantes) est purement
-  JS/TS : un rechargement Metro suffit, pas de reconstruction native.
+- Le remaniement visuel (frise, filtres, listes déroulantes) et les types
+  d'événements sont purement JS/TS et assets : un rechargement Metro suffit,
+  pas de reconstruction native.
+- Colonne `type` ajoutée, aller-retour vérifié via l'API REST, valeur hors
+  vocabulaire rejetée par l'enum.

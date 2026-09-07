@@ -16,6 +16,8 @@ export type SelectFieldProps = {
   options: SelectOption[];
   selected: string[];
   onToggle: (value: string) => void;
+  /** One choice only: picking a row closes the list. */
+  single?: boolean;
   /** Rendered under the list — where "create a new folder" lives. */
   footer?: ReactNode;
   emptyMessage?: string;
@@ -32,6 +34,7 @@ export function SelectField({
   options,
   selected,
   onToggle,
+  single = false,
   footer,
   emptyMessage = "Aucune entrée pour l'instant.",
 }: SelectFieldProps) {
@@ -95,7 +98,10 @@ export function SelectField({
                           key={option.value}
                           accessibilityRole="checkbox"
                           accessibilityState={{ checked: isSelected }}
-                          onPress={() => onToggle(option.value)}
+                          onPress={() => {
+                            onToggle(option.value);
+                            if (single) setOpen(false);
+                          }}
                           style={({ pressed }) => [
                             styles.row,
                             pressed && styles.pressed,

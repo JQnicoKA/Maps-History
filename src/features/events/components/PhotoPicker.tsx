@@ -2,17 +2,23 @@ import * as ImagePicker from "expo-image-picker";
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { InkButton } from "../../../components/ui";
-import type { EventDraft } from "../types";
+import type { EventPhoto, PickedPhoto } from "../types";
 import { palette } from "../../../theme/palette";
 
-type Photos = EventDraft["photos"];
-
 export type PhotoPickerProps = {
-  photos: Photos;
-  onChange: (photos: Photos) => void;
+  photos: PickedPhoto[];
+  onChange: (photos: PickedPhoto[]) => void;
+  /** Pictures already in storage — present when editing. */
+  existing?: EventPhoto[];
+  onRemoveExisting?: (photo: EventPhoto) => void;
 };
 
-export function PhotoPicker({ photos, onChange }: PhotoPickerProps) {
+export function PhotoPicker({
+  photos,
+  onChange,
+  existing = [],
+  onRemoveExisting,
+}: PhotoPickerProps) {
   const pick = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -54,9 +60,20 @@ export function PhotoPicker({ photos, onChange }: PhotoPickerProps) {
         <InkButton label="Ajouter" onPress={() => void pick()} />
       </View>
 
-      {photos.length > 0 ? (
+      {existing.length + photos.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.strip}>
+            {existing.map((photo) => (
+              <Pressable
+                key={photo.id}
+                accessibilityRole="button"
+                accessibilityLabel="Retirer cette photo"
+                onPress={() => onRemoveExisting?.(photo)}
+              >
+                <Image source={{ uri: photo.url }} style={styles.thumb} />
+                <Text style={styles.remove}>×</Text>
+              </Pressable>
+            ))}
             {photos.map((photo, index) => (
               <Pressable
                 key={photo.uri}

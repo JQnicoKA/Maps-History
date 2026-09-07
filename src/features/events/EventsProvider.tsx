@@ -13,6 +13,7 @@ import { matchesFilters } from "./filtering";
 import {
   NO_FILTERS,
   type EventDraft,
+  type EventPhoto,
   type EventFilters,
   type Folder,
   type HistoricalEvent,
@@ -26,6 +27,12 @@ type EventsContextValue = {
   filters: EventFilters;
   setFilters: (filters: EventFilters) => void;
   selectedEvent: HistoricalEvent | null;
+  /** The event being read and its immediate chronological neighbours. */
+  neighbours: {
+    previous: HistoricalEvent | null;
+    current: HistoricalEvent | null;
+    next: HistoricalEvent | null;
+  };
   selectEvent: (id: string | null) => void;
   /** Moves the selection along the timeline; clamped at both ends. */
   step: (delta: 1 | -1) => void;
@@ -34,6 +41,12 @@ type EventsContextValue = {
   refresh: () => Promise<void>;
   addFolder: (name: string) => Promise<Folder>;
   addEvent: (draft: EventDraft) => Promise<void>;
+  editEvent: (
+    id: string,
+    draft: EventDraft,
+    keptPhotos: EventPhoto[],
+    droppedPhotos: EventPhoto[],
+  ) => Promise<void>;
   removeEvent: (id: string) => Promise<void>;
 };
 
@@ -84,6 +97,24 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     if (selectedId !== null && selectedEvent === null) setSelectedId(null);
   }, [selectedId, selectedEvent]);
 
+  // The map is never blank: with nothing chosen it opens on the earliest event
+  // of whatever the filters select.
+  useEffect(() => {
+    if (selectedId === null && visibleEvents.length > 0) {
+      setSelectedId(visibleEvents[0]!.id);
+    }
+  }, [selectedId, visibleEvents]);
+
+  const neighbours = useMemo(() => {
+    const index = visibleEvents.findIndex((event) => event.id === selectedId);
+    if (index === -1) return { previous: null, current: null, next: null };
+    return {
+      previous: visibleEvents[index - 1] ?? null,
+      current: visibleEvents[index] ?? null,
+      next: visibleEvents[index + 1] ?? null,
+    };
+  }, [visibleEvents, selectedId]);
+
   const step = useCallback(
     (delta: 1 | -1) => {
       if (visibleEvents.length === 0) return;
@@ -115,6 +146,19 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
+  const editEvent = useCallback(
+    async (
+      id: string,
+      draft: EventDraft,
+      keptPhotos: EventPhoto[],
+      droppedPhotos: EventPhoto[],
+    ) => {
+      await api.updateEvent(id, draft, keptPhotos, droppedPhotos);
+      await refresh();
+    },
+    [refresh],
+  );
+
   const removeEvent = useCallback(async (id: string) => {
     await api.deleteEvent(id);
     setSelectedId(null);
@@ -129,6 +173,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       filters,
       setFilters,
       selectedEvent,
+      neighbours,
       selectEvent: setSelectedId,
       step,
       loading,
@@ -136,11 +181,12 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       refresh,
       addFolder,
       addEvent,
+      editEvent,
       removeEvent,
     }),
     [
-      events, visibleEvents, folders, filters, selectedEvent, step,
-      loading, error, refresh, addFolder, addEvent, removeEvent,
+      events, visibleEvents, folders, filters, selectedEvent, neighbours, step,
+      loading, error, refresh, addFolder, addEvent, editEvent, removeEvent,
     ],
   );
 
