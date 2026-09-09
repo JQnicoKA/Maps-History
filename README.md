@@ -203,7 +203,7 @@ scripts/extract-places.mjs        agglomérations OHM → JSON
 scripts/load-places.mjs           JSON → table places
 scripts/generate-icons.mjs        rasterise les icônes de type d'événement
 assets/textures/                  paper-grain.png, vignette.png
-assets/icons/src/*.svg            les 16 glyphes de type + l'icône corbeille
+assets/icons/src/*.svg            icônes d'interface, sources vectorielles
 assets/icons/*.png                sortie de build, 192 px
 
 src/
@@ -239,7 +239,7 @@ src/
       EventsProvider.tsx          état partagé (Context + hooks)
       components/
         EventMarkers.tsx          les trois marqueurs ancrés sur la carte
-        EventMarker.tsx           le médaillon : photo, ou glyphe à défaut
+        EventMarker.tsx           le médaillon : photo, ou emoji du type
         EventFormModal.tsx        création et modification
         EventDetailModal.tsx      fiche complète, modifier, supprimer
         EventSummaryCard.tsx      tuile de résumé
@@ -394,15 +394,15 @@ le navigateur.
 
 **Types.** Chaque événement porte un type parmi seize — naissance, mort,
 mariage, sacre, bataille, conquête, traité, révolution, indépendance, loi,
-construction, exploration, découverte, culture, catastrophe, autre — qui
-détermine le glyphe gravé au centre du marqueur. Le sélecteur les liste avec
-leur emoji ; la carte, elle, dessine le glyphe à l'encre.
+construction, exploration, découverte, culture, catastrophe, autre.
 
-Les glyphes sont écrits en SVG dans `assets/icons/src/` et rasterisés par
-`npm run icons`. Sur la carte ils servent de **repli** : le marqueur montre la
-première photo de l'événement, et le glyphe de son type quand il n'y en a pas.
-Deux choix de dessin méritent d'être signalés : la naissance est un astérisque
-et la mort une croix, la notation généalogique classique — ils se répondent.
+Le marqueur montre la première photo de l'événement, et **l'emoji de son type**
+quand il n'y en a pas — comme le sélecteur, la tuile de résumé et la fiche. Le
+type est ainsi dit d'une seule voix partout.
+
+Seize glyphes gravés tenaient auparavant ce rôle de repli sur la carte. Ils ont
+été retirés avec leur registre : `assets/icons/` ne contient plus que les trois
+icônes d'interface — corbeille et bascule de vue.
 
 **Modifier.** La fiche complète porte *Modifier*, qui rouvre le formulaire
 pré-rempli — y compris le lieu, qu'on peut redéplacer au réticule. Les photos

@@ -1,6 +1,7 @@
 /**
- * Rasterizes every drawn glyph in assets/icons/src — the sixteen event types
- * plus the odd interface icon — into PNGs React Native can display.
+ * Rasterizes every drawn glyph in assets/icons/src into PNGs React Native can
+ * display. These are interface icons — the trash can, the two view toggles.
+ * Event types are drawn with their emoji, not with a glyph.
  *
  * React Native cannot render SVG without a native module, so the vectors are
  * the editable source and the PNGs are build output. Re-run after touching one:
@@ -15,10 +16,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE_DIR = join(ROOT, "assets/icons/src");
 const OUT_DIR = join(ROOT, "assets/icons");
 
-/**
- * Drawn at up to ~40pt inside a marker, so 192px stays crisp on a 3x screen.
- * These are now plain React Native images — the map no longer scales them.
- */
+/** Drawn at ~20pt, so 192px leaves ample margin on a 3x screen. */
 const SIZE = 192;
 
 mkdirSync(OUT_DIR, { recursive: true });

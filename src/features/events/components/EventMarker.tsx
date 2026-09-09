@@ -1,7 +1,6 @@
-import { Image, Pressable, StyleSheet, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { EVENT_ICONS } from "../icons";
-import type { HistoricalEvent } from "../types";
+import { describeType, type HistoricalEvent } from "../types";
 import { palette } from "../../../theme/palette";
 
 /** Where the event sits relative to the one being read. */
@@ -20,9 +19,10 @@ const SIZE: Record<MarkerVariant, number> = {
 };
 
 /**
- * A photograph in a parchment locket. The event being read is full size and
- * ringed in wax; the one before it is faded, the one after darkened — so the
- * direction of travel is legible without a legend.
+ * A photograph in a parchment locket, or the type's emoji when there is none.
+ * The event being read is full size and ringed in wax; the one before it is
+ * faded, the one after darkened — so the direction of travel is legible without
+ * a legend.
  */
 export function EventMarker({ event, variant, onPress }: EventMarkerProps) {
   const size = SIZE[variant];
@@ -43,11 +43,9 @@ export function EventMarker({ event, variant, onPress }: EventMarkerProps) {
         ]}
       >
         {photo === undefined ? (
-          <Image
-            source={EVENT_ICONS[event.type]}
-            style={{ width: size * 0.56, height: size * 0.56 }}
-            resizeMode="contain"
-          />
+          <Text style={{ fontSize: size * 0.42 }}>
+            {describeType(event.type).emoji}
+          </Text>
         ) : (
           <Image source={{ uri: photo.url }} style={styles.photo} />
         )}
