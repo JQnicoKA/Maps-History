@@ -95,8 +95,11 @@ export function MapScreen() {
           centerAnimationDuration={hasFramed.current ? 650 : 0}
           attributionOffset={placing ? 0 : insets.bottom + 78}
         >
-          {MAP_FEATURES.territories ? <TerritoryLayers /> : null}
+          {/* Settlements first, territories after: MapLibre places symbols
+              from the topmost layer down, so the country name wins the room
+              against the town names crowding around its anchor. */}
           {MAP_FEATURES.places ? <PlaceLayers /> : null}
+          {MAP_FEATURES.territories ? <TerritoryLayers /> : null}
           <EventMarkers />
         </WorldMap>
       </View>

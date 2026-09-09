@@ -25,6 +25,21 @@ const VISIBLE: ExpressionSpecification = [
   1,
 ];
 
+/**
+ * Below its zoom the name is dropped outright rather than faded to nothing: a
+ * transparent symbol still claims its box in the collision pass and evicts the
+ * lettering around it — the country name first of all.
+ */
+const LABEL: ExpressionSpecification = [
+  "step",
+  ["zoom"],
+  "",
+  3,
+  ["case", ["==", ["get", "kind"], "city"], ["get", "name"], ""],
+  5.5,
+  ["get", "name"],
+];
+
 const RADIUS: ExpressionSpecification = [
   "interpolate",
   ["linear"],
@@ -67,7 +82,7 @@ export function PlaceLayers() {
         id="place-label"
         type="symbol"
         layout={{
-          "text-field": ["get", "name"],
+          "text-field": LABEL,
           "text-font": fonts.place,
           "text-size": [
             "interpolate",
@@ -90,7 +105,6 @@ export function PlaceLayers() {
           "text-halo-color": palette.paperLight,
           "text-halo-width": 1.2,
           "text-halo-blur": 0.6,
-          "text-opacity": VISIBLE,
         }}
       />
     </GeoJSONSource>

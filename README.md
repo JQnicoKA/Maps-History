@@ -595,6 +595,17 @@ couches déclarées en JSX (`EventMarkers`, `TerritoryLayers`, `PlaceLayers`)
 échappent en revanche à ce contrôle automatique. **Les deux plantages de ce
 type sont venus de là** : validez-les à la main avant de déployer.
 
+**Un libellé n'apparaît pas alors que la donnée est bien là.**
+MapLibre place les symboles en partant de la couche la **plus haute** de la
+pile : le premier arrivé prend la place, les suivants qui la chevauchent sont
+purement et simplement supprimés. L'ordre de montage des composants dans
+`MapScreen` fixe donc la priorité — `PlaceLayers` avant `TerritoryLayers` pour
+que le nom du pays l'emporte sur les noms de villes qui entourent son ancre.
+Corollaire : un symbole rendu invisible par une opacité nulle **occupe quand
+même sa boîte de collision**. Pour le retirer vraiment du calcul, videz son
+`text-field` (`["step", ["zoom"], "", …]`) — un symbole sans texte ni icône
+n'entre jamais dans le bucket.
+
 **Une liste ou une molette refuse de défiler dans une popup.**
 Le contenu de la feuille est enveloppé dans un `Pressable` — celui qui sert
 à absorber les taps pour qu'un appui à l'intérieur ne referme pas la popup. Ce
