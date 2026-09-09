@@ -1,14 +1,8 @@
 import { useMemo, useRef, useState } from "react";
-import {
-  FlatList,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { InkButton, Paper } from "../../../components/ui";
+import { InkButton, Sheet } from "../../../components/ui";
+import { radius, space, TOUCH, type } from "../../../theme/tokens";
 import { formatHistoricalDate, formatYear } from "../historicalDate";
 import type { HistoricalDate } from "../types";
 import { palette } from "../../../theme/palette";
@@ -152,156 +146,113 @@ export function HistoricalDateField({
         <Text style={styles.chevron}>▾</Text>
       </Pressable>
 
-      {open ? (
-        <Modal
-          visible
-          animationType="fade"
-          transparent
-          statusBarTranslucent
-          onRequestClose={() => setOpen(false)}
-        >
-          <View style={styles.backdrop}>
-            {/* A sibling, not a wrapper: a Pressable around the sheet would win
-              the touch responder and the wheels would refuse to scroll. */}
-            <Pressable
-              accessibilityLabel="Fermer"
-              style={StyleSheet.absoluteFill}
+      <Sheet
+        visible={open}
+        onClose={() => setOpen(false)}
+        title={label}
+        footer={
+          <>
+            <InkButton
+              label="Annuler"
+              variant="tonal"
+              grow
               onPress={() => setOpen(false)}
             />
-            <View>
-              <Paper>
-                <View style={styles.sheet}>
-                  <Text style={styles.title}>{label}</Text>
+            <InkButton
+              label="Valider"
+              variant="solid"
+              grow
+              onPress={() => {
+                onChange(draft);
+                setOpen(false);
+              }}
+            />
+          </>
+        }
+      >
+        <View style={styles.sheet}>
+          <View style={styles.wheels}>
+            {/* The centre band shows which row is selected. */}
+            <View pointerEvents="none" style={styles.band} />
 
-                  <View style={styles.wheels}>
-                    {/* The centre band shows which row is selected. */}
-                    <View pointerEvents="none" style={styles.band} />
-
-                    <Wheel
-                      flex={1}
-                      data={days}
-                      index={draft.day ?? 0}
-                      onIndexChange={(index) =>
-                        setDraft((state) =>
-                          index === 0 || state.month === undefined
-                            ? {
-                                year: state.year,
-                                ...(state.month ? { month: state.month } : {}),
-                              }
-                            : { ...state, day: index },
-                        )
+            <Wheel
+              flex={1}
+              data={days}
+              index={draft.day ?? 0}
+              onIndexChange={(index) =>
+                setDraft((state) =>
+                  index === 0 || state.month === undefined
+                    ? {
+                        year: state.year,
+                        ...(state.month ? { month: state.month } : {}),
                       }
-                    />
-                    <Wheel
-                      flex={1.6}
-                      data={months}
-                      index={draft.month ?? 0}
-                      onIndexChange={(index) =>
-                        setDraft((state) =>
-                          // A day cannot outlive its month.
-                          index === 0
-                            ? { year: state.year }
-                            : { ...state, month: index },
-                        )
-                      }
-                    />
-                    <Wheel
-                      flex={1.6}
-                      data={years}
-                      index={yearIndex}
-                      onIndexChange={(index) =>
-                        setDraft((state) => ({
-                          ...state,
-                          year: FIRST_YEAR + index,
-                        }))
-                      }
-                    />
-                  </View>
-
-                  <Text style={styles.preview}>
-                    {formatHistoricalDate(draft)}
-                  </Text>
-
-                  <View style={styles.actions}>
-                    <InkButton
-                      label="Annuler"
-                      variant="quiet"
-                      onPress={() => setOpen(false)}
-                    />
-                    <InkButton
-                      label="Valider"
-                      variant="solid"
-                      onPress={() => {
-                        onChange(draft);
-                        setOpen(false);
-                      }}
-                    />
-                  </View>
-                </View>
-              </Paper>
-            </View>
+                    : { ...state, day: index },
+                )
+              }
+            />
+            <Wheel
+              flex={1.6}
+              data={months}
+              index={draft.month ?? 0}
+              onIndexChange={(index) =>
+                setDraft((state) =>
+                  // A day cannot outlive its month.
+                  index === 0 ? { year: state.year } : { ...state, month: index },
+                )
+              }
+            />
+            <Wheel
+              flex={1.6}
+              data={years}
+              index={yearIndex}
+              onIndexChange={(index) =>
+                setDraft((state) => ({ ...state, year: FIRST_YEAR + index }))
+              }
+            />
           </View>
-        </Modal>
-      ) : null}
+
+          <Text style={styles.preview}>{formatHistoricalDate(draft)}</Text>
+        </View>
+      </Sheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 5 },
-  label: {
-    fontSize: 10,
-    letterSpacing: 1.3,
-    textTransform: "uppercase",
-    color: palette.inkSoft,
-  },
+  container: { gap: space.sm },
+  label: { ...type.legend, color: palette.inkSoft },
   field: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.inkFaint,
-    paddingVertical: 8,
+    gap: space.sm,
+    minHeight: TOUCH,
+    paddingHorizontal: space.md,
+    backgroundColor: palette.sunken,
+    borderRadius: radius.md,
   },
-  pressed: { opacity: 0.6 },
-  value: { flex: 1, fontSize: 15, color: palette.ink },
+  pressed: { opacity: 0.65 },
+  value: { flex: 1, fontSize: 16, color: palette.ink },
   placeholder: { color: palette.inkFaint },
-  chevron: { fontSize: 12, color: palette.inkSoft },
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(58, 44, 27, 0.45)",
-    paddingHorizontal: 24,
-    justifyContent: "center",
-  },
-  sheet: { padding: 14, gap: 12 },
-  title: {
-    fontSize: 12,
-    letterSpacing: 1.8,
-    textTransform: "uppercase",
-    color: palette.ink,
-    textAlign: "center",
-  },
-  wheels: { flexDirection: "row", height: ROW * VISIBLE, gap: 4 },
+  chevron: { fontSize: 13, color: palette.inkSoft },
+  sheet: { paddingHorizontal: space.xl, gap: space.lg },
+  wheels: { flexDirection: "row", height: ROW * VISIBLE, gap: space.sm },
   band: {
     position: "absolute",
     left: 0,
     right: 0,
     top: ROW * PAD,
     height: ROW,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: palette.inkFaint,
-    backgroundColor: palette.paperDeep,
-    opacity: 0.5,
+    borderRadius: radius.md,
+    backgroundColor: palette.sunken,
   },
   cell: { height: ROW, alignItems: "center", justifyContent: "center" },
-  cellText: { fontSize: 15, color: palette.inkFaint },
-  cellCurrent: { fontSize: 17, color: palette.ink },
+  cellText: { fontSize: 17, color: palette.inkFaint },
+  cellCurrent: { fontSize: 19, color: palette.ink, fontWeight: "600" },
   preview: {
     textAlign: "center",
-    fontSize: 13,
-    letterSpacing: 0.6,
+    fontSize: 15,
+    letterSpacing: 0.3,
     color: palette.wax,
+    fontWeight: "600",
   },
-  actions: { flexDirection: "row", justifyContent: "flex-end", gap: 8 },
 });

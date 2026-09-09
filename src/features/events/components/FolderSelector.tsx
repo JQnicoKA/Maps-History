@@ -5,6 +5,7 @@ import { ImportanceRow } from "./ImportanceRow";
 import { InkButton, SelectField } from "../../../components/ui";
 import type { EventFolderLink, Folder, Importance } from "../types";
 import { palette } from "../../../theme/palette";
+import { radius, space } from "../../../theme/tokens";
 
 export type FolderSelectorProps = {
   folders: Folder[];
@@ -107,14 +108,15 @@ export function FolderSelector({
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 8 },
-  createRow: { flexDirection: "row", alignItems: "flex-end", gap: 8 },
+  container: { gap: space.lg },
+  createRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
   createInput: {
     flex: 1,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.inkFaint,
-    paddingVertical: 6,
-    fontSize: 14,
+    minHeight: 44,
+    paddingHorizontal: space.md,
+    borderRadius: radius.md,
+    backgroundColor: palette.sunken,
+    fontSize: 15,
     color: palette.ink,
   },
 });

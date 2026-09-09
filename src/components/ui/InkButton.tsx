@@ -1,20 +1,31 @@
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text, type ViewStyle } from "react-native";
 
 import { palette } from "../../theme/palette";
+import { radius, space, TOUCH } from "../../theme/tokens";
 
 export type InkButtonProps = {
   label: string;
   onPress: () => void;
-  variant?: "solid" | "outline" | "quiet";
+  /** solid = the one action that matters, tonal = secondary, quiet = escape. */
+  variant?: "solid" | "tonal" | "quiet";
   disabled?: boolean;
+  /** Fills the row it sits in — sheet footers use this. */
+  grow?: boolean;
+  tone?: "ink" | "wax";
+  style?: ViewStyle;
 };
 
 export function InkButton({
   label,
   onPress,
-  variant = "outline",
+  variant = "tonal",
   disabled = false,
+  grow = false,
+  tone = "ink",
+  style,
 }: InkButtonProps) {
+  const accent = tone === "wax" ? palette.wax : palette.ink;
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -22,13 +33,21 @@ export function InkButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
-        variant === "solid" && styles.solid,
-        variant === "quiet" && styles.quiet,
+        grow && styles.grow,
+        variant === "solid" && { backgroundColor: accent },
+        variant === "tonal" && styles.tonal,
+        style,
         pressed && styles.pressed,
         disabled && styles.disabled,
       ]}
     >
-      <Text style={[styles.label, variant === "solid" && styles.solidLabel]}>
+      <Text
+        style={[
+          styles.label,
+          variant === "solid" ? styles.onSolid : { color: accent },
+        ]}
+        numberOfLines={1}
+      >
         {label}
       </Text>
     </Pressable>
@@ -37,23 +56,16 @@ export function InkButton({
 
 const styles = StyleSheet.create({
   base: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderWidth: 1,
-    borderColor: palette.ink,
-    borderRadius: 2,
-    backgroundColor: "transparent",
+    minHeight: TOUCH,
+    paddingHorizontal: space.xl,
+    justifyContent: "center",
     alignItems: "center",
+    borderRadius: radius.md,
   },
-  solid: { backgroundColor: palette.ink },
-  quiet: { borderColor: "transparent" },
-  pressed: { opacity: 0.6 },
-  disabled: { opacity: 0.35 },
-  label: {
-    fontSize: 12,
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
-    color: palette.ink,
-  },
-  solidLabel: { color: palette.paperLight },
+  grow: { flex: 1 },
+  tonal: { backgroundColor: palette.sunken },
+  pressed: { opacity: 0.65 },
+  disabled: { opacity: 0.4 },
+  label: { fontSize: 15, letterSpacing: 0.2, fontWeight: "600" },
+  onSolid: { color: palette.paperLight },
 });

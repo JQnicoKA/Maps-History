@@ -1,22 +1,22 @@
 import { useState, type ReactNode } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { InkButton } from "./InkButton";
-import { Paper } from "./Paper";
+import { Sheet } from "./Sheet";
 import { palette } from "../../theme/palette";
+import { radius, space, TOUCH, type } from "../../theme/tokens";
 
 export type SelectOption = { value: string; label: string };
 
 export type SelectFieldProps = {
   label?: string;
-  /** Heading of the list that opens. */
+  /** Heading of the sheet that opens. */
   title: string;
   placeholder: string;
   options: SelectOption[];
   selected: string[];
   onToggle: (value: string) => void;
-  /** One choice only: picking a row closes the list. */
+  /** One choice only: picking a row closes the sheet. */
   single?: boolean;
   /** Rendered under the list — where "create a new folder" lives. */
   footer?: ReactNode;
@@ -39,7 +39,6 @@ export function SelectField({
   emptyMessage = "Aucune entrée pour l'instant.",
 }: SelectFieldProps) {
   const [open, setOpen] = useState(false);
-  const insets = useSafeAreaInsets();
 
   const chosen = options
     .filter((option) => selected.includes(option.value))
@@ -64,135 +63,93 @@ export function SelectField({
         <Text style={styles.chevron}>▾</Text>
       </Pressable>
 
-      <Modal
+      <Sheet
         visible={open}
-        animationType="fade"
-        transparent
-        statusBarTranslucent
-        onRequestClose={() => setOpen(false)}
-      >
-        <View style={styles.backdrop}>
-          {/* A sibling, not a wrapper: a Pressable around the sheet would win
-              the touch responder and stop the list inside from scrolling. */}
-          <Pressable
-            accessibilityLabel="Fermer"
-            style={StyleSheet.absoluteFill}
+        onClose={() => setOpen(false)}
+        title={title}
+        footer={
+          <InkButton
+            label="Fermer"
+            variant="solid"
+            grow
             onPress={() => setOpen(false)}
           />
-          <View
-            style={[
-              styles.sheetWrapper,
-              { marginTop: insets.top + 40, marginBottom: insets.bottom + 40 },
-            ]}
-          >
-            <Paper>
-              <View style={styles.sheet}>
-                <Text style={styles.title}>{title}</Text>
-
-                {options.length === 0 ? (
-                  <Text style={styles.empty}>{emptyMessage}</Text>
-                ) : (
-                  <ScrollView
-                    style={styles.list}
-                    keyboardShouldPersistTaps="handled"
+        }
+      >
+        {options.length === 0 ? (
+          <Text style={styles.empty}>{emptyMessage}</Text>
+        ) : (
+          <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
+            {options.map((option) => {
+              const isSelected = selected.includes(option.value);
+              return (
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: isSelected }}
+                  onPress={() => {
+                    onToggle(option.value);
+                    if (single) setOpen(false);
+                  }}
+                  style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                >
+                  <Text
+                    style={[styles.rowLabel, isSelected && styles.rowSelected]}
+                    numberOfLines={1}
                   >
-                    {options.map((option) => {
-                      const isSelected = selected.includes(option.value);
-                      return (
-                        <Pressable
-                          key={option.value}
-                          accessibilityRole="checkbox"
-                          accessibilityState={{ checked: isSelected }}
-                          onPress={() => {
-                            onToggle(option.value);
-                            if (single) setOpen(false);
-                          }}
-                          style={({ pressed }) => [
-                            styles.row,
-                            pressed && styles.pressed,
-                          ]}
-                        >
-                          <Text
-                            style={[styles.rowLabel, isSelected && styles.rowSelected]}
-                          >
-                            {option.label}
-                          </Text>
-                          <Text style={styles.check}>{isSelected ? "✓" : ""}</Text>
-                        </Pressable>
-                      );
-                    })}
-                  </ScrollView>
-                )}
+                    {option.label}
+                  </Text>
+                  {isSelected ? <Text style={styles.check}>✓</Text> : null}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
 
-                {footer}
-
-                <View style={styles.actions}>
-                  <InkButton
-                    label="Fermer"
-                    variant="solid"
-                    onPress={() => setOpen(false)}
-                  />
-                </View>
-              </View>
-            </Paper>
-          </View>
-        </View>
-      </Modal>
+        {footer ? <View style={styles.footerSlot}>{footer}</View> : null}
+      </Sheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 5 },
-  label: {
-    fontSize: 10,
-    letterSpacing: 1.3,
-    textTransform: "uppercase",
-    color: palette.inkSoft,
-  },
+  container: { gap: space.sm },
+  label: { ...type.legend, color: palette.inkSoft },
   field: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.inkFaint,
-    paddingVertical: 8,
+    gap: space.sm,
+    minHeight: TOUCH,
+    paddingHorizontal: space.md,
+    backgroundColor: palette.sunken,
+    borderRadius: radius.md,
   },
-  pressed: { opacity: 0.6 },
-  value: { flex: 1, fontSize: 15, color: palette.ink },
+  pressed: { opacity: 0.65 },
+  value: { flex: 1, fontSize: 16, color: palette.ink },
   placeholder: { color: palette.inkFaint },
-  chevron: { fontSize: 12, color: palette.inkSoft },
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(58, 44, 27, 0.45)",
-    paddingHorizontal: 24,
-    justifyContent: "center",
-  },
-  sheetWrapper: { maxHeight: "100%" },
-  sheet: { padding: 14, gap: 10 },
-  title: {
-    fontSize: 12,
-    letterSpacing: 1.8,
-    textTransform: "uppercase",
-    color: palette.ink,
-    textAlign: "center",
-  },
-  list: { maxHeight: 280 },
+  chevron: { fontSize: 13, color: palette.inkSoft },
+  list: { maxHeight: 340, paddingHorizontal: space.xl },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 11,
+    gap: space.md,
+    minHeight: 52,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: palette.inkFaint,
+    borderBottomColor: palette.line,
   },
-  rowLabel: { flex: 1, fontSize: 15, color: palette.inkSoft },
-  rowSelected: { color: palette.ink },
-  check: { fontSize: 14, color: palette.wax, width: 18, textAlign: "right" },
+  rowPressed: { opacity: 0.6 },
+  rowLabel: { flex: 1, fontSize: 16, color: palette.inkSoft },
+  rowSelected: { color: palette.ink, fontWeight: "600" },
+  check: { fontSize: 16, color: palette.wax, fontWeight: "700" },
   empty: {
-    paddingVertical: 18,
+    paddingVertical: space.xxl,
+    paddingHorizontal: space.xl,
     textAlign: "center",
-    fontSize: 12,
+    ...type.body,
     color: palette.inkFaint,
   },
-  actions: { flexDirection: "row", justifyContent: "flex-end" },
+  footerSlot: {
+    paddingHorizontal: space.xl,
+    paddingTop: space.lg,
+  },
 });

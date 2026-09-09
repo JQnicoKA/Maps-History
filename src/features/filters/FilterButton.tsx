@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text } from "react-native";
 import { FilterModal } from "./FilterModal";
 import { useEvents } from "../events/EventsProvider";
 import { palette } from "../../theme/palette";
+import { radius, shadow, space, TOUCH } from "../../theme/tokens";
 
 /**
  * The only chrome at the top of the plate: one word saying what is on show.
@@ -42,23 +43,20 @@ export function FilterButton() {
 const styles = StyleSheet.create({
   button: {
     maxWidth: 190,
-    paddingHorizontal: 20,
-    paddingVertical: 9,
+    minHeight: TOUCH,
+    justifyContent: "center",
+    paddingHorizontal: space.xl,
     backgroundColor: palette.paperLight,
-    borderWidth: 1,
-    borderColor: palette.ink,
-    borderRadius: 2,
-    shadowColor: palette.ink,
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    borderRadius: radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.line,
+    ...shadow.soft,
   },
-  pressed: { opacity: 0.6 },
+  pressed: { opacity: 0.65 },
   label: {
-    fontSize: 13,
-    letterSpacing: 2,
-    textTransform: "uppercase",
+    fontSize: 15,
+    fontWeight: "600",
+    letterSpacing: 0.2,
     color: palette.ink,
     textAlign: "center",
   },

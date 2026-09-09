@@ -213,6 +213,7 @@ src/
     map.ts                        zooms, vue initiale, flags, attribution
   theme/
     palette.ts                    palette parchemin (carte + UI)
+    tokens.ts                     espacements, rayons, ombres, typographie
   map/
     style/
       createOldAtlasStyle.ts      assemble la StyleSpecification
@@ -265,8 +266,8 @@ src/
       Timeline.tsx                frise en barre d'échelle graduée
       TimelineArrow.tsx           flèches, de part et d'autre de la frise
   components/
-    ui/                           primitives parchemin (Paper, InkButton,
-                                  GlyphButton, SelectField…)
+    ui/                           système d'interface : Sheet, Paper, InkButton,
+                                  SegmentedControl, SelectField, Chip…
     WorldMap/
       WorldMap.tsx                le composant carte, isolé
       ParchmentOverlay.tsx        grain de papier + vignettage
@@ -277,6 +278,51 @@ src/
       ViewToggleButton.tsx        bascule carte ↔ liste
       MissingConfigNotice.tsx
 ```
+
+### L'interface
+
+**La carte est un atlas ancien ; la chrome posée dessus ne l'est pas.** Elle
+suit les conventions mobiles actuelles — feuilles remontant du bas, rayons
+généreux, élévation douce, cibles tactiles de 44 pt — en n'empruntant à la
+planche que ses couleurs. C'est un contraste assumé : le document a l'air
+ancien, l'application a l'air d'une application.
+
+Les mesures vivent dans `src/theme/tokens.ts` — c'est ce qui empêche cinq
+surfaces de dériver vers cinq styles. La seule survivance de la voix d'atlas
+dans l'interface est `type.legend` : les petites capitales espacées des
+intitulés de champ.
+
+Les modales centrées ont laissé place à des **feuilles de bas d'écran**
+(`Sheet`) : elles montent sous le pouce au lieu d'atterrir au milieu de l'écran,
+avec poignée, en-tête et pied d'actions fixe. Elles se ferment **en tirant
+l'en-tête vers le bas** — au-delà de 110 pt ou d'un geste vif.
+
+L'animation est pilotée à la main (`Animated` + `PanResponder`, sans dépendance
+native supplémentaire) plutôt que par `animationType="slide"` : celui-ci
+translate **tout** le contenu de la modale, assombrissement compris, si bien que
+le voile semblait monter avec le panneau. Il apparaît maintenant sur place en
+160 ms pendant que seul le panneau glisse, et il s'éclaircit à mesure qu'on tire
+la feuille vers le bas.
+
+Seul l'**en-tête** est saisissable : revendiquer tout le panneau ferait
+concurrence à chaque liste qu'il contient pour le même geste vers le bas. La
+visionneuse de photo, elle, se balaie dans les deux sens — elle ne contient rien
+qui défile.
+
+Deux détails sans lesquels le glissement ne fonctionne pas, et qui m'ont coûté
+un aller-retour :
+
+- **`useNativeDriver: false` sur le panneau.** Une valeur confiée au driver
+  natif cesse de repeindre de façon fiable quand `setValue` l'écrit depuis JS —
+  or c'est exactement ce que fait un geste. La feuille refusait de suivre le
+  doigt. Le fil JS est inoccupé pendant un glissement, le coût ne se voit pas.
+- **`onStartShouldSetPanResponder: () => true`** sur l'en-tête, plus
+  `onPanResponderTerminationRequest: () => false`. Attendre un seuil de
+  mouvement laissait échapper les premiers pixels du geste, et rien ne
+  revendiquait le responder.
+
+Le fond est toujours un frère du panneau, jamais son parent — un `Pressable`
+enveloppant vole le geste et empêcherait les listes de défiler.
 
 ### Décisions d'implémentation
 

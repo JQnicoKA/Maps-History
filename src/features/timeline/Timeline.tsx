@@ -4,14 +4,12 @@ import { Paper } from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import { formatYear, toSortKey } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
-
-/** Alternating fills, the way a scale bar is engraved on an atlas plate. */
-const GRADUATIONS = 24;
+import { radius, space, type } from "../../theme/tokens";
 
 /**
- * The chronological span of whatever the filters select, drawn as the graduated
- * scale bar of an old map: events are lozenges above the rule, the one under
- * the reader's eye is inked in wax and carries its year.
+ * The chronological span of whatever the filters select. A track with the
+ * travelled part filled, a dot per event, and the year being read floating
+ * above it — the shape a current app uses for a scrubber, in the plate's ink.
  */
 export function Timeline() {
   const { visibleEvents, selectedEvent, selectEvent } = useEvents();
@@ -31,28 +29,28 @@ export function Timeline() {
   const shareOf = (index: number) =>
     span === 0 ? 0.5 : (keys[index]! - first) / span;
 
-  const selectedIndex = visibleEvents.findIndex(
+  const current = visibleEvents.findIndex(
     (event) => event.id === selectedEvent?.id,
   );
+  const progress = current === -1 ? 0 : shareOf(current);
 
   return (
     <Paper>
       <View style={styles.body}>
         <View style={styles.caption}>
-          {selectedEvent && selectedIndex !== -1 ? (
-            <Text
-              style={[
-                styles.captionText,
-                { left: `${shareOf(selectedIndex) * 100}%` },
-              ]}
-              numberOfLines={1}
-            >
-              {formatYear(selectedEvent.start.year)}
-            </Text>
+          {selectedEvent && current !== -1 ? (
+            <View style={[styles.pill, { left: `${progress * 100}%` }]}>
+              <Text style={styles.pillText} numberOfLines={1}>
+                {formatYear(selectedEvent.start.year)}
+              </Text>
+            </View>
           ) : null}
         </View>
 
-        <View style={styles.markers}>
+        <View style={styles.track}>
+          <View style={styles.rail} />
+          <View style={[styles.railFilled, { width: `${progress * 100}%` }]} />
+
           {visibleEvents.map((event, index) => {
             const selected = event.id === selectedEvent?.id;
             return (
@@ -63,24 +61,10 @@ export function Timeline() {
                 onPress={() => selectEvent(event.id)}
                 style={[styles.target, { left: `${shareOf(index) * 100}%` }]}
               >
-                <View
-                  style={[styles.lozenge, selected && styles.lozengeSelected]}
-                />
+                <View style={[styles.dot, selected && styles.dotSelected]} />
               </Pressable>
             );
           })}
-        </View>
-
-        <View style={styles.scale}>
-          {Array.from({ length: GRADUATIONS }, (_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.graduation,
-                index % 2 === 0 ? styles.graduationInked : null,
-              ]}
-            />
-          ))}
         </View>
 
         <View style={styles.bounds}>
@@ -97,69 +81,69 @@ export function Timeline() {
 }
 
 const TARGET = 28;
-const CAPTION = 90;
+const PILL = 74;
 
 const styles = StyleSheet.create({
-  body: { paddingHorizontal: 14, paddingTop: 6, paddingBottom: 8 },
-  caption: { height: 15 },
-  captionText: {
+  body: { paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: space.md },
+  caption: { height: 26 },
+  pill: {
     position: "absolute",
-    width: CAPTION,
-    marginLeft: -CAPTION / 2,
-    textAlign: "center",
-    fontSize: 11,
-    letterSpacing: 1.2,
-    color: palette.wax,
+    width: PILL,
+    marginLeft: -PILL / 2,
+    alignItems: "center",
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    backgroundColor: palette.wax,
   },
-  markers: { height: 18, justifyContent: "flex-end" },
+  pillText: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+    color: palette.paperLight,
+  },
+  track: { height: TARGET, justifyContent: "center" },
+  rail: {
+    height: 4,
+    borderRadius: radius.pill,
+    backgroundColor: palette.sunken,
+  },
+  railFilled: {
+    position: "absolute",
+    height: 4,
+    borderRadius: radius.pill,
+    backgroundColor: palette.inkFaint,
+  },
   target: {
     position: "absolute",
     width: TARGET,
     marginLeft: -TARGET / 2,
-    height: 18,
+    height: TARGET,
     alignItems: "center",
-    justifyContent: "flex-end",
+    justifyContent: "center",
   },
-  lozenge: {
-    width: 8,
-    height: 8,
-    marginBottom: 2,
-    backgroundColor: palette.paperLight,
-    borderWidth: 1,
-    borderColor: palette.ink,
-    transform: [{ rotate: "45deg" }],
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: radius.pill,
+    backgroundColor: palette.inkSoft,
   },
-  lozengeSelected: {
-    width: 11,
-    height: 11,
+  dotSelected: {
+    width: 14,
+    height: 14,
     backgroundColor: palette.wax,
-    borderColor: palette.waxDeep,
+    borderWidth: 3,
+    borderColor: palette.paperLight,
   },
-  scale: {
-    flexDirection: "row",
-    height: 8,
-    borderWidth: 1,
-    borderColor: palette.ink,
-    backgroundColor: palette.paperLight,
-    overflow: "hidden",
-  },
-  graduation: { flex: 1 },
-  graduationInked: { backgroundColor: palette.ink },
   bounds: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 4,
+    marginTop: space.xs,
   },
-  bound: {
-    fontSize: 9,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    color: palette.inkFaint,
-  },
+  bound: { ...type.caption, color: palette.inkFaint },
   empty: {
-    paddingVertical: 16,
+    paddingVertical: space.xl,
     textAlign: "center",
-    fontSize: 12,
+    ...type.body,
     color: palette.inkSoft,
   },
 });

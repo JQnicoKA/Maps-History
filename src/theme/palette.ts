@@ -49,6 +49,11 @@ export const palette = {
     "#A78A96",
   ],
 
+  /** Hairlines and dividers: ink at a whisper, for modern chrome. */
+  line: "#D8CBAE",
+  /** Recessed surfaces — inputs, tracks, unselected segments. */
+  sunken: "#E3D6B8",
+
   /** Sealing wax — marks the event currently under the reader's eye. */
   wax: "#8C3A2B",
   waxDeep: "#6E2C21",

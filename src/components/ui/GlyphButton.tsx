@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, type ViewStyle } from "react-native";
 import type { ReactNode } from "react";
 
 import { palette } from "../../theme/palette";
+import { radius, shadow, TOUCH } from "../../theme/tokens";
 
 export type GlyphButtonProps = {
   onPress: () => void;
@@ -16,7 +17,7 @@ export type GlyphButtonProps = {
 export function GlyphButton({
   onPress,
   accessibilityLabel,
-  size = 44,
+  size = TOUCH,
   disabled = false,
   style,
   children,
@@ -45,14 +46,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: palette.paperLight,
-    borderWidth: 1,
-    borderColor: palette.ink,
-    borderRadius: 2,
-    shadowColor: palette.ink,
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.line,
+    borderRadius: radius.pill,
+    ...shadow.soft,
   },
   pressed: { opacity: 0.55 },
   disabled: { opacity: 0.3 },

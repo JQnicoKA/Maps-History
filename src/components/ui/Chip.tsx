@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text } from "react-native";
 
 import { palette } from "../../theme/palette";
+import { radius, space } from "../../theme/tokens";
 
 export type ChipProps = {
   label: string;
@@ -29,18 +30,14 @@ export function Chip({ label, selected = false, onPress }: ChipProps) {
 
 const styles = StyleSheet.create({
   chip: {
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: palette.inkFaint,
-    borderRadius: 2,
+    minHeight: 36,
+    paddingHorizontal: space.lg,
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: palette.sunken,
   },
-  selected: { backgroundColor: palette.ink, borderColor: palette.ink },
-  pressed: { opacity: 0.6 },
-  label: {
-    fontSize: 11,
-    letterSpacing: 0.9,
-    color: palette.inkSoft,
-  },
+  selected: { backgroundColor: palette.ink },
+  pressed: { opacity: 0.65 },
+  label: { fontSize: 14, color: palette.inkSoft, fontWeight: "500" },
   selectedLabel: { color: palette.paperLight },
 });

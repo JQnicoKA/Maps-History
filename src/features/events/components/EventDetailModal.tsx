@@ -1,18 +1,8 @@
 import { useState } from "react";
-import {
-  Alert,
-  Image,
-  Pressable,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { PhotoViewer } from "./PhotoViewer";
-import { InkButton, Paper } from "../../../components/ui";
+import { InkButton, Sheet } from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
 import { formatEventPeriod } from "../historicalDate";
 import {
@@ -22,14 +12,15 @@ import {
   type Importance,
 } from "../types";
 import { palette } from "../../../theme/palette";
+import { radius, space, TOUCH, type } from "../../../theme/tokens";
+
+const TRASH = require("../../../../assets/icons/trash.png");
 
 const IMPORTANCE_LABEL: Record<Importance, string> = {
   high: "élevée",
   medium: "moyenne",
   low: "faible",
 };
-
-const TRASH = require("../../../../assets/icons/trash.png");
 
 export type EventDetailModalProps = {
   event: HistoricalEvent | null;
@@ -43,181 +34,167 @@ export function EventDetailModal({
   onClose,
 }: EventDetailModalProps) {
   const { folders, removeEvent } = useEvents();
-  const insets = useSafeAreaInsets();
   const [deleting, setDeleting] = useState(false);
   const [viewing, setViewing] = useState<EventPhoto | null>(null);
 
   if (!event) return null;
 
   const confirmDelete = () => {
-    Alert.alert(
-      "Supprimer cet événement ?",
-      "Cette action est définitive.",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: async () => {
-            setDeleting(true);
-            try {
-              await removeEvent(event.id);
-              onClose();
-            } catch (cause) {
-              Alert.alert(
-                "Suppression impossible",
-                cause instanceof Error ? cause.message : String(cause),
-              );
-            } finally {
-              setDeleting(false);
-            }
-          },
+    Alert.alert("Supprimer cet événement ?", "Cette action est définitive.", [
+      { text: "Annuler", style: "cancel" },
+      {
+        text: "Supprimer",
+        style: "destructive",
+        onPress: async () => {
+          setDeleting(true);
+          try {
+            await removeEvent(event.id);
+            onClose();
+          } catch (cause) {
+            Alert.alert(
+              "Suppression impossible",
+              cause instanceof Error ? cause.message : String(cause),
+            );
+          } finally {
+            setDeleting(false);
+          }
         },
-      ],
-    );
+      },
+    ]);
   };
 
+  const { emoji, label } = describeType(event.type);
+
   return (
-    <Modal
+    <Sheet
       visible
-      animationType="fade"
-      transparent
-      onRequestClose={onClose}
-      statusBarTranslucent
+      onClose={onClose}
+      footer={
+        <>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Supprimer cet événement"
+            disabled={deleting}
+            onPress={confirmDelete}
+            style={({ pressed }) => [
+              styles.trash,
+              (pressed || deleting) && styles.trashPressed,
+            ]}
+          >
+            <Image source={TRASH} style={styles.trashGlyph} resizeMode="contain" />
+          </Pressable>
+          <InkButton label="Modifier" variant="tonal" grow onPress={onEdit} />
+          <InkButton label="Fermer" variant="solid" grow onPress={onClose} />
+        </>
+      }
     >
-      <View style={styles.backdrop}>
-        <Paper
-          style={[
-            styles.sheet,
-            { marginTop: insets.top + 24, marginBottom: insets.bottom + 24 },
-          ]}
-        >
-          <ScrollView contentContainerStyle={styles.body}>
-            <Text style={styles.period}>{formatEventPeriod(event)}</Text>
-            <Text style={styles.title}>{event.title}</Text>
-            <Text style={styles.type}>
-              {describeType(event.type).emoji} {describeType(event.type).label}
-            </Text>
+      <ScrollView contentContainerStyle={styles.body}>
+        <View style={styles.header}>
+          <View style={styles.badge}>
+            <Text style={styles.badgeEmoji}>{emoji}</Text>
+            <Text style={styles.badgeLabel}>{label}</Text>
+          </View>
+          <Text style={styles.period}>{formatEventPeriod(event)}</Text>
+          <Text style={styles.title}>{event.title}</Text>
+        </View>
 
-            {event.description ? (
-              <Text style={styles.description}>{event.description}</Text>
-            ) : null}
+        {event.description ? (
+          <Text style={styles.description}>{event.description}</Text>
+        ) : null}
 
-            {event.folders.length > 0 ? (
-              <View style={styles.section}>
-                <Text style={styles.legend}>Classeurs</Text>
-                {event.folders.map((link) => (
-                  <Text key={link.folderId} style={styles.folderRow}>
-                    {folders.find((f) => f.id === link.folderId)?.name ??
-                      "Classeur supprimé"}
-                    <Text style={styles.importance}>
-                      {"  —  importance "}
-                      {IMPORTANCE_LABEL[link.importance]}
-                    </Text>
-                  </Text>
-                ))}
-              </View>
-            ) : null}
-
-            {event.photos.length > 0 ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.section}
-              >
-                <View style={styles.photos}>
-                  {event.photos.map((photo) => (
-                    <Pressable
-                      key={photo.id}
-                      accessibilityRole="imagebutton"
-                      accessibilityLabel="Agrandir la photo"
-                      onPress={() => setViewing(photo)}
-                      style={({ pressed }) => (pressed ? styles.dim : undefined)}
-                    >
-                      <Image source={{ uri: photo.url }} style={styles.photo} />
-                    </Pressable>
-                  ))}
-                </View>
-              </ScrollView>
-            ) : null}
-
-            <Text style={styles.coordinates}>
-              {event.latitude.toFixed(4)}°, {event.longitude.toFixed(4)}°
-            </Text>
-
-            <View style={styles.actions}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Supprimer cet événement"
-                disabled={deleting}
-                hitSlop={8}
-                onPress={confirmDelete}
-                style={({ pressed }) => [
-                  styles.trash,
-                  (pressed || deleting) && styles.trashPressed,
-                ]}
-              >
-                <Image source={TRASH} style={styles.trashGlyph} resizeMode="contain" />
-              </Pressable>
-
-              <View style={styles.buttons}>
-                <InkButton label="Modifier" onPress={onEdit} />
-                <InkButton label="Fermer" variant="solid" onPress={onClose} />
-              </View>
+        {event.photos.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.photos}>
+              {event.photos.map((photo) => (
+                <Pressable
+                  key={photo.id}
+                  accessibilityRole="imagebutton"
+                  accessibilityLabel="Agrandir la photo"
+                  onPress={() => setViewing(photo)}
+                  style={({ pressed }) => (pressed ? styles.dim : undefined)}
+                >
+                  <Image source={{ uri: photo.url }} style={styles.photo} />
+                </Pressable>
+              ))}
             </View>
           </ScrollView>
-        </Paper>
-      </View>
+        ) : null}
+
+        {event.folders.length > 0 ? (
+          <View style={styles.section}>
+            <Text style={styles.legend}>Classeurs</Text>
+            {event.folders.map((link) => (
+              <View key={link.folderId} style={styles.folderRow}>
+                <Text style={styles.folderName} numberOfLines={1}>
+                  {folders.find((f) => f.id === link.folderId)?.name ??
+                    "Classeur supprimé"}
+                </Text>
+                <Text style={styles.importance}>
+                  {IMPORTANCE_LABEL[link.importance]}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        <Text style={styles.coordinates}>
+          {event.latitude.toFixed(4)}°, {event.longitude.toFixed(4)}°
+        </Text>
+      </ScrollView>
 
       <PhotoViewer photo={viewing} onClose={() => setViewing(null)} />
-    </Modal>
+    </Sheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(58, 44, 27, 0.45)",
-    paddingHorizontal: 18,
-    justifyContent: "center",
+  body: {
+    paddingHorizontal: space.xl,
+    paddingBottom: space.lg,
+    gap: space.lg,
   },
-  sheet: { maxHeight: "100%" },
-  body: { padding: 16, gap: 10 },
-  period: {
-    fontSize: 11,
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
-    color: palette.wax,
+  header: { gap: space.sm },
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: space.xs,
+    paddingHorizontal: space.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: palette.sunken,
   },
-  title: { fontSize: 21, color: palette.ink, letterSpacing: 0.4 },
-  type: { fontSize: 12, color: palette.inkFaint, letterSpacing: 0.4 },
-  description: { fontSize: 14, lineHeight: 21, color: palette.inkSoft },
-  section: { marginTop: 6, gap: 4 },
-  legend: {
-    fontSize: 9,
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
-    color: palette.inkFaint,
-  },
-  folderRow: { fontSize: 13, color: palette.ink },
-  importance: { color: palette.inkFaint, fontSize: 12 },
-  photos: { flexDirection: "row", gap: 8 },
-  photo: {
-    width: 148,
-    height: 108,
-    borderWidth: 1,
-    borderColor: palette.inkFaint,
-  },
-  dim: { opacity: 0.6 },
-  coordinates: { fontSize: 11, color: palette.inkFaint, marginTop: 6 },
-  actions: {
+  badgeEmoji: { fontSize: 14 },
+  badgeLabel: { fontSize: 13, color: palette.inkSoft, fontWeight: "500" },
+  period: { fontSize: 14, color: palette.wax, fontWeight: "600" },
+  title: { fontSize: 24, lineHeight: 30, color: palette.ink, fontWeight: "700" },
+  description: { ...type.body, color: palette.inkSoft },
+  section: { gap: space.sm },
+  legend: { ...type.legend, color: palette.inkFaint },
+  folderRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 8,
+    gap: space.md,
+    minHeight: 40,
+    paddingHorizontal: space.md,
+    borderRadius: radius.sm,
+    backgroundColor: palette.sunken,
   },
-  trash: { padding: 6 },
-  trashPressed: { opacity: 0.45 },
+  folderName: { flex: 1, fontSize: 15, color: palette.ink },
+  importance: { fontSize: 13, color: palette.inkSoft },
+  photos: { flexDirection: "row", gap: space.md },
+  photo: { width: 168, height: 120, borderRadius: radius.md },
+  dim: { opacity: 0.6 },
+  coordinates: { ...type.caption, color: palette.inkFaint },
+  trash: {
+    width: TOUCH,
+    height: TOUCH,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: palette.sunken,
+  },
+  trashPressed: { opacity: 0.5 },
   trashGlyph: { width: 20, height: 20 },
-  buttons: { flexDirection: "row", gap: 8 },
 });

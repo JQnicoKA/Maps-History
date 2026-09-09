@@ -5,6 +5,7 @@ import { useEvents } from "../EventsProvider";
 import { formatEventPeriod } from "../historicalDate";
 import { describeType, type HistoricalEvent } from "../types";
 import { palette } from "../../../theme/palette";
+import { radius, space, type } from "../../../theme/tokens";
 
 export type EventSummaryCardProps = {
   event: HistoricalEvent;
@@ -19,6 +20,8 @@ export function EventSummaryCard({
   highlighted = false,
 }: EventSummaryCardProps) {
   const { folders } = useEvents();
+  const photo = event.photos[0];
+  const { emoji } = describeType(event.type);
 
   const names = event.folders
     .map((link) => folders.find((f) => f.id === link.folderId)?.name)
@@ -32,46 +35,69 @@ export function EventSummaryCard({
         onPress={onOpen}
         style={({ pressed }) => [styles.body, pressed && styles.pressed]}
       >
-        {event.photos[0] !== undefined ? (
-          <Image source={{ uri: event.photos[0].url }} style={styles.thumb} />
-        ) : null}
+        {photo ? (
+          <Image source={{ uri: photo.url }} style={styles.thumb} />
+        ) : (
+          <View style={[styles.thumb, styles.thumbEmpty]}>
+            <Text style={styles.thumbEmoji}>{emoji}</Text>
+          </View>
+        )}
 
         <View style={styles.text}>
-          <Text style={styles.period}>
-            {describeType(event.type).emoji} {formatEventPeriod(event)}
-          </Text>
+          <Text style={styles.period}>{formatEventPeriod(event)}</Text>
           <Text style={styles.title} numberOfLines={2}>
             {event.title}
           </Text>
           {names.length > 0 ? (
-            <Text style={styles.folders} numberOfLines={1}>
-              {names.join(" · ")}
-            </Text>
+            <View style={styles.tags}>
+              {names.slice(0, 2).map((name) => (
+                <View key={name} style={styles.tag}>
+                  <Text style={styles.tagLabel} numberOfLines={1}>
+                    {name}
+                  </Text>
+                </View>
+              ))}
+              {names.length > 2 ? (
+                <Text style={styles.more}>+{names.length - 2}</Text>
+              ) : null}
+            </View>
           ) : null}
         </View>
 
+        <Text style={styles.chevron}>›</Text>
       </Pressable>
     </Paper>
   );
 }
 
 const styles = StyleSheet.create({
-  highlighted: { borderColor: palette.wax, borderWidth: 2 },
-  body: { flexDirection: "row", alignItems: "center", padding: 10, gap: 10 },
-  pressed: { opacity: 0.75 },
-  thumb: {
-    width: 52,
-    height: 52,
-    borderWidth: 1,
-    borderColor: palette.inkFaint,
+  highlighted: { borderColor: palette.wax, borderWidth: 1.5 },
+  body: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: space.md,
+    gap: space.md,
   },
-  text: { flex: 1, gap: 2 },
-  period: {
-    fontSize: 10,
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    color: palette.wax,
+  pressed: { opacity: 0.7 },
+  thumb: { width: 56, height: 56, borderRadius: radius.md },
+  thumbEmpty: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: palette.sunken,
   },
-  title: { fontSize: 15, color: palette.ink },
-  folders: { fontSize: 11, color: palette.inkFaint },
+  thumbEmoji: { fontSize: 22 },
+  text: { flex: 1, gap: 3 },
+  period: { fontSize: 12, color: palette.wax, fontWeight: "600" },
+  title: { fontSize: 16, lineHeight: 21, color: palette.ink, fontWeight: "600" },
+  tags: { flexDirection: "row", alignItems: "center", gap: space.xs, marginTop: 2 },
+  tag: {
+    maxWidth: 130,
+    paddingHorizontal: space.sm,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    backgroundColor: palette.sunken,
+  },
+  tagLabel: { ...type.caption, color: palette.inkSoft },
+  more: { ...type.caption, color: palette.inkFaint },
+  chevron: { fontSize: 22, color: palette.inkFaint, paddingHorizontal: space.xs },
 });

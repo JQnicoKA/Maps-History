@@ -1,11 +1,11 @@
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { InkButton, Paper, SelectField } from "../../components/ui";
+import { InkButton, SelectField, Sheet } from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import { ImportanceRow } from "../events/components/ImportanceRow";
 import { NO_FILTERS, type Importance } from "../events/types";
 import { palette } from "../../theme/palette";
+import { space, type } from "../../theme/tokens";
 
 export type FilterModalProps = {
   visible: boolean;
@@ -14,7 +14,6 @@ export type FilterModalProps = {
 
 export function FilterModal({ visible, onClose }: FilterModalProps) {
   const { folders, filters, setFilters, visibleEvents } = useEvents();
-  const insets = useSafeAreaInsets();
 
   const toggleFolder = (folderId: string) => {
     const already = filters.folders.some((f) => f.folderId === folderId);
@@ -35,99 +34,74 @@ export function FilterModal({ visible, onClose }: FilterModalProps) {
     });
   };
 
+  const count = visibleEvents.length;
+
   return (
-    <Modal
+    <Sheet
       visible={visible}
-      animationType="fade"
-      transparent
-      statusBarTranslucent
-      onRequestClose={onClose}
+      onClose={onClose}
+      title="Filtres"
+      footer={
+        <>
+          <InkButton
+            label="Tout afficher"
+            variant="tonal"
+            grow
+            disabled={filters.folders.length === 0}
+            onPress={() => setFilters(NO_FILTERS)}
+          />
+          <InkButton label="Terminé" variant="solid" grow onPress={onClose} />
+        </>
+      }
     >
-      <View style={styles.backdrop}>
-        {/* A sibling, not a wrapper: a Pressable around the sheet would win the
-            touch responder and stop the list inside from scrolling. */}
-        <Pressable
-          accessibilityLabel="Fermer"
-          style={StyleSheet.absoluteFill}
-          onPress={onClose}
+      <ScrollView contentContainerStyle={styles.body}>
+        <SelectField
+          label="Classeurs"
+          title="Classeurs"
+          placeholder="Tous les classeurs"
+          options={folders.map((folder) => ({
+            value: folder.id,
+            label: folder.name,
+          }))}
+          selected={filters.folders.map((f) => f.folderId)}
+          onToggle={toggleFolder}
+          emptyMessage="Aucun classeur pour l'instant."
         />
-        <View
-          style={[
-            styles.wrapper,
-            { marginTop: insets.top + 32, marginBottom: insets.bottom + 32 },
-          ]}
-        >
-          <Paper>
-            <ScrollView contentContainerStyle={styles.body}>
-              <Text style={styles.heading}>Filtres</Text>
 
-              <SelectField
-                label="Classeurs"
-                title="Classeurs"
-                placeholder="Tous les classeurs"
-                options={folders.map((folder) => ({
-                  value: folder.id,
-                  label: folder.name,
-                }))}
-                selected={filters.folders.map((f) => f.folderId)}
-                onToggle={toggleFolder}
-                emptyMessage="Aucun classeur pour l'instant."
-              />
+        {filters.folders.map((filter) => (
+          <ImportanceRow
+            key={filter.folderId}
+            name={folders.find((f) => f.id === filter.folderId)?.name ?? "Classeur"}
+            value={filter.importance}
+            onChange={(importance) => setImportance(filter.folderId, importance)}
+            allowAll
+          />
+        ))}
 
-              {filters.folders.map((filter) => (
-                <ImportanceRow
-                  key={filter.folderId}
-                  name={
-                    folders.find((f) => f.id === filter.folderId)?.name ??
-                    "Classeur"
-                  }
-                  value={filter.importance}
-                  onChange={(importance) =>
-                    setImportance(filter.folderId, importance)
-                  }
-                  allowAll
-                />
-              ))}
-
-              <Text style={styles.count}>
-                {visibleEvents.length} événement
-                {visibleEvents.length > 1 ? "s" : ""} affiché
-                {visibleEvents.length > 1 ? "s" : ""}
-              </Text>
-
-              <View style={styles.actions}>
-                <InkButton
-                  label="Tout afficher"
-                  variant="quiet"
-                  disabled={filters.folders.length === 0}
-                  onPress={() => setFilters(NO_FILTERS)}
-                />
-                <InkButton label="Fermer" variant="solid" onPress={onClose} />
-              </View>
-            </ScrollView>
-          </Paper>
+        <View style={styles.tally}>
+          <Text style={styles.tallyNumber}>{count}</Text>
+          <Text style={styles.tallyLabel}>
+            événement{count > 1 ? "s" : ""} affiché{count > 1 ? "s" : ""}
+          </Text>
         </View>
-      </View>
-    </Modal>
+      </ScrollView>
+    </Sheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(58, 44, 27, 0.45)",
-    paddingHorizontal: 18,
+  body: {
+    paddingHorizontal: space.xl,
+    paddingBottom: space.lg,
+    gap: space.xl,
+  },
+  tally: {
+    flexDirection: "row",
+    alignItems: "baseline",
     justifyContent: "center",
+    gap: space.sm,
+    paddingTop: space.sm,
   },
-  wrapper: { maxHeight: "100%" },
-  body: { padding: 16, gap: 12 },
-  heading: {
-    fontSize: 13,
-    letterSpacing: 2,
-    textTransform: "uppercase",
-    color: palette.ink,
-    textAlign: "center",
-  },
-  count: { fontSize: 11, color: palette.inkFaint, textAlign: "center" },
-  actions: { flexDirection: "row", justifyContent: "flex-end", gap: 8 },
+  tallyNumber: { fontSize: 28, fontWeight: "700", color: palette.wax },
+  tallyLabel: { ...type.body, color: palette.inkSoft },
 });

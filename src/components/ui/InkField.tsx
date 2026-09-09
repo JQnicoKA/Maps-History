@@ -1,11 +1,16 @@
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
 
 import { palette } from "../../theme/palette";
+import { radius, space, TOUCH, type } from "../../theme/tokens";
 
 export type InkFieldProps = TextInputProps & {
   label: string;
 };
 
+/**
+ * Label above, filled input below. A boxed field reads as tappable where the
+ * bare underline this replaced looked like decoration.
+ */
 export function InkField({ label, style, ...props }: InkFieldProps) {
   return (
     <View style={styles.container}>
@@ -20,25 +25,16 @@ export function InkField({ label, style, ...props }: InkFieldProps) {
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 5 },
-  label: {
-    fontSize: 10,
-    letterSpacing: 1.3,
-    textTransform: "uppercase",
-    color: palette.inkSoft,
-  },
+  container: { gap: space.sm },
+  label: { ...type.legend, color: palette.inkSoft },
   input: {
-    borderBottomWidth: 1,
-    borderBottomColor: palette.inkFaint,
-    paddingVertical: 6,
-    fontSize: 15,
+    minHeight: TOUCH,
+    backgroundColor: palette.sunken,
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+    paddingVertical: space.md,
+    fontSize: 16,
     color: palette.ink,
   },
-  multiline: {
-    minHeight: 72,
-    textAlignVertical: "top",
-    borderWidth: 1,
-    borderColor: palette.inkFaint,
-    paddingHorizontal: 8,
-  },
+  multiline: { minHeight: 96, textAlignVertical: "top" },
 });

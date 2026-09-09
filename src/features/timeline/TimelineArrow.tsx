@@ -23,7 +23,6 @@ export function TimelineArrow({ direction }: TimelineArrowProps) {
       accessibilityLabel={
         direction === "previous" ? "Événement précédent" : "Événement suivant"
       }
-      size={40}
       disabled={disabled}
       onPress={() => step(direction === "previous" ? -1 : 1)}
     >
@@ -33,5 +32,11 @@ export function TimelineArrow({ direction }: TimelineArrowProps) {
 }
 
 const styles = StyleSheet.create({
-  glyph: { fontSize: 24, lineHeight: 28, color: palette.ink },
+  glyph: {
+    fontSize: 26,
+    lineHeight: 30,
+    color: palette.ink,
+    // The chevron glyph sits low in its box; nudge it back to centre.
+    marginTop: -2,
+  },
 });

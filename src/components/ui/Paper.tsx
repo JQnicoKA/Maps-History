@@ -1,35 +1,27 @@
 import { StyleSheet, View, type ViewProps } from "react-native";
 
 import { palette } from "../../theme/palette";
+import { radius, shadow } from "../../theme/tokens";
 
 /**
- * A parchment panel with the double rule of an atlas cartouche: every surface
- * that sits over the map — bars, cards, modals — is one of these.
+ * A surface resting on the plate. The double engraved rule it used to carry has
+ * given way to a single hairline and soft elevation — the map stays antique,
+ * the chrome over it reads as a current app.
  */
 export function Paper({ style, children, ...props }: ViewProps) {
   return (
-    <View {...props} style={[styles.outer, style]}>
-      <View style={styles.inner}>{children}</View>
+    <View {...props} style={[styles.card, style]}>
+      {children}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  outer: {
+  card: {
     backgroundColor: palette.paperLight,
-    borderWidth: 1,
-    borderColor: palette.ink,
-    borderRadius: 2,
-    padding: 3,
-    shadowColor: palette.ink,
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
-  },
-  inner: {
+    borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.inkFaint,
-    borderRadius: 1,
+    borderColor: palette.line,
+    ...shadow.soft,
   },
 });

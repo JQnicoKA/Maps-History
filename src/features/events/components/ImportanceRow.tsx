@@ -1,8 +1,11 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { Chip } from "../../../components/ui";
+import { SegmentedControl } from "../../../components/ui";
 import type { Importance } from "../types";
 import { palette } from "../../../theme/palette";
+import { space } from "../../../theme/tokens";
+
+type Value = Importance | "all";
 
 const OPTIONS: { value: Importance; label: string }[] = [
   { value: "high", label: "Élevée" },
@@ -25,39 +28,25 @@ export function ImportanceRow({
   onChange,
   allowAll = false,
 }: ImportanceRowProps) {
+  const segments: { value: Value; label: string }[] = allowAll
+    ? [{ value: "all", label: "Toutes" }, ...OPTIONS]
+    : OPTIONS;
+
   return (
     <View style={styles.container}>
       <Text style={styles.name} numberOfLines={1}>
         {name}
       </Text>
-      <View style={styles.chips}>
-        {allowAll ? (
-          <Chip
-            label="Toutes"
-            selected={value === null}
-            onPress={() => onChange(null)}
-          />
-        ) : null}
-        {OPTIONS.map((option) => (
-          <Chip
-            key={option.value}
-            label={option.label}
-            selected={value === option.value}
-            onPress={() => onChange(option.value)}
-          />
-        ))}
-      </View>
+      <SegmentedControl
+        segments={segments}
+        value={value ?? "all"}
+        onChange={(next) => onChange(next === "all" ? null : next)}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    gap: 6,
-    paddingTop: 9,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: palette.inkFaint,
-  },
-  name: { fontSize: 12, color: palette.ink },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  container: { gap: space.sm },
+  name: { fontSize: 15, color: palette.ink, fontWeight: "600" },
 });

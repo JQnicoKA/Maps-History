@@ -12,6 +12,7 @@ import {
 import { InkButton } from "../../../components/ui";
 import type { EventPhoto, PickedPhoto } from "../types";
 import { palette } from "../../../theme/palette";
+import { radius, space, type } from "../../../theme/tokens";
 
 export type PhotoPickerProps = {
   photos: PickedPhoto[];
@@ -145,35 +146,33 @@ export function PhotoPicker({
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 8 },
+  container: { gap: space.md },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  label: {
-    fontSize: 10,
-    letterSpacing: 1.3,
-    textTransform: "uppercase",
-    color: palette.inkSoft,
-  },
-  row: { flexDirection: "row", alignItems: "center", gap: 10 },
-  thumb: {
-    width: 58,
-    height: 58,
-    borderWidth: 1,
-    borderColor: palette.inkFaint,
-  },
+  label: { ...type.legend, color: palette.inkSoft },
+  row: { flexDirection: "row", alignItems: "center", gap: space.md },
+  thumb: { width: 64, height: 64, borderRadius: radius.md },
   source: {
     flex: 1,
-    minHeight: 40,
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.inkFaint,
-    fontSize: 13,
+    minHeight: 44,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    borderRadius: radius.md,
+    backgroundColor: palette.sunken,
+    fontSize: 14,
     color: palette.ink,
   },
-  remove: { paddingHorizontal: 4 },
+  remove: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: palette.sunken,
+  },
   pressed: { opacity: 0.5 },
-  removeGlyph: { fontSize: 20, color: palette.inkFaint },
+  removeGlyph: { fontSize: 18, lineHeight: 20, color: palette.inkSoft },
 });
