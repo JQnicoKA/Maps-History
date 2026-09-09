@@ -28,9 +28,10 @@ const halo = {
  * Lettering follows atlas convention: land in tracked-out capitals, water in
  * italics, both weighted by the feature's rank rather than by zoom alone.
  *
- * Country and region names are deliberately absent: they would be today's, and
- * this map never shows two epochs at once. Political naming comes from the
- * historical territories instead — "Francia occidentalis", not "FRANCE".
+ * Country names, region names and settlements are deliberately absent: they
+ * would be today's, and this map never shows two epochs at once. Political
+ * naming comes from the historical territories — "Francia occidentalis", not
+ * "FRANCE" — and settlements from `features/places`.
  */
 export function labelLayers(): LayerSpecification[] {
   return [
@@ -98,40 +99,6 @@ export function labelLayers(): LayerSpecification[] {
         "text-halo-color": palette.lake,
         "text-halo-width": 1,
       },
-    },
-    {
-      id: "settlement-dot",
-      type: "circle",
-      source: SOURCE.base,
-      "source-layer": "place",
-      minzoom: 4,
-      filter: ["match", ["get", "class"], ["city", "town"], true, false],
-      paint: {
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, 1.6, 9, 3],
-        "circle-color": palette.paperLight,
-        "circle-stroke-color": palette.ink,
-        "circle-stroke-width": 1,
-        "circle-opacity": 1,
-      },
-    },
-    {
-      id: "label-settlement",
-      type: "symbol",
-      source: SOURCE.base,
-      "source-layer": "place",
-      minzoom: 4,
-      filter: ["match", ["get", "class"], ["city", "town"], true, false],
-      layout: {
-        "text-field": name,
-        "text-font": fonts.place,
-        "text-size": ["interpolate", ["linear"], ["zoom"], 4, 9.5, 10, 13],
-        "text-anchor": "left",
-        "text-offset": [0.6, 0.1],
-        "text-max-width": 7,
-        "text-padding": 3,
-        "symbol-sort-key": rank,
-      },
-      paint: { ...halo, "text-color": palette.ink },
     },
     {
       id: "label-peak",

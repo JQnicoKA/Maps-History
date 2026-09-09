@@ -20,6 +20,7 @@ import { EventMarkers } from "../../features/events/components/EventMarkers";
 import { EventSummaryCard } from "../../features/events/components/EventSummaryCard";
 import { LocationReticle } from "../../features/events/components/LocationReticle";
 import { FilterButton } from "../../features/filters/FilterButton";
+import { PlaceLayers } from "../../features/places/PlaceLayers";
 import { TerritoryLayers } from "../../features/territories/TerritoryLayers";
 import { Timeline } from "../../features/timeline/Timeline";
 import { TimelineArrow } from "../../features/timeline/TimelineArrow";
@@ -95,6 +96,7 @@ export function MapScreen() {
           attributionOffset={placing ? 0 : insets.bottom + 78}
         >
           {MAP_FEATURES.territories ? <TerritoryLayers /> : null}
+          {MAP_FEATURES.places ? <PlaceLayers /> : null}
           <EventMarkers />
         </WorldMap>
       </View>

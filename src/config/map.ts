@@ -37,6 +37,11 @@ export const MAP_FEATURES = {
    * being read. Live vector tiles — nothing is imported or stored.
    */
   territories: true,
+  /**
+   * Historical settlements from OpenHistoricalMap, shown at the date of the
+   * event being read. The base tileset's modern places are off either way.
+   */
+  places: true,
 } as const;
 
 const CREDITS = ["© MapTiler", "© OpenStreetMap"];

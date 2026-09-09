@@ -199,6 +199,8 @@ scripts/generate-textures.mjs     génère les PNG de parchemin (sans dépendanc
 scripts/extract-territories.mjs   lit les tuiles OHM → NDJSON
 scripts/load-territories.mjs      NDJSON → table de transit
 scripts/stitch-territories.sql    recollage + simplification → territories
+scripts/extract-places.mjs        agglomérations OHM → JSON
+scripts/load-places.mjs           JSON → table places
 scripts/generate-icons.mjs        rasterise les icônes de type d'événement
 assets/textures/                  paper-grain.png, vignette.png
 assets/icons/src/*.svg            les 16 glyphes de type + l'icône corbeille
@@ -252,6 +254,10 @@ src/
       TerritoryLayers.tsx         frontières historiques (OpenHistoricalMap)
       useTerritoriesAt.ts         cache par entité, pas par date
       api.ts                      les deux appels : identifiants, puis manquants
+    places/
+      PlaceLayers.tsx             agglomérations historiques
+      usePlacesAt.ts              cache par date
+      api.ts
     filters/
       FilterButton.tsx            le mot « Tous » en haut de l'écran
       FilterModal.tsx             classeurs + importance de chacun
@@ -386,7 +392,12 @@ unique par entité — sans quoi MapLibre nommerait chaque île d'un archipel. B
 glyphes correspondants (135 ko d'arabe, 147 ko d'éthiopien pour la pile
 « Noto Sans Bold »), son serveur assurant le repli sur la famille Noto.
 
-**Il n'y a aucune frontière ni toponyme politique moderne sur cette carte.** Les seuls tracés
+**Les villes aussi sont celles de l'époque** — 23 279 agglomérations datées,
+tirées d'OHM au zoom 6. À l'an 900 la carte affiche 平安京 et 徐羅伐, pas Kyoto
+et Gyeongju. Villes à partir du zoom 3, bourgs à partir de 5,5.
+
+**Il n'y a aucune frontière, aucun toponyme politique ni aucune ville moderne
+sur cette carte.** Les seuls tracés
 politiques sont les territoires historiques : jamais deux époques à la fois. Les
 couches `label-country` et `label-region` ont donc quitté le style au même titre
 que les frontières. Là où OpenHistoricalMap ne couvre rien, la planche reste
@@ -517,8 +528,12 @@ Deux causes déjà rencontrées, toutes deux dans les couches MapLibre :
 - `"zoom" expression may only be used as input to a top-level "step" or
   "interpolate" expression` — une expression de zoom **doit être l'expression la
   plus externe** d'une propriété. La glisser dans un `["*", …]` ou un `["+", …]`
-  fait planter le rendu au chargement du style. Mettez l'`interpolate` au sommet
-  et le `match` sur la donnée *à l'intérieur* de chaque palier.
+  fait planter le rendu au chargement du style.
+- `Only one zoom-based "step" or "interpolate" subexpression may be used` — même
+  famille : une propriété n'admet **qu'une seule** expression de zoom. Brancher
+  d'abord sur la donnée puis mettre un `step` dans chaque branche en produit
+  deux. Dans les deux cas le remède est identique : l'expression de zoom au
+  sommet, le test sur la donnée *à l'intérieur* de chaque palier.
 - `FilterPropsConversions.h: react_native_expect failure: isMap` — la prop
   `filter` de `<Layer>` entre en collision avec la prop de style `filter` de
   React Native (les filtres CSS). Exprimez la condition dans la peinture
@@ -526,8 +541,10 @@ Deux causes déjà rencontrées, toutes deux dans les couches MapLibre :
 
 Ces expressions se vérifient hors appareil avec `validateStyleMin` de
 `@maplibre/maplibre-gl-style-spec` — il rend exactement le message d'erreur du
-crash. Le style de base est validé ainsi ; les couches déclarées en JSX
-(`EventMarkers`) échappent en revanche à ce contrôle.
+crash, dans les deux cas ci-dessus. Le style de base est validé ainsi ; les
+couches déclarées en JSX (`EventMarkers`, `TerritoryLayers`, `PlaceLayers`)
+échappent en revanche à ce contrôle automatique. **Les deux plantages de ce
+type sont venus de là** : validez-les à la main avant de déployer.
 
 **Une liste ou une molette refuse de défiler dans une popup.**
 Le contenu de la feuille est enveloppé dans un `Pressable` — celui qui sert

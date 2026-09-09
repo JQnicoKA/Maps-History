@@ -1,4 +1,4 @@
-# Les territoires historiques
+# Les territoires et les villes historiques
 
 Comment les frontières arrivent sur la carte, et comment étendre ou refaire la
 couverture. Trois scripts, une table, une heure de patience.
@@ -196,7 +196,52 @@ est tirée d'un hachage de son nom, donc stable d'une époque à l'autre.
 
 ---
 
+## Les agglomérations
+
+Même principe, autre couche : `place_points_centroids` du tileset `ohm`, et
+**z6** au lieu de z5 — le tileur ne met aucune agglomération dans un carreau
+en dessous de ce zoom, un carreau à l'échelle du monde qui contiendrait tous
+les bourgs de l'histoire étant inutilisable. C'est toute la différence de coût
+entre les deux jeux : chaque niveau de zoom quadruple le nombre de carreaux.
+
+```
+z5 =  1 024 carreaux   ← les frontières
+z6 =  4 096 carreaux   ← les agglomérations
+```
+
+Le pipeline est plus court : **pas de table de transit ni de recollage**. Un
+point n'est jamais découpé par le bord d'un carreau, la déduplication par
+`ohm_id` se fait à l'extraction.
+
+```bash
+node scripts/extract-places.mjs --world > places.json
+node scripts/load-places.mjs places.json
+```
+
+Résultat : 4 096 carreaux, 3,1 Mo de sortie, **23 279 lieux** — 6 098 villes et
+17 181 bourgs, datés à 96-98 %. Aucun village : le tileur n'en met pas à z6.
+
+```
+             lieux   gzippé
+an 900       1 668    32 ko
+1453         4 864    88 ko
+2020        16 416   296 ko
+```
+
+`places_at(année, types)` les rend en GeoJSON. Le cache est par date et non par
+entité — un instantané de points est assez léger pour ça, contrairement aux
+polygones des territoires.
+
+L'affichage est étagé par zoom dans `PlaceLayers.tsx` : villes à partir de z3,
+bourgs à partir de z5,5. Sans quoi la planche est un champ de points bien avant
+que les noms ne deviennent lisibles.
+
 ## Limites connues
+
+**Les villes sont plus rares que sur une carte moderne.** OHM en référence
+23 279 dans toute l'histoire, contre des centaines de milliers pour MapTiler
+aujourd'hui. La planche est plus dépouillée — ce qui n'est pas forcément un
+défaut sur un atlas ancien, mais c'est un choix assumé.
 
 **La couverture d'OHM est inégale.** L'Europe compte 1 407 entités à elle seule
 sur les 3 923 mondiales, alors qu'elle représente une petite fraction des terres
