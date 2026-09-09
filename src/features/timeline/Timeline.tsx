@@ -10,6 +10,9 @@ import { radius, space, type } from "../../theme/tokens";
  * The chronological span of whatever the filters select. A track with the
  * travelled part filled, a dot per event, and the year being read floating
  * above it — the shape a current app uses for a scrubber, in the plate's ink.
+ *
+ * The span's own bounds are not printed: the pill already says where you are,
+ * and the two extra years only cost height on a control that sits over the map.
  */
 export function Timeline() {
   const { visibleEvents, selectedEvent, selectEvent } = useEvents();
@@ -66,15 +69,6 @@ export function Timeline() {
             );
           })}
         </View>
-
-        <View style={styles.bounds}>
-          <Text style={styles.bound}>
-            {formatYear(visibleEvents[0]!.start.year)}
-          </Text>
-          <Text style={styles.bound}>
-            {formatYear(visibleEvents[visibleEvents.length - 1]!.start.year)}
-          </Text>
-        </View>
       </View>
     </Paper>
   );
@@ -84,7 +78,11 @@ const TARGET = 28;
 const PILL = 74;
 
 const styles = StyleSheet.create({
-  body: { paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: space.md },
+  body: {
+    paddingHorizontal: space.lg,
+    paddingTop: space.sm,
+    paddingBottom: space.sm,
+  },
   caption: { height: 26 },
   pill: {
     position: "absolute",
@@ -134,12 +132,6 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: palette.paperLight,
   },
-  bounds: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: space.xs,
-  },
-  bound: { ...type.caption, color: palette.inkFaint },
   empty: {
     paddingVertical: space.xl,
     textAlign: "center",

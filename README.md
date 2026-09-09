@@ -479,9 +479,12 @@ lit, cerné de cire, le précédent estompé et le suivant assombri. Passer au
 suivant fait glisser la fenêtre d'un cran. Au lancement, le plus ancien de la
 période filtrée est sélectionné d'office, sans animation de caméra.
 
-La frise du bas est la barre d'échelle graduée d'une carte ancienne : elle couvre l'intervalle des événements sélectionnés, chacun posé
-dessus en losange, celui qu'on regarde encré à la cire et surmonté de son année.
-Les flèches l'encadrent, à gauche et à droite de l'écran. Cliquer un événement —
+La frise du bas est un curseur : une piste dont la part parcourue est remplie,
+un point par événement, et l'année qu'on regarde dans une pilule de cire
+au-dessus du marqueur. Les bornes de l'intervalle ne sont pas imprimées — la
+pilule dit déjà où l'on est, et deux années de plus ne coûteraient que de la
+hauteur sur un contrôle posé au-dessus de la carte. Les flèches l'encadrent, à
+gauche et à droite de l'écran. Cliquer un événement —
 sur la carte, sur la frise ou via les flèches — recentre la planche **sans
 changer le zoom** et fait apparaître une tuile de résumé ; la tuile ouvre la
 fiche complète.
