@@ -9,6 +9,7 @@ import { ViewToggleButton, type ScreenView } from "./ViewToggleButton";
 import { Paper } from "../../components/ui";
 import { ParchmentOverlay, WorldMap } from "../../components/WorldMap";
 import { env } from "../../config/env";
+import { MAP_FEATURES } from "../../config/map";
 import { useEvents } from "../../features/events/EventsProvider";
 import type { HistoricalEvent } from "../../features/events/types";
 import { AddEventButton } from "../../features/events/components/AddEventButton";
@@ -19,6 +20,7 @@ import { EventMarkers } from "../../features/events/components/EventMarkers";
 import { EventSummaryCard } from "../../features/events/components/EventSummaryCard";
 import { LocationReticle } from "../../features/events/components/LocationReticle";
 import { FilterButton } from "../../features/filters/FilterButton";
+import { TerritoryLayers } from "../../features/territories/TerritoryLayers";
 import { Timeline } from "../../features/timeline/Timeline";
 import { TimelineArrow } from "../../features/timeline/TimelineArrow";
 import { palette } from "../../theme/palette";
@@ -36,7 +38,9 @@ export function MapScreen() {
   const [composing, setComposing] = useState(false);
   const [editing, setEditing] = useState<HistoricalEvent | null>(null);
   const [placing, setPlacing] = useState(false);
-  const [draftLocation, setDraftLocation] = useState<DraftLocation | null>(null);
+  const [draftLocation, setDraftLocation] = useState<DraftLocation | null>(
+    null,
+  );
   const [detailOpen, setDetailOpen] = useState(false);
 
   // Selecting an event recentres the plate; the zoom the reader chose is left
@@ -90,6 +94,7 @@ export function MapScreen() {
           centerAnimationDuration={hasFramed.current ? 650 : 0}
           attributionOffset={placing ? 0 : insets.bottom + 78}
         >
+          {MAP_FEATURES.territories ? <TerritoryLayers /> : null}
           <EventMarkers />
         </WorldMap>
       </View>

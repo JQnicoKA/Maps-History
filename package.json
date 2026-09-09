@@ -15,9 +15,11 @@
     "react-native-url-polyfill": "^4.0.0"
   },
   "devDependencies": {
+    "@mapbox/vector-tile": "^3.0.0",
     "@maplibre/maplibre-gl-style-spec": "26.2.1",
     "@resvg/resvg-js": "^2.6.2",
     "@types/react": "~19.2.2",
+    "pbf": "^5.1.2",
     "typescript": "~6.0.3"
   },
   "scripts": {

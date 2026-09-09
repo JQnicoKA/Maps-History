@@ -34,6 +34,21 @@ export const palette = {
   /** Border wash printed under the plate line. */
   borderWash: "#B08A5E",
 
+  /**
+   * Flat washes for territories, in the manner of a hand-coloured plate. Muted
+   * enough that the relief and landcover beneath still read through them.
+   */
+  washes: [
+    "#B0885E",
+    "#8FA07A",
+    "#A8807E",
+    "#7E9098",
+    "#B39A63",
+    "#94867F",
+    "#7F8F6E",
+    "#A78A96",
+  ],
+
   /** Sealing wax — marks the event currently under the reader's eye. */
   wax: "#8C3A2B",
   waxDeep: "#6E2C21",

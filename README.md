@@ -218,7 +218,6 @@ src/
         relief.ts                 ombrage sépia (hillshade)
         water.ts                  mers, lacs, rivières, ombre côtière
         graticule.ts              rendu de la grille
-        boundaries.ts             frontières actuelles
         labels.ts                 toponymie
   lib/
     supabase.ts                   client (construit paresseusement)
@@ -245,6 +244,10 @@ src/
         PhotoPicker.tsx           sélection des photos
         LocationReticle.tsx       placement du lieu au réticule
         AddEventButton.tsx        le bouton +
+    territories/
+      TerritoryLayers.tsx         frontières historiques (OpenHistoricalMap)
+      useTerritoriesAt.ts         cache par entité, pas par date
+      api.ts                      les deux appels : identifiants, puis manquants
     filters/
       FilterButton.tsx            le mot « Tous » en haut de l'écran
       FilterModal.tsx             classeurs + importance de chacun
@@ -289,7 +292,9 @@ src/
   gagne une colonne `owner_id` et les policies la comparent à `auth.uid()`.
 - **Nouvelles couches de style** : un fichier dans `src/map/style/layers/`,
   branché dans `createOldAtlasStyle` — l'ordre du tableau `layers` est l'ordre
-  d'impression (papier → lavis → relief → eau → grille → frontières → texte).
+  d'impression (papier → lavis → relief → eau → grille → texte). Une couche qui
+  doit changer à l'exécution ne peut pas y vivre — le style est figé au
+  chargement : elle se déclare en JSX avec `beforeId`, comme `TerritoryLayers`.
 - **Régions interactives, overlays** : `<WorldMap>` accepte des `children`
   MapLibre, comme `<EventMarkers>`. Rien à toucher dans `WorldMap.tsx`.
 - **Suppression en masse, réorganisation des photos** : `updateEvent` remplace
@@ -354,6 +359,78 @@ courant.
 Le formulaire reçoit une `key` liée à l'identité de l'événement : changer
 d'événement remonte le composant, et tous les champs se ré-amorcent sans effet
 de bord.
+
+**Territoires.** La carte porte les frontières souveraines telles qu'elles
+étaient **à la date de l'événement lu** : passer d'un événement au suivant fait
+respirer les empires. Les données viennent d'OpenHistoricalMap (CC0).
+
+**Pas de ses tuiles, en revanche, et c'est l'enseignement du sujet.** Une tuile
+z4 sur l'Europe pèse 4,2 Mo décompressés et contient **3 316 entités** : toutes
+les frontières ayant jamais existé sur cette zone, à tous les niveaux
+administratifs, sur vingt siècles. On en affiche une trentaine à une date
+donnée — on téléchargeait et décodait 99 % de données jetées. Assez pour
+qu'iOS évince l'app. Et c'est structurel : plus on dézoome, plus la tuile
+couvre de territoire, donc plus elle empile d'histoire.
+
+Le pipeline est donc hors ligne, en trois temps :
+
+```
+scripts/extract-territories.mjs   lit les tuiles z5 d'une période, décode le MVT,
+                                  garde admin_level=2, écrit des fragments GeoJSON
+scripts/load-territories.mjs      charge les fragments dans territory_fragments
+SQL (ST_Union + Simplify)         recolle et simplifie vers territories
+```
+
+Le recollage est nécessaire parce que les tuiles **découpent** la géométrie à
+leurs bords : un pays à cheval sur deux tuiles arrive en morceaux, qui partagent
+leur `ohm_id`. `ST_Union` les réunit, `ST_SimplifyPreserveTopology` à 0,01°
+(~1,1 km) les allège.
+
+**Le chargement se fait par entité, pas par date.** Changer de date appelle
+d'abord `territory_ids_at(année)`, qui ne rend que des identifiants — environ
+1 ko — puis `territories_by_ids()` pour les seules géométries absentes du cache.
+Une frontière ne changeant plus une fois extraite, un polygone traverse le
+réseau une fois par session au lieu d'une fois par date :
+
+```
+1214, 1er affichage   1 010 o d'identifiants + 110 620 o de géométrie
+1215                  1 010 o d'identifiants + 0  (les 43 sont déjà là)
+1250                  1 010 o + les 15 nouvelles seulement
+```
+
+Le cache est plafonné à 300 entités — très au-dessus des quelques dizaines
+d'une date, donc ce qui est à l'écran ne peut jamais être évincé, et la
+collection entière (quatorze siècles) ne peut pas saturer la mémoire.
+
+Chaque entité reçoit un lavis stable, choisi par hachage de son nom.
+
+La couverture chargée est **l'Europe de l'an 600 à nos jours** — de l'Islande à
+l'Oural, de la Crète à la Laponie : 56 tuiles lues, 5 841 fragments, **1 407
+entités** après recollage, 12 Mo en base. Le poids par date reste borné parce
+qu'on n'en sert qu'une tranche :
+
+```
+an 600   18 entités  110 ko        1700  49 entités  220 ko
+an 1200  40 entités  108 ko        2020  71 entités  212 ko
+```
+
+(gzippés, mesurés par le chemin réel de l'app)
+
+La fenêtre et l'emprise se règlent en ligne de commande :
+
+```bash
+node scripts/extract-territories.mjs --from 600 --to 2100 \
+  --west -25 --south 33 --east 45 --north 72 > europe.geojson
+node scripts/load-territories.mjs europe.geojson
+# puis le SQL de recollage (ST_Union + ST_SimplifyPreserveTopology)
+```
+
+Côté app, les instantanés sont mis en cache par date, **plafonné aux huit
+derniers** : un instantané fait quelques centaines de kilo-octets de géométrie
+analysée, et parcourir une longue frise ferait autrement enfler la mémoire sans
+limite.
+
+Se coupe dans `MAP_FEATURES.territories`.
 
 **Deux vues.** Le bouton en haut à gauche remplace la carte par une liste
 défilante des mêmes tuiles, et inversement. Il montre toujours la vue vers

@@ -1,7 +1,6 @@
 import type { StyleSpecification } from "@maplibre/maplibre-react-native";
 
 import {
-  boundaryLayers,
   graticuleLayers,
   labelLayers,
   landLayers,
@@ -41,7 +40,6 @@ export function createOldAtlasStyle({
       ...(relief ? reliefLayers() : []),
       ...waterLayers(),
       ...(graticule ? graticuleLayers() : []),
-      ...boundaryLayers(),
       ...labelLayers(),
     ],
   };

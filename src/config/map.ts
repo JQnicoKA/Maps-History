@@ -32,6 +32,14 @@ export const MAP_FEATURES = {
   graticule: true,
   /** Paper grain + vignette drawn above the map. */
   paperTexture: true,
+  /**
+   * Historical borders from OpenHistoricalMap, shown at the date of the event
+   * being read. Live vector tiles — nothing is imported or stored.
+   */
+  territories: true,
 } as const;
 
-export const ATTRIBUTION = "© MapTiler © OpenStreetMap contributors";
+const CREDITS = ["© MapTiler", "© OpenStreetMap"];
+if (MAP_FEATURES.territories) CREDITS.push("© OpenHistoricalMap");
+
+export const ATTRIBUTION = CREDITS.join(" ");
