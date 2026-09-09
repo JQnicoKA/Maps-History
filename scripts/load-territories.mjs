@@ -1,19 +1,20 @@
 /**
- * Loads the fragments produced by extract-territories.mjs into Supabase, then
- * asks the database to stitch and simplify them.
+ * Loads the NDJSON produced by extract-territories.mjs into Supabase.
  *
- *   node scripts/extract-territories.mjs > /tmp/territories.geojson
- *   node scripts/load-territories.mjs /tmp/territories.geojson
+ *   node scripts/extract-territories.mjs --world > monde.ndjson
+ *   node scripts/load-territories.mjs monde.ndjson
  *
- * Reads the same EXPO_PUBLIC_* credentials as the app; the prototype RLS policy
- * lets the publishable key write. Talks to PostgREST with plain fetch rather
- * than supabase-js, whose realtime client wants a WebSocket Node 20 lacks.
+ * Reads line by line and posts size-bounded batches: a worldwide sweep runs to
+ * hundreds of megabytes, so neither the file nor a batch is ever held whole.
+ * Talks to PostgREST with plain fetch rather than supabase-js, whose realtime
+ * client wants a WebSocket Node 20 lacks.
  */
-import { readFileSync } from "node:fs";
+import { createReadStream, readFileSync } from "node:fs";
+import { createInterface } from "node:readline";
 
 const file = process.argv[2];
 if (!file) {
-  console.error("usage: node scripts/load-territories.mjs <fichier.geojson>");
+  console.error("usage: node scripts/load-territories.mjs <fichier.ndjson>");
   process.exit(1);
 }
 
@@ -33,35 +34,65 @@ const HEADERS = {
   apikey: KEY,
   authorization: `Bearer ${KEY}`,
   "content-type": "application/json",
+  prefer: "return=minimal",
 };
 
-async function rest(path, init) {
-  const response = await fetch(`${REST}${path}`, { ...init, headers: HEADERS });
-  if (!response.ok) {
-    throw new Error(`${response.status} ${await response.text()}`);
-  }
-  return response;
-}
+/** Big enough to keep the round-trip count low, small enough to stay accepted. */
+const BATCH_BYTES = 1_500_000;
+const IN_FLIGHT = 3;
 
-const { features } = JSON.parse(readFileSync(file, "utf8"));
-console.log(`${features.length} fragments à charger`);
-
-await rest("/territory_fragments?id=gt.0", { method: "DELETE" });
-
-const BATCH = 10;
-for (let i = 0; i < features.length; i += BATCH) {
-  const rows = features.slice(i, i + BATCH).map((feature) => ({
-    ohm_id: feature.properties.ohm_id,
-    name: feature.properties.name,
-    start_year: feature.properties.start_year,
-    end_year: feature.properties.end_year,
-    geojson: feature.geometry,
-  }));
-
-  await rest("/territory_fragments", {
+async function post(body, attempt = 0) {
+  const res = await fetch(`${REST}/territory_fragments`, {
     method: "POST",
-    body: JSON.stringify(rows),
+    headers: HEADERS,
+    body,
   });
-  process.stdout.write(`\r  ${Math.min(i + BATCH, features.length)}/${features.length}`);
+  if (!res.ok) {
+    if (attempt < 3 && res.status >= 500) {
+      await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
+      return post(body, attempt + 1);
+    }
+    throw new Error(`${res.status} ${await res.text()}`);
+  }
 }
-console.log("\nchargé.");
+
+await fetch(`${REST}/territory_fragments?id=gt.0`, {
+  method: "DELETE",
+  headers: HEADERS,
+});
+console.log("table de transit vidée");
+
+const pending = new Set();
+async function send(rows) {
+  const task = post(JSON.stringify(rows)).finally(() => pending.delete(task));
+  pending.add(task);
+  if (pending.size >= IN_FLIGHT) await Promise.race(pending);
+}
+
+let batch = [];
+let bytes = 0;
+let loaded = 0;
+
+const lines = createInterface({
+  input: createReadStream(file),
+  crlfDelay: Infinity,
+});
+
+for await (const line of lines) {
+  if (line.trim() === "") continue;
+  batch.push(JSON.parse(line));
+  bytes += line.length;
+  loaded++;
+
+  if (bytes >= BATCH_BYTES) {
+    await send(batch);
+    batch = [];
+    bytes = 0;
+    process.stdout.write(`\r  ${loaded} fragments`);
+  }
+}
+
+if (batch.length > 0) await send(batch);
+await Promise.all(pending);
+
+console.log(`\r  ${loaded} fragments chargés.`);

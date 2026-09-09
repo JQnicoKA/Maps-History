@@ -14,11 +14,12 @@ export type TerritoryCollection = FeatureCollection<Polygon | MultiPolygon>;
  * so a polygon is worth downloading once per session rather than once per date:
  * two consecutive years usually share every single one of them.
  *
- * Bounded because the full collection spans fourteen centuries and would run to
- * tens of megabytes of parsed geometry. Well above any single date's few dozen
- * entities, so the set currently on screen can never be evicted.
+ * Bounded because the full collection spans millennia and would run to tens of
+ * megabytes of parsed geometry. Kept well above the busiest single date — 216
+ * sovereign entities worldwide in 2020 — so the set currently on screen can
+ * never be evicted, and browsing does not thrash against the ceiling.
  */
-const CACHE_LIMIT = 300;
+const CACHE_LIMIT = 800;
 
 /**
  * The territories in force in a given year, assembled from what is already held

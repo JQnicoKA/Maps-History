@@ -194,7 +194,11 @@ npm run icons        # rasterise assets/icons/src/*.svg → assets/icons/*.png
 index.ts                          point d'entrée Expo
 app.json                          config Expo + config plugin MapLibre
 .env.example                      modèle de configuration
+docs/territoires.md               marche à suivre du pipeline des frontières
 scripts/generate-textures.mjs     génère les PNG de parchemin (sans dépendance)
+scripts/extract-territories.mjs   lit les tuiles OHM → NDJSON
+scripts/load-territories.mjs      NDJSON → table de transit
+scripts/stitch-territories.sql    recollage + simplification → territories
 scripts/generate-icons.mjs        rasterise les icônes de type d'événement
 assets/textures/                  paper-grain.png, vignette.png
 assets/icons/src/*.svg            les 16 glyphes de type + l'icône corbeille
@@ -362,73 +366,26 @@ de bord.
 
 **Territoires.** La carte porte les frontières souveraines telles qu'elles
 étaient **à la date de l'événement lu** : passer d'un événement au suivant fait
-respirer les empires. Les données viennent d'OpenHistoricalMap (CC0).
+respirer les empires. Le monde entier est couvert, toutes époques — **3 923
+entités**, de l'Antiquité à aujourd'hui — d'après OpenHistoricalMap (CC0).
 
-**Pas de ses tuiles, en revanche, et c'est l'enseignement du sujet.** Une tuile
-z4 sur l'Europe pèse 4,2 Mo décompressés et contient **3 316 entités** : toutes
-les frontières ayant jamais existé sur cette zone, à tous les niveaux
-administratifs, sur vingt siècles. On en affiche une trentaine à une date
-donnée — on téléchargeait et décodait 99 % de données jetées. Assez pour
-qu'iOS évince l'app. Et c'est structurel : plus on dézoome, plus la tuile
-couvre de territoire, donc plus elle empile d'histoire.
+Les données ne viennent **pas** de leurs tuiles à l'exécution, et c'est
+l'enseignement du sujet : une tuile z4 sur l'Europe contient 3 316 entités, soit
+toute frontière ayant jamais existé là. On en affiche une trentaine à une date
+donnée, et décoder le reste suffisait à faire évincer l'app par iOS. Elles sont
+donc extraites une fois hors ligne, recollées et simplifiées en base, et l'app
+en lit une tranche par date — quelques centaines de kilo-octets, chaque polygone
+ne transitant qu'une fois par session grâce à un cache par entité.
 
-Le pipeline est donc hors ligne, en trois temps :
+**Il n'y a aucune frontière moderne sur cette carte.** Les seuls tracés
+politiques sont les territoires historiques : jamais deux époques à la fois. Là
+où OpenHistoricalMap ne couvre rien, la planche reste sans frontière, ce qui est
+le comportement voulu. Le fond MapTiler ne sert donc qu'au relief, à
+l'hydrographie, au couvert végétal et à la toponymie.
 
-```
-scripts/extract-territories.mjs   lit les tuiles z5 d'une période, décode le MVT,
-                                  garde admin_level=2, écrit des fragments GeoJSON
-scripts/load-territories.mjs      charge les fragments dans territory_fragments
-SQL (ST_Union + Simplify)         recolle et simplifie vers territories
-```
-
-Le recollage est nécessaire parce que les tuiles **découpent** la géométrie à
-leurs bords : un pays à cheval sur deux tuiles arrive en morceaux, qui partagent
-leur `ohm_id`. `ST_Union` les réunit, `ST_SimplifyPreserveTopology` à 0,01°
-(~1,1 km) les allège.
-
-**Le chargement se fait par entité, pas par date.** Changer de date appelle
-d'abord `territory_ids_at(année)`, qui ne rend que des identifiants — environ
-1 ko — puis `territories_by_ids()` pour les seules géométries absentes du cache.
-Une frontière ne changeant plus une fois extraite, un polygone traverse le
-réseau une fois par session au lieu d'une fois par date :
-
-```
-1214, 1er affichage   1 010 o d'identifiants + 110 620 o de géométrie
-1215                  1 010 o d'identifiants + 0  (les 43 sont déjà là)
-1250                  1 010 o + les 15 nouvelles seulement
-```
-
-Le cache est plafonné à 300 entités — très au-dessus des quelques dizaines
-d'une date, donc ce qui est à l'écran ne peut jamais être évincé, et la
-collection entière (quatorze siècles) ne peut pas saturer la mémoire.
-
-Chaque entité reçoit un lavis stable, choisi par hachage de son nom.
-
-La couverture chargée est **l'Europe de l'an 600 à nos jours** — de l'Islande à
-l'Oural, de la Crète à la Laponie : 56 tuiles lues, 5 841 fragments, **1 407
-entités** après recollage, 12 Mo en base. Le poids par date reste borné parce
-qu'on n'en sert qu'une tranche :
-
-```
-an 600   18 entités  110 ko        1700  49 entités  220 ko
-an 1200  40 entités  108 ko        2020  71 entités  212 ko
-```
-
-(gzippés, mesurés par le chemin réel de l'app)
-
-La fenêtre et l'emprise se règlent en ligne de commande :
-
-```bash
-node scripts/extract-territories.mjs --from 600 --to 2100 \
-  --west -25 --south 33 --east 45 --north 72 > europe.geojson
-node scripts/load-territories.mjs europe.geojson
-# puis le SQL de recollage (ST_Union + ST_SimplifyPreserveTopology)
-```
-
-Côté app, les instantanés sont mis en cache par date, **plafonné aux huit
-derniers** : un instantané fait quelques centaines de kilo-octets de géométrie
-analysée, et parcourir une longue frise ferait autrement enfler la mémoire sans
-limite.
+**Le pipeline, ses réglages et sa marche à suivre sont dans
+[docs/territoires.md](docs/territoires.md)** : les trois scripts, le SQL de
+recollage, les mesures et les limites connues.
 
 Se coupe dans `MAP_FEATURES.territories`.
 
@@ -616,29 +573,15 @@ imposent ce crédit visible : ne pas le supprimer.
 
 ## 8. État
 
-- Build iOS device : **réussie** avant l'ajout des événements ; deux modules
-  natifs ont été ajoutés depuis (`expo-image-picker`,
-  `react-native-safe-area-context`), donc **une reconstruction est nécessaire**.
-- `npm run typecheck` : OK.
-- Bundle Metro : OK (750 modules).
+- Build iOS device : **réussie**, `MapLibre.framework` embarqué.
+- `npm run typecheck` et `npx expo export` : OK (782 modules).
 - Schéma Supabase appliqué, `get_advisors` (sécurité) : aucune alerte.
-- Chaîne complète vérifiée à travers RLS avec la clé publishable : lecture avec
-  les jointures imbriquées, écriture, et rejet des dates incohérentes.
-- Quatre événements de démonstration sont en base (987, 1214, 1453, 1520–1566)
-  pour que la carte et la frise aient de quoi s'afficher au premier lancement.
-  Ils se suppriment depuis la fiche de chaque événement.
-- Démarrage sur iPhone vérifié après correction : l'app tourne plus de 50 s
-  sans terminer, là où elle mourait en 5 s.
-- Colonne `source` sur les photos, aller-retour vérifié via la requête
-  imbriquée de l'app.
-- Modification vérifiée contre la base : PATCH de l'événement, remplacement des
-  liens de classeur, relecture, et le trigger `updated_at` se déclenche.
-- Les quatre événements de démonstration n'ont pas de photo : ils s'affichent
-  donc avec le glyphe de repli. Il faut en créer un avec une photo pour voir le
-  médaillon.
-- Le rendu des événements n'a pas encore été vu à l'écran.
-- Le remaniement visuel (frise, filtres, listes déroulantes) et les types
-  d'événements sont purement JS/TS et assets : un rechargement Metro suffit,
-  pas de reconstruction native.
-- Colonne `type` ajoutée, aller-retour vérifié via l'API REST, valeur hors
-  vocabulaire rejetée par l'enum.
+- Chaîne complète vérifiée à travers RLS avec la clé publishable : lecture,
+  écriture, modification, rejet des dates incohérentes, aller-retour du type et
+  de la source des photos.
+- Territoires : le monde entier, toutes époques, 3 923 entités, base à 70 Mo —
+  dans les 500 Mo du plan gratuit. Voir [docs/territoires.md](docs/territoires.md).
+- Sept événements de démonstration sont en base (987 à 1812), supprimables
+  depuis la fiche de chacun.
+- Le rendu n'a jamais été jugé autrement que par son auteur : la palette de
+  `src/theme/palette.ts` reste le premier endroit à ajuster.
