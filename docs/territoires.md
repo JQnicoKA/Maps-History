@@ -154,6 +154,34 @@ réduire ni supprimer). Largement dans les 500 Mo du plan gratuit.
 
 ---
 
+## Les noms
+
+`territories.name` porte le nom **d'époque**, dans sa langue : *Francia
+occidentalis*, *Rouantelezh Breizh*, *Ēastengla rīċe*, الْخِلَافَة الْعَبَّاسِيَّة. C'est
+le seul nommage politique de la carte — `label-country` et `label-region` ont
+été retirés du style, ils auraient affiché ceux d'aujourd'hui.
+
+**Une étiquette par entité, pas par polygone.** MapLibre pose un nom sur
+*chaque partie* d'un MultiPolygone : l'Empire byzantin en compte 58, le califat
+abbasside 63, et à l'an 900 les 50 entités totalisent 234 parties — donc 234
+noms à l'écran. `territories_by_ids` expose donc une `anchor`, calculée par
+`ST_PointOnSurface` sur la **plus grande** partie, et la couche de texte est
+alimentée par une source de points distincte des polygones.
+
+`ST_PointOnSurface` et non `ST_Centroid` : le centroïde d'un territoire en
+croissant peut tomber hors de ses terres. La plus grande partie, pour que le nom
+se pose sur le continent et non sur une île perdue.
+
+La taille du texte suit l'aire du polygone, exposée par `territories_by_ids`
+via `ST_Area`. Vérifié : MapTiler sert les glyphes non latins pour la pile
+« Noto Sans Bold » — 135 ko pour l'arabe, 147 ko pour l'éthiopien, autant pour
+le cyrillique et le grec. Son serveur assure le repli sur la famille Noto.
+
+Les tuiles d'OHM portent aussi des centaines de `name_xx` (traductions et
+translittérations) que l'extraction ne conserve pas. Si vous vouliez un jour
+proposer les noms en français, c'est là qu'il faudrait aller les chercher — au
+prix d'une ré-extraction.
+
 ## Réglages
 
 **Le lissage** — `0.01` dans `stitch-territories.sql`. Monter à `0.02` divise par

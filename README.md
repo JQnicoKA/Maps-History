@@ -377,10 +377,20 @@ donc extraites une fois hors ligne, recollées et simplifiées en base, et l'app
 en lit une tranche par date — quelques centaines de kilo-octets, chaque polygone
 ne transitant qu'une fois par session grâce à un cache par entité.
 
-**Il n'y a aucune frontière moderne sur cette carte.** Les seuls tracés
-politiques sont les territoires historiques : jamais deux époques à la fois. Là
-où OpenHistoricalMap ne couvre rien, la planche reste sans frontière, ce qui est
-le comportement voulu. Le fond MapTiler ne sert donc qu'au relief, à
+**Les noms des territoires sont ceux de leur époque**, tirés d'OpenHistoricalMap
+et dessinés depuis nos propres données : « Francia occidentalis » en 900, pas
+« FRANCE ». Ils sont dimensionnés par l'aire du polygone, comme un atlas donne
+de plus grandes lettres à un empire qu'à un duché, et posés sur une ancre
+unique par entité — sans quoi MapLibre nommerait chaque île d'un archipel. Beaucoup ne sont pas en
+écriture latine — الْخِلَافَة الْعَبَّاسِيَّة, መንግሥተ አክሱም — et MapTiler sert bien les
+glyphes correspondants (135 ko d'arabe, 147 ko d'éthiopien pour la pile
+« Noto Sans Bold »), son serveur assurant le repli sur la famille Noto.
+
+**Il n'y a aucune frontière ni toponyme politique moderne sur cette carte.** Les seuls tracés
+politiques sont les territoires historiques : jamais deux époques à la fois. Les
+couches `label-country` et `label-region` ont donc quitté le style au même titre
+que les frontières. Là où OpenHistoricalMap ne couvre rien, la planche reste
+sans frontière ni nom de pays, ce qui est le comportement voulu. Le fond MapTiler ne sert donc qu'au relief, à
 l'hydrographie, au couvert végétal et à la toponymie.
 
 **Le pipeline, ses réglages et sa marche à suivre sont dans

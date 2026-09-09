@@ -27,6 +27,10 @@ const halo = {
 /**
  * Lettering follows atlas convention: land in tracked-out capitals, water in
  * italics, both weighted by the feature's rank rather than by zoom alone.
+ *
+ * Country and region names are deliberately absent: they would be today's, and
+ * this map never shows two epochs at once. Political naming comes from the
+ * historical territories instead — "Francia occidentalis", not "FRANCE".
  */
 export function labelLayers(): LayerSpecification[] {
   return [
@@ -73,51 +77,6 @@ export function labelLayers(): LayerSpecification[] {
         "text-color": palette.inkSoft,
         "text-opacity": ["interpolate", ["linear"], ["zoom"], 2.5, 0.85, 3.8, 0],
       },
-    },
-    {
-      id: "label-country",
-      type: "symbol",
-      source: SOURCE.base,
-      "source-layer": "place",
-      minzoom: 1.8,
-      filter: ["==", ["get", "class"], "country"],
-      layout: {
-        "text-field": name,
-        "text-font": fonts.country,
-        "text-transform": "uppercase",
-        "text-letter-spacing": 0.2,
-        "text-size": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          2,
-          ["step", rank, 12, 3, 10, 6, 8.5],
-          6,
-          ["step", rank, 20, 3, 16, 6, 13],
-        ],
-        "text-max-width": 6,
-        "text-padding": 4,
-        "symbol-sort-key": rank,
-      },
-      paint: { ...halo, "text-color": palette.ink },
-    },
-    {
-      id: "label-region",
-      type: "symbol",
-      source: SOURCE.base,
-      "source-layer": "place",
-      minzoom: 4.5,
-      filter: ["match", ["get", "class"], ["state", "province"], true, false],
-      layout: {
-        "text-field": name,
-        "text-font": fonts.place,
-        "text-transform": "uppercase",
-        "text-letter-spacing": 0.16,
-        "text-size": ["interpolate", ["linear"], ["zoom"], 4.5, 9, 9, 13],
-        "text-max-width": 6,
-        "symbol-sort-key": rank,
-      },
-      paint: { ...halo, "text-color": palette.inkSoft, "text-opacity": 0.85 },
     },
     {
       id: "label-lake",
