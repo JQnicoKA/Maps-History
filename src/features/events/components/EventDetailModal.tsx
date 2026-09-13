@@ -136,10 +136,6 @@ export function EventDetailModal({
             ))}
           </View>
         ) : null}
-
-        <Text style={styles.coordinates}>
-          {event.latitude.toFixed(4)}°, {event.longitude.toFixed(4)}°
-        </Text>
       </ScrollView>
 
       <PhotoViewer photo={viewing} onClose={() => setViewing(null)} />
@@ -186,7 +182,6 @@ const styles = StyleSheet.create({
   photos: { flexDirection: "row", gap: space.md },
   photo: { width: 168, height: 120, borderRadius: radius.md },
   dim: { opacity: 0.6 },
-  coordinates: { ...type.caption, color: palette.inkFaint },
   trash: {
     width: TOUCH,
     height: TOUCH,
