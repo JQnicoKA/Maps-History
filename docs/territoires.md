@@ -48,11 +48,16 @@ travail, au lieu de le payer à chaque ouverture sur un téléphone.
 node scripts/extract-territories.mjs --world > monde.ndjson
 ```
 
-Lit les tuiles z5 d'OHM, décode le MVT, ne garde que `admin_level = 2` (les
-entités souveraines : empires, royaumes, États) et écrit du **NDJSON** — une
-entité par ligne.
+Lit les tuiles z5 d'OHM, décode le MVT, garde les `admin_level` **2, 3 et 4** et
+écrit du **NDJSON** — une entité par ligne.
 
-NDJSON et non un `FeatureCollection` unique : un balayage mondial fait 228 Mo,
+Le niveau 2 est l'État souverain ; les niveaux 3 et 4 sont les fiefs, duchés,
+principautés et villes libres qui vivent en dessous. Ne garder que le niveau 2
+décrivait 1812 parfaitement et 1453 pas du tout : **OHM n'a aucun royaume de
+France entre 1051 et 1659**, parce que la période a été cartographiée fief par
+fief. Six siècles d'Europe étaient vides pour cette seule raison.
+
+NDJSON et non un `FeatureCollection` unique : un balayage mondial fait 331 Mo,
 que ni l'extracteur ni le chargeur ne doivent tenir en mémoire.
 
 | option | défaut | rôle |
@@ -92,15 +97,21 @@ tuiles arrive en morceaux, qui partagent leur `ohm_id`. `ST_Union` les réunit,
 > mais elle aboutit côté serveur.** Ne la relancez pas : vérifiez d'abord avec
 > `select count(*) from public.territories`.
 
+Le passage à trois niveaux a rendu la requête unique trop longue même pour la
+patience du serveur. Le fichier reste écrit d'un bloc, mais pour un rechargement
+mondial il vaut mieux l'exécuter **en trois passes**, une par `admin_level`, en
+ajoutant `and f.admin_level = 2` (puis 3, puis 4) au `where` du CTE `parsed`.
+Seule la passe du niveau 2 dépasse alors le délai du client.
+
 ### 4. Nettoyer
 
 ```sql
 truncate table public.territory_fragments;
 ```
 
-Les fragments ne servent plus une fois le recollage fait — ils pesaient 128 Mo
+Les fragments ne servent plus une fois le recollage fait — ils pesaient 175 Mo
 pour le monde. Les garder permet de refaire le lissage sans retélécharger les
-tuiles ; les vider ramène la base à 70 Mo.
+tuiles ; les vider ramène la base à 82 Mo.
 
 ---
 
@@ -109,8 +120,61 @@ tuiles ; les vider ramène la base à 70 Mo.
 Deux fonctions, et le chargement se fait **par entité, pas par date** :
 
 ```sql
-territory_ids_at(annee)     -- identifiants seuls, 0,3 à 5 ko
-territories_by_ids(ids[])   -- géométrie des seules entités manquantes
+territory_ids_at(annee, max_level)  -- identifiants seuls, 0,3 à 13 ko
+territories_by_ids(ids[])           -- géométrie des entités manquantes
+```
+
+`max_level` vaut **2 par défaut** et **4** une fois la carte au zoom pays. Mais
+le niveau seul serait un mauvais critère de visibilité, et c'est le point
+important :
+
+```sql
+where ... and (t.admin_level <= max_level or t.standalone)
+```
+
+**`standalone`** dit qu'aucune entité souveraine ne recouvrait ce fief à son
+époque. Le duché de Bar en 1453 n'a ni royaume de France ni Saint-Empire au
+dessus de lui chez OHM : il est le rang politique le plus haut de son coin de
+carte, et se cacher au zoom monde laisserait l'Europe blanche de la France à la
+Russie. Un Land allemand en l'an 2000, lui, est recouvert par *Deutschland* : le
+montrer au zoom monde ferait partir la planète en confettis. Le même test
+sépare les deux, et le rapport s'inverse complètement avec l'époque :
+
+| date | souverains | fiefs autonomes | fiefs recouverts |
+| --- | --- | --- | --- |
+| an 900 | 50 | 29 | 79 |
+| 1200 | 70 | 73 | 83 |
+| 1453 | 107 | **171** | 220 |
+| 1600 | 106 | 170 | 195 |
+| 1812 | 193 | 42 | 325 |
+| 2000 | 217 | **20** | 757 |
+
+Le drapeau est calculé une fois, en base : on teste `ST_PointOnSurface` du fief
+contre les souverains vivants **au milieu de sa propre validité**. OHM redécoupe
+une entité à chaque changement de tracé, donc une version dure peu et sa
+couverture ne change pas en cours de route. Le test par point plutôt que par
+aire d'intersection est mille fois moins cher et suffit à dire dedans ou dehors.
+
+Les fiefs recouverts, eux, doublent le poids d'une date (1812 : 3,6 → 5,5 Mo) et
+ne se dessinent qu'à partir du zoom pays : les demander avant serait payer pour
+ce que personne ne voit. C'est `WorldMap` qui signale le franchissement, par
+`onRegionDidChange`, et seulement au franchissement — pas à chaque geste.
+
+**`area` et `anchor` sont des colonnes, pas des calculs.** Elles l'ont été :
+`ST_Dump` puis `ST_PointOnSurface` sur chaque partie, à chaque appel, pour
+560 entités à la fois. Assez cher pour dépasser le `statement_timeout` du rôle
+`anon` et ne rien renvoyer du tout. Ce sont des valeurs fixes une fois la
+géométrie posée.
+
+**Et la demande est découpée.** Une date chargée faisait une réponse unique de
+7 Mo, construite en une seule instruction — même sortie, le délai dépassé.
+`fetchTerritoriesByIds` demande **120 entités par requête, trois en vol**. Plus
+robuste et plus rapide :
+
+```
+2000, zoom pays   994 entités   7,51 Mo   9 requêtes   2 160 ms
+1812, zoom pays   560 entités   5,50 Mo   5 requêtes   1 604 ms
+1453, zoom monde  278 entités   1,29 Mo   3 requêtes     688 ms
 ```
 
 Changer de date demande d'abord la liste d'identifiants, en déduit ce qui manque
@@ -123,9 +187,10 @@ extraite, un polygone traverse le réseau **une fois par session** :
 1250                  1 010 o                 + les 15 nouvelles seulement
 ```
 
-Le cache vit dans `useTerritoriesAt.ts`, plafonné à 800 entités — bien au-dessus
-de la date la plus chargée (218 en 2020), donc ce qui est à l'écran ne peut
-jamais être évincé.
+Le cache vit dans `useTerritoriesAt.ts`, plafonné à 1 200 entités — au-dessus de
+la date la plus chargée (994 en l'an 2000, fiefs compris), donc ce qui est à
+l'écran ne peut jamais être évincé. Passer du zoom monde au zoom pays et revenir
+ne coûte que la liste d'identifiants : la géométrie reste en cache.
 
 ---
 
@@ -134,21 +199,33 @@ jamais être évincé.
 Le monde entier, toutes époques :
 
 ```
-1 024 tuiles z5  →  29 796 fragments  →  3 923 entités  →  51 Mo
+1 024 tuiles z5  →  42 956 fragments  →  8 765 entités  →  58 Mo
 ```
 
-Recoupé par un recensement indépendant mené en z3 : 3 910 entités. Les deux
-méthodes tombent d'accord à treize près.
+| niveau | entités | sommets |
+| --- | --- | --- |
+| 2 — souverains | 3 928 | 4 007 843 |
+| 3 — fiefs | 504 | 389 097 |
+| 4 — fiefs | 4 333 | 1 076 593 |
+
+Les fiefs ajoutent 55 % d'entités mais seulement 37 % de sommets : ils sont
+petits. Le niveau 2 seul donnait 3 923 entités, recoupé par un recensement
+indépendant mené en z3 : 3 910. Les deux méthodes tombaient d'accord à treize
+près.
 
 ```
               entités   identifiants   géométrie (1er affichage)
-av. J.-C. 500      12        327 o
-an 600             36        849 o
-an 1453           107      2 481 o          270 ko
-2020              218      4 949 o          959 ko
+                 entités au zoom monde   géométrie   au zoom pays
+an 900                        79            0,45 Mo     158 / 0,61 Mo
+an 1453                      278            1,29 Mo     498 / 1,79 Mo
+1812                         235            3,57 Mo     560 / 5,50 Mo
+2000                         237            3,00 Mo     994 / 7,51 Mo
 ```
 
-Base totale : **70 Mo**, dont 51 de territoires et 7 de `spatial_ref_sys` (le
+Le zoom monde n'est pas « les souverains » : c'est « le rang le plus haut de
+chaque région ». D'où 278 entités en 1453 pour 107 souverains.
+
+Base totale : **82 Mo**, dont 58 de territoires et 7 de `spatial_ref_sys` (le
 catalogue de systèmes de coordonnées installé par PostGIS, qu'on ne peut ni
 réduire ni supprimer). Largement dans les 500 Mo du plan gratuit.
 
@@ -243,9 +320,15 @@ que les noms ne deviennent lisibles.
 aujourd'hui. La planche est plus dépouillée — ce qui n'est pas forcément un
 défaut sur un atlas ancien, mais c'est un choix assumé.
 
-**La couverture d'OHM est inégale.** L'Europe compte 1 407 entités à elle seule
-sur les 3 923 mondiales, alors qu'elle représente une petite fraction des terres
-émergées. Ailleurs on a les grands empires, pas les duchés.
+**La couverture d'OHM est inégale**, dans l'espace et dans le temps. L'Europe
+concentre l'essentiel des entités alors qu'elle représente une petite fraction
+des terres émergées ; ailleurs on a les grands empires, pas les duchés. Et le
+Moyen Âge tardif n'est cartographié qu'au niveau des fiefs : en 1453 il n'existe
+ni royaume de France, ni Saint-Empire, ni Pologne-Lituanie, ni Hongrie au niveau
+2. Mesuré sur l'Europe, la surface couverte par une entité quelconque vaut 33 %
+de la surface d'aujourd'hui en 1450, 85 % en 1700. **Un vide sur la planche est
+plus souvent un vide chez OHM qu'une erreur chez nous** — mais vérifiez les deux,
+le filtre `admin_level` a longtemps été le coupable.
 
 **C'est une photographie figée.** Les données ont été extraites une fois ; si les
 contributeurs d'OHM corrigent un tracé, il faut relancer le pipeline. C'est le

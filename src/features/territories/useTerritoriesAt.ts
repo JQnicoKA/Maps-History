@@ -15,17 +15,30 @@ export type TerritoryCollection = FeatureCollection<Polygon | MultiPolygon>;
  * two consecutive years usually share every single one of them.
  *
  * Bounded because the full collection spans millennia and would run to tens of
- * megabytes of parsed geometry. Kept well above the busiest single date — 216
- * sovereign entities worldwide in 2020 — so the set currently on screen can
- * never be evicted, and browsing does not thrash against the ceiling.
+ * megabytes of parsed geometry. Kept well above the busiest single date — 217
+ * sovereign entities and 777 fiefs worldwide in 2000 — so the set currently on
+ * screen can never be evicted, and browsing does not thrash against the
+ * ceiling.
  */
-const CACHE_LIMIT = 800;
+const CACHE_LIMIT = 1200;
+
+/** The top rank of each region, or that plus the fiefs beneath a sovereign. */
+const LEVEL = { sovereign: 2, fief: 4 };
 
 /**
  * The territories in force in a given year, assembled from what is already held
  * plus whatever is missing.
+ *
+ * `detailed` follows the zoom: below country scale the fiefs that sit under a
+ * sovereign are neither drawn nor fetched — the ones that sit under nobody
+ * always are. Flipping it back and forth costs nothing after the first time:
+ * the geometry stays in the cache, only the list of identifiers is asked for
+ * again.
  */
-export function useTerritoriesAt(year: number | null): TerritoryCollection | null {
+export function useTerritoriesAt(
+  year: number | null,
+  detailed: boolean,
+): TerritoryCollection | null {
   const [collection, setCollection] = useState<TerritoryCollection | null>(null);
   const entities = useRef(new Map<string, TerritoryFeature>());
 
@@ -38,7 +51,10 @@ export function useTerritoriesAt(year: number | null): TerritoryCollection | nul
     let current = true;
 
     (async () => {
-      const ids = await fetchTerritoryIdsAt(year);
+      const ids = await fetchTerritoryIdsAt(
+        year,
+        detailed ? LEVEL.fief : LEVEL.sovereign,
+      );
       const missing = ids.filter((id) => !entities.current.has(id));
 
       for (const feature of await fetchTerritoriesByIds(missing)) {
@@ -68,7 +84,7 @@ export function useTerritoriesAt(year: number | null): TerritoryCollection | nul
     return () => {
       current = false;
     };
-  }, [year]);
+  }, [year, detailed]);
 
   return collection;
 }

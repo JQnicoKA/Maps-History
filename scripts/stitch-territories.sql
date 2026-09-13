@@ -20,6 +20,7 @@ with parsed as (
   select
     f.ohm_id,
     f.name,
+    f.admin_level,
     f.start_year,
     f.end_year,
     public.st_makevalid(
@@ -32,16 +33,18 @@ merged as (
   select
     ohm_id,
     name,
+    admin_level,
     min(start_year) as start_year,
     max(end_year) as end_year,
     public.st_union(geom) as geom
   from parsed
-  group by ohm_id, name
+  group by ohm_id, name, admin_level
 )
-insert into public.territories (ohm_id, name, start_year, end_year, geom)
+insert into public.territories (ohm_id, name, admin_level, start_year, end_year, geom)
 select
   ohm_id,
   coalesce(name, 'Sans nom'),
+  coalesce(admin_level, 2),
   start_year,
   end_year,
   -- 0,01° ≈ 1,1 km. Monter à 0,02 divise par deux le poids d'une date moderne,
@@ -59,7 +62,11 @@ commit;
 
 -- Contrôle.
 select
+  admin_level,
   count(*) as entites,
-  sum(public.st_npoints(geom)) as sommets,
-  pg_size_pretty(pg_total_relation_size('public.territories')) as taille
-from public.territories;
+  sum(public.st_npoints(geom)) as sommets
+from public.territories
+group by admin_level
+order by admin_level;
+
+select pg_size_pretty(pg_total_relation_size('public.territories')) as taille;

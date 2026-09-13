@@ -5,7 +5,7 @@ import {
   type MapProps,
   type MapRef,
 } from "@maplibre/maplibre-react-native";
-import { type ReactNode, type Ref, useMemo } from "react";
+import { type ReactNode, type Ref, useCallback, useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { MapAttribution } from "./MapAttribution";
@@ -28,6 +28,12 @@ export type WorldMapProps = {
   centerAnimationDuration?: number;
   /** Lifts the credit line clear of whatever chrome sits at the bottom. */
   attributionOffset?: number;
+  /**
+   * Fires when the plate crosses into — or back out of — country zoom, and
+   * only then. Overlays that carry a lot of geometry use it to hold their
+   * detail back until it can actually be read.
+   */
+  onDetailChange?: (detailed: boolean) => void;
 };
 
 export function WorldMap({
@@ -37,10 +43,27 @@ export function WorldMap({
   onPress,
   centerAnimationDuration = 650,
   attributionOffset,
+  onDetailChange,
 }: WorldMapProps) {
   const mapStyle = useMemo(
     () => createOldAtlasStyle({ apiKey: env.maptilerApiKey }),
     [],
+  );
+
+  // The viewport reports on every settled gesture; only the crossing matters,
+  // so the boolean is compared before being passed on and nothing re-renders
+  // while the reader pans around at one scale.
+  const detailed = useRef(false);
+  const handleRegionDidChange = useCallback<
+    NonNullable<MapProps["onRegionDidChange"]>
+  >(
+    (event) => {
+      const next = event.nativeEvent.zoom >= ZOOM.country;
+      if (next === detailed.current) return;
+      detailed.current = next;
+      onDetailChange?.(next);
+    },
+    [onDetailChange],
   );
 
   return (
@@ -50,6 +73,7 @@ export function WorldMap({
         style={styles.map}
         mapStyle={mapStyle}
         onPress={onPress}
+        onRegionDidChange={onDetailChange ? handleRegionDidChange : undefined}
         // An atlas plate is read flat and square to the page: pan and zoom only.
         touchRotate={false}
         touchPitch={false}

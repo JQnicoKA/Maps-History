@@ -1,12 +1,68 @@
+import type { ExpressionSpecification } from "@maplibre/maplibre-gl-style-spec";
 import { GeoJSONSource, Layer } from "@maplibre/maplibre-react-native";
 import type { FeatureCollection, Point } from "geojson";
 import { useMemo } from "react";
 
 import { useTerritoriesAt } from "./useTerritoriesAt";
+import { ZOOM } from "../../config/map";
 import { fonts } from "../../map/style/typography";
 import { useEvents } from "../events/EventsProvider";
 import { toSortKey } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
+
+/**
+ * What waits for country zoom is not every fief, only the ones a sovereign was
+ * standing over.
+ *
+ * OHM maps the late Middle Ages fief by fief — in 1453 there is no Kingdom of
+ * France, no Holy Roman Empire, no Poland-Lithuania, only Nemours, Bar,
+ * Luxembourg and their neighbours. Hiding those at world zoom leaves Europe
+ * blank from France to Russia. But showing every fief there would shatter the
+ * modern world into provinces. `standalone`, computed in the database, tells
+ * the two apart: a fief no sovereign covered in its own day is the top rank of
+ * its corner of the map and is drawn like one. In 1453 that is 171 entities;
+ * in 2000 it is 20.
+ *
+ * A single zoom expression per property, outermost, with the test on the
+ * feature inside each stop: MapLibre crashes on any other arrangement.
+ */
+const FADE = { from: ZOOM.country - 0.5, to: ZOOM.country + 0.5 };
+
+/** A fief with a sovereign above it — the only thing the zoom holds back. */
+const isSubordinate: ExpressionSpecification = [
+  "all",
+  [">", ["get", "level"], 2],
+  ["!", ["to-boolean", ["get", "standalone"]]],
+];
+
+const FILL_OPACITY: ExpressionSpecification = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  FADE.from,
+  ["case", isSubordinate, 0, 0.32],
+  FADE.to,
+  ["case", isSubordinate, 0.22, 0.32],
+];
+
+const EDGE_OPACITY: ExpressionSpecification = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  FADE.from,
+  ["case", isSubordinate, 0, 0.65],
+  FADE.to,
+  ["case", isSubordinate, 0.5, 0.65],
+];
+
+/** No fading a string: the name is simply absent below its zoom. */
+const LABEL: ExpressionSpecification = [
+  "step",
+  ["zoom"],
+  ["case", isSubordinate, "", ["get", "name"]],
+  ZOOM.country,
+  ["get", "name"],
+];
 
 /**
  * Sovereign borders as they stood on the date of the event being read — the
@@ -19,10 +75,11 @@ import { palette } from "../../theme/palette";
  * stitches and simplifies it, and the app fetches each polygon at most once per
  * session. Which is also what lets the wash show at world zoom.
  */
-export function TerritoryLayers() {
+export function TerritoryLayers({ detailed }: { detailed: boolean }) {
   const { selectedEvent } = useEvents();
   const collection = useTerritoriesAt(
     selectedEvent ? toSortKey(selectedEvent.start) : null,
+    detailed,
   );
 
   /**
@@ -58,7 +115,7 @@ export function TerritoryLayers() {
           id="territory-fill"
           type="fill"
           beforeId="label-ocean"
-          paint={{ "fill-color": ["get", "wash"], "fill-opacity": 0.32 }}
+          paint={{ "fill-color": ["get", "wash"], "fill-opacity": FILL_OPACITY }}
         />
         <Layer
           id="territory-edge"
@@ -67,8 +124,16 @@ export function TerritoryLayers() {
           layout={{ "line-join": "round" }}
           paint={{
             "line-color": palette.ink,
-            "line-width": ["interpolate", ["linear"], ["zoom"], 1, 0.6, 8, 1.6],
-            "line-opacity": 0.65,
+            "line-width": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              1,
+              0.6,
+              8,
+              ["case", isSubordinate, 1, 1.6],
+            ],
+            "line-opacity": EDGE_OPACITY,
           }}
         />
       </GeoJSONSource>
@@ -84,7 +149,7 @@ export function TerritoryLayers() {
           id="territory-label"
           type="symbol"
           layout={{
-            "text-field": ["get", "name"],
+            "text-field": LABEL,
             "text-font": fonts.country,
             "text-transform": "uppercase",
             "text-letter-spacing": 0.18,
@@ -99,8 +164,13 @@ export function TerritoryLayers() {
               6,
               ["interpolate", ["linear"], ["get", "area"], 0, 11, 60, 19],
             ],
-            // Larger polities first when labels compete for room.
-            "symbol-sort-key": ["-", 0, ["get", "area"]],
+            // Top rank before subordinates, then the larger of each, when
+            // labels compete for room.
+            "symbol-sort-key": [
+              "+",
+              ["case", isSubordinate, 1000, 0],
+              ["-", 0, ["get", "area"]],
+            ],
           }}
           paint={{
             "text-color": palette.ink,

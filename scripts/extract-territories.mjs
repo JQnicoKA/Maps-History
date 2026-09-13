@@ -52,6 +52,16 @@ const BBOX = WORLD
       north: arg("north", 72),
     };
 
+/**
+ * Which rungs of the OHM hierarchy to keep. Level 2 is the sovereign state; 3
+ * and 4 are the fiefs, principalities and free cities beneath it.
+ *
+ * Level 2 alone describes 1812 perfectly and 1453 not at all: OHM has no
+ * Kingdom of France between 1051 and 1659, because the period was mapped fief
+ * by fief instead. Dropping levels 3 and 4 emptied six centuries of Europe.
+ */
+const LEVELS = new Set(["2", "3", "4"]);
+
 /** Kept modest: the tile server rate-limits bursts with 503s. */
 const CONCURRENCY = 6;
 
@@ -119,7 +129,7 @@ async function handle([x, y]) {
   for (let i = 0; i < layer.length; i++) {
     const feature = layer.feature(i);
     const p = feature.properties;
-    if (String(p["admin_level"]) !== "2") continue;
+    if (!LEVELS.has(String(p["admin_level"]))) continue;
 
     const start = num(p["start_decdate"]);
     const end = num(p["end_decdate"]);
@@ -136,6 +146,7 @@ async function handle([x, y]) {
       JSON.stringify({
         ohm_id: p["osm_id"] ?? null,
         name: p["name"] ?? null,
+        admin_level: num(p["admin_level"]),
         start_year: start,
         end_year: end,
         geojson: geometry,

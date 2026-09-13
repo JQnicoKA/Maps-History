@@ -416,10 +416,25 @@ Le formulaire reçoit une `key` liée à l'identité de l'événement : changer
 d'événement remonte le composant, et tous les champs se ré-amorcent sans effet
 de bord.
 
-**Territoires.** La carte porte les frontières souveraines telles qu'elles
-étaient **à la date de l'événement lu** : passer d'un événement au suivant fait
-respirer les empires. Le monde entier est couvert, toutes époques — **3 923
-entités**, de l'Antiquité à aujourd'hui — d'après OpenHistoricalMap (CC0).
+**Territoires.** La carte porte les frontières telles qu'elles étaient **à la
+date de l'événement lu** : passer d'un événement au suivant fait respirer les
+empires. Le monde entier est couvert, toutes époques — **8 765 entités**, de
+l'Antiquité à aujourd'hui — d'après OpenHistoricalMap (CC0).
+
+Deux rangs de frontières — les **États souverains** et les **fiefs** (duchés,
+principautés, villes libres) — mais ce n'est pas le rang qui décide de la
+visibilité, c'est la **couverture**. Un fief qu'aucun souverain ne recouvrait à
+son époque est le rang politique le plus haut de son coin de carte : il se
+dessine à toutes les échelles. Un fief posé à l'intérieur d'un souverain attend
+le zoom pays.
+
+Sans cette distinction la carte est fausse dans les deux sens. OHM n'a aucun
+royaume de France entre 1051 et 1659 — la période a été cartographiée fief par
+fief — donc au rang souverain seul, l'Europe de 1453 est blanche de la France à
+la Russie. Mais montrer tous les fiefs partout ferait partir le monde de l'an
+2000 en confettis de provinces. Le même test tranche : **171 fiefs autonomes en
+1453, 20 en l'an 2000**. Les fiefs recouverts, eux, ne sont téléchargés qu'une
+fois le zoom pays franchi.
 
 Les données ne viennent **pas** de leurs tuiles à l'exécution, et c'est
 l'enseignement du sujet : une tuile z4 sur l'Europe contient 3 316 entités, soit
@@ -666,8 +681,11 @@ imposent ce crédit visible : ne pas le supprimer.
 - Chaîne complète vérifiée à travers RLS avec la clé publishable : lecture,
   écriture, modification, rejet des dates incohérentes, aller-retour du type et
   de la source des photos.
-- Territoires : le monde entier, toutes époques, 3 923 entités, base à 70 Mo —
-  dans les 500 Mo du plan gratuit. Voir [docs/territoires.md](docs/territoires.md).
+- Territoires : le monde entier, toutes époques, 8 765 entités (3 928 souveraines
+  et 4 837 fiefs), base à 82 Mo — dans les 500 Mo du plan gratuit. Chaîne RPC
+  vérifiée avec la clé publishable, aux quatre coins de l'échelle : 1453 rend
+  278 entités et 1,29 Mo au zoom monde, 498 et 1,79 Mo au zoom pays ; l'an 2000,
+  le cas le plus lourd, 994 entités et 7,51 Mo en 2,2 s. Voir [docs/territoires.md](docs/territoires.md).
 - Sept événements de démonstration sont en base (987 à 1812), supprimables
   depuis la fiche de chacun.
 - Le rendu n'a jamais été jugé autrement que par son auteur : la palette de

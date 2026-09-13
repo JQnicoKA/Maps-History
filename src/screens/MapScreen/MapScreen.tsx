@@ -43,6 +43,8 @@ export function MapScreen() {
     null,
   );
   const [detailOpen, setDetailOpen] = useState(false);
+  /** True from country zoom on, where the fiefs are worth drawing. */
+  const [detailed, setDetailed] = useState(false);
 
   // Selecting an event recentres the plate; the zoom the reader chose is left
   // alone on purpose.
@@ -94,12 +96,15 @@ export function MapScreen() {
           center={center}
           centerAnimationDuration={hasFramed.current ? 650 : 0}
           attributionOffset={placing ? 0 : insets.bottom + 78}
+          onDetailChange={setDetailed}
         >
           {/* Settlements first, territories after: MapLibre places symbols
               from the topmost layer down, so the country name wins the room
               against the town names crowding around its anchor. */}
           {MAP_FEATURES.places ? <PlaceLayers /> : null}
-          {MAP_FEATURES.territories ? <TerritoryLayers /> : null}
+          {MAP_FEATURES.territories ? (
+            <TerritoryLayers detailed={detailed} />
+          ) : null}
           <EventMarkers />
         </WorldMap>
       </View>
