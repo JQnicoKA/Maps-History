@@ -58,16 +58,6 @@ const FILL_OPACITY: ExpressionSpecification = [
   ["case", isSubordinate, WASH.subordinate, WASH.top],
 ];
 
-const EDGE_OPACITY: ExpressionSpecification = [
-  "interpolate",
-  ["linear"],
-  ["zoom"],
-  FADE.from,
-  ["case", isSubordinate, 0, 0.65],
-  FADE.to,
-  ["case", isSubordinate, 0.5, 0.65],
-];
-
 /** No fading a string: the name is simply absent below its zoom. */
 const LABEL: ExpressionSpecification = [
   "step",
@@ -78,9 +68,15 @@ const LABEL: ExpressionSpecification = [
 ];
 
 /**
- * Borders as they stood in the year being read — the only political lines on
- * this map. The year comes from the frieze, which is a scrubber rather than a
- * list, so these redraw for dates on which nothing in particular happened.
+ * Borders as they stood in the year being read. The year comes from the frieze,
+ * which is a scrubber rather than a list, so these redraw for dates on which
+ * nothing in particular happened.
+ *
+ * **No outline is drawn.** A territory is its wash and nothing else, and what
+ * separates two of them is that they are different colours — which only works
+ * because the washes come from map colouring and no two neighbours can ever
+ * share one. Restoring the engraved line means one `line` layer on this source,
+ * ink at 0.65, between the fill and the labels.
  *
  * The geometry comes from OpenHistoricalMap but not from its tiles: a single
  * low-zoom tile carries every boundary that ever existed there — 3 300 features
@@ -127,25 +123,6 @@ export function TerritoryLayers({ detailed }: { detailed: boolean }) {
           type="fill"
           beforeId="label-ocean"
           paint={{ "fill-color": ["get", "wash"], "fill-opacity": FILL_OPACITY }}
-        />
-        <Layer
-          id="territory-edge"
-          type="line"
-          beforeId="label-ocean"
-          layout={{ "line-join": "round" }}
-          paint={{
-            "line-color": palette.ink,
-            "line-width": [
-              "interpolate",
-              ["linear"],
-              ["zoom"],
-              1,
-              0.6,
-              8,
-              ["case", isSubordinate, 1, 1.6],
-            ],
-            "line-opacity": EDGE_OPACITY,
-          }}
         />
       </GeoJSONSource>
 
