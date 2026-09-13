@@ -351,6 +351,8 @@ enveloppant vole le geste et empêcherait les listes de défiler.
   d'impression (papier → lavis → relief → eau → grille → texte). Une couche qui
   doit changer à l'exécution ne peut pas y vivre — le style est figé au
   chargement : elle se déclare en JSX avec `beforeId`, comme `TerritoryLayers`.
+  Le `beforeId` choisit la strate : le lavis des territoires se glisse sous
+  `water`, les pastilles de villes sous `label-ocean`.
 - **Régions interactives, overlays** : `<WorldMap>` accepte des `children`
   MapLibre, comme `<EventMarkers>`. Rien à toucher dans `WorldMap.tsx`.
 - **Suppression en masse, réorganisation des photos** : `updateEvent` remplace
@@ -438,6 +440,19 @@ Le choix se paie : Cliopatria remplit 1453 de la France à la Russie là où OHM
 laissait une page blanche, mais il dit « Kingdom of France » quand OHM disait
 « Reaume de France ». Ses identifiants Wikidata offrent une sortie — voir
 [docs/territoires.md](docs/territoires.md).
+
+**Le lavis passe sous la mer.** Cliopatria est digitalisé à un point tous les
+25 km environ, si bien que ses littoraux ne suivent que grossièrement les vrais
+et que la couleur déborde dans l'eau — mesuré à +5,2 % de surface pour le
+Portugal, +9,3 % pour le Japon. Le calque `water` du style de base étant un
+remplissage **opaque** dessiné avant celui-ci, il suffit de glisser le lavis
+dessous (`beforeId="water"`) pour que la mer recouvre tout débordement, au
+tracé exact des tuiles et à tous les zooms, sans un octet de plus. Les lacs
+intérieurs cessent du même coup d'être peints.
+
+Ce qui reste est le défaut inverse — un filet de côte sans coloris là où le
+polygone s'arrête court. Le corriger demanderait un masque de terres et
+multiplierait les sommets côtiers ; voir [docs/territoires.md](docs/territoires.md).
 
 **Les couleurs sortent d'une coloration de carte**, pas d'un tirage au sort.
 Deux polités qui se sont un jour touchées n'ont jamais le même lavis. La base

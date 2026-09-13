@@ -86,6 +86,51 @@ an 1453   130 polités   0,39 Mo   2 requêtes   320 ms
 
 ---
 
+## Le lavis et le trait de côte
+
+Cliopatria est un jeu **savant**, digitalisé autour du 1:10 000 000 : un point
+tous les 25 km environ. Mesuré sur la géométrie servie —
+
+```
+Royaume de France 1453      225 segments · médiane 22,9 km · max  94 km
+Empire ottoman 1600       1 110 segments · médiane 27,3 km · max 222 km
+400 polités au hasard    32 140 segments · médiane 25,7 km
+```
+
+— contre des tuiles MapTiler qui portent la côte OSM au mètre près. Les
+littoraux ne peuvent donc pas coïncider. **Ce n'est pas notre simplification :**
+à 0,01° elle n'enlève que 11 % des points (225 → 200 pour la France de 1453), et
+la baisser ne gagnerait rien.
+
+Le déséquilibre penche du côté du débordement : le Portugal fait 96 985 km²
+chez Cliopatria contre 92 212 réels (+5,2 %), le Japon 413 216 contre 377 975
+(+9,3 %). La généralisation arrondit les caps plus qu'elle ne comble les baies.
+
+**D'où le remède gratuit** : `territory-fill` se déclare avec
+`beforeId="water"`. Le calque `water` est un remplissage opaque dessiné avant,
+donc la mer recouvre tout débordement — au tracé des tuiles, à tous les zooms,
+sans donnée supplémentaire.
+
+Reste le défaut inverse, le filet de côte sans coloris. Trois voies, si un jour
+il gêne :
+
+1. **Dilater puis laisser la mer masquer.** Aucune donnée nouvelle, mais en 1453
+   seules 28 % des terres sont attribuées : beaucoup de frontières font face au
+   vide et non à la mer, et la couleur y baverait sans rien pour la masquer.
+2. **Dilater uniquement dans la bande côtière** —
+   `p ∪ (dilate(p, 15 km) ∩ terres ∩ dilate(littoral, 15 km))`. Le troisième
+   terme est ce qui rend l'idée saine : on n'ajoute que des terres proches d'une
+   côte, jamais à l'intérieur ni dans le vide. Il faut un masque de terres
+   (Natural Earth 10m, domaine public, 10 Mo, ~1 km) et le poids par date
+   passerait d'environ 0,5 à 1,5-2 Mo, les sommets côtiers étant multipliés
+   par ~25.
+3. **Coller à la côte OSM complète** (~100 m) : ×250 sur les sommets côtiers,
+   plusieurs mégaoctets par date. C'est le mur qui nous a fait abandonner les
+   tuiles OHM en direct. La vraie réponse à ce niveau est un jeu de vector tiles
+   généralisé par zoom, fabriqué une fois avec tippecanoe.
+
+---
+
 ## Les couleurs
 
 Les lavis ne sont pas tirés au sort : ils sortent d'une **coloration de carte**,

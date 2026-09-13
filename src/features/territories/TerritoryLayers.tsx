@@ -118,10 +118,18 @@ export function TerritoryLayers({ detailed }: { detailed: boolean }) {
   return (
     <>
       <GeoJSONSource id="territories" data={collection}>
+        {/* Beneath the sea, not above it.
+            Cliopatria is digitised at about a point every 25 km, so its
+            coastlines only roughly follow the real ones and the wash spills
+            into the water — measured at +5,2 % of area for Portugal, +9,3 %
+            for Japan. The base style's `water` is an opaque fill drawn before
+            this one, so slipping underneath it lets the sea paint over every
+            overshoot, at the tiles' own precision and at every zoom, for
+            nothing. Inland lakes stop being washed over too. */}
         <Layer
           id="territory-fill"
           type="fill"
-          beforeId="label-ocean"
+          beforeId="water"
           paint={{ "fill-color": ["get", "wash"], "fill-opacity": FILL_OPACITY }}
         />
       </GeoJSONSource>
