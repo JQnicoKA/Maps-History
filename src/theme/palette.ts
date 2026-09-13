@@ -35,18 +35,29 @@ export const palette = {
   borderWash: "#B08A5E",
 
   /**
-   * Flat washes for territories, in the manner of a hand-coloured plate. Muted
-   * enough that the relief and landcover beneath still read through them.
+   * Flat washes for territories, in the manner of a hand-coloured plate.
+   *
+   * **Nine, and the count is not arbitrary.** The washes are handed out by map
+   * colouring, so that no two polities that ever shared a border share a wash.
+   * On this graph — the union of every date's map, and therefore not planar —
+   * eight colours leave exactly one border uncoloured and nine leave none.
+   * Adding or removing one means re-running `scripts/colour-polities.mjs`,
+   * whose `COLOURS` must match this length.
+   *
+   * All nine sit near L 60 and C 19 so no polity shouts louder than another;
+   * they are told apart by hue, and the periwinkle fills the one wide gap the
+   * other eight left between slate and mauve.
    */
   washes: [
-    "#B0885E",
-    "#8FA07A",
-    "#A8807E",
-    "#7E9098",
-    "#B39A63",
-    "#94867F",
-    "#7F8F6E",
-    "#A78A96",
+    "#B0885E", // terre cuite
+    "#8FA07A", // vert-de-gris
+    "#A8807E", // vieux rose
+    "#7E9098", // bleu ardoise
+    "#B39A63", // ocre
+    "#94867F", // taupe
+    "#7F8F6E", // olive
+    "#A78A96", // mauve
+    "#8E8EAE", // pervenche
   ],
 
   /** Hairlines and dividers: ink at a whisper, for modern chrome. */

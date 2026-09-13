@@ -439,6 +439,18 @@ laissait une page blanche, mais il dit « Kingdom of France » quand OHM disait
 « Reaume de France ». Ses identifiants Wikidata offrent une sortie — voir
 [docs/territoires.md](docs/territoires.md).
 
+**Les couleurs sortent d'une coloration de carte**, pas d'un tirage au sort.
+Deux polités qui se sont un jour touchées n'ont jamais le même lavis. La base
+construit le graphe de voisinage — 6 464 arêtes entre 1 448 noms, degré maximal
+120 — et `scripts/colour-polities.mjs` le colorie par DSATUR. Mesuré sur ce
+graphe : quatre couleurs laissent 8,4 % des frontières invisibles, huit en
+laissent une seule, **neuf n'en laissent aucune**. D'où les neuf lavis de
+`palette.ts` — le neuvième, une pervenche, comble le seul vide de teinte large
+que les huit autres laissaient.
+
+C'est par **nom** et non par version : un empire garde sa couleur pendant que
+ses frontières bougent, donc faire défiler la frise ne repeint pas la carte.
+
 Les données ne viennent **pas** de leurs tuiles à l'exécution, et c'est
 l'enseignement du sujet : une tuile z4 sur l'Europe contient 3 316 entités, soit
 toute frontière ayant jamais existé là. On en affiche une trentaine à une date

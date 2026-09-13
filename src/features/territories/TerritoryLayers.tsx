@@ -27,6 +27,20 @@ import { palette } from "../../theme/palette";
  */
 const FADE = { from: ZOOM.country - 0.5, to: ZOOM.country + 0.5 };
 
+/**
+ * How solid the wash sits on the plate — 0.7 leaves a little under a third of
+ * the parchment showing through.
+ *
+ * It began at 0.32, chosen so the relief and the landcover still read under
+ * the colour. That reading came at a price: eight washes at a third of their
+ * strength are hard to tell apart, and about one border in seven fell between
+ * two polities the hash had given the same colour. Map colouring fixed the
+ * second half of that; this is the first.
+ *
+ * Subordinate fiefs keep the same ratio to the top rank as they always had.
+ */
+const WASH = { top: 0.8, subordinate: 0.8 * (0.22 / 0.32) };
+
 /** A fief with a sovereign above it — the only thing the zoom holds back. */
 const isSubordinate: ExpressionSpecification = [
   "all",
@@ -39,9 +53,9 @@ const FILL_OPACITY: ExpressionSpecification = [
   ["linear"],
   ["zoom"],
   FADE.from,
-  ["case", isSubordinate, 0, 0.32],
+  ["case", isSubordinate, 0, WASH.top],
   FADE.to,
-  ["case", isSubordinate, 0.22, 0.32],
+  ["case", isSubordinate, WASH.subordinate, WASH.top],
 ];
 
 const EDGE_OPACITY: ExpressionSpecification = [

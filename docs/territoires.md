@@ -86,6 +86,83 @@ an 1453   130 polités   0,39 Mo   2 requêtes   320 ms
 
 ---
 
+## Les couleurs
+
+Les lavis ne sont pas tirés au sort : ils sortent d'une **coloration de carte**,
+de sorte que deux polités qui se sont un jour touchées n'ont jamais la même.
+
+Avant, la couleur était un hachage du nom calculé dans l'app. Réparti
+parfaitement — les 1 540 noms se partageaient huit lavis à 179-213 chacun — mais
+aveugle à la géographie : un dé ne sait pas qui touche qui. Mesuré sur les
+paires de polités qui **se touchent réellement** (`ST_Intersects`), **une
+frontière sur sept** tombait entre deux mêmes couleurs, ce qui est exactement le
+1/8 attendu d'un tirage au sort. En 1453 : France, Bretagne, Savoie et
+Valois-Anjou d'un seul lavis ; Bourgogne, Nevers, Auvergne, États du
+Saint-Empire, Suisses et Jagellon d'un autre.
+
+### Le graphe
+
+`public.polity_edges` relie deux **noms** dès qu'une version de l'un a touché
+une version de l'autre **alors que les deux existaient en même temps** :
+
+```sql
+from polities a join polities b
+  on a.name < b.name
+ and a.start_year <= b.end_year and b.start_year <= a.end_year
+ and st_intersects(a.geom, b.geom)
+```
+
+Par nom et non par version : c'est ce qui fait qu'un empire garde sa couleur
+pendant que ses frontières bougent, et donc que faire défiler la frise ne
+repeint pas la carte. Le prix est une contrainte plus forte — France et
+Bourgogne doivent différer même si elles ne se sont touchées qu'une décennie.
+
+6 464 arêtes, 1 448 noms reliés, degré moyen 8,9, **degré maximal 120**
+(l'Empire ottoman sur toute son histoire). Ce graphe est l'**union** des cartes
+de toutes les dates : il n'est donc pas planaire, et le théorème des quatre
+couleurs ne s'y applique pas.
+
+### Combien de couleurs
+
+Mesuré, pas supposé — DSATUR sur le graphe réel :
+
+| couleurs | frontières restées de même teinte |
+| --- | --- |
+| 4 | 541 sur 6 464 (8,4 %) |
+| 6 | 62 (0,96 %) |
+| 8 | 1 (0,02 %) |
+| **9** | **0** |
+
+D'où les neuf lavis de `palette.ts`. Le neuvième, une pervenche `#8E8EAE`, a été
+placé dans le seul vide de teinte large que les huit autres laissaient — 116°
+entre le bleu ardoise et le mauve — à la luminance et à la saturation moyennes
+des autres (L 60, C 18), pour qu'aucune polité ne crie plus fort qu'une autre.
+Sa plus proche voisine est à ΔE 13,8.
+
+### Le script
+
+```bash
+node scripts/colour-polities.mjs --dry   # calcule et rapporte
+node scripts/colour-polities.mjs         # puis écrit
+```
+
+DSATUR : on colorie d'abord la polité dont le voisinage porte déjà le plus de
+couleurs distinctes — la plus contrainte, celle qui risque de manquer de choix
+plus tard. Parmi les couleurs encore permises, le balayage **démarre sur le
+hachage du nom** : ça ne coûte rien, ça ne casse aucune contrainte, et ça évite
+que toutes les polités isolées sortent de la même couleur. Répartition obtenue :
+156 à 194 noms par lavis.
+
+Le résultat va dans `public.polity_wash` (1 540 lignes, 216 ko), que
+`polities_by_ids` joint pour exposer un `wash` — un **indice**, pas une couleur,
+la palette restant dans `src/theme/palette.ts`. À relancer si les frontières
+changent. `COLOURS` dans le script doit valoir `palette.washes.length`.
+
+OHM n'a pas d'équivalent : `washFor` retombe sur l'ancien hachage quand la
+propriété est absente.
+
+---
+
 ## D'où viennent les données d'OpenHistoricalMap
 
 [OpenHistoricalMap](https://www.openhistoricalmap.org) — un OpenStreetMap doté

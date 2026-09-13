@@ -6,13 +6,25 @@ import { palette } from "../../theme/palette";
 
 export type TerritoryFeature = Feature<Polygon | MultiPolygon>;
 
-/** Stable per name, so an empire keeps its colour as the years go by. */
-function washFor(name: string): string {
+/**
+ * The wash a polity is painted in.
+ *
+ * Cliopatria carries its own `wash`: an index handed out by map colouring, so
+ * that two polities which ever shared a border are never the same colour. See
+ * `scripts/colour-polities.mjs`.
+ *
+ * OpenHistoricalMap has no such index, and falls back to what both sets used
+ * before — a hash of the name. Stable per polity, but blind to geography: it
+ * gave the same wash to about one pair of neighbours in seven.
+ */
+function washFor(name: string, index: unknown): string {
+  const washes = palette.washes;
+  if (typeof index === "number") return washes[index % washes.length]!;
+
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = (hash * 31 + name.charCodeAt(i)) | 0;
   }
-  const washes = palette.washes;
   return washes[Math.abs(hash) % washes.length]!;
 }
 
@@ -56,7 +68,10 @@ async function fetchChunk(ids: string[]): Promise<TerritoryFeature[]> {
     ...feature,
     properties: {
       ...feature.properties,
-      wash: washFor(String(feature.properties?.["name"] ?? "")),
+      wash: washFor(
+        String(feature.properties?.["name"] ?? ""),
+        feature.properties?.["wash"],
+      ),
     },
   }));
 }
