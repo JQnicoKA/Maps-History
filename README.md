@@ -247,7 +247,6 @@ src/
         EventListView.tsx         la même tuile, empilée et défilante
         EventDateField.tsx        tuile de date, molettes, période
         TypePicker.tsx            rail des seize types
-        ImportanceScale.tsx       l'importance en trois barres
         PhotoViewer.tsx           photo plein écran + sa source
         FolderSelector.tsx        choix des classeurs + importance
         FolderManager.tsx         l'autre moitié : liste des classeurs
@@ -429,13 +428,22 @@ visible au repos au lieu d'être résumé dans une ligne grise. Le nom du type
 choisi est écrit à côté du titre de section, pour que l'emoji n'ait jamais à
 porter le sens tout seul.
 
-**Importance.** Trois barres montantes, remplies jusqu'au niveau choisi. Un
-contrôle segmenté donne le même poids à ses options, ce qui est précisément
-faux ici : l'importance est une **grandeur**, et faible/moyenne/élevée ne sont
-pas trois réponses sans rapport mais une échelle. Les barres le disent sans un
-mot et tiennent dans le tiers de la largeur — ce qui compte, puisqu'il y en a
-une par classeur. Le panneau de filtres, lui, garde le contrôle segmenté :
-« Toutes » y est une quatrième réponse qu'aucune barre ne saurait représenter.
+**Importance.** Un titre *Importance* et un contrôle segmenté à trois choix,
+dans la carte du classeur. Rien de plus.
+
+Il y a eu deux tentatives avant, et elles sont instructives. Trois barres
+montantes d'abord — l'importance est une *grandeur*, et un contrôle segmenté
+donne le même poids à ses options, ce qui est en principe faux. Mais pour être
+atteignables les barres demandaient 44 pt de haut chacune, et la carte devenait
+plus haute que son contenu. Un curseur ensuite, qui réglait la hauteur mais pas
+le fond : **toute commande qui se glisse à l'intérieur d'une feuille défilante
+dispute le toucher à la liste, et sur iOS la liste gagne** — une `UIScrollView`
+annule le toucher de ses enfants dès qu'elle voit le doigt bouger
+(`canCancelContentTouches`), avant que le moindre seuil en JavaScript n'ait son
+mot à dire. Geler la liste pendant le geste marchait en théorie et restait
+poissseux en pratique.
+
+Trois appuis valent mieux qu'un glissement qui marche quatre fois sur cinq.
 
 **Classement.** Une carte par classeur, portant sa couverture, son nom et son
 échelle. Avant, les classeurs étaient une ligne de résumé grise et les échelles

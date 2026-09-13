@@ -1,10 +1,15 @@
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { ImportanceScale } from "./ImportanceScale";
-import { SelectField } from "../../../components/ui";
+import { SegmentedControl, SelectField } from "../../../components/ui";
 import type { EventFolderLink, Folder, Importance } from "../types";
 import { palette } from "../../../theme/palette";
 import { radius, space, type } from "../../../theme/tokens";
+
+const IMPORTANCES: { value: Importance; label: string }[] = [
+  { value: "low", label: "Faible" },
+  { value: "medium", label: "Moyenne" },
+  { value: "high", label: "Élevée" },
+];
 
 export type FolderSelectorProps = {
   folders: Folder[];
@@ -23,6 +28,11 @@ export type FolderSelectorProps = {
  *
  * Choosing only. Folders are made in the Add sheet's other half, so filing an
  * event never turns into inventing a subject halfway through the form.
+ *
+ * The importance is a plain segmented control, tapped and nothing else. A
+ * slider was tried and taken out: any dragged control inside a scrolling sheet
+ * fights the scroll view for the touch, and on iOS the scroll view wins before
+ * JavaScript is asked. Three taps beat one drag that works four times in five.
  */
 export function FolderSelector({
   folders,
@@ -51,40 +61,43 @@ export function FolderSelector({
         const folder = folders.find((one) => one.id === link.folderId);
         return (
           <View key={link.folderId} style={styles.card}>
-            <View style={styles.cover}>
-              {folder?.photo ? (
-                <Image
-                  source={{ uri: folder.photo.url }}
-                  style={styles.coverImage}
-                />
-              ) : (
-                <Text style={styles.coverInitial}>
-                  {folder?.name.charAt(0).toUpperCase() ?? "?"}
-                </Text>
-              )}
-            </View>
+            <View style={styles.head}>
+              <View style={styles.cover}>
+                {folder?.photo ? (
+                  <Image
+                    source={{ uri: folder.photo.url }}
+                    style={styles.coverImage}
+                  />
+                ) : (
+                  <Text style={styles.coverInitial}>
+                    {folder?.name.charAt(0).toUpperCase() ?? "?"}
+                  </Text>
+                )}
+              </View>
 
-            <View style={styles.cardText}>
               <Text style={styles.name} numberOfLines={1}>
                 {folder?.name ?? "Classeur"}
               </Text>
-              <ImportanceScale
-                value={link.importance}
-                onChange={(importance) =>
-                  setImportance(link.folderId, importance)
-                }
-              />
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Retirer ${folder?.name ?? "ce classeur"}`}
+                hitSlop={8}
+                onPress={() => toggle(link.folderId)}
+                style={({ pressed }) => [styles.remove, pressed && styles.pressed]}
+              >
+                <Text style={styles.removeGlyph}>×</Text>
+              </Pressable>
             </View>
 
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Retirer ${folder?.name ?? "ce classeur"}`}
-              hitSlop={8}
-              onPress={() => toggle(link.folderId)}
-              style={({ pressed }) => [styles.remove, pressed && styles.pressed]}
-            >
-              <Text style={styles.removeGlyph}>×</Text>
-            </Pressable>
+            <Text style={styles.legend}>Importance</Text>
+            <SegmentedControl
+              segments={IMPORTANCES}
+              value={link.importance}
+              onChange={(importance) =>
+                setImportance(link.folderId, importance)
+              }
+            />
           </View>
         );
       })}
@@ -117,18 +130,18 @@ export function FolderSelector({
   );
 }
 
-const COVER = 44;
+const COVER = 40;
 
 const styles = StyleSheet.create({
   container: { gap: space.sm },
   card: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.md,
-    padding: space.sm,
+    gap: space.sm,
+    padding: space.md,
     borderRadius: radius.md,
     backgroundColor: palette.sunken,
   },
+  head: { flexDirection: "row", alignItems: "center", gap: space.md },
+  legend: { ...type.legend, color: palette.inkSoft },
   cover: {
     width: COVER,
     height: COVER,
@@ -142,8 +155,7 @@ const styles = StyleSheet.create({
   },
   coverImage: { width: "100%", height: "100%" },
   coverInitial: { fontSize: 17, fontWeight: "700", color: palette.inkFaint },
-  cardText: { flex: 1, gap: space.xs },
-  name: { fontSize: 15, fontWeight: "600", color: palette.ink },
+  name: { flex: 1, fontSize: 15, fontWeight: "600", color: palette.ink },
   remove: {
     width: 32,
     height: 32,
