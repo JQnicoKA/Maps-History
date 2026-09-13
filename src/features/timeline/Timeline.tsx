@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   PanResponder,
   StyleSheet,
@@ -7,75 +7,70 @@ import {
   type LayoutChangeEvent,
 } from "react-native";
 
-import { magnify, scaleFor, tickLabel, ticksBetween } from "./ruler";
-import { Paper } from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import { formatYear, toSortKey } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
-import { radius, space, type } from "../../theme/tokens";
+import { space } from "../../theme/tokens";
 
 /**
- * How far the frieze opens under the finger. Six is enough to separate two
- * events a decade apart on a span of eight centuries, and still leaves the far
- * ends of the rule readable rather than crushed.
+ * Years across the screen. Fixed, and that is the whole idea: the scale never
+ * changes underfoot, so a hand learns once how far a century is and the frieze
+ * can be read without looking at a number.
  */
-const MAGNIFY = 6;
+const SPAN = 300;
 
-/**
- * How close to a mark the finger has to come for that event to count as being
- * read — measured on the frieze **as drawn**, so opening the rule makes the
- * choice correspondingly finer. That is what the magnification is for.
- */
-const SNAP = 20;
+/** A stroke every ten years, a heavy one every hundred. */
+const MINOR = 10;
+const MAJOR = 100;
 
-/** A frieze of one year would be a dot; give a lone event room to sit in. */
-const MIN_SPAN = 120;
+/** Points over which the strokes die away at each edge of the screen. */
+const FADE = 96;
 
-/** Breathing room past the first and last events, as a share of the span. */
-const MARGIN = 0.06;
+/** How near the needle an event has to pass to count as being read. */
+const SNAP = 14;
 
-/**
- * The map follows the finger, but not at sixty frames a second: each new year
- * is a round trip for the borders. Far enough apart to be cheap, close enough
- * that the world keeps up with the drag.
- */
-const COMMIT_MS = 200;
+/** The map follows, but each new year is a round trip for the borders. */
+const COMMIT_MS = 180;
 
-/** Closest two light strokes may be drawn, once the lens has moved them. */
-const CULL_PX = 5;
+/** Per frame, at 60Hz. Below `STILL` years per second the glide is over. */
+const FRICTION = 0.94;
+const STILL = 6;
 
-/** Closest two year labels may sit without touching. */
-const LABEL_PX = 46;
+/** How far past the outermost events the frieze lets you wander. */
+const MARGIN = 150;
+const MIN_SPAN = 400;
 
-/**
- * The whole card is the grab zone, not just the rule itself, so the horizontal
- * padding has to come off the touch before it means anything in ruler
- * coordinates.
- */
-const INSET = space.lg;
+/** Reserved by the screen beneath the summary card. */
+export const FRIEZE_HEIGHT = 92;
 
 const clamp = (value: number, low: number, high: number) =>
   Math.min(Math.max(value, low), high);
 
-type Tick = { year: number; at: number; major: boolean; label: string | null };
+type Stroke = { year: number; at: number; major: boolean; fade: number };
 
 /**
- * The frieze is a graduated year scrubber, not a list of events.
+ * A ruler of years that runs under a fixed needle.
  *
- * Dragging it moves through the centuries continuously; letting go anywhere is
- * allowed, including on a year where nothing happened — the borders and the
- * settlements still redraw for it, which is most of the point. Events are
- * marks along the rule, and coming within reach of one is what opens it.
+ * The frieze used to hold the whole filtered period between two ends, which
+ * made its scale depend on what happened to be on screen — a century was a
+ * finger's width one moment and the whole plate the next. Here the scale is
+ * fixed at three hundred years to the screen and the ruler travels instead, so
+ * the gesture means the same thing every time and most of history is off-screen
+ * on purpose, waiting to be swiped to.
  *
- * While the finger is down the rule **opens around it**: the graduations near
- * the touch spread apart and grow finer, the ones further off close up, and
- * both ends stay where they were. The span is never cut, so the whole of it
- * stays reachable without letting go.
+ * No card behind it: strokes on the plate, fading out at both edges, the way a
+ * scale is engraved on a map rather than pasted onto it.
  */
 export function Timeline() {
   const { visibleEvents, selectedEvent, year, scrubTo } = useEvents();
   const [width, setWidth] = useState(0);
-  const [drag, setDrag] = useState<{ year: number; at: number } | null>(null);
+
+  /**
+   * The year under the needle while the reader is working it. Null the rest of
+   * the time, when the provider's year is the truth — which is what lets the
+   * chevron beside the summary card move the frieze too.
+   */
+  const [local, setLocal] = useState<number | null>(null);
 
   const marks = useMemo(
     () =>
@@ -87,313 +82,294 @@ export function Timeline() {
   );
 
   const span = useMemo(() => {
-    if (marks.length === 0) return null;
+    if (marks.length === 0) return { from: 0, to: MIN_SPAN };
     const keys = marks.map((mark) => mark.key);
-    let from = Math.min(...keys);
-    let to = Math.max(...keys);
-    const margin = Math.max((to - from) * MARGIN, 4);
-    from -= margin;
-    to += margin;
+    let from = Math.min(...keys) - MARGIN;
+    let to = Math.max(...keys) + MARGIN;
     if (to - from < MIN_SPAN) {
       const middle = (from + to) / 2;
       from = middle - MIN_SPAN / 2;
       to = middle + MIN_SPAN / 2;
     }
-    return { from, to, length: to - from };
+    return { from, to };
   }, [marks]);
 
-  /**
-   * The gesture handler is built once and never rebuilt — a PanResponder made
-   * fresh on every render loses the drag in progress. It therefore reads the
-   * geometry through a ref rather than through the closure it was born with.
-   */
-  const live = useRef({ width, span, marks, scrubTo });
-  live.current = { width, span, marks, scrubTo };
+  const at = local ?? year ?? span.from;
 
-  const grabbed = useRef(0);
+  /** Read by the gesture and the glide, neither of which may close over state. */
+  const live = useRef({ width, span, marks, scrubTo, at });
+  live.current = { width, span, marks, scrubTo, at };
+
   const committed = useRef(0);
+  const frame = useRef<number | null>(null);
+  const velocity = useRef(0);
 
-  const responder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        // The frieze sits above the map: once the finger is ours, keep it.
-        onPanResponderTerminationRequest: () => false,
+  const stop = () => {
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    frame.current = null;
+    velocity.current = 0;
+  };
 
-        onPanResponderGrant: (event) => {
-          grabbed.current = event.nativeEvent.locationX - INSET;
-          committed.current = 0;
-          move(grabbed.current, true);
-        },
-        onPanResponderMove: (_, gesture) => {
-          move(grabbed.current + gesture.dx, false);
-        },
-        onPanResponderRelease: (_, gesture) => {
-          move(grabbed.current + gesture.dx, true);
-          setDrag(null);
-        },
-        onPanResponderTerminate: () => setDrag(null),
-      }),
-    [],
-  );
+  useEffect(() => stop, []);
+
+  /** Years per point at the current width. */
+  const scale = () => SPAN / Math.max(live.current.width, 1);
 
   /**
-   * @param now  bypasses the throttle — the first touch and the release must
-   *             both land on the map immediately.
+   * Moves the rule to `next` and reports what it settled on.
+   *
+   * `magnetic` pulls the needle onto a mark that is within reach, which is what
+   * keeps the year the map draws and the event the card names from disagreeing
+   * by a decade. It is off while a flick is running: a rule that stuck to every
+   * mark it flew past would stutter rather than glide.
    */
-  function move(rawX: number, now: boolean) {
-    const { width: w, span: s, marks: m, scrubTo: commit } = live.current;
-    if (!s || w === 0) return;
+  function put(
+    next: number,
+    { commit: force, magnetic }: { commit: boolean; magnetic: boolean },
+  ) {
+    const { span: bounds, marks: m, scrubTo: commit } = live.current;
+    const free = clamp(next, bounds.from, bounds.to);
 
-    const at = clamp(rawX, 0, w);
-    const under = s.from + (at / w) * s.length;
-
-    // Nearest mark, judged on the frieze as the reader sees it: under the lens
-    // the same twenty points cover far fewer years, so the choice sharpens
-    // exactly where the reader is looking.
+    // Nearest mark to the needle, in points — so the rule holds whatever the
+    // span, and matches what the reader sees at the centre of the screen.
     let reading: { id: string; key: number } | null = null;
     let best = SNAP;
     for (const mark of m) {
-      const drawn = magnify(
-        ((mark.key - s.from) / s.length) * w,
-        at,
-        w,
-        MAGNIFY,
-      );
-      const distance = Math.abs(drawn - at);
+      const distance = Math.abs((mark.key - free) / scale());
       if (distance <= best) {
         best = distance;
         reading = mark;
       }
     }
 
-    // When a mark is read the needle goes onto the mark rather than staying
-    // under the finger, and the lens focuses there too — so the mark it has
-    // chosen is drawn exactly beneath the needle instead of a few points off.
-    setDrag({
-      year: reading ? reading.key : under,
-      at: reading ? ((reading.key - s.from) / s.length) * w : at,
-    });
+    const settled = magnetic && reading ? reading.key : free;
+    setLocal(settled);
 
     const stamp = Date.now();
-    if (now || stamp - committed.current >= COMMIT_MS) {
+    if (force || stamp - committed.current >= COMMIT_MS) {
       committed.current = stamp;
-      commit(reading ? reading.key : under, reading?.id ?? null);
+      commit(settled, reading?.id ?? null);
     }
+    return settled;
   }
 
-  const shown = drag?.year ?? year ?? span?.from ?? 0;
-  const resting =
-    span === null || width === 0
-      ? 0
-      : clamp((shown - span.from) / span.length, 0, 1) * width;
-  // The needle sits under the finger while dragging; the rule opens around it.
-  const needle = drag?.at ?? resting;
-  const lens = drag ? MAGNIFY : 1;
+  /**
+   * Carries the flick on after the finger leaves, and dies out on its own.
+   *
+   * The position is carried in a local rather than read back from state: a
+   * frame must not depend on React having re-rendered since the last one.
+   */
+  function glide(start: number) {
+    velocity.current = start;
+    let value = live.current.at;
+    let last = Date.now();
 
-  const ticks = useMemo<Tick[]>(() => {
-    if (span === null || width === 0) return [];
-    const scale = scaleFor(width / span.length, lens);
-    const place = (value: number) =>
-      magnify(((value - span.from) / span.length) * width, needle, width, lens);
+    const step = () => {
+      const now = Date.now();
+      const dt = Math.min(now - last, 48);
+      last = now;
 
-    const strokes = [
-      ...ticksBetween(span.from, span.to, scale.major).map((value) => ({
-        year: value,
-        at: place(value),
-        major: true,
-      })),
-      ...ticksBetween(span.from, span.to, scale.minor)
-        .filter((value) => value % scale.major !== 0)
-        .map((value) => ({ year: value, at: place(value), major: false })),
-    ].sort((a, b) => a.at - b.at);
+      velocity.current *= Math.pow(FRICTION, dt / 16);
+      const next = value + velocity.current * (dt / 1000);
+      const applied = put(next, { commit: false, magnetic: false });
+      const stalled = Math.abs(applied - next) > 1e-6; // reached an end
+      value = applied;
 
-    // The lens squeezes the far end of the rule together; drop whatever no
-    // longer has room to be a stroke of its own. Where a heavy stroke and a
-    // light one are competing for the same few points the heavy one wins —
-    // otherwise the compressed end turns into a row of overlapping landmarks.
-    const kept: { year: number; at: number; major: boolean }[] = [];
-    for (const stroke of strokes) {
-      const last = kept[kept.length - 1];
-      if (last && stroke.at - last.at < CULL_PX) {
-        if (stroke.major && !last.major) kept[kept.length - 1] = stroke;
-        continue;
+      if (Math.abs(velocity.current) < STILL || stalled) {
+        stop();
+        // The last step is magnetic: a flick that ends beside an event should
+        // come to rest on it, not near it.
+        put(value, { commit: true, magnetic: true });
+        setLocal(null);
+        return;
       }
-      kept.push(stroke);
+      frame.current = requestAnimationFrame(step);
+    };
+
+    frame.current = requestAnimationFrame(step);
+  }
+
+  const grabbed = useRef(0);
+
+  const responder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        // The frieze lies over the map; once the finger is ours, keep it.
+        onPanResponderTerminationRequest: () => false,
+
+        onPanResponderGrant: () => {
+          stop();
+          grabbed.current = live.current.at;
+          committed.current = 0;
+        },
+        onPanResponderMove: (_, gesture) => {
+          // Drag the rule, do not drive a cursor: pulling right brings earlier
+          // years to the needle, which is how every ruler and wheel behaves.
+          put(grabbed.current - gesture.dx * scale(), {
+            commit: false,
+            magnetic: true,
+          });
+        },
+        onPanResponderRelease: (_, gesture) => {
+          const flick = -gesture.vx * 1000 * scale();
+          if (Math.abs(flick) > STILL) {
+            glide(flick);
+            return;
+          }
+          put(live.current.at, { commit: true, magnetic: true });
+          setLocal(null);
+        },
+        onPanResponderTerminate: () => {
+          put(live.current.at, { commit: true, magnetic: true });
+          setLocal(null);
+        },
+      }),
+    [],
+  );
+
+  const centre = width / 2;
+  const perYear = width === 0 ? 0 : width / SPAN;
+
+  /** How present a stroke is at this distance from the edges. */
+  const fadeAt = (x: number) =>
+    clamp(Math.min(x, width - x) / FADE, 0, 1);
+
+  const strokes = useMemo<Stroke[]>(() => {
+    if (width === 0) return [];
+    const half = SPAN / 2 + MINOR;
+    const first = Math.ceil((at - half) / MINOR) * MINOR;
+    const out: Stroke[] = [];
+    for (let value = first; value <= at + half; value += MINOR) {
+      const x = centre + (value - at) * perYear;
+      const fade = fadeAt(x);
+      if (fade <= 0) continue;
+      out.push({
+        year: value,
+        at: x,
+        major: Math.abs(value % MAJOR) < 1e-6,
+        fade,
+      });
     }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [width, at, centre, perYear]);
 
-    let lastLabel = -Infinity;
-    return kept.map((stroke) => {
-      const labelled = stroke.major && stroke.at - lastLabel >= LABEL_PX;
-      if (labelled) lastLabel = stroke.at;
-      return { ...stroke, label: labelled ? tickLabel(stroke.year) : null };
-    });
-  }, [span, width, needle, lens]);
-
-  if (marks.length === 0 || span === null) {
+  if (marks.length === 0) {
     return (
-      <Paper>
+      <View style={styles.root}>
         <Text style={styles.empty}>Aucun événement pour ces filtres.</Text>
-      </Paper>
+      </View>
     );
   }
 
   return (
-    <Paper>
-      <View style={styles.body} {...responder.panHandlers}>
-        <View style={styles.caption}>
-          <View
-            style={[
-              styles.pill,
-              drag ? styles.pillOpen : null,
-              { left: clamp(needle - PILL / 2, 0, Math.max(width - PILL, 0)) },
-            ]}
-          >
-            <Text
-              style={[styles.pillText, drag ? styles.pillTextOpen : null]}
-              numberOfLines={1}
-            >
-              {formatYear(Math.round(shown))}
-            </Text>
-          </View>
-        </View>
+    <View
+      style={styles.root}
+      onLayout={(event: LayoutChangeEvent) =>
+        setWidth(event.nativeEvent.layout.width)
+      }
+      {...responder.panHandlers}
+    >
+      <Text style={styles.year}>{formatYear(Math.round(at))}</Text>
 
-        <View
-          style={styles.rule}
-          onLayout={(event: LayoutChangeEvent) =>
-            setWidth(event.nativeEvent.layout.width)
-          }
-        >
-          <View style={styles.baseline} />
-
-          {ticks.map((tick) => (
-            <View key={tick.year} style={[styles.tickColumn, { left: tick.at }]}>
-              <View style={tick.major ? styles.tickMajor : styles.tickMinor} />
-              {tick.label === null ? null : (
-                <Text style={styles.tickLabel} numberOfLines={1}>
-                  {tick.label}
-                </Text>
-              )}
-            </View>
-          ))}
-
-          {marks.map((mark) => (
+      <View style={styles.marks}>
+        {marks.map((mark) => {
+          const x = centre + (mark.key - at) * perYear;
+          const fade = fadeAt(x);
+          if (fade <= 0) return null;
+          const reading = mark.id === selectedEvent?.id;
+          return (
             <View
               key={mark.id}
               style={[
                 styles.mark,
-                mark.id === selectedEvent?.id ? styles.markReading : null,
-                {
-                  left: magnify(
-                    ((mark.key - span.from) / span.length) * width,
-                    needle,
-                    width,
-                    lens,
-                  ),
-                },
+                reading && styles.markReading,
+                { left: x, opacity: fade },
               ]}
             />
-          ))}
-
-          <View style={[styles.needle, { left: needle }]} />
-        </View>
+          );
+        })}
       </View>
-    </Paper>
+
+      <View style={styles.rule}>
+        {strokes.map((stroke) => (
+          <View
+            key={stroke.year}
+            style={[
+              stroke.major ? styles.major : styles.minor,
+              { left: stroke.at, opacity: stroke.fade },
+            ]}
+          />
+        ))}
+        <View style={[styles.needle, { left: centre }]} />
+      </View>
+    </View>
   );
 }
 
-const PILL = 86;
-const RULE = 42;
-const MARK = 9;
-const COLUMN = 40;
-const LINE = 9;
+const MARK = 7;
+const RULE = 26;
 
 const styles = StyleSheet.create({
-  body: {
-    paddingHorizontal: INSET,
-    paddingTop: space.sm,
-    paddingBottom: space.xs,
-  },
-  caption: { height: 26 },
-  pill: {
-    position: "absolute",
-    width: PILL,
-    alignItems: "center",
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-    backgroundColor: palette.wax,
-  },
-  pillOpen: { paddingVertical: 4 },
-  pillText: {
-    fontSize: 12,
+  root: { height: FRIEZE_HEIGHT, justifyContent: "flex-end" },
+  year: {
+    textAlign: "center",
+    fontSize: 24,
+    lineHeight: 28,
     fontWeight: "700",
     letterSpacing: 0.3,
-    color: palette.paperLight,
+    color: palette.ink,
   },
-  pillTextOpen: { fontSize: 15 },
-
-  rule: { height: RULE },
-  baseline: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: LINE,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: palette.line,
-  },
-  // Strokes hang below the line, the way they do on a rule.
-  tickColumn: {
-    position: "absolute",
-    top: LINE,
-    width: COLUMN,
-    marginLeft: -COLUMN / 2,
-    alignItems: "center",
-  },
-  tickMinor: {
-    width: StyleSheet.hairlineWidth,
-    height: 5,
-    backgroundColor: palette.inkFaint,
-  },
-  tickMajor: {
-    width: 1.5,
-    height: 11,
-    borderRadius: radius.pill,
-    backgroundColor: palette.inkSoft,
-  },
-  tickLabel: {
-    marginTop: 2,
-    fontSize: 10,
-    letterSpacing: 0.2,
-    color: palette.inkSoft,
-  },
-
-  // Events ride on the line itself, above the graduations.
+  marks: { height: MARK + space.sm, justifyContent: "flex-end" },
   mark: {
     position: "absolute",
-    top: LINE - MARK / 2,
+    bottom: 4,
     width: MARK,
     height: MARK,
     marginLeft: -MARK / 2,
-    borderRadius: radius.pill,
+    borderRadius: MARK / 2,
     backgroundColor: palette.inkSoft,
-    borderWidth: 2,
-    borderColor: palette.paperLight,
   },
-  markReading: { backgroundColor: palette.wax },
-  needle: {
+  markReading: {
+    width: MARK + 4,
+    height: MARK + 4,
+    marginLeft: -(MARK + 4) / 2,
+    borderRadius: (MARK + 4) / 2,
+    backgroundColor: palette.wax,
+  },
+  rule: { height: RULE, justifyContent: "flex-start" },
+  minor: {
     position: "absolute",
     top: 0,
+    width: StyleSheet.hairlineWidth * 2,
+    height: 9,
+    marginLeft: -StyleSheet.hairlineWidth,
+    backgroundColor: palette.inkSoft,
+  },
+  major: {
+    position: "absolute",
+    top: 0,
+    width: 1.5,
+    height: 20,
+    marginLeft: -0.75,
+    backgroundColor: palette.ink,
+  },
+  // The reading edge. Two points of wax, the height of a heavy stroke.
+  needle: {
+    position: "absolute",
+    top: -4,
     width: 2,
-    height: 24,
+    height: 28,
     marginLeft: -1,
-    borderRadius: radius.pill,
+    borderRadius: 1,
     backgroundColor: palette.wax,
   },
   empty: {
-    paddingVertical: space.xl,
     textAlign: "center",
-    ...type.body,
+    fontSize: 13,
     color: palette.inkSoft,
+    paddingBottom: space.lg,
   },
 });

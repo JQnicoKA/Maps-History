@@ -267,8 +267,7 @@ src/
       FilterButton.tsx            le mot « Tous » en haut de l'écran
       FilterModal.tsx             classeurs + importance de chacun
     timeline/
-      Timeline.tsx                règle graduée : glisser, repères, loupe
-      ruler.ts                    pas des graduations et déformation de la loupe
+      Timeline.tsx                règle d'années défilant sous une aiguille
   components/
     ui/                           système d'interface : Sheet, Paper, InkButton,
                                   SegmentedControl, SelectField, Chip…
@@ -656,61 +655,54 @@ deux événements il n'en reste que deux, ceux qui encadrent l'année. Au
 lancement, le plus ancien de la période filtrée est sélectionné d'office, sans
 animation de caméra.
 
-**La frise du bas est un curseur d'années, pas une liste d'événements.** C'est
-le changement de modèle qui commande tout le reste : la source de vérité de
-l'application est **l'année lue**, et non l'événement sélectionné.
+**La frise du bas est une règle d'années qui défile sous une aiguille fixe.**
+C'est le modèle de l'application : sa source de vérité est **l'année lue**, pas
+l'événement sélectionné.
 
-On glisse le doigt dessus pour traverser les siècles en continu, et on peut
-s'arrêter **où l'on veut, y compris sur une année où rien ne s'est produit** —
-les frontières et les villes se redessinent quand même pour cette année-là, ce
-qui est l'essentiel de l'intérêt. Les événements sont des repères sur le
-chemin : venir à moins d'une largeur de doigt de l'un d'eux l'ouvre, s'en
-éloigner le referme.
+Elle tenait auparavant toute la période filtrée entre deux bouts, ce qui faisait
+dépendre son échelle de ce qui se trouvait à l'écran — un siècle valait la
+largeur d'un doigt à un moment et la planche entière au suivant. **L'échelle est
+maintenant fixe : trois cents ans à l'écran**, soit 1,3 pt par an et 130 pt par
+siècle, et c'est la règle qui voyage. Le geste veut donc dire la même chose à
+chaque fois, et l'essentiel de l'histoire est hors champ **à dessein**, à portée
+de balayage.
 
-**C'est une règle graduée.** Petits traits tous les 25 ans, gros trait tous les
-100, année inscrite sous un gros trait sur deux — les pas sont choisis sur une
-échelle fixe (1, 2, 5, 10, 25, 50, 100, 250…) pour qu'une graduation tous les
-sept ans, qui se lirait comme un accident, ne puisse jamais sortir. Les
-événements sont des pastilles posées sur la ligne, au-dessus des graduations.
+```
+                1453
+   ·      ·      ┃      ·          ·      ← marqueurs d'événements
+ │ │ ┃ │ │ │ │ │ ┃ │ │ │ │ │ ┃ │ │ │ │    ← petits traits tous les 10 ans,
+                                             gros tous les 100
+```
 
-**La loupe s'ouvre sur la règle elle-même**, pas dans un panneau au-dessus.
-Quand le doigt se pose, les graduations autour de lui s'écartent, celles du
-lointain se resserrent, et **les deux bouts ne bougent pas** : tout l'intervalle
-reste à l'écran et reste atteignable sans lever le doigt. Chaque côté du foyer
-suit une courbe de Möbius, `m·t / (1 + (m−1)·t)` — la seule qui fixe les deux
-extrémités, multiplie l'échelle par exactement `m` au foyer, et ne revient
-jamais sur ses pas.
+**Pas de carton derrière** : des traits posés sur la planche, qui s'éteignent en
+fondu sur les 96 derniers points de chaque bord — une échelle gravée sur la
+carte plutôt que collée dessus. Le fondu est calculé par trait, sans dégradé ni
+dépendance supplémentaire, puisque les traits sont de toute façon dessinés un
+par un. L'année lue est écrite au-dessus du centre, les marqueurs d'événements
+entre elle et la règle.
 
-Deux conséquences, toutes deux voulues :
-
-- Les petits traits **s'affinent** quand la règle s'ouvre : ils passent de 25 à
-  5 ans. Les gros traits, eux, restent tous les 100 ans — un repère qui bouge
-  n'est plus un repère.
-- Le seuil de sélection se mesure sur la règle **telle qu'elle est dessinée**.
-  Vingt points couvrent six fois moins d'années sous la loupe, donc viser
-  devient six fois plus précis exactement là où on regarde. Et quand un repère
-  est attrapé, l'aiguille se pose **dessus** plutôt que de rester sous le doigt.
-
-Les réglages sont en tête de `Timeline.tsx` :
+On peut s'arrêter **où l'on veut, y compris sur une année où rien ne s'est
+produit** — les frontières et les villes se redessinent quand même, ce qui est
+l'essentiel de l'intérêt.
 
 | | |
 | --- | --- |
-| `MAGNIFY = 6` | l'ouverture de la règle sous le doigt. |
-| `SNAP = 20` | distance en points, sur la règle dessinée, sous laquelle un repère est « lu ». |
-| `COMMIT_MS = 200` | la carte suit le doigt, mais pas à soixante images par seconde : chaque nouvelle année est un aller-retour pour les frontières. |
-| `MIN_SPAN = 120` | une frise d'une seule année serait un point ; un événement isolé a droit à de la place autour de lui. |
+| `SPAN = 300` | années à l'écran. L'échelle, et elle ne bouge jamais. |
+| `SNAP = 14` | points : à cette distance de l'aiguille, un événement est « lu ». Soit une dizaine d'années à cette échelle. |
+| `COMMIT_MS = 180` | la carte suit, mais chaque nouvelle année est un aller-retour pour les frontières. |
+| `FRICTION = 0.94` | l'amortissement du lancer, par image à 60 Hz. |
 
-L'arithmétique — choix des pas, déformation, élagage des traits que la loupe a
-rapprochés — est dans `ruler.ts`, pure et testable à part.
+**Le lancer et le magnétisme se contredisent, donc ils ne coexistent pas.**
+Pendant le glissement, l'aiguille est attirée par un marqueur qui passe à moins
+de 14 points — c'est ce qui empêche l'année que dessine la carte et l'événement
+que nomme la tuile de diverger d'une décennie. Pendant le lancer, le magnétisme
+est coupé : une règle qui s'accrocherait à chaque marqueur survolé hoquetterait
+au lieu de filer. Il est rallumé pour la dernière image, pour qu'un lancer qui
+s'achève près d'un événement se pose dessus et non à côté.
 
-L'intervalle va du plus ancien au plus récent des événements filtrés, avec 6 %
-de marge de part et d'autre. Les bornes ne sont pas imprimées — les graduations
-disent déjà où l'on est.
-
-Les villes, elles, **attendent que le doigt s'arrête** : elles pèsent jusqu'à
-2,2 Mo par date contre moins d'un mégaoctet pour les frontières, donc
-`usePlacesAt` amortit la demande de 350 ms et arrondit l'année à l'entier. Les
-frontières suivent le geste, les villes le rattrapent.
+La position du lancer est portée par une variable locale et non relue depuis
+l'état React : une image ne doit pas dépendre du fait que React ait rendu depuis
+la précédente.
 
 Ouvrir un événement — sur la carte ou sur la frise — recentre la planche **sans
 changer le zoom** et fait apparaître une tuile de résumé ; la tuile ouvre la

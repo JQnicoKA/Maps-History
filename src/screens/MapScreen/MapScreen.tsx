@@ -22,11 +22,22 @@ import { LocationReticle } from "../../features/events/components/LocationReticl
 import { FilterButton } from "../../features/filters/FilterButton";
 import { PlaceLayers } from "../../features/places/PlaceLayers";
 import { TerritoryLayers } from "../../features/territories/TerritoryLayers";
-import { Timeline } from "../../features/timeline/Timeline";
+import { FRIEZE_HEIGHT, Timeline } from "../../features/timeline/Timeline";
 import { palette } from "../../theme/palette";
-import { radius, shadow } from "../../theme/tokens";
+import { radius, shadow, space } from "../../theme/tokens";
 
 type DraftLocation = { longitude: number; latitude: number };
+
+/**
+ * The strip kept clear at the very bottom for the map credits.
+ *
+ * They used to float above the frieze, where they read as one more piece of
+ * chrome. Under it they are a colophon: the last line on the plate, out of the
+ * way of everything one actually touches. Measured from the safe area rather
+ * than from the screen edge, so the line clears the home indicator on the
+ * phones that have one and does not hang off the bottom on those that do not.
+ */
+const CREDITS_STRIP = 22;
 
 export function MapScreen() {
   const insets = useSafeAreaInsets();
@@ -95,7 +106,7 @@ export function MapScreen() {
           mapRef={mapRef}
           center={center}
           centerAnimationDuration={hasFramed.current ? 650 : 0}
-          attributionOffset={placing ? 0 : insets.bottom + 78}
+          attributionOffset={placing ? 0 : insets.bottom + 4}
           onDetailChange={setDetailed}
         >
           {/* Settlements first, territories after: MapLibre places symbols
@@ -147,8 +158,25 @@ export function MapScreen() {
             </View>
           </View>
 
+          {/* Full width, outside the padded column: the strokes have to reach
+              the edges of the screen to fade out against them. */}
           <View
-            style={[styles.bottom, { bottom: insets.bottom + 8 }]}
+            style={[
+              styles.frieze,
+              { bottom: insets.bottom + CREDITS_STRIP },
+            ]}
+          >
+            <Timeline />
+          </View>
+
+          <View
+            style={[
+              styles.bottom,
+              {
+                bottom:
+                  insets.bottom + CREDITS_STRIP + FRIEZE_HEIGHT + space.sm,
+              },
+            ]}
             pointerEvents="box-none"
           >
             {error ? (
@@ -186,7 +214,6 @@ export function MapScreen() {
                 </Pressable>
               </View>
             ) : null}
-            <Timeline />
           </View>
         </>
       )}
@@ -246,6 +273,7 @@ const styles = StyleSheet.create({
   stage: { flex: 1 },
   hidden: { display: "none" },
   bottom: { position: "absolute", left: 10, right: 10, gap: 8 },
+  frieze: { position: "absolute", left: 0, right: 0 },
   // Stretched, not centred: the button takes the tile's height by following
   // it rather than by being told a number that would drift the day the tile
   // grows a line.
