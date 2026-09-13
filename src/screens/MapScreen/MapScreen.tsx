@@ -1,12 +1,12 @@
 import type { LngLat, MapRef } from "@maplibre/maplibre-react-native";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MissingConfigNotice } from "./MissingConfigNotice";
 import { ViewToggleButton, type ScreenView } from "./ViewToggleButton";
-import { GlyphButton, Paper } from "../../components/ui";
+import { Paper } from "../../components/ui";
 import { ParchmentOverlay, WorldMap } from "../../components/WorldMap";
 import { env } from "../../config/env";
 import { MAP_FEATURES } from "../../config/map";
@@ -24,6 +24,7 @@ import { PlaceLayers } from "../../features/places/PlaceLayers";
 import { TerritoryLayers } from "../../features/territories/TerritoryLayers";
 import { Timeline } from "../../features/timeline/Timeline";
 import { palette } from "../../theme/palette";
+import { radius, shadow } from "../../theme/tokens";
 
 type DraftLocation = { longitude: number; latitude: number };
 
@@ -165,16 +166,24 @@ export function MapScreen() {
                 </View>
                 {/* The frieze moves through years; this moves through events,
                     which is the other thing a reader wants — and it is next to
-                    the tile it advances rather than off at the screen's edge. */}
-                <GlyphButton
+                    the tile it advances rather than off at the screen's edge.
+                    In wax, like the year pill on the frieze and the ring round
+                    the marker: the colour this map uses for "where you are". */}
+                <Pressable
+                  accessibilityRole="button"
                   accessibilityLabel="Événement suivant"
                   disabled={neighbours.next === null}
                   onPress={() =>
                     neighbours.next && selectEvent(neighbours.next.id)
                   }
+                  style={({ pressed }) => [
+                    styles.next,
+                    pressed && styles.nextPressed,
+                    neighbours.next === null && styles.nextOff,
+                  ]}
                 >
                   <Text style={styles.chevron}>›</Text>
-                </GlyphButton>
+                </Pressable>
               </View>
             ) : null}
             <Timeline />
@@ -237,14 +246,30 @@ const styles = StyleSheet.create({
   stage: { flex: 1 },
   hidden: { display: "none" },
   bottom: { position: "absolute", left: 10, right: 10, gap: 8 },
-  summaryRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  // Stretched, not centred: the button takes the tile's height by following
+  // it rather than by being told a number that would drift the day the tile
+  // grows a line.
+  summaryRow: { flexDirection: "row", alignItems: "stretch", gap: 8 },
   summary: { flex: 1 },
+  next: {
+    width: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    // The same corner and the same elevation as Paper, so the two read as one
+    // object cut in two rather than as a card with a button parked beside it.
+    borderRadius: radius.lg,
+    backgroundColor: palette.wax,
+    ...shadow.soft,
+  },
+  nextPressed: { backgroundColor: palette.waxDeep },
+  nextOff: { opacity: 0.3 },
   chevron: {
-    fontSize: 26,
-    lineHeight: 30,
-    color: palette.ink,
+    fontSize: 30,
+    lineHeight: 34,
+    fontWeight: "600",
+    color: palette.paperLight,
     // The chevron glyph sits low in its box; nudge it back to centre.
-    marginTop: -2,
+    marginTop: -3,
   },
   error: {
     padding: 10,
