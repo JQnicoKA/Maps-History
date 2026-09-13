@@ -23,7 +23,6 @@ import { FilterButton } from "../../features/filters/FilterButton";
 import { PlaceLayers } from "../../features/places/PlaceLayers";
 import { TerritoryLayers } from "../../features/territories/TerritoryLayers";
 import { Timeline } from "../../features/timeline/Timeline";
-import { TimelineArrow } from "../../features/timeline/TimelineArrow";
 import { palette } from "../../theme/palette";
 
 type DraftLocation = { longitude: number; latitude: number };
@@ -162,13 +161,7 @@ export function MapScreen() {
                 onOpen={() => setDetailOpen(true)}
               />
             ) : null}
-            <View style={styles.timelineRow} pointerEvents="box-none">
-              <TimelineArrow direction="previous" />
-              <View style={styles.timeline}>
-                <Timeline />
-              </View>
-              <TimelineArrow direction="next" />
-            </View>
+            <Timeline />
           </View>
         </>
       )}
@@ -228,8 +221,6 @@ const styles = StyleSheet.create({
   stage: { flex: 1 },
   hidden: { display: "none" },
   bottom: { position: "absolute", left: 10, right: 10, gap: 8 },
-  timelineRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  timeline: { flex: 1 },
   error: {
     padding: 10,
     fontSize: 12,

@@ -263,8 +263,8 @@ src/
       FilterButton.tsx            le mot « Tous » en haut de l'écran
       FilterModal.tsx             classeurs + importance de chacun
     timeline/
-      Timeline.tsx                frise en barre d'échelle graduée
-      TimelineArrow.tsx           flèches, de part et d'autre de la frise
+      Timeline.tsx                règle graduée : glisser, repères, loupe
+      ruler.ts                    pas des graduations et déformation de la loupe
   components/
     ui/                           système d'interface : Sheet, Paper, InkButton,
                                   SegmentedControl, SelectField, Chip…
@@ -476,9 +476,9 @@ Se coupe dans `MAP_FEATURES.territories`.
 
 **Deux vues.** Le bouton en haut à gauche remplace la carte par une liste
 défilante des mêmes tuiles, et inversement. Il montre toujours la vue vers
-laquelle il mène, jamais celle où l'on est. Filtres, bouton `+`, frise et
-flèches sont communs aux deux : ce sont deux fenêtres sur la même sélection, et
-avancer d'un événement dans l'une fait défiler l'autre.
+laquelle il mène, jamais celle où l'on est. Filtres, bouton `+` et frise sont
+communs aux deux : ce sont deux fenêtres sur la même sélection, et avancer d'un
+événement dans l'une fait défiler l'autre.
 
 Les deux scènes restent **montées** en permanence, la cachée mise à
 `display: "none"`. Démonter la carte reviendrait à jeter le cadrage que vous
@@ -493,17 +493,68 @@ liste déroulante de classeurs, puis pour chaque classeur coché son importance,
 événements s'additionnent. Le filtre pilote la carte *et* la frise.
 
 **Parcourir.** La carte ne montre jamais plus de trois événements : celui qu'on
-lit, cerné de cire, le précédent estompé et le suivant assombri. Passer au
-suivant fait glisser la fenêtre d'un cran. Au lancement, le plus ancien de la
-période filtrée est sélectionné d'office, sans animation de caméra.
+lit, cerné de cire, le précédent estompé et le suivant assombri. À l'arrêt entre
+deux événements il n'en reste que deux, ceux qui encadrent l'année. Au
+lancement, le plus ancien de la période filtrée est sélectionné d'office, sans
+animation de caméra.
 
-La frise du bas est un curseur : une piste dont la part parcourue est remplie,
-un point par événement, et l'année qu'on regarde dans une pilule de cire
-au-dessus du marqueur. Les bornes de l'intervalle ne sont pas imprimées — la
-pilule dit déjà où l'on est, et deux années de plus ne coûteraient que de la
-hauteur sur un contrôle posé au-dessus de la carte. Les flèches l'encadrent, à
-gauche et à droite de l'écran. Cliquer un événement —
-sur la carte, sur la frise ou via les flèches — recentre la planche **sans
+**La frise du bas est un curseur d'années, pas une liste d'événements.** C'est
+le changement de modèle qui commande tout le reste : la source de vérité de
+l'application est **l'année lue**, et non l'événement sélectionné.
+
+On glisse le doigt dessus pour traverser les siècles en continu, et on peut
+s'arrêter **où l'on veut, y compris sur une année où rien ne s'est produit** —
+les frontières et les villes se redessinent quand même pour cette année-là, ce
+qui est l'essentiel de l'intérêt. Les événements sont des repères sur le
+chemin : venir à moins d'une largeur de doigt de l'un d'eux l'ouvre, s'en
+éloigner le referme.
+
+**C'est une règle graduée.** Petits traits tous les 25 ans, gros trait tous les
+100, année inscrite sous un gros trait sur deux — les pas sont choisis sur une
+échelle fixe (1, 2, 5, 10, 25, 50, 100, 250…) pour qu'une graduation tous les
+sept ans, qui se lirait comme un accident, ne puisse jamais sortir. Les
+événements sont des pastilles posées sur la ligne, au-dessus des graduations.
+
+**La loupe s'ouvre sur la règle elle-même**, pas dans un panneau au-dessus.
+Quand le doigt se pose, les graduations autour de lui s'écartent, celles du
+lointain se resserrent, et **les deux bouts ne bougent pas** : tout l'intervalle
+reste à l'écran et reste atteignable sans lever le doigt. Chaque côté du foyer
+suit une courbe de Möbius, `m·t / (1 + (m−1)·t)` — la seule qui fixe les deux
+extrémités, multiplie l'échelle par exactement `m` au foyer, et ne revient
+jamais sur ses pas.
+
+Deux conséquences, toutes deux voulues :
+
+- Les petits traits **s'affinent** quand la règle s'ouvre : ils passent de 25 à
+  5 ans. Les gros traits, eux, restent tous les 100 ans — un repère qui bouge
+  n'est plus un repère.
+- Le seuil de sélection se mesure sur la règle **telle qu'elle est dessinée**.
+  Vingt points couvrent six fois moins d'années sous la loupe, donc viser
+  devient six fois plus précis exactement là où on regarde. Et quand un repère
+  est attrapé, l'aiguille se pose **dessus** plutôt que de rester sous le doigt.
+
+Les réglages sont en tête de `Timeline.tsx` :
+
+| | |
+| --- | --- |
+| `MAGNIFY = 6` | l'ouverture de la règle sous le doigt. |
+| `SNAP = 20` | distance en points, sur la règle dessinée, sous laquelle un repère est « lu ». |
+| `COMMIT_MS = 200` | la carte suit le doigt, mais pas à soixante images par seconde : chaque nouvelle année est un aller-retour pour les frontières. |
+| `MIN_SPAN = 120` | une frise d'une seule année serait un point ; un événement isolé a droit à de la place autour de lui. |
+
+L'arithmétique — choix des pas, déformation, élagage des traits que la loupe a
+rapprochés — est dans `ruler.ts`, pure et testable à part.
+
+L'intervalle va du plus ancien au plus récent des événements filtrés, avec 6 %
+de marge de part et d'autre. Les bornes ne sont pas imprimées — les graduations
+disent déjà où l'on est.
+
+Les villes, elles, **attendent que le doigt s'arrête** : elles pèsent jusqu'à
+2,2 Mo par date contre moins d'un mégaoctet pour les frontières, donc
+`usePlacesAt` amortit la demande de 350 ms et arrondit l'année à l'entier. Les
+frontières suivent le geste, les villes le rattrapent.
+
+Ouvrir un événement — sur la carte ou sur la frise — recentre la planche **sans
 changer le zoom** et fait apparaître une tuile de résumé ; la tuile ouvre la
 fiche complète.
 

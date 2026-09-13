@@ -3,7 +3,6 @@ import { GeoJSONSource, Layer } from "@maplibre/maplibre-react-native";
 
 import { usePlacesAt } from "./usePlacesAt";
 import { useEvents } from "../events/EventsProvider";
-import { toSortKey } from "../events/historicalDate";
 import { fonts } from "../../map/style/typography";
 import { palette } from "../../theme/palette";
 
@@ -51,15 +50,13 @@ const RADIUS: ExpressionSpecification = [
 ];
 
 /**
- * Settlements as they stood on the date of the event being read. The base
- * tileset's own place labels were removed from the style: they are today's, and
- * this map never shows two epochs at once.
+ * Settlements as they stood in the year being read. The base tileset's own
+ * place labels were removed from the style: they are today's, and this map
+ * never shows two epochs at once.
  */
 export function PlaceLayers() {
-  const { selectedEvent } = useEvents();
-  const collection = usePlacesAt(
-    selectedEvent ? toSortKey(selectedEvent.start) : null,
-  );
+  const { year } = useEvents();
+  const collection = usePlacesAt(year);
 
   if (!collection) return null;
 

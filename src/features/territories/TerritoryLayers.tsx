@@ -7,7 +7,6 @@ import { useTerritoriesAt } from "./useTerritoriesAt";
 import { ZOOM } from "../../config/map";
 import { fonts } from "../../map/style/typography";
 import { useEvents } from "../events/EventsProvider";
-import { toSortKey } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
 
 /**
@@ -65,8 +64,9 @@ const LABEL: ExpressionSpecification = [
 ];
 
 /**
- * Sovereign borders as they stood on the date of the event being read — the
- * only political lines on this map.
+ * Borders as they stood in the year being read — the only political lines on
+ * this map. The year comes from the frieze, which is a scrubber rather than a
+ * list, so these redraw for dates on which nothing in particular happened.
  *
  * The geometry comes from OpenHistoricalMap but not from its tiles: a single
  * low-zoom tile carries every boundary that ever existed there — 3 300 features
@@ -76,11 +76,8 @@ const LABEL: ExpressionSpecification = [
  * session. Which is also what lets the wash show at world zoom.
  */
 export function TerritoryLayers({ detailed }: { detailed: boolean }) {
-  const { selectedEvent } = useEvents();
-  const collection = useTerritoriesAt(
-    selectedEvent ? toSortKey(selectedEvent.start) : null,
-    detailed,
-  );
+  const { year } = useEvents();
+  const collection = useTerritoriesAt(year, detailed);
 
   /**
    * One label anchor per entity, not per polygon: MapLibre labels every part of

@@ -10,6 +10,7 @@ import {
 
 import * as api from "./api";
 import { matchesFilters } from "./filtering";
+import { toSortKey } from "./historicalDate";
 import {
   NO_FILTERS,
   type EventDraft,
@@ -26,16 +27,34 @@ type EventsContextValue = {
   folders: Folder[];
   filters: EventFilters;
   setFilters: (filters: EventFilters) => void;
+  /**
+   * The date the map is showing, as a position on the continuous axis. This —
+   * and not the selected event — is what the borders and the settlements
+   * follow, so the reader can come to rest on a year where nothing happened
+   * and still watch the world of that year.
+   *
+   * Null only until the first events arrive.
+   */
+  year: number | null;
+  /** The event being read, when the year has come to rest on one. */
   selectedEvent: HistoricalEvent | null;
-  /** The event being read and its immediate chronological neighbours. */
+  /**
+   * The event being read and the ones flanking the current year. `current` is
+   * null between two events; `previous` and `next` are still the ones on
+   * either side.
+   */
   neighbours: {
     previous: HistoricalEvent | null;
     current: HistoricalEvent | null;
     next: HistoricalEvent | null;
   };
+  /** Selects an event and moves the year onto its date. */
   selectEvent: (id: string | null) => void;
-  /** Moves the selection along the timeline; clamped at both ends. */
-  step: (delta: 1 | -1) => void;
+  /**
+   * Moves the year, with the event the timeline decided is close enough to
+   * count as read — null when the finger has come to rest between two.
+   */
+  scrubTo: (year: number, eventId: string | null) => void;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -57,6 +76,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [filters, setFilters] = useState<EventFilters>(NO_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [year, setYear] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,8 +111,22 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     [visibleEvents, selectedId],
   );
 
-  // A filter change can hide the selected event; drop the stale selection so
-  // the summary card and the arrows never point at something off the map.
+  const selectEvent = useCallback(
+    (id: string | null) => {
+      setSelectedId(id);
+      const event = id === null ? null : events.find((e) => e.id === id);
+      if (event) setYear(toSortKey(event.start));
+    },
+    [events],
+  );
+
+  const scrubTo = useCallback((next: number, eventId: string | null) => {
+    setYear(next);
+    setSelectedId(eventId);
+  }, []);
+
+  // A filter change can hide the selected event; drop the stale selection but
+  // stay on the year, so the map does not jump out from under the reader.
   useEffect(() => {
     if (selectedId !== null && selectedEvent === null) setSelectedId(null);
   }, [selectedId, selectedEvent]);
@@ -100,35 +134,33 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   // The map is never blank: with nothing chosen it opens on the earliest event
   // of whatever the filters select.
   useEffect(() => {
-    if (selectedId === null && visibleEvents.length > 0) {
-      setSelectedId(visibleEvents[0]!.id);
+    if (year === null && visibleEvents.length > 0) {
+      const first = visibleEvents[0]!;
+      setSelectedId(first.id);
+      setYear(toSortKey(first.start));
     }
-  }, [selectedId, visibleEvents]);
+  }, [year, visibleEvents]);
 
   const neighbours = useMemo(() => {
     const index = visibleEvents.findIndex((event) => event.id === selectedId);
-    if (index === -1) return { previous: null, current: null, next: null };
+    if (index !== -1) {
+      return {
+        previous: visibleEvents[index - 1] ?? null,
+        current: visibleEvents[index] ?? null,
+        next: visibleEvents[index + 1] ?? null,
+      };
+    }
+    // Resting between two events: nothing is being read, but the arrows and
+    // the faded map markers still need to know which way is which.
+    const after = year === null
+      ? -1
+      : visibleEvents.findIndex((event) => toSortKey(event.start) > year);
     return {
-      previous: visibleEvents[index - 1] ?? null,
-      current: visibleEvents[index] ?? null,
-      next: visibleEvents[index + 1] ?? null,
+      previous: (after === -1 ? visibleEvents[visibleEvents.length - 1] : visibleEvents[after - 1]) ?? null,
+      current: null,
+      next: (after === -1 ? undefined : visibleEvents[after]) ?? null,
     };
-  }, [visibleEvents, selectedId]);
-
-  const step = useCallback(
-    (delta: 1 | -1) => {
-      if (visibleEvents.length === 0) return;
-      const current = visibleEvents.findIndex((e) => e.id === selectedId);
-      const next =
-        current === -1
-          ? delta === 1
-            ? 0
-            : visibleEvents.length - 1
-          : Math.min(Math.max(current + delta, 0), visibleEvents.length - 1);
-      setSelectedId(visibleEvents[next]?.id ?? null);
-    },
-    [visibleEvents, selectedId],
-  );
+  }, [visibleEvents, selectedId, year]);
 
   const addFolder = useCallback(async (name: string) => {
     const folder = await api.createFolder(name);
@@ -172,10 +204,11 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       folders,
       filters,
       setFilters,
+      year,
       selectedEvent,
       neighbours,
-      selectEvent: setSelectedId,
-      step,
+      selectEvent,
+      scrubTo,
       loading,
       error,
       refresh,
@@ -185,8 +218,9 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       removeEvent,
     }),
     [
-      events, visibleEvents, folders, filters, selectedEvent, neighbours, step,
-      loading, error, refresh, addFolder, addEvent, editEvent, removeEvent,
+      events, visibleEvents, folders, filters, year, selectedEvent, neighbours,
+      selectEvent, scrubTo, loading, error, refresh, addFolder, addEvent,
+      editEvent, removeEvent,
     ],
   );
 
