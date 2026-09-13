@@ -39,14 +39,34 @@ const LABEL: ExpressionSpecification = [
   ["get", "name"],
 ];
 
+/**
+ * A solid ink dot, the way a settlement is marked on an engraved plate.
+ *
+ * It was a ring — paper fill, ink stroke — which at these sizes reads as a
+ * small white blob rather than as a point. A filled dot carries far more weight
+ * per pixel, so these radii are well under half what the ring needed.
+ *
+ * The name does the work; the dot only says precisely where. Hence radii this
+ * small — a town at continent zoom is a point and a half across.
+ *
+ * **0.7 is the floor.** Below it a circle stops covering a whole device pixel
+ * even at 3x, so antialiasing renders it as a grey smudge rather than as ink,
+ * and the dots lose their bite instead of gaining discretion. Shrink further by
+ * raising the zoom at which they appear, not by going under this.
+ */
+const DOT = {
+  city: { near: 0.9, far: 1.7 },
+  town: { near: 0.7, far: 1.2 },
+};
+
 const RADIUS: ExpressionSpecification = [
   "interpolate",
   ["linear"],
   ["zoom"],
   3,
-  ["case", ["==", ["get", "kind"], "city"], 2, 1.4],
+  ["case", ["==", ["get", "kind"], "city"], DOT.city.near, DOT.town.near],
   9,
-  ["case", ["==", ["get", "kind"], "city"], 3.4, 2.4],
+  ["case", ["==", ["get", "kind"], "city"], DOT.city.far, DOT.town.far],
 ];
 
 /**
@@ -68,11 +88,8 @@ export function PlaceLayers() {
         beforeId="label-ocean"
         paint={{
           "circle-radius": RADIUS,
-          "circle-color": palette.paperLight,
-          "circle-stroke-color": palette.ink,
-          "circle-stroke-width": 1,
+          "circle-color": palette.ink,
           "circle-opacity": VISIBLE,
-          "circle-stroke-opacity": VISIBLE,
         }}
       />
       <Layer
