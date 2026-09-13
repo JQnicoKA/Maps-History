@@ -7,9 +7,19 @@ import { fonts, HALO } from "../../map/style/typography";
 import { palette } from "../../theme/palette";
 
 /**
- * A city earns its ring earlier than a town: below these zooms the plate would
- * be a field of dots long before the names became useful.
+ * The zoom at which each rank of settlement joins the plate.
  *
+ * A city earns its place before a town, and neither appears early: below these
+ * the plate would be a field of dots long before the names became useful, and
+ * a historical map is meant to be read, not counted.
+ *
+ * Raising these is the right way to thin the plate out. Shrinking the dots
+ * further is not — under 0.7 points of radius they stop being ink and start
+ * being grey.
+ */
+const APPEARS = { city: 4.5, town: 6.5 };
+
+/**
  * One `step` on the zoom, with the per-kind test inside its stops — MapLibre
  * allows a single zoom-based subexpression per property, and branching on the
  * kind first (two steps, one per branch) crashes the renderer at style load.
@@ -18,9 +28,9 @@ const VISIBLE: ExpressionSpecification = [
   "step",
   ["zoom"],
   0,
-  3,
+  APPEARS.city,
   ["case", ["==", ["get", "kind"], "city"], 1, 0],
-  5.5,
+  APPEARS.town,
   1,
 ];
 
@@ -28,14 +38,18 @@ const VISIBLE: ExpressionSpecification = [
  * Below its zoom the name is dropped outright rather than faded to nothing: a
  * transparent symbol still claims its box in the collision pass and evicts the
  * lettering around it — the country name first of all.
+ *
+ * Same thresholds as the dots, from the same constant: a name without its point
+ * or a point without its name would each be a bug nobody would think to look
+ * for.
  */
 const LABEL: ExpressionSpecification = [
   "step",
   ["zoom"],
   "",
-  3,
+  APPEARS.city,
   ["case", ["==", ["get", "kind"], "city"], ["get", "name"], ""],
-  5.5,
+  APPEARS.town,
   ["get", "name"],
 ];
 
