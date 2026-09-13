@@ -1,6 +1,4 @@
-import * as ImagePicker from "expo-image-picker";
 import {
-  Alert,
   Image,
   Pressable,
   StyleSheet,
@@ -10,6 +8,7 @@ import {
 } from "react-native";
 
 import { InkButton } from "../../../components/ui";
+import { pickPhotos } from "../pickPhotos";
 import type { EventPhoto, PickedPhoto } from "../types";
 import { palette } from "../../../theme/palette";
 import { radius, space, type } from "../../../theme/tokens";
@@ -67,38 +66,8 @@ export function PhotoPicker({
   onRemoveExisting,
 }: PhotoPickerProps) {
   const pick = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(
-        "Accès aux photos refusé",
-        "Autorisez l'accès dans les réglages de l'iPhone pour illustrer un événement.",
-      );
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsMultipleSelection: true,
-      // Uploads go through base64, so the picture is held in memory once —
-      // quality is capped to keep that reasonable.
-      quality: 0.7,
-      base64: true,
-    });
-    if (result.canceled) return;
-
-    const picked = result.assets.flatMap((asset) =>
-      asset.base64
-        ? [
-            {
-              uri: asset.uri,
-              base64: asset.base64,
-              mimeType: asset.mimeType ?? "image/jpeg",
-              source: "",
-            },
-          ]
-        : [],
-    );
-    onChange([...photos, ...picked]);
+    const picked = await pickPhotos({ multiple: true });
+    if (picked.length > 0) onChange([...photos, ...picked]);
   };
 
   return (

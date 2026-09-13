@@ -1,6 +1,7 @@
 import type {
   EventDraft,
   Folder,
+  PickedPhoto,
   HistoricalDate,
   HistoricalEvent,
   EventPhoto,
@@ -85,23 +86,88 @@ function toEvent(row: EventRow): HistoricalEvent {
   };
 }
 
+type FolderRow = { id: string; name: string; photo_path: string | null };
+
+function toFolder(row: FolderRow): Folder {
+  return {
+    id: row.id,
+    name: row.name,
+    photo:
+      row.photo_path === null
+        ? null
+        : { path: row.photo_path, url: publicUrl(row.photo_path) },
+  };
+}
+
+const FOLDER_COLUMNS = "id, name, photo_path";
+
 export async function fetchFolders(): Promise<Folder[]> {
   const { data, error } = await supabase()
     .from("folders")
-    .select("id, name")
+    .select(FOLDER_COLUMNS)
     .order("name");
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return ((data ?? []) as FolderRow[]).map(toFolder);
 }
 
 export async function createFolder(name: string): Promise<Folder> {
   const { data, error } = await supabase()
     .from("folders")
     .insert({ name: name.trim() })
-    .select("id, name")
+    .select(FOLDER_COLUMNS)
     .single();
   if (error) throw new Error(error.message);
-  return data;
+  return toFolder(data as FolderRow);
+}
+
+export async function renameFolder(id: string, name: string): Promise<Folder> {
+  const { data, error } = await supabase()
+    .from("folders")
+    .update({ name: name.trim() })
+    .eq("id", id)
+    .select(FOLDER_COLUMNS)
+    .single();
+  if (error) throw new Error(error.message);
+  return toFolder(data as FolderRow);
+}
+
+/**
+ * Sets or clears a folder's cover picture.
+ *
+ * The old object is deleted only once the row points at the new one: an
+ * orphaned file costs a few kilobytes, a row pointing at nothing costs the
+ * reader a broken marker.
+ */
+export async function setFolderPhoto(
+  folder: Folder,
+  picked: PickedPhoto | null,
+): Promise<Folder> {
+  const client = supabase();
+  let path: string | null = null;
+
+  if (picked) {
+    const extension = picked.mimeType.split("/")[1] ?? "jpg";
+    path = `folders/${folder.id}/${Date.now()}.${extension}`;
+    const { error } = await client.storage
+      .from(PHOTO_BUCKET)
+      .upload(path, decodeBase64(picked.base64), {
+        contentType: picked.mimeType,
+      });
+    if (error) throw new Error(error.message);
+  }
+
+  const { data, error } = await client
+    .from("folders")
+    .update({ photo_path: path })
+    .eq("id", folder.id)
+    .select(FOLDER_COLUMNS)
+    .single();
+  if (error) throw new Error(error.message);
+
+  if (folder.photo) {
+    await client.storage.from(PHOTO_BUCKET).remove([folder.photo.path]);
+  }
+  return toFolder(data as FolderRow);
 }
 
 export async function fetchEvents(): Promise<HistoricalEvent[]> {

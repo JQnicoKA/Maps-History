@@ -9,6 +9,8 @@ export type MarkerVariant = "previous" | "current" | "next";
 export type EventMarkerProps = {
   event: HistoricalEvent;
   variant: MarkerVariant;
+  /** What `coverFor` chose; the emoji stands in when there is nothing. */
+  cover?: string | undefined;
   onPress: () => void;
 };
 
@@ -19,14 +21,21 @@ const SIZE: Record<MarkerVariant, number> = {
 };
 
 /**
- * A photograph in a parchment locket, or the type's emoji when there is none.
+ * A photograph in a parchment locket. Three things can fill it, in this order:
+ * the event's own first photograph, the cover of one of its folders, and
+ * failing both the emoji of its type.
+ *
  * The event being read is full size and ringed in wax; the one before it is
  * faded, the one after darkened — so the direction of travel is legible without
  * a legend.
  */
-export function EventMarker({ event, variant, onPress }: EventMarkerProps) {
+export function EventMarker({
+  event,
+  variant,
+  cover,
+  onPress,
+}: EventMarkerProps) {
   const size = SIZE[variant];
-  const photo = event.photos[0];
 
   return (
     <Pressable
@@ -42,12 +51,12 @@ export function EventMarker({ event, variant, onPress }: EventMarkerProps) {
           variant === "current" ? styles.current : styles.neighbour,
         ]}
       >
-        {photo === undefined ? (
+        {cover === undefined ? (
           <Text style={{ fontSize: size * 0.42 }}>
             {describeType(event.type).emoji}
           </Text>
         ) : (
-          <Image source={{ uri: photo.url }} style={styles.photo} />
+          <Image source={{ uri: cover }} style={styles.photo} />
         )}
 
         {variant === "next" ? <View style={styles.shade} /> : null}

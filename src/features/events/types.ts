@@ -69,6 +69,11 @@ export type HistoricalDate = {
 export type Folder = {
   id: string;
   name: string;
+  /**
+   * Cover picture. Its one use is the map marker: an event with no photograph
+   * of its own borrows its folder's before falling back to the type's emoji.
+   */
+  photo: { path: string; url: string } | null;
 };
 
 /** Importance is a property of the event/folder pair, never of the event. */

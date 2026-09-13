@@ -1,6 +1,7 @@
 import { Marker } from "@maplibre/maplibre-react-native";
 
 import { EventMarker, type MarkerVariant } from "./EventMarker";
+import { coverFor } from "../cover";
 import { useEvents } from "../EventsProvider";
 import type { HistoricalEvent } from "../types";
 
@@ -13,7 +14,7 @@ import type { HistoricalEvent } from "../types";
  * The current one is rendered last so it sits above its neighbours.
  */
 export function EventMarkers() {
-  const { neighbours, selectEvent } = useEvents();
+  const { neighbours, folders, selectEvent } = useEvents();
 
   const shown: { event: HistoricalEvent; variant: MarkerVariant }[] = [
     ...(neighbours.previous
@@ -34,6 +35,7 @@ export function EventMarkers() {
           <EventMarker
             event={event}
             variant={variant}
+            cover={coverFor(event, folders)}
             onPress={() => selectEvent(event.id)}
           />
         </Marker>

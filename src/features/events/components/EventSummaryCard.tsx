@@ -1,6 +1,7 @@
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Paper } from "../../../components/ui";
+import { coverFor } from "../cover";
 import { useEvents } from "../EventsProvider";
 import { formatEventPeriod } from "../historicalDate";
 import { describeType, type HistoricalEvent } from "../types";
@@ -20,7 +21,9 @@ export function EventSummaryCard({
   highlighted = false,
 }: EventSummaryCardProps) {
   const { folders } = useEvents();
-  const photo = event.photos[0];
+  // The same picture the marker shows, chosen by the same rule: the event's
+  // own, else one of its folders', else the type's emoji.
+  const cover = coverFor(event, folders);
   const { emoji } = describeType(event.type);
 
   const names = event.folders
@@ -35,8 +38,8 @@ export function EventSummaryCard({
         onPress={onOpen}
         style={({ pressed }) => [styles.body, pressed && styles.pressed]}
       >
-        {photo ? (
-          <Image source={{ uri: photo.url }} style={styles.thumb} />
+        {cover ? (
+          <Image source={{ uri: cover }} style={styles.thumb} />
         ) : (
           <View style={[styles.thumb, styles.thumbEmpty]}>
             <Text style={styles.thumbEmoji}>{emoji}</Text>

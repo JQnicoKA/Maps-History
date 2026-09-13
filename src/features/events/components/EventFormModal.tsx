@@ -1,10 +1,17 @@
 import { useState } from "react";
 import { Alert, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 
+import { FolderManager } from "./FolderManager";
 import { FolderSelector } from "./FolderSelector";
 import { HistoricalDateField } from "./HistoricalDateField";
 import { PhotoPicker } from "./PhotoPicker";
-import { InkButton, InkField, SelectField, Sheet } from "../../../components/ui";
+import {
+  InkButton,
+  InkField,
+  SegmentedControl,
+  SelectField,
+  Sheet,
+} from "../../../components/ui";
 import { radius, space, type } from "../../../theme/tokens";
 import { useEvents } from "../EventsProvider";
 
@@ -41,7 +48,13 @@ export function EventFormModal({
   onCancel,
   onSaved,
 }: EventFormModalProps) {
-  const { folders, addFolder, addEvent, editEvent } = useEvents();
+  const { folders, addEvent, editEvent } = useEvents();
+
+  /**
+   * Which half of the Add sheet is showing. Editing an existing event has no
+   * second half — there is nothing to add but the changes in front of you.
+   */
+  const [tab, setTab] = useState<"event" | "folder">("event");
 
   const [title, setTitle] = useState(event?.title ?? "");
   const [type, setType] = useState<EventType>(event?.type ?? "other");
@@ -60,6 +73,7 @@ export function EventFormModal({
   const [saving, setSaving] = useState(false);
 
   const reset = () => {
+    setTab("event");
     setTitle("");
     setType("other");
     setDescription("");
@@ -126,11 +140,13 @@ export function EventFormModal({
     <Sheet
       visible={visible}
       onClose={onCancel}
-      title={event ? "Modifier l'événement" : "Nouvel événement"}
+      title={event ? "Modifier l'événement" : "Ajouter"}
       footer={
-        <>
+        // A folder is written the moment it is named, so that half of the
+        // sheet has nothing to save and nothing to cancel.
+        tab === "folder" ? (
           <InkButton
-            label="Annuler"
+            label="Fermer"
             variant="tonal"
             grow
             onPress={() => {
@@ -138,17 +154,45 @@ export function EventFormModal({
               onCancel();
             }}
           />
-          <InkButton
-            label={saving ? "Enregistrement…" : "Enregistrer"}
-            variant="solid"
-            grow
-            disabled={saving}
-            onPress={() => void save()}
-          />
-        </>
+        ) : (
+          <>
+            <InkButton
+              label="Annuler"
+              variant="tonal"
+              grow
+              onPress={() => {
+                reset();
+                onCancel();
+              }}
+            />
+            <InkButton
+              label={saving ? "Enregistrement…" : "Enregistrer"}
+              variant="solid"
+              grow
+              disabled={saving}
+              onPress={() => void save()}
+            />
+          </>
+        )
       }
     >
+      {event ? null : (
+        <View style={styles.switcher}>
+          <SegmentedControl
+            segments={[
+              { value: "event" as const, label: "Nouvel événement" },
+              { value: "folder" as const, label: "Nouveau classeur" },
+            ]}
+            value={tab}
+            onChange={setTab}
+          />
+        </View>
+      )}
+
+      {tab === "folder" && !event ? <FolderManager /> : null}
+
       <ScrollView
+        style={tab === "folder" && !event ? styles.hidden : null}
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
       >
@@ -202,12 +246,7 @@ export function EventFormModal({
           />
         ) : null}
 
-        <FolderSelector
-          folders={folders}
-          value={links}
-          onChange={setLinks}
-          onCreate={addFolder}
-        />
+        <FolderSelector folders={folders} value={links} onChange={setLinks} />
 
         <PhotoPicker
           photos={photos}
@@ -243,6 +282,11 @@ export function EventFormModal({
 }
 
 const styles = StyleSheet.create({
+  switcher: {
+    paddingHorizontal: space.xl,
+    paddingBottom: space.lg,
+  },
+  hidden: { display: "none" },
   body: {
     paddingHorizontal: space.xl,
     paddingBottom: space.lg,

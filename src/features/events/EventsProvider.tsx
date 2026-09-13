@@ -18,6 +18,7 @@ import {
   type EventFilters,
   type Folder,
   type HistoricalEvent,
+  type PickedPhoto,
 } from "./types";
 
 type EventsContextValue = {
@@ -59,6 +60,9 @@ type EventsContextValue = {
   error: string | null;
   refresh: () => Promise<void>;
   addFolder: (name: string) => Promise<Folder>;
+  renameFolder: (id: string, name: string) => Promise<void>;
+  /** Sets or clears a folder's cover picture — the map marker's fallback. */
+  setFolderPhoto: (folder: Folder, picked: PickedPhoto | null) => Promise<void>;
   addEvent: (draft: EventDraft) => Promise<void>;
   editEvent: (
     id: string,
@@ -164,11 +168,29 @@ export function EventsProvider({ children }: { children: ReactNode }) {
 
   const addFolder = useCallback(async (name: string) => {
     const folder = await api.createFolder(name);
-    setFolders((current) =>
-      [...current, folder].sort((a, b) => a.name.localeCompare(b.name)),
-    );
+    setFolders((current) => [...current, folder].sort(byName));
     return folder;
   }, []);
+
+  /** Folders are kept sorted by name, so renaming one moves it in the list. */
+  const byName = (a: Folder, b: Folder) => a.name.localeCompare(b.name);
+
+  const renameFolder = useCallback(async (id: string, name: string) => {
+    const updated = await api.renameFolder(id, name);
+    setFolders((current) =>
+      current.map((one) => (one.id === updated.id ? updated : one)).sort(byName),
+    );
+  }, []);
+
+  const setFolderPhoto = useCallback(
+    async (folder: Folder, picked: PickedPhoto | null) => {
+      const updated = await api.setFolderPhoto(folder, picked);
+      setFolders((current) =>
+        current.map((one) => (one.id === updated.id ? updated : one)),
+      );
+    },
+    [],
+  );
 
   const addEvent = useCallback(
     async (draft: EventDraft) => {
@@ -213,14 +235,16 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       error,
       refresh,
       addFolder,
+      renameFolder,
+      setFolderPhoto,
       addEvent,
       editEvent,
       removeEvent,
     }),
     [
       events, visibleEvents, folders, filters, year, selectedEvent, neighbours,
-      selectEvent, scrubTo, loading, error, refresh, addFolder, addEvent,
-      editEvent, removeEvent,
+      selectEvent, scrubTo, loading, error, refresh, addFolder, renameFolder,
+      setFolderPhoto, addEvent, editEvent, removeEvent,
     ],
   );
 

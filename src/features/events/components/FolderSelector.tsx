@@ -1,32 +1,28 @@
-import { useState } from "react";
-import { Alert, StyleSheet, TextInput, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { ImportanceRow } from "./ImportanceRow";
-import { InkButton, SelectField } from "../../../components/ui";
+import { SelectField } from "../../../components/ui";
 import type { EventFolderLink, Folder, Importance } from "../types";
-import { palette } from "../../../theme/palette";
-import { radius, space } from "../../../theme/tokens";
+import { space } from "../../../theme/tokens";
 
 export type FolderSelectorProps = {
   folders: Folder[];
   value: EventFolderLink[];
   onChange: (links: EventFolderLink[]) => void;
-  onCreate: (name: string) => Promise<Folder>;
 };
 
 /**
  * Picks the folders an event belongs to, then its importance *within each one* —
  * the same event can be major to one subject and incidental to another.
+ *
+ * Choosing only. Folders are made in the Add sheet's other half, so filing an
+ * event never turns into inventing a subject halfway through the form.
  */
 export function FolderSelector({
   folders,
   value,
   onChange,
-  onCreate,
 }: FolderSelectorProps) {
-  const [newFolder, setNewFolder] = useState("");
-  const [creating, setCreating] = useState(false);
-
   const toggle = (folderId: string) => {
     onChange(
       value.some((link) => link.folderId === folderId)
@@ -43,24 +39,6 @@ export function FolderSelector({
     );
   };
 
-  const create = async () => {
-    const name = newFolder.trim();
-    if (name === "") return;
-    setCreating(true);
-    try {
-      const folder = await onCreate(name);
-      onChange([...value, { folderId: folder.id, importance: "medium" }]);
-      setNewFolder("");
-    } catch (cause) {
-      Alert.alert(
-        "Classeur non créé",
-        cause instanceof Error ? cause.message : String(cause),
-      );
-    } finally {
-      setCreating(false);
-    }
-  };
-
   return (
     <View style={styles.container}>
       <SelectField
@@ -73,24 +51,7 @@ export function FolderSelector({
         }))}
         selected={value.map((link) => link.folderId)}
         onToggle={toggle}
-        emptyMessage="Aucun classeur. Créez le premier ci-dessous."
-        footer={
-          <View style={styles.createRow}>
-            <TextInput
-              value={newFolder}
-              onChangeText={setNewFolder}
-              placeholder="Nouveau classeur…"
-              placeholderTextColor={palette.inkFaint}
-              style={styles.createInput}
-              onSubmitEditing={() => void create()}
-            />
-            <InkButton
-              label={creating ? "…" : "Créer"}
-              disabled={creating || newFolder.trim() === ""}
-              onPress={() => void create()}
-            />
-          </View>
-        }
+        emptyMessage="Aucun classeur. Créez-en un dans « Nouveau classeur »."
       />
 
       {value.map((link) => (
@@ -109,14 +70,4 @@ export function FolderSelector({
 
 const styles = StyleSheet.create({
   container: { gap: space.lg },
-  createRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  createInput: {
-    flex: 1,
-    minHeight: 44,
-    paddingHorizontal: space.md,
-    borderRadius: radius.md,
-    backgroundColor: palette.sunken,
-    fontSize: 15,
-    color: palette.ink,
-  },
 });

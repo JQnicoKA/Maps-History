@@ -234,8 +234,9 @@ src/
       types.ts                    modèle de domaine
       api.ts                      requêtes Supabase
       historicalDate.ts           années signées, dates imprécises, formatage
-      icons.ts                    table type → PNG
       filtering.ts                importance effective + filtres
+      cover.ts                    quelle image représente un événement
+      pickPhotos.ts               ouverture de la photothèque, partagée
       EventsProvider.tsx          état partagé (Context + hooks)
       components/
         EventMarkers.tsx          les trois marqueurs ancrés sur la carte
@@ -246,13 +247,15 @@ src/
         EventListView.tsx         la même tuile, empilée et défilante
         HistoricalDateField.tsx   sélecteur de date à molettes
         PhotoViewer.tsx           photo plein écran + sa source
-        FolderSelector.tsx        classeurs (liste déroulante) + importance
+        FolderSelector.tsx        choix des classeurs + importance
+        FolderManager.tsx         l'autre moitié : liste des classeurs
+        FolderEditModal.tsx       fiche d'un classeur : nom et couverture
         ImportanceRow.tsx         élevée / moyenne / faible pour un classeur
         PhotoPicker.tsx           sélection des photos
         LocationReticle.tsx       placement du lieu au réticule
         AddEventButton.tsx        le bouton +
     territories/
-      TerritoryLayers.tsx         frontières historiques (OpenHistoricalMap)
+      TerritoryLayers.tsx         frontières historiques (Cliopatria / OHM)
       useTerritoriesAt.ts         cache par entité, pas par date
       api.ts                      les deux appels : identifiants, puis manquants
     places/
@@ -375,9 +378,41 @@ coordonnées, la saisie intacte.
 (`330 av`) signifie avant J.-C. L'interrupteur *Période* ajoute une date de fin
 pour ce qui dure.
 
-**Classeurs et importance.** Le champ *Classeurs* ouvre une liste déroulante —
-elle reste lisible quel que soit le nombre de sujets — et on y crée un classeur
-à la volée. Chaque classeur coché reçoit ensuite sa propre importance. C'est là
+**Deux moitiés sous le bouton `+`.** La feuille s'appelle *Ajouter* et une
+bascule choisit ce qu'on ajoute : un **nouvel événement** ou un **nouveau
+classeur**. Les deux moitiés restent montées, la cachée mise à `display: "none"`
+— on peut passer à l'onglet classeur au milieu d'un formulaire à moitié rempli
+et revenir sans avoir rien perdu.
+
+La moitié *classeur* n'a ni *Annuler* ni *Enregistrer* : un classeur est écrit
+au moment où on le nomme, et sa photo au moment où on la choisit. Elle liste les
+classeurs existants avec le nombre d'événements rangés dans chacun, et refuse un
+doublon de nom.
+
+**Le crayon à droite d'une tuile ouvre sa fiche** — nom et photo de couverture
+au même endroit. Rien n'y est écrit avant *Enregistrer*, **la photo comprise** :
+elle est retenue comme un choix local plutôt que téléversée sur-le-champ, sans
+quoi *Annuler* serait un mensonge — il défairait le nom et garderait l'image.
+La photo passe en premier à l'enregistrement : si le téléversement échoue, le
+nom n'est pas touché non plus et la feuille reste ouverte sur ce qu'il y a à
+corriger. Les doublons de nom sont refusés ici aussi, et les liens
+événement↔classeur portant l'identifiant et jamais le nom, renommer ne défait
+rien.
+
+**La photo de couverture est facultative** et n'a qu'un usage, décrit plus bas :
+servir de repli au marqueur sur la carte et à la tuile de résumé. L'ancien
+fichier n'est effacé qu'une fois la ligne pointée sur le nouveau — un objet
+orphelin coûte quelques kilo-octets, une ligne qui pointe dans le vide coûte un
+marqueur cassé au lecteur.
+
+Modifier un événement n'a pas de seconde moitié : il n'y a rien à ajouter que
+les changements qu'on a sous les yeux, donc la bascule disparaît.
+
+**Classeurs et importance.** Dans le formulaire, le champ *Classeurs* ouvre une
+liste déroulante — elle reste lisible quel que soit le nombre de sujets — et
+**ne sert qu'à choisir**. Créer s'est déplacé dans l'autre moitié, pour que
+ranger un événement ne se transforme jamais en inventer un sujet au milieu d'un
+formulaire. Chaque classeur coché reçoit ensuite sa propre importance. C'est là
 que se matérialise le modèle : un événement majeur pour un sujet et secondaire
 pour un autre.
 
@@ -398,13 +433,19 @@ le navigateur.
 mariage, sacre, bataille, conquête, traité, révolution, indépendance, loi,
 construction, exploration, découverte, culture, catastrophe, autre.
 
-Le marqueur montre la première photo de l'événement, et **l'emoji de son type**
-quand il n'y en a pas — comme le sélecteur, la tuile de résumé et la fiche. Le
-type est ainsi dit d'une seule voix partout.
+**Le marqueur sur la carte et la tuile de résumé montrent la même image**, et
+c'est la même fonction qui la choisit — `coverFor` dans `cover.ts`. Trois
+possibilités, dans cet ordre : la **première photo de l'événement**, sinon la
+**photo de couverture d'un de ses classeurs**, sinon l'**emoji de son type**,
+comme le sélecteur et la fiche. Le type est ainsi dit d'une seule voix partout.
+
+Quand un événement sans photo appartient à plusieurs classeurs pourvus d'une
+couverture, le premier de la liste l'emporte. La liste étant triée par nom, le
+choix est arbitraire mais **stable** — c'est tout ce qu'on lui demande.
 
 Seize glyphes gravés tenaient auparavant ce rôle de repli sur la carte. Ils ont
-été retirés avec leur registre : `assets/icons/` ne contient plus que les trois
-icônes d'interface — corbeille et bascule de vue.
+été retirés avec leur registre : `assets/icons/` ne contient plus que les quatre
+icônes d'interface — corbeille, crayon et les deux bascules de vue.
 
 **Modifier.** La fiche complète porte *Modifier*, qui rouvre le formulaire
 pré-rempli — y compris le lieu, qu'on peut redéplacer au réticule. Les photos
