@@ -1,5 +1,6 @@
 import type { Feature, MultiPolygon, Polygon } from "geojson";
 
+import { TERRITORY_RPC } from "../../config/map";
 import { supabase } from "../../lib/supabase";
 import { palette } from "../../theme/palette";
 
@@ -27,7 +28,7 @@ export async function fetchTerritoryIdsAt(
   year: number,
   maxLevel: number,
 ): Promise<string[]> {
-  const { data, error } = await supabase().rpc("territory_ids_at", {
+  const { data, error } = await supabase().rpc(TERRITORY_RPC.ids, {
     at_year: year,
     max_level: maxLevel,
   });
@@ -47,7 +48,7 @@ const CHUNK = 120;
 const IN_FLIGHT = 3;
 
 async function fetchChunk(ids: string[]): Promise<TerritoryFeature[]> {
-  const { data, error } = await supabase().rpc("territories_by_ids", { ids });
+  const { data, error } = await supabase().rpc(TERRITORY_RPC.byIds, { ids });
   if (error) throw new Error(error.message);
 
   const collection = data as { features: TerritoryFeature[] };

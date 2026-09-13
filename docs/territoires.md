@@ -1,11 +1,92 @@
 # Les territoires et les villes historiques
 
 Comment les frontières arrivent sur la carte, et comment étendre ou refaire la
-couverture. Trois scripts, une table, une heure de patience.
+couverture.
 
 ---
 
-## D'où viennent les données
+## Deux jeux de frontières, un interrupteur
+
+La carte sait lire deux sources. Elles passent par la **même paire de
+fonctions** et exposent les **mêmes propriétés**, si bien que la couche MapLibre
+ignore laquelle elle dessine. Le choix tient en une ligne de
+`src/config/map.ts` :
+
+```ts
+export const TERRITORY_SOURCE: "cliopatria" | "ohm" = "cliopatria";
+```
+
+| | Cliopatria | OpenHistoricalMap |
+| --- | --- | --- |
+| table | `polities` — 27 Mo | `territories` — 76 Mo |
+| enregistrements | 12 043 versions de 1 540 polités | 8 765 versions |
+| étendue | 3400 av. J.-C. → 2024 | toutes époques |
+| rangs politiques | un seul | trois (`admin_level` 2, 3, 4) |
+| une date en 1453 | 130 polités, 0,39 Mo | 278 entités, 1,29 Mo |
+| une date en 2000 | 189 polités, 0,88 Mo | 237 entités, 3,00 Mo |
+| noms | savants, en anglais | **d'époque, en langue d'époque** |
+| licence | CC BY 4.0 | CC0 |
+
+**Pourquoi Cliopatria par défaut.** OHM est inégal dans le temps : la fin du
+Moyen Âge y est cartographiée fief par fief, sans les royaumes au-dessus. Il n'y
+a **aucun royaume de France entre 1051 et 1659**, ni Saint-Empire, ni
+Pologne-Lituanie, ni Hongrie en 1453. Cliopatria est un jeu savant, cohérent
+d'un bout à l'autre : à la même date il donne le royaume de France, le duché de
+Bourgogne, la maison de Jagellon, l'Empire ottoman, la Horde d'or, le khanat de
+Crimée, et jusqu'à la principauté d'Orange (141 km²). Il est aussi **cinq fois
+plus léger par date**, ses tracés étant généralisés à une échelle savante plutôt
+que relevés au cadastre.
+
+**Ce qu'on perd.** Les noms. OHM donne *Francia occidentalis*, *Rouantelezh
+Breizh*, الْخِلَافَة الْعَبَّاسِيَّة — le nom que la polité se donnait, dans sa langue.
+Cliopatria donne « Kingdom of France » et « Abbasid Caliphate ». En revanche
+**13 760 de ses 13 765 enregistrements portent un identifiant Wikidata**, d'où
+l'on pourrait tirer le nom natif et ses traductions : ce serait du même coup
+l'interrupteur multilingue laissé de côté.
+
+---
+
+## Le pipeline Cliopatria
+
+Deux étapes, pas trois : la géométrie arrive entière, donc rien à recoller.
+
+```bash
+curl -sLO https://raw.githubusercontent.com/Seshat-Global-History-Databank/cliopatria/main/cliopatria.geojson.zip
+unzip cliopatria.geojson.zip
+node --max-old-space-size=6144 scripts/load-cliopatria.mjs cliopatria_polities_only.geojson
+# puis, dans le SQL Editor :
+\i scripts/build-polities.sql
+```
+
+Le fichier est un seul document JSON de 165 Mo — d'où le tas agrandi.
+
+**Deux familles d'enregistrements sont écartées**, et toutes deux se
+dessineraient par-dessus les polités qui les composent :
+
+- `Type = "RELATION"` (385) — une vassalité, une allégeance, dont la géométrie
+  est l'union des deux parties ;
+- un `POLITY` au nom **entre parenthèses** (1 337) — la même union classée
+  comme polité : « (Kingdom of France) », c'est la France *et* ses vassaux,
+  quand « Kingdom of France » est le domaine royal seul.
+
+Restent 12 043 enregistrements d'un seul rang politique, qui pavent la carte
+sans se chevaucher. Vérifié sur le jeu entier : **zéro chevauchement** entre
+versions successives d'une même polité, 10 089 enchaînements contigus, aucun
+doublon nom + période. Les bornes `FromYear` / `ToYear` sont **inclusives des
+deux côtés**.
+
+Mesuré à travers le chemin exact de l'app, clé publishable comprise :
+
+```
+an 600     70 polités   0,19 Mo   1 requête    309 ms
+an 1453   130 polités   0,39 Mo   2 requêtes   320 ms
+1812      132 polités   0,57 Mo   2 requêtes   383 ms
+2000      189 polités   0,88 Mo   2 requêtes   445 ms
+```
+
+---
+
+## D'où viennent les données d'OpenHistoricalMap
 
 [OpenHistoricalMap](https://www.openhistoricalmap.org) — un OpenStreetMap doté
 d'une dimension temporelle. Chaque frontière y porte `start_date` / `end_date`,

@@ -44,7 +44,32 @@ export const MAP_FEATURES = {
   places: true,
 } as const;
 
-const CREDITS = ["© MapTiler", "© OpenStreetMap"];
-if (MAP_FEATURES.territories) CREDITS.push("© OpenHistoricalMap");
+/**
+ * Where the historical borders come from. The two sets are read through the
+ * same pair of functions and expose the same feature properties, so switching
+ * is this one line.
+ *
+ * - `cliopatria` — Seshat Global History Databank, CC BY 4.0. 12 043 versions
+ *   of 1 540 polities from 3400 BCE to 2024, all at one political rank, with a
+ *   single date costing well under a megabyte.
+ * - `ohm` — OpenHistoricalMap, CC0. Finer tracing and period-correct endonyms
+ *   where it exists, but the late Middle Ages are mapped fief by fief and whole
+ *   regions have nothing at all: no Kingdom of France between 1051 and 1659.
+ */
+export const TERRITORY_SOURCE: "cliopatria" | "ohm" = "cliopatria";
 
-export const ATTRIBUTION = CREDITS.join(" ");
+/** The function pair the map reads its borders from. */
+export const TERRITORY_RPC =
+  TERRITORY_SOURCE === "cliopatria"
+    ? { ids: "polity_ids_at", byIds: "polities_by_ids" }
+    : { ids: "territory_ids_at", byIds: "territories_by_ids" };
+
+const CREDITS = ["© MapTiler", "© OpenStreetMap"];
+if (MAP_FEATURES.territories) {
+  CREDITS.push(
+    TERRITORY_SOURCE === "cliopatria" ? "© Cliopatria (CC BY)" : "© OpenHistoricalMap",
+  );
+}
+if (MAP_FEATURES.places) CREDITS.push("© OpenHistoricalMap");
+
+export const ATTRIBUTION = [...new Set(CREDITS)].join(" ");
