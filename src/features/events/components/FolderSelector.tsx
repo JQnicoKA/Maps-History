@@ -1,9 +1,10 @@
-import { StyleSheet, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { ImportanceRow } from "./ImportanceRow";
+import { ImportanceScale } from "./ImportanceScale";
 import { SelectField } from "../../../components/ui";
 import type { EventFolderLink, Folder, Importance } from "../types";
-import { space } from "../../../theme/tokens";
+import { palette } from "../../../theme/palette";
+import { radius, space, type } from "../../../theme/tokens";
 
 export type FolderSelectorProps = {
   folders: Folder[];
@@ -12,8 +13,13 @@ export type FolderSelectorProps = {
 };
 
 /**
- * Picks the folders an event belongs to, then its importance *within each one* —
- * the same event can be major to one subject and incidental to another.
+ * The folders an event belongs to, and its importance *within each one* — the
+ * same event can be major to one subject and incidental to another.
+ *
+ * That pairing is the whole point of the model, so it is drawn as a pairing:
+ * one card per folder, carrying its cover, its name and its scale. Before, the
+ * folders were a grey summary line and the scales a separate stack below it,
+ * and nothing on screen said which belonged to which.
  *
  * Choosing only. Folders are made in the Add sheet's other half, so filing an
  * event never turns into inventing a subject halfway through the form.
@@ -41,8 +47,49 @@ export function FolderSelector({
 
   return (
     <View style={styles.container}>
+      {value.map((link) => {
+        const folder = folders.find((one) => one.id === link.folderId);
+        return (
+          <View key={link.folderId} style={styles.card}>
+            <View style={styles.cover}>
+              {folder?.photo ? (
+                <Image
+                  source={{ uri: folder.photo.url }}
+                  style={styles.coverImage}
+                />
+              ) : (
+                <Text style={styles.coverInitial}>
+                  {folder?.name.charAt(0).toUpperCase() ?? "?"}
+                </Text>
+              )}
+            </View>
+
+            <View style={styles.cardText}>
+              <Text style={styles.name} numberOfLines={1}>
+                {folder?.name ?? "Classeur"}
+              </Text>
+              <ImportanceScale
+                value={link.importance}
+                onChange={(importance) =>
+                  setImportance(link.folderId, importance)
+                }
+              />
+            </View>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Retirer ${folder?.name ?? "ce classeur"}`}
+              hitSlop={8}
+              onPress={() => toggle(link.folderId)}
+              style={({ pressed }) => [styles.remove, pressed && styles.pressed]}
+            >
+              <Text style={styles.removeGlyph}>×</Text>
+            </Pressable>
+          </View>
+        );
+      })}
+
       <SelectField
-        label="Classeurs"
         title="Classeurs"
         placeholder="Choisir un classeur…"
         options={folders.map((folder) => ({
@@ -52,22 +99,73 @@ export function FolderSelector({
         selected={value.map((link) => link.folderId)}
         onToggle={toggle}
         emptyMessage="Aucun classeur. Créez-en un dans « Nouveau classeur »."
+        trigger={(open) => (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ajouter un classeur"
+            onPress={open}
+            style={({ pressed }) => [styles.add, pressed && styles.pressed]}
+          >
+            <Text style={styles.addGlyph}>+</Text>
+            <Text style={styles.addLabel}>
+              {value.length === 0 ? "Ranger dans un classeur" : "Ajouter un classeur"}
+            </Text>
+          </Pressable>
+        )}
       />
-
-      {value.map((link) => (
-        <ImportanceRow
-          key={link.folderId}
-          name={folders.find((f) => f.id === link.folderId)?.name ?? "Classeur"}
-          value={link.importance}
-          onChange={(importance) =>
-            setImportance(link.folderId, importance ?? "medium")
-          }
-        />
-      ))}
     </View>
   );
 }
 
+const COVER = 44;
+
 const styles = StyleSheet.create({
-  container: { gap: space.lg },
+  container: { gap: space.sm },
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    padding: space.sm,
+    borderRadius: radius.md,
+    backgroundColor: palette.sunken,
+  },
+  cover: {
+    width: COVER,
+    height: COVER,
+    borderRadius: COVER / 2,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: palette.paperLight,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.line,
+  },
+  coverImage: { width: "100%", height: "100%" },
+  coverInitial: { fontSize: 17, fontWeight: "700", color: palette.inkFaint },
+  cardText: { flex: 1, gap: space.xs },
+  name: { fontSize: 15, fontWeight: "600", color: palette.ink },
+  remove: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+  },
+  removeGlyph: { fontSize: 20, lineHeight: 22, color: palette.inkFaint },
+  pressed: { opacity: 0.55 },
+  // Dashed, so it reads as a slot waiting to be filled rather than a button
+  // competing with the cards above it.
+  add: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+    minHeight: 46,
+    paddingHorizontal: space.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: palette.line,
+  },
+  addGlyph: { fontSize: 18, lineHeight: 20, color: palette.inkSoft },
+  addLabel: { ...type.body, color: palette.inkSoft, fontWeight: "500" },
 });

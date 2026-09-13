@@ -1,22 +1,21 @@
-import { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { useState, type ReactNode } from "react";
+import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { FolderManager } from "./FolderManager";
 import { FolderSelector } from "./FolderSelector";
-import { HistoricalDateField } from "./HistoricalDateField";
+import { EventDateField } from "./EventDateField";
 import { PhotoPicker } from "./PhotoPicker";
+import { TypePicker, typeName } from "./TypePicker";
 import {
   InkButton,
   InkField,
   SegmentedControl,
-  SelectField,
   Sheet,
 } from "../../../components/ui";
 import { radius, space, type } from "../../../theme/tokens";
 import { useEvents } from "../EventsProvider";
 
 import {
-  EVENT_TYPES,
   type EventDraft,
   type EventFolderLink,
   type EventPhoto,
@@ -26,6 +25,33 @@ import {
   type PickedPhoto,
 } from "../types";
 import { palette } from "../../../theme/palette";
+
+/**
+ * A heading and, optionally, the current answer beside it.
+ *
+ * The form used to be a single column of identical grey slabs with a small
+ * label over each — nothing told the eye where one question ended and the next
+ * began. Four headings turn it into four short questions.
+ */
+function Section({
+  title,
+  answer,
+  children,
+}: {
+  title: string;
+  answer?: string;
+  children: ReactNode;
+}) {
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHead}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {answer ? <Text style={styles.sectionAnswer}>{answer}</Text> : null}
+      </View>
+      {children}
+    </View>
+  );
+}
 
 export type EventFormModalProps = {
   visible: boolean;
@@ -62,7 +88,6 @@ export function EventFormModal({
   const [start, setStart] = useState<HistoricalDate | null>(
     event?.start ?? null,
   );
-  const [isPeriod, setIsPeriod] = useState(event?.end != null);
   const [end, setEnd] = useState<HistoricalDate | null>(event?.end ?? null);
   const [links, setLinks] = useState<EventFolderLink[]>(event?.folders ?? []);
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
@@ -78,7 +103,6 @@ export function EventFormModal({
     setType("other");
     setDescription("");
     setStart(null);
-    setIsPeriod(false);
     setEnd(null);
     setLinks([]);
     setPhotos([]);
@@ -100,17 +124,13 @@ export function EventFormModal({
       Alert.alert("Date manquante", "Choisissez au moins une année.");
       return;
     }
-    if (isPeriod && !end) {
-      Alert.alert("Date de fin manquante", "Choisissez la fin de la période.");
-      return;
-    }
 
     const draft: EventDraft = {
       title,
       type,
       description,
       start,
-      end: isPeriod ? end : null,
+      end,
       longitude: location.longitude,
       latitude: location.latitude,
       folders: links,
@@ -196,86 +216,79 @@ export function EventFormModal({
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
       >
-        <InkField
-          label="Titre"
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Prise de Constantinople"
-        />
-        <SelectField
-          label="Type"
-          title="Type d'événement"
-          placeholder="Autre"
-          single
-          options={EVENT_TYPES.map((entry) => ({
-            value: entry.value,
-            label: `${entry.emoji}  ${entry.label}`,
-          }))}
-          selected={[type]}
-          onToggle={(value) => setType(value as EventType)}
-        />
+        <Section title="Ce qui s'est passé" answer={typeName(type)}>
+          <InkField
+            label="Titre"
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Prise de Constantinople"
+          />
+          <TypePicker value={type} onChange={setType} />
+          <InkField
+            label="Description"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            placeholder="Ce que l'on en retient…"
+          />
+        </Section>
 
-        <InkField
-          label="Description"
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          placeholder="Ce que l'on en retient…"
-        />
+        <Section title="Quand">
+          {/* One control, and the question of whether it lasted is asked
+              inside it — where the answer is given. */}
+          <EventDateField
+            start={start}
+            end={end}
+            onChange={(nextStart, nextEnd) => {
+              setStart(nextStart);
+              setEnd(nextEnd);
+            }}
+          />
+        </Section>
 
-        <HistoricalDateField label="Date" value={start} onChange={setStart} />
-
-        <View style={styles.periodRow}>
-          <View style={styles.periodText}>
-            <Text style={styles.periodLabel}>Période</Text>
-            <Text style={styles.periodHint}>
-              Pour ce qui dure : une guerre, un règne
-            </Text>
+        <Section title="Où">
+          <View style={styles.location}>
+            <View style={styles.locationText}>
+              <Text style={styles.legend}>Lieu</Text>
+              <Text style={styles.coordinates}>
+                {location
+                  ? `${location.latitude.toFixed(4)}°, ${location.longitude.toFixed(4)}°`
+                  : "Non défini"}
+              </Text>
+            </View>
+            <InkButton
+              label={location ? "Déplacer" : "Placer"}
+              variant={location ? "tonal" : "solid"}
+              onPress={onRequestPlacement}
+            />
           </View>
-          <Switch
-            value={isPeriod}
-            onValueChange={setIsPeriod}
-            trackColor={{ true: palette.wax, false: palette.line }}
-          />
-        </View>
-        {isPeriod ? (
-          <HistoricalDateField
-            label="Date de fin"
-            value={end}
-            onChange={setEnd}
-          />
-        ) : null}
+        </Section>
 
-        <FolderSelector folders={folders} value={links} onChange={setLinks} />
+        <Section
+          title="Classement"
+          answer={
+            links.length === 0
+              ? undefined
+              : `${links.length} classeur${links.length > 1 ? "s" : ""}`
+          }
+        >
+          <FolderSelector folders={folders} value={links} onChange={setLinks} />
+        </Section>
 
-        <PhotoPicker
-          photos={photos}
-          onChange={setPhotos}
-          existing={keptPhotos}
-          onChangeExisting={setKeptPhotos}
-          onRemoveExisting={(photo) => {
-            setKeptPhotos((current) =>
-              current.filter((kept) => kept.id !== photo.id),
-            );
-            setDroppedPhotos((current) => [...current, photo]);
-          }}
-        />
-
-        <View style={styles.location}>
-          <View style={styles.locationText}>
-            <Text style={styles.legend}>Lieu</Text>
-            <Text style={styles.coordinates}>
-              {location
-                ? `${location.latitude.toFixed(4)}°, ${location.longitude.toFixed(4)}°`
-                : "Non défini"}
-            </Text>
-          </View>
-          <InkButton
-            label={location ? "Déplacer" : "Placer"}
-            variant={location ? "tonal" : "solid"}
-            onPress={onRequestPlacement}
+        <Section title="Images">
+          <PhotoPicker
+            photos={photos}
+            onChange={setPhotos}
+            existing={keptPhotos}
+            onChangeExisting={setKeptPhotos}
+            onRemoveExisting={(photo) => {
+              setKeptPhotos((current) =>
+                current.filter((kept) => kept.id !== photo.id),
+              );
+              setDroppedPhotos((current) => [...current, photo]);
+            }}
           />
-        </View>
+        </Section>
       </ScrollView>
     </Sheet>
   );
@@ -290,17 +303,17 @@ const styles = StyleSheet.create({
   body: {
     paddingHorizontal: space.xl,
     paddingBottom: space.lg,
-    gap: space.xl,
+    gap: space.xxl,
   },
-  periodRow: {
+  section: { gap: space.md },
+  sectionHead: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "baseline",
     justifyContent: "space-between",
-    gap: space.md,
+    gap: space.sm,
   },
-  periodText: { flex: 1, gap: 2 },
-  periodLabel: { fontSize: 15, color: palette.ink, fontWeight: "600" },
-  periodHint: { ...type.caption, color: palette.inkFaint },
+  sectionTitle: { fontSize: 17, fontWeight: "700", color: palette.ink },
+  sectionAnswer: { ...type.caption, color: palette.wax, fontWeight: "600" },
   location: {
     flexDirection: "row",
     alignItems: "center",

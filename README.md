@@ -245,7 +245,9 @@ src/
         EventDetailModal.tsx      fiche complète, modifier, supprimer
         EventSummaryCard.tsx      tuile de résumé
         EventListView.tsx         la même tuile, empilée et défilante
-        HistoricalDateField.tsx   sélecteur de date à molettes
+        EventDateField.tsx        tuile de date, molettes, période
+        TypePicker.tsx            rail des seize types
+        ImportanceScale.tsx       l'importance en trois barres
         PhotoViewer.tsx           photo plein écran + sa source
         FolderSelector.tsx        choix des classeurs + importance
         FolderManager.tsx         l'autre moitié : liste des classeurs
@@ -375,8 +377,8 @@ coordonnées, la saisie intacte.
 
 **Dates.** Trois champs : jour, mois, année. Seule l'année est obligatoire ;
 « 1453 » seul est une date valide. Une année négative (`-330`) ou suffixée
-(`330 av`) signifie avant J.-C. L'interrupteur *Période* ajoute une date de fin
-pour ce qui dure.
+(`330 av`) signifie avant J.-C. L'emplacement pointillé sous les molettes ajoute
+une date de fin, pour ce qui dure.
 
 **Deux moitiés sous le bouton `+`.** La feuille s'appelle *Ajouter* et une
 bascule choisit ce qu'on ajoute : un **nouvel événement** ou un **nouveau
@@ -416,7 +418,53 @@ formulaire. Chaque classeur coché reçoit ensuite sa propre importance. C'est l
 que se matérialise le modèle : un événement majeur pour un sujet et secondaire
 pour un autre.
 
-**Dates.** Le sélecteur est à trois molettes — jour, mois, année — et non le
+**Le formulaire est quatre questions, pas une colonne de champs.** *Ce qui s'est
+passé*, *Quand*, *Où*, *Classement*, *Images* — chaque titre porte à sa droite
+la réponse en cours (le type choisi, le nombre de classeurs), pour qu'on sache
+où l'on en est sans relire.
+
+**Type.** Les seize types sont sur un rail d'emoji qu'on fait défiler
+horizontalement : un geste au lieu de deux et d'une modale, et le choix reste
+visible au repos au lieu d'être résumé dans une ligne grise. Le nom du type
+choisi est écrit à côté du titre de section, pour que l'emoji n'ait jamais à
+porter le sens tout seul.
+
+**Importance.** Trois barres montantes, remplies jusqu'au niveau choisi. Un
+contrôle segmenté donne le même poids à ses options, ce qui est précisément
+faux ici : l'importance est une **grandeur**, et faible/moyenne/élevée ne sont
+pas trois réponses sans rapport mais une échelle. Les barres le disent sans un
+mot et tiennent dans le tiers de la largeur — ce qui compte, puisqu'il y en a
+une par classeur. Le panneau de filtres, lui, garde le contrôle segmenté :
+« Toutes » y est une quatrième réponse qu'aucune barre ne saurait représenter.
+
+**Classement.** Une carte par classeur, portant sa couverture, son nom et son
+échelle. Avant, les classeurs étaient une ligne de résumé grise et les échelles
+une pile détachée en dessous : rien à l'écran ne disait laquelle allait avec
+lequel. Or ce couplage *est* le modèle. Sous les cartes, un emplacement en
+pointillés — une place à remplir, pas un bouton de plus.
+
+**Photos.** Un rail de vignettes et une feuille derrière celle qu'on touche.
+C'était un tableau : une ligne par photo, vignette, champ de source, croix. Juste
+et sans joie — la source, qu'on remplit une fois sur cinq, occupait plus de place
+que l'image. Les images sont maintenant le contrôle et la source attend derrière
+un appui. Un petit point de cire au coin d'une vignette signale qu'elle a une
+source, sans avoir à l'ouvrir.
+
+**Dates.** La date se lit comme une date et non comme un champ : l'année dans le
+plus gros corps du formulaire — c'est elle qui déplace les frontières — et le
+reste en ligne discrète dessous, qui dit « Année seule » quand il n'y a rien de
+plus. Un événement connu à l'année près doit avoir l'air délibéré, pas inachevé.
+
+**Une seule commande pour une date ou une période.** Il y avait un interrupteur
+*Période* sur le formulaire, qui demandait de déclarer la **forme** de la réponse
+avant de la donner. La question est passée là où se trouve la réponse : la date
+de fin s'offre **dans** le sélecteur, en emplacement pointillé sous les molettes,
+et ce n'est qu'une fois ajoutée que deux segments *Début* / *Fin* apparaissent
+pour passer de l'une à l'autre. La contrainte `end_after_start` de la base est
+reproduite ici, pour qu'une période à l'envers soit refusée d'une phrase plutôt
+que d'une erreur Postgres.
+
+Derrière la tuile, le sélecteur est à trois molettes — jour, mois, année — et non le
 sélecteur de date du système. Ce dernier a été écarté pour une raison de fond :
 il ne sait exprimer *aucune* des trois choses que cette app stocke. Pas d'année
 seule (« 1299 » deviendrait le 1ᵉʳ janvier 1299, une donnée fausse), pas de mois

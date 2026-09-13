@@ -21,6 +21,12 @@ export type SelectFieldProps = {
   /** Rendered under the list — where "create a new folder" lives. */
   footer?: ReactNode;
   emptyMessage?: string;
+  /**
+   * Replaces the grey field that normally opens the sheet. Lets a caller keep
+   * this list while presenting the choice in its own shape — a card, a row, a
+   * dashed button — instead of one more slab in a column of slabs.
+   */
+  trigger?: (open: () => void) => ReactNode;
 };
 
 /**
@@ -37,6 +43,7 @@ export function SelectField({
   single = false,
   footer,
   emptyMessage = "Aucune entrée pour l'instant.",
+  trigger,
 }: SelectFieldProps) {
   const [open, setOpen] = useState(false);
 
@@ -48,20 +55,24 @@ export function SelectField({
     <View style={styles.container}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={title}
-        onPress={() => setOpen(true)}
-        style={({ pressed }) => [styles.field, pressed && styles.pressed]}
-      >
-        <Text
-          numberOfLines={1}
-          style={[styles.value, chosen.length === 0 && styles.placeholder]}
+      {trigger ? (
+        trigger(() => setOpen(true))
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={title}
+          onPress={() => setOpen(true)}
+          style={({ pressed }) => [styles.field, pressed && styles.pressed]}
         >
-          {chosen.length > 0 ? chosen.join(" · ") : placeholder}
-        </Text>
-        <Text style={styles.chevron}>▾</Text>
-      </Pressable>
+          <Text
+            numberOfLines={1}
+            style={[styles.value, chosen.length === 0 && styles.placeholder]}
+          >
+            {chosen.length > 0 ? chosen.join(" · ") : placeholder}
+          </Text>
+          <Text style={styles.chevron}>▾</Text>
+        </Pressable>
+      )}
 
       <Sheet
         visible={open}
