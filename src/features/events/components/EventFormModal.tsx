@@ -53,6 +53,48 @@ function Section({
   );
 }
 
+/** The five questions, in the order they are asked. */
+const STEPS = [
+  "Ce qui s'est passé",
+  "Quand",
+  "Où",
+  "Classement",
+  "Images",
+] as const;
+
+/**
+ * How far along, and how much is left.
+ *
+ * A wizard without one is a corridor with no windows: the reader cannot tell
+ * whether the next tap finishes the job or opens four more pages.
+ */
+function Progress({ step }: { step: number }) {
+  const left = STEPS.length - step - 1;
+
+  return (
+    <View style={styles.progress}>
+      <View style={styles.ticks}>
+        {STEPS.map((name, index) => (
+          <View
+            key={name}
+            style={[styles.tick, index <= step && styles.tickDone]}
+          />
+        ))}
+      </View>
+      <View style={styles.progressText}>
+        <Text style={styles.progressStep}>
+          Étape {step + 1} sur {STEPS.length}
+        </Text>
+        <Text style={styles.progressLeft}>
+          {left === 0
+            ? "Dernière étape"
+            : `${left} étape${left > 1 ? "s" : ""} restante${left > 1 ? "s" : ""}`}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 export type EventFormModalProps = {
   visible: boolean;
   /**
@@ -81,6 +123,16 @@ export function EventFormModal({
    * second half — there is nothing to add but the changes in front of you.
    */
   const [tab, setTab] = useState<"event" | "folder">("event");
+  /**
+   * Which of the five questions is on screen. Only when composing: correcting
+   * an event is not a journey, it is one change, and walking a reader through
+   * five pages to reach the fourth would be a punishment.
+   */
+  const [step, setStep] = useState(0);
+
+  /** Composing walks the five questions; correcting shows them all at once. */
+  const stepped = !event;
+  const show = (index: number) => !stepped || index === step;
 
   const [title, setTitle] = useState(event?.title ?? "");
   const [type, setType] = useState<EventType>(event?.type ?? "other");
@@ -99,6 +151,7 @@ export function EventFormModal({
 
   const reset = () => {
     setTab("event");
+    setStep(0);
     setTitle("");
     setType("other");
     setDescription("");
@@ -110,20 +163,40 @@ export function EventFormModal({
     setDroppedPhotos([]);
   };
 
-  const save = async () => {
-    if (title.trim() === "") {
-      Alert.alert("Titre manquant", "Un événement a besoin d'un titre.");
-      return;
-    }
-    if (!location) {
-      Alert.alert("Lieu manquant", "Placez l'événement sur la carte.");
-      return;
-    }
+  /**
+   * What is missing at a given step, if anything. Asked on the way out of each
+   * one, so a gap is pointed at where it can be filled rather than at the end,
+   * four pages away from the field it concerns.
+   */
+  const missingAt = (index: number): [string, string] | null => {
+    if (index === 0 && title.trim() === "")
+      return ["Titre manquant", "Un événement a besoin d'un titre."];
+    if (index === 1 && !start)
+      return ["Date manquante", "Choisissez au moins une année."];
+    if (index === 2 && !location)
+      return ["Lieu manquant", "Placez l'événement sur la carte."];
+    return null;
+  };
 
-    if (!start) {
-      Alert.alert("Date manquante", "Choisissez au moins une année.");
+  const next = () => {
+    const missing = missingAt(step);
+    if (missing) {
+      Alert.alert(missing[0], missing[1]);
       return;
     }
+    setStep((current) => Math.min(current + 1, STEPS.length - 1));
+  };
+
+  const save = async () => {
+    for (let index = 0; index < STEPS.length; index++) {
+      const missing = missingAt(index);
+      if (missing) {
+        Alert.alert(missing[0], missing[1]);
+        if (stepped) setStep(index);
+        return;
+      }
+    }
+    if (!start || !location) return;
 
     const draft: EventDraft = {
       title,
@@ -177,21 +250,29 @@ export function EventFormModal({
         ) : (
           <>
             <InkButton
-              label="Annuler"
+              label={stepped && step > 0 ? "Retour" : "Annuler"}
               variant="tonal"
               grow
               onPress={() => {
+                if (stepped && step > 0) {
+                  setStep((current) => current - 1);
+                  return;
+                }
                 reset();
                 onCancel();
               }}
             />
-            <InkButton
-              label={saving ? "Enregistrement…" : "Enregistrer"}
-              variant="solid"
-              grow
-              disabled={saving}
-              onPress={() => void save()}
-            />
+            {stepped && step < STEPS.length - 1 ? (
+              <InkButton label="Suivant" variant="solid" grow onPress={next} />
+            ) : (
+              <InkButton
+                label={saving ? "Enregistrement…" : "Enregistrer"}
+                variant="solid"
+                grow
+                disabled={saving}
+                onPress={() => void save()}
+              />
+            )}
           </>
         )
       }
@@ -209,6 +290,8 @@ export function EventFormModal({
         </View>
       )}
 
+      {stepped && tab === "event" ? <Progress step={step} /> : null}
+
       {tab === "folder" && !event ? <FolderManager /> : null}
 
       <ScrollView
@@ -216,79 +299,89 @@ export function EventFormModal({
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
       >
-        <Section title="Ce qui s'est passé" answer={typeName(type)}>
-          <InkField
-            label="Titre"
-            value={title}
-            onChangeText={setTitle}
-            placeholder="Prise de Constantinople"
-          />
-          <TypePicker value={type} onChange={setType} />
-          <InkField
-            label="Description"
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            placeholder="Ce que l'on en retient…"
-          />
-        </Section>
-
-        <Section title="Quand">
-          {/* One control, and the question of whether it lasted is asked
-              inside it — where the answer is given. */}
-          <EventDateField
-            start={start}
-            end={end}
-            onChange={(nextStart, nextEnd) => {
-              setStart(nextStart);
-              setEnd(nextEnd);
-            }}
-          />
-        </Section>
-
-        <Section title="Où">
-          <View style={styles.location}>
-            <View style={styles.locationText}>
-              <Text style={styles.legend}>Lieu</Text>
-              <Text style={styles.coordinates}>
-                {location
-                  ? `${location.latitude.toFixed(4)}°, ${location.longitude.toFixed(4)}°`
-                  : "Non défini"}
-              </Text>
-            </View>
-            <InkButton
-              label={location ? "Déplacer" : "Placer"}
-              variant={location ? "tonal" : "solid"}
-              onPress={onRequestPlacement}
+        {show(0) ? (
+          <Section title="Ce qui s'est passé" answer={typeName(type)}>
+            <InkField
+              label="Titre"
+              value={title}
+              onChangeText={setTitle}
+              placeholder="Prise de Constantinople"
             />
-          </View>
-        </Section>
+            <TypePicker value={type} onChange={setType} />
+            <InkField
+              label="Description"
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              placeholder="Ce que l'on en retient…"
+            />
+          </Section>
+        ) : null}
 
-        <Section
-          title="Classement"
-          answer={
-            links.length === 0
-              ? undefined
-              : `${links.length} classeur${links.length > 1 ? "s" : ""}`
-          }
-        >
-          <FolderSelector folders={folders} value={links} onChange={setLinks} />
-        </Section>
+        {show(1) ? (
+          <Section title="Quand">
+            {/* One control, and the question of whether it lasted is asked
+                inside it — where the answer is given. */}
+            <EventDateField
+              start={start}
+              end={end}
+              onChange={(nextStart, nextEnd) => {
+                setStart(nextStart);
+                setEnd(nextEnd);
+              }}
+            />
+          </Section>
+        ) : null}
 
-        <Section title="Images">
-          <PhotoPicker
-            photos={photos}
-            onChange={setPhotos}
-            existing={keptPhotos}
-            onChangeExisting={setKeptPhotos}
-            onRemoveExisting={(photo) => {
-              setKeptPhotos((current) =>
-                current.filter((kept) => kept.id !== photo.id),
-              );
-              setDroppedPhotos((current) => [...current, photo]);
-            }}
-          />
-        </Section>
+        {show(2) ? (
+          <Section title="Où">
+            <View style={styles.location}>
+              <View style={styles.locationText}>
+                <Text style={styles.legend}>Lieu</Text>
+                <Text style={styles.coordinates}>
+                  {location
+                    ? `${location.latitude.toFixed(4)}°, ${location.longitude.toFixed(4)}°`
+                    : "Non défini"}
+                </Text>
+              </View>
+              <InkButton
+                label={location ? "Déplacer" : "Placer"}
+                variant={location ? "tonal" : "solid"}
+                onPress={onRequestPlacement}
+              />
+            </View>
+          </Section>
+        ) : null}
+
+        {show(3) ? (
+          <Section
+            title="Classement"
+            answer={
+              links.length === 0
+                ? undefined
+                : `${links.length} classeur${links.length > 1 ? "s" : ""}`
+            }
+          >
+            <FolderSelector folders={folders} value={links} onChange={setLinks} />
+          </Section>
+        ) : null}
+
+        {show(4) ? (
+          <Section title="Images">
+            <PhotoPicker
+              photos={photos}
+              onChange={setPhotos}
+              existing={keptPhotos}
+              onChangeExisting={setKeptPhotos}
+              onRemoveExisting={(photo) => {
+                setKeptPhotos((current) =>
+                  current.filter((kept) => kept.id !== photo.id),
+                );
+                setDroppedPhotos((current) => [...current, photo]);
+              }}
+            />
+          </Section>
+        ) : null}
       </ScrollView>
     </Sheet>
   );
@@ -299,6 +392,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.xl,
     paddingBottom: space.lg,
   },
+  progress: {
+    paddingHorizontal: space.xl,
+    paddingBottom: space.lg,
+    gap: space.sm,
+  },
+  ticks: { flexDirection: "row", gap: 4 },
+  tick: {
+    flex: 1,
+    height: 4,
+    borderRadius: radius.pill,
+    backgroundColor: palette.sunken,
+  },
+  tickDone: { backgroundColor: palette.wax },
+  progressText: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    gap: space.sm,
+  },
+  progressStep: { ...type.caption, color: palette.inkSoft, fontWeight: "600" },
+  progressLeft: { ...type.caption, color: palette.inkFaint },
   hidden: { display: "none" },
   body: {
     paddingHorizontal: space.xl,

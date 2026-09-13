@@ -429,10 +429,27 @@ formulaire. Chaque classeur coché reçoit ensuite sa propre importance. C'est l
 que se matérialise le modèle : un événement majeur pour un sujet et secondaire
 pour un autre.
 
-**Le formulaire est quatre questions, pas une colonne de champs.** *Ce qui s'est
-passé*, *Quand*, *Où*, *Classement*, *Images* — chaque titre porte à sa droite
-la réponse en cours (le type choisi, le nombre de classeurs), pour qu'on sache
-où l'on en est sans relire.
+**Le formulaire est cinq questions, posées une par une.** *Ce qui s'est passé*,
+*Quand*, *Où*, *Classement*, *Images* — une page chacune, *Enregistrer* ne
+paraissant qu'à la dernière ; ailleurs c'est *Suivant*, et *Annuler* devient
+*Retour* dès la deuxième. Chaque titre porte à sa droite la réponse en cours (le
+type choisi, le nombre de classeurs).
+
+Au-dessus, cinq segments qui se remplissent, « Étape 2 sur 5 » et le nombre
+d'étapes restantes. Un assistant sans ça est un couloir sans fenêtres : on ne
+peut pas savoir si le prochain appui termine le travail ou ouvre quatre pages de
+plus.
+
+**Ce qui manque est signalé à la sortie de l'étape concernée** — un titre vide
+au bout de la première, une date au bout de la deuxième, un lieu au bout de la
+troisième — et non à l'enregistrement, quatre pages plus loin que le champ dont
+il est question. *Enregistrer* revérifie les cinq et ramène à la première étape
+fautive, au cas où.
+
+**Modifier un événement n'est pas un parcours.** C'est un changement, souvent le
+quatrième ; faire traverser cinq pages pour l'atteindre serait une punition.
+En modification, les cinq sections sont donc affichées d'un coup, comme avant, et
+l'indicateur disparaît.
 
 **Type.** Les seize types sont sur un rail d'emoji qu'on fait défiler
 horizontalement : un geste au lieu de deux et d'une modale, et le choix reste
