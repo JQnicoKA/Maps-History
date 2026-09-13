@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { InkButton, InkField, Sheet } from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
@@ -40,16 +48,23 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
   /** The existing cover is on its way out. */
   const [cleared, setCleared] = useState(false);
   const [saving, setSaving] = useState(false);
+  /** Reading and encoding the picture takes a moment; the frame says so. */
+  const [picking, setPicking] = useState(false);
 
   if (target === null) return null;
 
   const preview = picked?.uri ?? (cleared ? undefined : folder?.photo?.url);
 
   const choose = async () => {
-    const [photo] = await pickPhotos({ multiple: false });
-    if (!photo) return;
-    setPicked(photo);
-    setCleared(false);
+    setPicking(true);
+    try {
+      const [photo] = await pickPhotos({ multiple: false });
+      if (!photo) return;
+      setPicked(photo);
+      setCleared(false);
+    } finally {
+      setPicking(false);
+    }
   };
 
   const clear = () => {
@@ -136,10 +151,14 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={preview ? "Changer la photo" : "Choisir une photo"}
+            accessibilityState={{ busy: picking }}
+            disabled={picking}
             onPress={() => void choose()}
             style={({ pressed }) => [styles.frame, pressed && styles.pressed]}
           >
-            {preview ? (
+            {picking ? (
+              <ActivityIndicator color={palette.inkSoft} />
+            ) : preview ? (
               <Image source={{ uri: preview }} style={styles.image} />
             ) : (
               <Text style={styles.plus}>+</Text>

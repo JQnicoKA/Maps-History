@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   Pressable,
   ScrollView,
@@ -69,10 +70,22 @@ export function PhotoPicker({
   onRemoveExisting,
 }: PhotoPickerProps) {
   const [open, setOpen] = useState<Open | null>(null);
+  /**
+   * The wait is real and invisible: the system sheet closes the moment the
+   * pictures are chosen, but they are read and encoded to base64 after that,
+   * which takes a second or more for several. Without a sign, the slot looks
+   * like it swallowed the tap.
+   */
+  const [adding, setAdding] = useState(false);
 
   const add = async () => {
-    const picked = await pickPhotos({ multiple: true });
-    if (picked.length > 0) onChange([...photos, ...picked]);
+    setAdding(true);
+    try {
+      const picked = await pickPhotos({ multiple: true });
+      if (picked.length > 0) onChange([...photos, ...picked]);
+    } finally {
+      setAdding(false);
+    }
   };
 
   const opened =
@@ -121,10 +134,16 @@ export function PhotoPicker({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Ajouter des photos"
+          accessibilityState={{ busy: adding }}
+          disabled={adding}
           onPress={() => void add()}
           style={({ pressed }) => [styles.add, pressed && styles.pressed]}
         >
-          <Text style={styles.addGlyph}>+</Text>
+          {adding ? (
+            <ActivityIndicator color={palette.inkSoft} />
+          ) : (
+            <Text style={styles.addGlyph}>+</Text>
+          )}
         </Pressable>
 
         {existing.map((photo) => (
