@@ -10,7 +10,7 @@ import {
 import { useEvents } from "../events/EventsProvider";
 import { formatYear, toSortKey } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
-import { space } from "../../theme/tokens";
+import { radius, space } from "../../theme/tokens";
 
 /**
  * Years across the screen. Fixed, and that is the whole idea: the scale never
@@ -41,7 +41,7 @@ const MARGIN = 150;
 const MIN_SPAN = 400;
 
 /** Reserved by the screen beneath the summary card. */
-export const FRIEZE_HEIGHT = 92;
+export const FRIEZE_HEIGHT = 88;
 
 const clamp = (value: number, low: number, high: number) =>
   Math.min(Math.max(value, low), high);
@@ -62,7 +62,9 @@ type Stroke = { year: number; at: number; major: boolean; fade: number };
  * scale is engraved on a map rather than pasted onto it.
  */
 export function Timeline() {
-  const { visibleEvents, selectedEvent, year, scrubTo } = useEvents();
+  // The event being read needs no mark of its own here: magnetism has already
+  // brought it under the needle, which is the mark.
+  const { visibleEvents, year, scrubTo } = useEvents();
   const [width, setWidth] = useState(0);
 
   /**
@@ -272,25 +274,8 @@ export function Timeline() {
       }
       {...responder.panHandlers}
     >
-      <Text style={styles.year}>{formatYear(Math.round(at))}</Text>
-
-      <View style={styles.marks}>
-        {marks.map((mark) => {
-          const x = centre + (mark.key - at) * perYear;
-          const fade = fadeAt(x);
-          if (fade <= 0) return null;
-          const reading = mark.id === selectedEvent?.id;
-          return (
-            <View
-              key={mark.id}
-              style={[
-                styles.mark,
-                reading && styles.markReading,
-                { left: x, opacity: fade },
-              ]}
-            />
-          );
-        })}
+      <View style={styles.pill}>
+        <Text style={styles.year}>{formatYear(Math.round(at))}</Text>
       </View>
 
       <View style={styles.rule}>
@@ -303,67 +288,95 @@ export function Timeline() {
             ]}
           />
         ))}
+
+        {/* Events are strokes of the same family, in wax, standing among the
+            graduations rather than hovering over them as dots did. They fall
+            on their own years, so they sit between the tens and are told apart
+            by colour and height, never by being somewhere else. */}
+        {marks.map((mark) => {
+          const x = centre + (mark.key - at) * perYear;
+          const fade = fadeAt(x);
+          if (fade <= 0) return null;
+          return (
+            <View
+              key={mark.id}
+              style={[styles.event, { left: x, opacity: fade }]}
+            />
+          );
+        })}
+
         <View style={[styles.needle, { left: centre }]} />
       </View>
     </View>
   );
 }
 
-const MARK = 7;
-const RULE = 26;
+const RULE = 34;
+
+/**
+ * Strokes hang from a common baseline, the way graduations do on a rule: the
+ * short ones stop level with the tall ones at the bottom, and the difference
+ * is taken off the top. Aligning them at the top instead left the small marks
+ * floating above the line the eye follows.
+ */
+const STROKE = { minor: 13, event: 19, major: 27 };
+const NEEDLE = 34;
 
 const styles = StyleSheet.create({
-  root: { height: FRIEZE_HEIGHT, justifyContent: "flex-end" },
+  root: { height: FRIEZE_HEIGHT, justifyContent: "flex-end", gap: space.md },
+  // The year in wax, like the needle under it and the ring round the marker
+  // being read: the colour this map keeps for "where you are".
+  pill: {
+    alignSelf: "center",
+    paddingHorizontal: space.lg,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    backgroundColor: palette.wax,
+  },
   year: {
-    textAlign: "center",
-    fontSize: 24,
-    lineHeight: 28,
+    fontSize: 20,
+    lineHeight: 25,
     fontWeight: "700",
     letterSpacing: 0.3,
-    color: palette.ink,
-  },
-  marks: { height: MARK + space.sm, justifyContent: "flex-end" },
-  mark: {
-    position: "absolute",
-    bottom: 4,
-    width: MARK,
-    height: MARK,
-    marginLeft: -MARK / 2,
-    borderRadius: MARK / 2,
-    backgroundColor: palette.inkSoft,
-  },
-  markReading: {
-    width: MARK + 4,
-    height: MARK + 4,
-    marginLeft: -(MARK + 4) / 2,
-    borderRadius: (MARK + 4) / 2,
-    backgroundColor: palette.wax,
+    color: palette.paperLight,
   },
   rule: { height: RULE, justifyContent: "flex-start" },
   minor: {
     position: "absolute",
-    top: 0,
-    width: StyleSheet.hairlineWidth * 2,
-    height: 9,
-    marginLeft: -StyleSheet.hairlineWidth,
+    top: STROKE.major - STROKE.minor,
+    width: 2,
+    height: STROKE.minor,
+    marginLeft: -1,
+    borderRadius: 1,
     backgroundColor: palette.inkSoft,
+  },
+  event: {
+    position: "absolute",
+    top: STROKE.major - STROKE.event,
+    width: 2.5,
+    height: STROKE.event,
+    marginLeft: -1.25,
+    borderRadius: 1.25,
+    backgroundColor: palette.wax,
   },
   major: {
     position: "absolute",
     top: 0,
-    width: 1.5,
-    height: 20,
-    marginLeft: -0.75,
+    width: 3,
+    height: STROKE.major,
+    marginLeft: -1.5,
+    borderRadius: 1.5,
     backgroundColor: palette.ink,
   },
-  // The reading edge. Two points of wax, the height of a heavy stroke.
+  // The reading edge: on the same baseline as the strokes, and overhanging
+  // them at the top, so it is never mistaken for one of them.
   needle: {
     position: "absolute",
-    top: -4,
-    width: 2,
-    height: 28,
-    marginLeft: -1,
-    borderRadius: 1,
+    top: STROKE.major - NEEDLE,
+    width: 3,
+    height: NEEDLE,
+    marginLeft: -1.5,
+    borderRadius: 1.5,
     backgroundColor: palette.wax,
   },
   empty: {
