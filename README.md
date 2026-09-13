@@ -252,7 +252,6 @@ src/
         FolderManager.tsx         l'autre moitié : la liste des classeurs
         FolderEditModal.tsx       fiche d'un classeur : nom et couverture,
                                   en création comme en modification
-        ImportanceRow.tsx         élevée / moyenne / faible pour un classeur
         PhotoPicker.tsx           sélection des photos
         LocationReticle.tsx       placement du lieu au réticule
         AddEventButton.tsx        le bouton +
@@ -474,8 +473,14 @@ poissseux en pratique.
 
 Trois appuis valent mieux qu'un glissement qui marche quatre fois sur cinq.
 
+**Le panneau de filtres emploie exactement le même contrôle**, à un choix près :
+« Toutes » s'y ajoute en tête des trois, parce que filtrer admet une quatrième
+réponse que composer n'admet pas. Le lien y est donc `Importance | null` — non
+parce qu'un événement pourrait n'en avoir aucune, mais parce qu'un filtre le
+peut. Un appelant qui n'offre pas « Toutes » ne peut jamais en recevoir.
+
 **Classement.** Une carte par classeur, portant sa couverture, son nom et son
-échelle. Avant, les classeurs étaient une ligne de résumé grise et les échelles
+importance. Avant, les classeurs étaient une ligne de résumé grise et les échelles
 une pile détachée en dessous : rien à l'écran ne disait laquelle allait avec
 lequel. Or ce couplage *est* le modèle. Sous les cartes, un emplacement en
 pointillés — une place à remplir, pas un bouton de plus.

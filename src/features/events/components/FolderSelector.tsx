@@ -1,20 +1,35 @@
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { SegmentedControl, SelectField } from "../../../components/ui";
-import type { EventFolderLink, Folder, Importance } from "../types";
+import type { Folder, Importance } from "../types";
 import { palette } from "../../../theme/palette";
 import { radius, space, type } from "../../../theme/tokens";
 
-const IMPORTANCES: { value: Importance; label: string }[] = [
+type Choice = Importance | "all";
+
+const IMPORTANCES: { value: Choice; label: string }[] = [
   { value: "low", label: "Faible" },
   { value: "medium", label: "Moyenne" },
   { value: "high", label: "Élevée" },
 ];
 
+const ALL: { value: Choice; label: string } = { value: "all", label: "Toutes" };
+
+/**
+ * Nullable here even though an event's link never is: the filters use the same
+ * control, and there "Toutes" is a real answer. A caller that does not offer it
+ * can never receive it.
+ */
+export type FolderLink = { folderId: string; importance: Importance | null };
+
 export type FolderSelectorProps = {
   folders: Folder[];
-  value: EventFolderLink[];
-  onChange: (links: EventFolderLink[]) => void;
+  value: FolderLink[];
+  onChange: (links: FolderLink[]) => void;
+  /** Adds a "Toutes" choice — the filters need it, the form does not. */
+  allowAll?: boolean;
+  /** What the dashed slot says before anything is chosen. */
+  emptyLabel?: string;
 };
 
 /**
@@ -38,16 +53,25 @@ export function FolderSelector({
   folders,
   value,
   onChange,
+  allowAll = false,
+  emptyLabel = "Ranger dans un classeur",
 }: FolderSelectorProps) {
+  const segments = allowAll ? [ALL, ...IMPORTANCES] : IMPORTANCES;
+
   const toggle = (folderId: string) => {
     onChange(
       value.some((link) => link.folderId === folderId)
         ? value.filter((link) => link.folderId !== folderId)
-        : [...value, { folderId, importance: "medium" }],
+        : [
+            ...value,
+            // Picking a subject should widen the view when filtering and make
+            // a plain choice when composing.
+            { folderId, importance: allowAll ? null : "medium" },
+          ],
     );
   };
 
-  const setImportance = (folderId: string, importance: Importance) => {
+  const setImportance = (folderId: string, importance: Importance | null) => {
     onChange(
       value.map((link) =>
         link.folderId === folderId ? { ...link, importance } : link,
@@ -92,10 +116,10 @@ export function FolderSelector({
 
             <Text style={styles.legend}>Importance</Text>
             <SegmentedControl
-              segments={IMPORTANCES}
-              value={link.importance}
-              onChange={(importance) =>
-                setImportance(link.folderId, importance)
+              segments={segments}
+              value={link.importance ?? "all"}
+              onChange={(choice) =>
+                setImportance(link.folderId, choice === "all" ? null : choice)
               }
             />
           </View>
@@ -121,7 +145,7 @@ export function FolderSelector({
           >
             <Text style={styles.addGlyph}>+</Text>
             <Text style={styles.addLabel}>
-              {value.length === 0 ? "Ranger dans un classeur" : "Ajouter un classeur"}
+              {value.length === 0 ? emptyLabel : "Ajouter un classeur"}
             </Text>
           </Pressable>
         )}

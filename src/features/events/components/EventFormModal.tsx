@@ -362,7 +362,21 @@ export function EventFormModal({
                 : `${links.length} classeur${links.length > 1 ? "s" : ""}`
             }
           >
-            <FolderSelector folders={folders} value={links} onChange={setLinks} />
+            <FolderSelector
+              folders={folders}
+              value={links}
+              // Without "Toutes" on offer the control cannot hand back a null,
+              // but the type says it might; the fallback states the invariant
+              // rather than asserting it away.
+              onChange={(next) =>
+                setLinks(
+                  next.map((link) => ({
+                    folderId: link.folderId,
+                    importance: link.importance ?? "medium",
+                  })),
+                )
+              }
+            />
           </Section>
         ) : null}
 
