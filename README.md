@@ -249,8 +249,9 @@ src/
         TypePicker.tsx            rail des seize types
         PhotoViewer.tsx           photo plein écran + sa source
         FolderSelector.tsx        choix des classeurs + importance
-        FolderManager.tsx         l'autre moitié : liste des classeurs
-        FolderEditModal.tsx       fiche d'un classeur : nom et couverture
+        FolderManager.tsx         l'autre moitié : la liste des classeurs
+        FolderEditModal.tsx       fiche d'un classeur : nom et couverture,
+                                  en création comme en modification
         ImportanceRow.tsx         élevée / moyenne / faible pour un classeur
         PhotoPicker.tsx           sélection des photos
         LocationReticle.tsx       placement du lieu au réticule
@@ -385,18 +386,29 @@ classeur**. Les deux moitiés restent montées, la cachée mise à `display: "no
 — on peut passer à l'onglet classeur au milieu d'un formulaire à moitié rempli
 et revenir sans avoir rien perdu.
 
-La moitié *classeur* n'a ni *Annuler* ni *Enregistrer* : un classeur est écrit
-au moment où on le nomme, et sa photo au moment où on la choisit. Elle liste les
-classeurs existants avec le nombre d'événements rangés dans chacun, et refuse un
-doublon de nom.
+La moitié *classeur* **est une liste et rien d'autre** : les classeurs
+existants, avec le nombre d'événements rangés dans chacun, et en tête un
+emplacement en pointillés portant un `+`.
 
-**Le crayon à droite d'une tuile ouvre sa fiche** — nom et photo de couverture
-au même endroit. Rien n'y est écrit avant *Enregistrer*, **la photo comprise** :
+**Créer un classeur et en modifier un sont le même acte** — un nom et une
+couverture — donc c'est la même fiche, atteinte par l'emplacement du haut ou par
+le crayon d'une ligne. Il y avait avant un champ et un bouton *Ajouter* épinglés
+au-dessus de la liste : deux façons de dire la même chose, dont la plus rapide
+ne savait pas donner de couverture. Un nouveau classeur peut désormais arriver
+avec sa photo déjà dessus.
+
+Rien n'y est écrit avant *Enregistrer*, **la photo comprise** :
 elle est retenue comme un choix local plutôt que téléversée sur-le-champ, sans
 quoi *Annuler* serait un mensonge — il défairait le nom et garderait l'image.
-La photo passe en premier à l'enregistrement : si le téléversement échoue, le
-nom n'est pas touché non plus et la feuille reste ouverte sur ce qu'il y a à
-corriger. Les doublons de nom sont refusés ici aussi, et les liens
+À la **modification**, la photo passe en premier : si le téléversement échoue,
+le nom n'est pas touché non plus et la feuille reste ouverte sur ce qu'il y a à
+corriger. À la **création**, c'est l'inverse, et ça doit l'être — le chemin de
+stockage se construit sur l'identifiant du classeur, qui n'existe pas avant la
+ligne. Une photo qui échoue après coup laisse donc un classeur sans couverture,
+ce qui est dit et conservé plutôt que silencieusement annulé.
+
+Les doublons de nom sont refusés, sans qu'un classeur compte contre lui-même —
+sinon on ne pourrait jamais corriger sa propre casse. Et les liens
 événement↔classeur portant l'identifiant et jamais le nom, renommer ne défait
 rien.
 

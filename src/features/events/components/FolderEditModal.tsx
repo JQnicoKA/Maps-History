@@ -9,20 +9,30 @@ import { palette } from "../../../theme/palette";
 import { space, type } from "../../../theme/tokens";
 
 export type FolderEditModalProps = {
-  /** The folder being edited; null closes the sheet. */
-  folder: Folder | null;
+  /**
+   * An existing folder to edit, `"new"` to make one, `null` to stay shut.
+   */
+  target: Folder | "new" | null;
   onClose: () => void;
 };
 
 /**
- * Renaming a folder and changing its cover, in one place.
+ * A folder's name and cover, whether it already exists or not.
  *
- * Nothing is written until *Enregistrer* — including the picture, which is held
- * as a local choice rather than uploaded on the spot. Otherwise *Annuler* would
- * be a lie: it would undo the name and keep the photograph.
+ * Creating used to be a field and a button pinned above the list, which made
+ * two ways of saying the same thing — and the quicker of the two could not give
+ * the folder a cover. One sheet for both is fewer things to learn, and a new
+ * folder can arrive with its picture already on it.
+ *
+ * Nothing is written until *Enregistrer*, the picture included: it is held as a
+ * local choice rather than uploaded on the spot. Otherwise *Annuler* would be a
+ * lie — it would undo the name and keep the photograph.
  */
-export function FolderEditModal({ folder, onClose }: FolderEditModalProps) {
-  const { folders, renameFolder, setFolderPhoto } = useEvents();
+export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
+  const { folders, addFolder, renameFolder, setFolderPhoto } = useEvents();
+
+  const creating = target === "new";
+  const folder = creating ? null : target;
 
   const [name, setName] = useState(folder?.name ?? "");
   /** Chosen but not uploaded — the upload waits for Enregistrer. */
@@ -31,9 +41,9 @@ export function FolderEditModal({ folder, onClose }: FolderEditModalProps) {
   const [cleared, setCleared] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  if (!folder) return null;
+  if (target === null) return null;
 
-  const preview = picked?.uri ?? (cleared ? undefined : folder.photo?.url);
+  const preview = picked?.uri ?? (cleared ? undefined : folder?.photo?.url);
 
   const choose = async () => {
     const [photo] = await pickPhotos({ multiple: false });
@@ -53,10 +63,12 @@ export function FolderEditModal({ folder, onClose }: FolderEditModalProps) {
       Alert.alert("Nom manquant", "Un classeur a besoin d'un nom.");
       return;
     }
+    // Case-insensitive, and the folder being renamed does not count against
+    // itself — otherwise its own casing could never be corrected.
     if (
       folders.some(
         (other) =>
-          other.id !== folder.id &&
+          other.id !== folder?.id &&
           other.name.toLowerCase() === trimmed.toLowerCase(),
       )
     ) {
@@ -66,12 +78,30 @@ export function FolderEditModal({ folder, onClose }: FolderEditModalProps) {
 
     setSaving(true);
     try {
-      // Picture first: if the upload fails, the name is left alone too, and
-      // the sheet stays open on exactly what the reader still has to fix.
-      if (picked) await setFolderPhoto(folder, picked);
-      else if (cleared && folder.photo) await setFolderPhoto(folder, null);
+      if (folder === null) {
+        // The other way round from an edit, and it has to be: the storage path
+        // is built from the folder's id, which does not exist until the row
+        // does. A picture that fails after that leaves a folder without its
+        // cover — which is worth saying, and worth keeping.
+        const created = await addFolder(trimmed);
+        if (picked) {
+          try {
+            await setFolderPhoto(created, picked);
+          } catch (cause) {
+            Alert.alert(
+              "Classeur créé sans sa photo",
+              cause instanceof Error ? cause.message : String(cause),
+            );
+          }
+        }
+      } else {
+        // Picture first: if the upload fails, the name is left alone too, and
+        // the sheet stays open on exactly what is left to fix.
+        if (picked) await setFolderPhoto(folder, picked);
+        else if (cleared && folder.photo) await setFolderPhoto(folder, null);
 
-      if (trimmed !== folder.name) await renameFolder(folder.id, trimmed);
+        if (trimmed !== folder.name) await renameFolder(folder.id, trimmed);
+      }
       onClose();
     } catch (cause) {
       Alert.alert(
@@ -87,7 +117,7 @@ export function FolderEditModal({ folder, onClose }: FolderEditModalProps) {
     <Sheet
       visible
       onClose={onClose}
-      title="Modifier le classeur"
+      title={creating ? "Nouveau classeur" : "Modifier le classeur"}
       footer={
         <>
           <InkButton label="Annuler" variant="tonal" grow onPress={onClose} />

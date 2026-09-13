@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -10,7 +9,6 @@ import {
 } from "react-native";
 
 import { FolderEditModal } from "./FolderEditModal";
-import { InkButton, InkField } from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
 import type { Folder } from "../types";
 import { palette } from "../../../theme/palette";
@@ -24,69 +22,20 @@ import { radius, space, type } from "../../../theme/tokens";
  * only ever *chooses* among folders that exist, which is one decision at a time
  * rather than two tangled together.
  *
- * A folder is written the moment it is named: there is nothing to save here,
- * and no Cancel to press. Everything else about it — its name, its cover —
- * is changed behind the pencil, where there is something to cancel.
+ * This half is a list and nothing else. Making a folder and changing one are
+ * the same act — a name and a cover — so they are the same sheet, reached from
+ * the slot at the top or from the pencil on a row.
  */
 export function FolderManager() {
-  const { folders, events, addFolder } = useEvents();
-  const [name, setName] = useState("");
-  const [creating, setCreating] = useState(false);
-  /** The folder whose sheet is open, if any. */
-  const [editing, setEditing] = useState<Folder | null>(null);
-
-  /** Case-insensitive: two folders differing only in case are one folder. */
-  const taken = (candidate: string) =>
-    folders.some(
-      (folder) => folder.name.toLowerCase() === candidate.toLowerCase(),
-    );
-
-  const create = async () => {
-    const trimmed = name.trim();
-    if (trimmed === "") return;
-
-    if (taken(trimmed)) {
-      Alert.alert("Classeur existant", `« ${trimmed} » est déjà dans la liste.`);
-      return;
-    }
-
-    setCreating(true);
-    try {
-      await addFolder(trimmed);
-      setName("");
-    } catch (cause) {
-      Alert.alert(
-        "Classeur non créé",
-        cause instanceof Error ? cause.message : String(cause),
-      );
-    } finally {
-      setCreating(false);
-    }
-  };
+  const { folders, events } = useEvents();
+  /** The folder whose sheet is open, `"new"` for the empty one. */
+  const [editing, setEditing] = useState<Folder | "new" | null>(null);
 
   return (
     <ScrollView
       contentContainerStyle={styles.body}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.createRow}>
-        <View style={styles.createField}>
-          <InkField
-            label="Nom du classeur"
-            value={name}
-            onChangeText={setName}
-            placeholder="Guerres de religion"
-            onSubmitEditing={() => void create()}
-          />
-        </View>
-        <InkButton
-          label={creating ? "…" : "Ajouter"}
-          variant="solid"
-          disabled={creating || name.trim() === ""}
-          onPress={() => void create()}
-        />
-      </View>
-
       <View style={styles.list}>
         <Text style={styles.legend}>
           {folders.length === 0
@@ -94,10 +43,21 @@ export function FolderManager() {
             : `${folders.length} classeur${folders.length > 1 ? "s" : ""}`}
         </Text>
 
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Nouveau classeur"
+          onPress={() => setEditing("new")}
+          style={({ pressed }) => [styles.new, pressed && styles.pressed]}
+        >
+          <View style={styles.newThumb}>
+            <Text style={styles.newGlyph}>+</Text>
+          </View>
+          <Text style={styles.newLabel}>Nouveau classeur</Text>
+        </Pressable>
+
         {folders.length === 0 ? (
           <Text style={styles.empty}>
-            Créez le premier ci-dessus. Un classeur est un sujet : un événement
-            peut appartenir à plusieurs.
+            Un classeur est un sujet : un événement peut appartenir à plusieurs.
           </Text>
         ) : (
           folders.map((folder) => {
@@ -155,8 +115,8 @@ export function FolderManager() {
       {/* Keyed on the folder: the sheet seeds its fields from the folder it
           opens on, and without a remount it would keep the first one's. */}
       <FolderEditModal
-        key={editing?.id ?? "none"}
-        folder={editing}
+        key={editing === null ? "none" : editing === "new" ? "new" : editing.id}
+        target={editing}
         onClose={() => setEditing(null)}
       />
     </ScrollView>
@@ -168,7 +128,7 @@ const PENCIL = require("../../../../assets/icons/pencil.png");
 /** Round, like the marker it feeds. */
 const THUMB = 44;
 
-/** The pencil's disc. Smaller than the cover, so it never competes with it. */
+/** The pencil's tile. Smaller than the cover, so it never competes with it. */
 const EDIT = 36;
 
 const styles = StyleSheet.create({
@@ -177,9 +137,28 @@ const styles = StyleSheet.create({
     paddingBottom: space.lg,
     gap: space.xl,
   },
-  createRow: { flexDirection: "row", alignItems: "flex-end", gap: space.sm },
-  createField: { flex: 1 },
   list: { gap: space.sm },
+  // Dashed, like every other empty slot in this app: a place to fill rather
+  // than a button competing with the rows below it.
+  new: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    padding: space.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: palette.line,
+  },
+  newThumb: {
+    width: THUMB,
+    height: THUMB,
+    borderRadius: THUMB / 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  newGlyph: { fontSize: 24, lineHeight: 28, color: palette.inkSoft },
+  newLabel: { flex: 1, fontSize: 15, fontWeight: "600", color: palette.inkSoft },
   legend: { ...type.legend, color: palette.inkSoft },
   empty: { ...type.body, color: palette.inkFaint },
   row: {
@@ -207,13 +186,15 @@ const styles = StyleSheet.create({
   rowText: { flex: 1, gap: 2 },
   name: { fontSize: 15, fontWeight: "600", color: palette.ink },
   /**
-   * A pale disc on the row's sunken ground, mirroring the cover on the left —
-   * a bare glyph floating at the edge read as decoration rather than a button.
+   * A pale rounded square on the row's sunken ground. Square rather than round
+   * so it reads as a control and not as a second portrait facing the cover —
+   * and a bare glyph floating at the edge read as decoration rather than as a
+   * button at all.
    */
   edit: {
     width: EDIT,
     height: EDIT,
-    borderRadius: EDIT / 2,
+    borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: palette.paperLight,
