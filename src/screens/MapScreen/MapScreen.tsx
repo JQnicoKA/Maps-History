@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MissingConfigNotice } from "./MissingConfigNotice";
 import { ViewToggleButton, type ScreenView } from "./ViewToggleButton";
-import { Paper } from "../../components/ui";
+import { GlyphButton, Paper } from "../../components/ui";
 import { ParchmentOverlay, WorldMap } from "../../components/WorldMap";
 import { env } from "../../config/env";
 import { MAP_FEATURES } from "../../config/map";
@@ -30,7 +30,7 @@ type DraftLocation = { longitude: number; latitude: number };
 export function MapScreen() {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapRef>(null);
-  const { selectedEvent, error } = useEvents();
+  const { selectedEvent, neighbours, selectEvent, error } = useEvents();
   // The opening shot should not fly across the world; every later move should.
   const hasFramed = useRef(false);
 
@@ -156,10 +156,26 @@ export function MapScreen() {
               </Paper>
             ) : null}
             {selectedEvent && view === "map" ? (
-              <EventSummaryCard
-                event={selectedEvent}
-                onOpen={() => setDetailOpen(true)}
-              />
+              <View style={styles.summaryRow} pointerEvents="box-none">
+                <View style={styles.summary}>
+                  <EventSummaryCard
+                    event={selectedEvent}
+                    onOpen={() => setDetailOpen(true)}
+                  />
+                </View>
+                {/* The frieze moves through years; this moves through events,
+                    which is the other thing a reader wants — and it is next to
+                    the tile it advances rather than off at the screen's edge. */}
+                <GlyphButton
+                  accessibilityLabel="Événement suivant"
+                  disabled={neighbours.next === null}
+                  onPress={() =>
+                    neighbours.next && selectEvent(neighbours.next.id)
+                  }
+                >
+                  <Text style={styles.chevron}>›</Text>
+                </GlyphButton>
+              </View>
             ) : null}
             <Timeline />
           </View>
@@ -221,6 +237,15 @@ const styles = StyleSheet.create({
   stage: { flex: 1 },
   hidden: { display: "none" },
   bottom: { position: "absolute", left: 10, right: 10, gap: 8 },
+  summaryRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  summary: { flex: 1 },
+  chevron: {
+    fontSize: 26,
+    lineHeight: 30,
+    color: palette.ink,
+    // The chevron glyph sits low in its box; nudge it back to centre.
+    marginTop: -2,
+  },
   error: {
     padding: 10,
     fontSize: 12,

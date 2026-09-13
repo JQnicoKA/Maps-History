@@ -711,6 +711,12 @@ Ouvrir un événement — sur la carte ou sur la frise — recentre la planche *
 changer le zoom** et fait apparaître une tuile de résumé ; la tuile ouvre la
 fiche complète.
 
+**Un chevron flanque cette tuile** et passe à l'événement suivant. La frise
+parcourt les **années**, celui-ci parcourt les **événements** — c'est l'autre
+chose qu'un lecteur veut faire, et il est posé contre la tuile qu'il fait
+avancer plutôt qu'au bord de l'écran comme l'étaient les anciennes flèches. Il
+s'éteint sur le dernier événement de la période filtrée.
+
 ---
 
 ## 6. Le style « atlas ancien »
