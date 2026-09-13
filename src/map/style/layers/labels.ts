@@ -2,7 +2,7 @@ import type { ExpressionSpecification } from "@maplibre/maplibre-gl-style-spec";
 import type { LayerSpecification } from "@maplibre/maplibre-react-native";
 
 import { SOURCE } from "../sources";
-import { fonts } from "../typography";
+import { fonts, HALO } from "../typography";
 import { palette } from "../../../theme/palette";
 
 /** Latin transliteration when the tileset has one, native name otherwise. */
@@ -17,12 +17,6 @@ const rank: ExpressionSpecification = [
   "to-number",
   ["coalesce", ["get", "rank"], 4],
 ];
-
-const halo = {
-  "text-halo-color": palette.paperLight,
-  "text-halo-width": 1.2,
-  "text-halo-blur": 0.6,
-} as const;
 
 /**
  * Lettering follows atlas convention: land in tracked-out capitals, water in
@@ -51,12 +45,7 @@ export function labelLayers(): LayerSpecification[] {
         "text-max-width": 7,
         "symbol-placement": "point",
       },
-      paint: {
-        "text-color": palette.waterInk,
-        "text-halo-color": palette.ocean,
-        "text-halo-width": 1,
-        "text-opacity": 0.9,
-      },
+      paint: { ...HALO, "text-color": palette.waterInk, "text-opacity": 0.9 },
     },
     {
       id: "label-continent",
@@ -74,7 +63,7 @@ export function labelLayers(): LayerSpecification[] {
         "text-max-width": 8,
       },
       paint: {
-        ...halo,
+        ...HALO,
         "text-color": palette.inkSoft,
         "text-opacity": ["interpolate", ["linear"], ["zoom"], 2.5, 0.85, 3.8, 0],
       },
@@ -94,11 +83,7 @@ export function labelLayers(): LayerSpecification[] {
         "text-max-width": 6,
         "symbol-placement": "point",
       },
-      paint: {
-        "text-color": palette.waterInk,
-        "text-halo-color": palette.lake,
-        "text-halo-width": 1,
-      },
+      paint: { ...HALO, "text-color": palette.waterInk },
     },
     {
       id: "label-peak",
@@ -113,7 +98,7 @@ export function labelLayers(): LayerSpecification[] {
         "text-max-width": 6,
         "symbol-sort-key": rank,
       },
-      paint: { ...halo, "text-color": palette.inkSoft, "text-opacity": 0.9 },
+      paint: { ...HALO, "text-color": palette.inkSoft, "text-opacity": 0.9 },
     },
   ];
 }

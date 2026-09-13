@@ -3,7 +3,7 @@ import { GeoJSONSource, Layer } from "@maplibre/maplibre-react-native";
 
 import { usePlacesAt } from "./usePlacesAt";
 import { useEvents } from "../events/EventsProvider";
-import { fonts } from "../../map/style/typography";
+import { fonts, HALO } from "../../map/style/typography";
 import { palette } from "../../theme/palette";
 
 /**
@@ -97,12 +97,7 @@ export function PlaceLayers() {
           // Cities win the space when names collide.
           "symbol-sort-key": ["case", ["==", ["get", "kind"], "city"], 0, 1],
         }}
-        paint={{
-          "text-color": palette.ink,
-          "text-halo-color": palette.paperLight,
-          "text-halo-width": 1.2,
-          "text-halo-blur": 0.6,
-        }}
+        paint={{ ...HALO, "text-color": palette.ink }}
       />
     </GeoJSONSource>
   );

@@ -5,7 +5,7 @@ import { useMemo } from "react";
 
 import { useTerritoriesAt } from "./useTerritoriesAt";
 import { ZOOM } from "../../config/map";
-import { fonts } from "../../map/style/typography";
+import { fonts, HALO } from "../../map/style/typography";
 import { useEvents } from "../events/EventsProvider";
 import { palette } from "../../theme/palette";
 
@@ -183,12 +183,7 @@ export function TerritoryLayers({ detailed }: { detailed: boolean }) {
               ["-", 0, ["get", "area"]],
             ],
           }}
-          paint={{
-            "text-color": palette.ink,
-            "text-halo-color": palette.paperLight,
-            "text-halo-width": 1.4,
-            "text-halo-blur": 0.6,
-          }}
+          paint={{ ...HALO, "text-color": palette.ink }}
         />
       </GeoJSONSource>
     </>
