@@ -405,6 +405,15 @@ stockage se construit sur l'identifiant du classeur, qui n'existe pas avant la
 ligne. Une photo qui échoue après coup laisse donc un classeur sans couverture,
 ce qui est dit et conservé plutôt que silencieusement annulé.
 
+**Une corbeille en bas à gauche de la fiche supprime le classeur**, et seulement
+en modification : il n'y a rien à supprimer qui n'existe pas encore. Comme pour
+un événement, une action rare et irréversible n'a pas à occuper la place d'un
+bouton courant. La confirmation dit ce qui va réellement se passer — combien
+d'événements y sont rangés, et qu'ils **ne seront pas supprimés**, seulement
+retirés de ce classeur. C'est la vérité de la base : `event_folders.folder_id`
+est en `ON DELETE CASCADE`, donc les liens tombent et les événements restent.
+Vérifié de bout en bout contre la vraie base, lien compris.
+
 Les doublons de nom sont refusés, sans qu'un classeur compte contre lui-même —
 sinon on ne pourrait jamais corriger sa propre casse. Et les liens
 événement↔classeur portant l'identifiant et jamais le nom, renommer ne défait
@@ -666,6 +675,20 @@ maintenant fixe : trois cents ans à l'écran**, soit 1,3 pt par an et 130 pt pa
 siècle, et c'est la règle qui voyage. Le geste veut donc dire la même chose à
 chaque fois, et l'essentiel de l'histoire est hors champ **à dessein**, à portée
 de balayage.
+
+**Son étendue est fixe elle aussi, et volontairement indépendante des
+événements** : `-3000 à 2100`, dans `src/config/history.ts`. Elle se déduisait
+auparavant des dates extrêmes des événements, avec une marge — si bien qu'une
+application sans événement n'avait pas de frise du tout, et que la carte perdait
+ses frontières avec elle. Or les événements sont des marques **sur** une règle,
+pas ce qui la fait exister. Sans aucun événement, la frise s'ouvre sur l'an
+2000 : pas sur la date du jour, puisque les frontières s'arrêtent en 2024 et
+qu'ouvrir sur le présent afficherait un monde vide qui se lirait comme une
+panne.
+
+Le même intervalle sert aux molettes du sélecteur de date, qui allaient jusqu'à
+2200 de leur côté — une date qu'on pouvait saisir mais jamais atteindre au
+balayage était une contradiction silencieuse.
 
 ```
                 1453

@@ -1,7 +1,7 @@
 import type { LngLat, MapRef } from "@maplibre/maplibre-react-native";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MissingConfigNotice } from "./MissingConfigNotice";
@@ -24,7 +24,7 @@ import { PlaceLayers } from "../../features/places/PlaceLayers";
 import { TerritoryLayers } from "../../features/territories/TerritoryLayers";
 import { FRIEZE_HEIGHT, Timeline } from "../../features/timeline/Timeline";
 import { palette } from "../../theme/palette";
-import { radius, shadow, space } from "../../theme/tokens";
+import { space } from "../../theme/tokens";
 
 type DraftLocation = { longitude: number; latitude: number };
 
@@ -42,7 +42,7 @@ const CREDITS_STRIP = 22;
 export function MapScreen() {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapRef>(null);
-  const { selectedEvent, neighbours, selectEvent, error } = useEvents();
+  const { selectedEvent, error } = useEvents();
   // The opening shot should not fly across the world; every later move should.
   const hasFramed = useRef(false);
 
@@ -185,34 +185,10 @@ export function MapScreen() {
               </Paper>
             ) : null}
             {selectedEvent && view === "map" ? (
-              <View style={styles.summaryRow} pointerEvents="box-none">
-                <View style={styles.summary}>
-                  <EventSummaryCard
-                    event={selectedEvent}
-                    onOpen={() => setDetailOpen(true)}
-                  />
-                </View>
-                {/* The frieze moves through years; this moves through events,
-                    which is the other thing a reader wants — and it is next to
-                    the tile it advances rather than off at the screen's edge.
-                    In wax, like the year pill on the frieze and the ring round
-                    the marker: the colour this map uses for "where you are". */}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Événement suivant"
-                  disabled={neighbours.next === null}
-                  onPress={() =>
-                    neighbours.next && selectEvent(neighbours.next.id)
-                  }
-                  style={({ pressed }) => [
-                    styles.next,
-                    pressed && styles.nextPressed,
-                    neighbours.next === null && styles.nextOff,
-                  ]}
-                >
-                  <Text style={styles.chevron}>›</Text>
-                </Pressable>
-              </View>
+              <EventSummaryCard
+                event={selectedEvent}
+                onOpen={() => setDetailOpen(true)}
+              />
             ) : null}
           </View>
         </>
@@ -274,31 +250,6 @@ const styles = StyleSheet.create({
   hidden: { display: "none" },
   bottom: { position: "absolute", left: 10, right: 10, gap: 8 },
   frieze: { position: "absolute", left: 0, right: 0 },
-  // Stretched, not centred: the button takes the tile's height by following
-  // it rather than by being told a number that would drift the day the tile
-  // grows a line.
-  summaryRow: { flexDirection: "row", alignItems: "stretch", gap: 8 },
-  summary: { flex: 1 },
-  next: {
-    width: 52,
-    alignItems: "center",
-    justifyContent: "center",
-    // The same corner and the same elevation as Paper, so the two read as one
-    // object cut in two rather than as a card with a button parked beside it.
-    borderRadius: radius.lg,
-    backgroundColor: palette.wax,
-    ...shadow.soft,
-  },
-  nextPressed: { backgroundColor: palette.waxDeep },
-  nextOff: { opacity: 0.3 },
-  chevron: {
-    fontSize: 30,
-    lineHeight: 34,
-    fontWeight: "600",
-    color: palette.paperLight,
-    // The chevron glyph sits low in its box; nudge it back to centre.
-    marginTop: -3,
-  },
   error: {
     padding: 10,
     fontSize: 12,

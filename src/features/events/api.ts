@@ -132,6 +132,25 @@ export async function renameFolder(id: string, name: string): Promise<Folder> {
 }
 
 /**
+ * Removes a folder.
+ *
+ * `event_folders.folder_id` cascades, so the events keep their existence and
+ * lose only this filing — which is what the reader is being asked to confirm.
+ *
+ * The row goes first and the picture after, best effort: an orphaned object
+ * costs a few kilobytes, a row pointing at nothing costs a broken marker.
+ */
+export async function deleteFolder(folder: Folder): Promise<void> {
+  const client = supabase();
+  const { error } = await client.from("folders").delete().eq("id", folder.id);
+  if (error) throw new Error(error.message);
+
+  if (folder.photo) {
+    await client.storage.from(PHOTO_BUCKET).remove([folder.photo.path]);
+  }
+}
+
+/**
  * Sets or clears a folder's cover picture.
  *
  * The old object is deleted only once the row points at the new one: an

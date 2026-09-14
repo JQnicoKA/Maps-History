@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   PanResponder,
+  Pressable,
   StyleSheet,
   Text,
   View,
   type LayoutChangeEvent,
 } from "react-native";
 
+import { HISTORY } from "../../config/history";
 import { useEvents } from "../events/EventsProvider";
 import { formatYear, toSortKey } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
@@ -36,10 +38,6 @@ const COMMIT_MS = 180;
 const FRICTION = 0.94;
 const STILL = 6;
 
-/** How far past the outermost events the frieze lets you wander. */
-const MARGIN = 150;
-const MIN_SPAN = 400;
-
 /** Reserved by the screen beneath the summary card. */
 export const FRIEZE_HEIGHT = 88;
 
@@ -60,11 +58,48 @@ type Stroke = { year: number; at: number; major: boolean; fade: number };
  *
  * No card behind it: strokes on the plate, fading out at both edges, the way a
  * scale is engraved on a map rather than pasted onto it.
+ *
+ * Its range is fixed too, and deliberately not derived from the events. It was
+ * once their outermost dates plus a margin, which meant an app with no events
+ * had no frieze at all — and events are marks *on* a rule, not the thing that
+ * brings it into being.
  */
+/** One of the two small discs either side of the year. */
+function Step({
+  direction,
+  disabled,
+  onPress,
+}: {
+  direction: "previous" | "next";
+  disabled: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={
+        direction === "previous" ? "Événement précédent" : "Événement suivant"
+      }
+      disabled={disabled}
+      hitSlop={10}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.step,
+        pressed && styles.stepPressed,
+        disabled && styles.stepOff,
+      ]}
+    >
+      <Text style={styles.stepGlyph}>
+        {direction === "previous" ? "‹" : "›"}
+      </Text>
+    </Pressable>
+  );
+}
+
 export function Timeline() {
   // The event being read needs no mark of its own here: magnetism has already
   // brought it under the needle, which is the mark.
-  const { visibleEvents, year, scrubTo } = useEvents();
+  const { visibleEvents, neighbours, selectEvent, year, scrubTo } = useEvents();
   const [width, setWidth] = useState(0);
 
   /**
@@ -83,24 +118,11 @@ export function Timeline() {
     [visibleEvents],
   );
 
-  const span = useMemo(() => {
-    if (marks.length === 0) return { from: 0, to: MIN_SPAN };
-    const keys = marks.map((mark) => mark.key);
-    let from = Math.min(...keys) - MARGIN;
-    let to = Math.max(...keys) + MARGIN;
-    if (to - from < MIN_SPAN) {
-      const middle = (from + to) / 2;
-      from = middle - MIN_SPAN / 2;
-      to = middle + MIN_SPAN / 2;
-    }
-    return { from, to };
-  }, [marks]);
-
-  const at = local ?? year ?? span.from;
+  const at = local ?? year ?? HISTORY.from;
 
   /** Read by the gesture and the glide, neither of which may close over state. */
-  const live = useRef({ width, span, marks, scrubTo, at });
-  live.current = { width, span, marks, scrubTo, at };
+  const live = useRef({ width, marks, scrubTo, at });
+  live.current = { width, marks, scrubTo, at };
 
   const committed = useRef(0);
   const frame = useRef<number | null>(null);
@@ -129,8 +151,8 @@ export function Timeline() {
     next: number,
     { commit: force, magnetic }: { commit: boolean; magnetic: boolean },
   ) {
-    const { span: bounds, marks: m, scrubTo: commit } = live.current;
-    const free = clamp(next, bounds.from, bounds.to);
+    const { marks: m, scrubTo: commit } = live.current;
+    const free = clamp(next, HISTORY.from, HISTORY.to);
 
     // Nearest mark to the needle, in points — so the rule holds whatever the
     // span, and matches what the reader sees at the centre of the screen.
@@ -192,24 +214,35 @@ export function Timeline() {
   }
 
   const grabbed = useRef(0);
+  /** Where the finger already was when the drag was claimed. */
+  const grabbedAt = useRef(0);
 
   const responder = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
+        /**
+         * Claimed on movement, not on touch — the two chevrons live inside
+         * this area, and a responder taken on touch-down would swallow their
+         * taps. Capture rather than bubble, so the drag is taken back from a
+         * chevron once the finger actually travels.
+         */
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponderCapture: (_, gesture) =>
+          Math.abs(gesture.dx) > 4,
         // The frieze lies over the map; once the finger is ours, keep it.
         onPanResponderTerminationRequest: () => false,
 
-        onPanResponderGrant: () => {
+        onPanResponderGrant: (_, gesture) => {
           stop();
           grabbed.current = live.current.at;
+          // `dx` is measured from the touch, which began before we claimed it.
+          grabbedAt.current = gesture.dx;
           committed.current = 0;
         },
         onPanResponderMove: (_, gesture) => {
           // Drag the rule, do not drive a cursor: pulling right brings earlier
           // years to the needle, which is how every ruler and wheel behaves.
-          put(grabbed.current - gesture.dx * scale(), {
+          put(grabbed.current - (gesture.dx - grabbedAt.current) * scale(), {
             commit: false,
             magnetic: true,
           });
@@ -258,14 +291,6 @@ export function Timeline() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [width, at, centre, perYear]);
 
-  if (marks.length === 0) {
-    return (
-      <View style={styles.root}>
-        <Text style={styles.empty}>Aucun événement pour ces filtres.</Text>
-      </View>
-    );
-  }
-
   return (
     <View
       style={styles.root}
@@ -274,8 +299,24 @@ export function Timeline() {
       }
       {...responder.panHandlers}
     >
-      <View style={styles.pill}>
-        <Text style={styles.year}>{formatYear(Math.round(at))}</Text>
+      {/* The year, flanked by the two steps through events. The frieze walks
+          years; these walk what happened in them. */}
+      <View style={styles.head}>
+        <Step
+          direction="previous"
+          disabled={neighbours.previous === null}
+          onPress={() =>
+            neighbours.previous && selectEvent(neighbours.previous.id)
+          }
+        />
+        <View style={styles.pill}>
+          <Text style={styles.year}>{formatYear(Math.round(at))}</Text>
+        </View>
+        <Step
+          direction="next"
+          disabled={neighbours.next === null}
+          onPress={() => neighbours.next && selectEvent(neighbours.next.id)}
+        />
       </View>
 
       <View style={styles.rule}>
@@ -313,6 +354,9 @@ export function Timeline() {
 
 const RULE = 34;
 
+/** The two chevrons. Small: they flank the year, they do not compete with it. */
+const STEP = 30;
+
 /**
  * Strokes hang from a common baseline, the way graduations do on a rule: the
  * short ones stop level with the tall ones at the bottom, and the difference
@@ -324,10 +368,34 @@ const NEEDLE = 34;
 
 const styles = StyleSheet.create({
   root: { height: FRIEZE_HEIGHT, justifyContent: "flex-end", gap: space.md },
+  head: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: space.md,
+  },
+  step: {
+    width: STEP,
+    height: STEP,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: STEP / 2,
+    backgroundColor: palette.paperLight,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.line,
+  },
+  stepPressed: { backgroundColor: palette.paperDeep },
+  stepOff: { opacity: 0.35 },
+  stepGlyph: {
+    fontSize: 20,
+    lineHeight: 23,
+    fontWeight: "600",
+    color: palette.wax,
+    marginTop: -1,
+  },
   // The year in wax, like the needle under it and the ring round the marker
   // being read: the colour this map keeps for "where you are".
   pill: {
-    alignSelf: "center",
     paddingHorizontal: space.lg,
     paddingVertical: 4,
     borderRadius: radius.pill,
@@ -378,11 +446,5 @@ const styles = StyleSheet.create({
     marginLeft: -1.5,
     borderRadius: 1.5,
     backgroundColor: palette.wax,
-  },
-  empty: {
-    textAlign: "center",
-    fontSize: 13,
-    color: palette.inkSoft,
-    paddingBottom: space.lg,
   },
 });

@@ -14,7 +14,7 @@ import { useEvents } from "../EventsProvider";
 import { pickPhotos } from "../pickPhotos";
 import type { Folder, PickedPhoto } from "../types";
 import { palette } from "../../../theme/palette";
-import { space, type } from "../../../theme/tokens";
+import { radius, space, TOUCH, type } from "../../../theme/tokens";
 
 export type FolderEditModalProps = {
   /**
@@ -37,7 +37,8 @@ export type FolderEditModalProps = {
  * lie — it would undo the name and keep the photograph.
  */
 export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
-  const { folders, addFolder, renameFolder, setFolderPhoto } = useEvents();
+  const { folders, events, addFolder, renameFolder, removeFolder, setFolderPhoto } =
+    useEvents();
 
   const creating = target === "new";
   const folder = creating ? null : target;
@@ -70,6 +71,40 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
   const clear = () => {
     setPicked(null);
     setCleared(true);
+  };
+
+  const confirmDelete = () => {
+    if (!folder) return;
+    const filed = events.filter((event) =>
+      event.folders.some((link) => link.folderId === folder.id),
+    ).length;
+
+    Alert.alert(
+      `Supprimer « ${folder.name} » ?`,
+      filed === 0
+        ? "Ce classeur est vide."
+        : `${filed} événement${filed > 1 ? "s" : ""} y ${filed > 1 ? "sont rangés" : "est rangé"}. ` +
+          `${filed > 1 ? "Ils ne seront pas supprimés" : "Il ne sera pas supprimé"}, seulement retiré${filed > 1 ? "s" : ""} de ce classeur.`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Supprimer",
+          style: "destructive",
+          onPress: () => {
+            setSaving(true);
+            void removeFolder(folder)
+              .then(onClose)
+              .catch((cause: unknown) =>
+                Alert.alert(
+                  "Suppression impossible",
+                  cause instanceof Error ? cause.message : String(cause),
+                ),
+              )
+              .finally(() => setSaving(false));
+          },
+        },
+      ],
+    );
   };
 
   const save = async () => {
@@ -135,6 +170,22 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
       title={creating ? "Nouveau classeur" : "Modifier le classeur"}
       footer={
         <>
+          {/* A rare and irreversible action has no business sharing the size
+              of an everyday button — the same rule as the event sheet. */}
+          {folder ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Supprimer ce classeur"
+              disabled={saving}
+              onPress={confirmDelete}
+              style={({ pressed }) => [
+                styles.trash,
+                (pressed || saving) && styles.pressed,
+              ]}
+            >
+              <Image source={TRASH} style={styles.trashGlyph} resizeMode="contain" />
+            </Pressable>
+          ) : null}
           <InkButton label="Annuler" variant="tonal" grow onPress={onClose} />
           <InkButton
             label={saving ? "Enregistrement…" : "Enregistrer"}
@@ -192,6 +243,8 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
   );
 }
 
+const TRASH = require("../../../../assets/icons/trash.png");
+
 const FRAME = 88;
 
 const styles = StyleSheet.create({
@@ -212,7 +265,16 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.line,
   },
-  pressed: { opacity: 0.6 },
+  pressed: { opacity: 0.5 },
+  trash: {
+    width: TOUCH,
+    height: TOUCH,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: palette.sunken,
+  },
+  trashGlyph: { width: 20, height: 20 },
   image: { width: "100%", height: "100%" },
   plus: { fontSize: 32, lineHeight: 36, color: palette.inkFaint },
   coverText: { flex: 1, gap: space.xs },

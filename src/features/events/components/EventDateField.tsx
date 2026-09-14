@@ -13,6 +13,7 @@ import {
   SegmentedControl,
   Sheet,
 } from "../../../components/ui";
+import { HISTORY } from "../../../config/history";
 import {
   formatHistoricalDate,
   formatYear,
@@ -27,8 +28,8 @@ const ROW = 38;
 const VISIBLE = 5;
 const PAD = (VISIBLE - 1) / 2;
 
-const FIRST_YEAR = -3000;
-const LAST_YEAR = 2200;
+const FIRST_YEAR = HISTORY.from;
+const LAST_YEAR = HISTORY.to;
 
 /** A snapping column. Virtualized, because the year wheel holds 5 200 rows. */
 function Wheel({

@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import * as api from "./api";
+import { DEFAULT_YEAR } from "../../config/history";
 import { matchesFilters } from "./filtering";
 import { toSortKey } from "./historicalDate";
 import {
@@ -61,6 +62,8 @@ type EventsContextValue = {
   refresh: () => Promise<void>;
   addFolder: (name: string) => Promise<Folder>;
   renameFolder: (id: string, name: string) => Promise<void>;
+  /** Drops a folder; the events it held survive, unfiled. */
+  removeFolder: (folder: Folder) => Promise<void>;
   /** Sets or clears a folder's cover picture — the map marker's fallback. */
   setFolderPhoto: (folder: Folder, picked: PickedPhoto | null) => Promise<void>;
   addEvent: (draft: EventDraft) => Promise<void>;
@@ -136,14 +139,22 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   }, [selectedId, selectedEvent]);
 
   // The map is never blank: with nothing chosen it opens on the earliest event
-  // of whatever the filters select.
+  // of whatever the filters select, and on a default year when there is no
+  // event to open on at all.
+  //
+  // Waiting for the load to finish matters: events arrive empty on the first
+  // render, and settling for the default then would pin the year there before
+  // the first event ever appeared.
   useEffect(() => {
-    if (year === null && visibleEvents.length > 0) {
-      const first = visibleEvents[0]!;
+    if (year !== null || loading) return;
+    const first = visibleEvents[0];
+    if (first) {
       setSelectedId(first.id);
       setYear(toSortKey(first.start));
+    } else {
+      setYear(DEFAULT_YEAR);
     }
-  }, [year, visibleEvents]);
+  }, [year, visibleEvents, loading]);
 
   const neighbours = useMemo(() => {
     const index = visibleEvents.findIndex((event) => event.id === selectedId);
@@ -180,6 +191,22 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     setFolders((current) =>
       current.map((one) => (one.id === updated.id ? updated : one)).sort(byName),
     );
+  }, []);
+
+  const removeFolder = useCallback(async (folder: Folder) => {
+    await api.deleteFolder(folder);
+    setFolders((current) => current.filter((one) => one.id !== folder.id));
+    // The database cascades the links; mirror that here rather than reloading,
+    // and drop the filter that would otherwise hide everything.
+    setEvents((current) =>
+      current.map((event) => ({
+        ...event,
+        folders: event.folders.filter((link) => link.folderId !== folder.id),
+      })),
+    );
+    setFilters((current) => ({
+      folders: current.folders.filter((one) => one.folderId !== folder.id),
+    }));
   }, []);
 
   const setFolderPhoto = useCallback(
@@ -236,6 +263,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       refresh,
       addFolder,
       renameFolder,
+      removeFolder,
       setFolderPhoto,
       addEvent,
       editEvent,
@@ -244,7 +272,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     [
       events, visibleEvents, folders, filters, year, selectedEvent, neighbours,
       selectEvent, scrubTo, loading, error, refresh, addFolder, renameFolder,
-      setFolderPhoto, addEvent, editEvent, removeEvent,
+      removeFolder, setFolderPhoto, addEvent, editEvent, removeEvent,
     ],
   );
 
