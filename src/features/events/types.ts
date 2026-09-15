@@ -64,6 +64,14 @@ export type HistoricalDate = {
   year: number;
   month?: number;
   day?: number;
+  /**
+   * The date is a best guess — "around 1453" rather than 1453.
+   *
+   * Carried on the date and not on the thing dated: an event can begin on a
+   * known day and end at an approximate one, and a life can have a guessed
+   * birth and an attested death.
+   */
+  approximate?: boolean;
 };
 
 export type Folder = {

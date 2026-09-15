@@ -1,4 +1,4 @@
-import { formatYear } from "./historicalDate";
+import { formatDateYear, toSortKey } from "./historicalDate";
 import type { Character } from "./types";
 
 /**
@@ -10,8 +10,29 @@ import type { Character } from "./types";
  */
 export function lifespan(person: Character): string {
   const { birth, death } = person;
-  if (birth && death) return `${formatYear(birth.year)} – ${formatYear(death.year)}`;
-  if (birth) return `né en ${formatYear(birth.year)}`;
-  if (death) return `† ${formatYear(death.year)}`;
+  if (birth && death) return `${formatDateYear(birth)} – ${formatDateYear(death)}`;
+  if (birth) return `né en ${formatDateYear(birth)}`;
+  if (death) return `† ${formatDateYear(death)}`;
   return "";
+}
+
+/**
+ * Oldest first, and the undated before everyone.
+ *
+ * A birth places someone; failing that a death does, roughly but well enough.
+ * Someone with neither is not "very old" — they are unplaced, and the top of
+ * the list is where unfinished things belong, in sight rather than buried at
+ * the end. Hence minus infinity rather than a guessed year.
+ *
+ * Names break ties, so the order never wobbles between two readings.
+ */
+export function compareByLife(a: Character, b: Character): number {
+  const at = placeOf(a);
+  const bt = placeOf(b);
+  return at === bt ? a.name.localeCompare(b.name) : at - bt;
+}
+
+function placeOf(person: Character): number {
+  const date = person.birth ?? person.death;
+  return date === null ? -Infinity : toSortKey(date);
 }

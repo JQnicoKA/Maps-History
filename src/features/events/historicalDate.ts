@@ -15,17 +15,33 @@ export function toSortKey({ year, month, day }: HistoricalDate): number {
   return year + ((month ?? 1) - 1) / 12 + ((day ?? 1) - 1) / 372;
 }
 
+/**
+ * The mark an uncertain date wears, wherever it is written.
+ *
+ * One tilde, in one place, so a date cannot be approximate in the detail sheet
+ * and certain on the marker. Every date the app prints goes through here.
+ */
+export const ABOUT = "~";
+
+const about = (date: HistoricalDate): string =>
+  date.approximate === true ? ABOUT : "";
+
+/** A date's year alone, tilde included — for lists and rules. */
+export function formatDateYear(date: HistoricalDate): string {
+  return `${about(date)}${formatYear(date.year)}`;
+}
+
 export function formatYear(year: number): string {
   return year < 0 ? `${-year} av. J.-C.` : String(year);
 }
 
 export function formatHistoricalDate(date: HistoricalDate): string {
   const year = formatYear(date.year);
-  if (date.month === undefined) return year;
+  if (date.month === undefined) return `${about(date)}${year}`;
   const month = MONTHS[date.month - 1] ?? "";
   return date.day === undefined
-    ? `${month} ${year}`
-    : `${date.day} ${month} ${year}`;
+    ? `${about(date)}${month} ${year}`
+    : `${about(date)}${date.day} ${month} ${year}`;
 }
 
 /** "1453" for an instant, "1337 – 1453" for a period. */

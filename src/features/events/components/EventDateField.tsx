@@ -4,6 +4,7 @@ import {
   FlatList,
   Pressable,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from "react-native";
@@ -15,6 +16,8 @@ import {
 } from "../../../components/ui";
 import { HISTORY } from "../../../config/history";
 import {
+  ABOUT,
+  formatDateYear,
   formatHistoricalDate,
   formatYear,
   MONTHS,
@@ -86,6 +89,28 @@ function Wheel({
     </View>
   );
 }
+
+/**
+ * Clearing the day, or the month and the day with it.
+ *
+ * Written out rather than rebuilt inline, because rebuilding `{ year }` from
+ * scratch silently dropped whatever else the date carried — which is exactly
+ * how the uncertainty flag would have been lost every time a wheel moved.
+ */
+const withoutDay = (date: HistoricalDate): HistoricalDate => {
+  const { day: _day, ...rest } = date;
+  return rest;
+};
+
+const withoutMonth = (date: HistoricalDate): HistoricalDate => {
+  const { day: _day, month: _month, ...rest } = date;
+  return rest;
+};
+
+const withoutApproximate = (date: HistoricalDate): HistoricalDate => {
+  const { approximate: _approximate, ...rest } = date;
+  return rest;
+};
 
 /** "12 mars", "mars", or a note that only the year is known. */
 function detailOf(date: HistoricalDate): string {
@@ -243,8 +268,8 @@ export function EventDateField({
             {!start
               ? "—"
               : period
-                ? `${formatYear(start.year)} – ${formatYear(end.year)}`
-                : formatYear(start.year)}
+                ? `${formatDateYear(start)} – ${formatDateYear(end)}`
+                : formatDateYear(start)}
           </Text>
           <Text style={styles.detail} numberOfLines={1}>
             {!start
@@ -296,10 +321,7 @@ export function EventDateField({
               onIndexChange={(index) =>
                 setDraft((state) =>
                   index === 0 || state.month === undefined
-                    ? {
-                        year: state.year,
-                        ...(state.month ? { month: state.month } : {}),
-                      }
+                    ? withoutDay(state)
                     : { ...state, day: index },
                 )
               }
@@ -311,9 +333,7 @@ export function EventDateField({
               onIndexChange={(index) =>
                 setDraft((state) =>
                   // A day cannot outlive its month.
-                  index === 0
-                    ? { year: state.year }
-                    : { ...state, month: index },
+                  index === 0 ? withoutMonth(state) : { ...state, month: index },
                 )
               }
             />
@@ -332,6 +352,30 @@ export function EventDateField({
               ? `${formatHistoricalDate(draftStart)} → ${formatHistoricalDate(draftEnd)}`
               : formatHistoricalDate(draftStart)}
           </Text>
+
+          {/* Applies to whichever of the two is under the wheels: one date can
+              be attested and the other guessed. */}
+          <View style={styles.aboutRow}>
+            <View style={styles.aboutText}>
+              <Text style={styles.aboutLabel}>Date incertaine</Text>
+              <Text style={styles.aboutHint}>
+                Elle s'écrira « {ABOUT}
+                {formatHistoricalDate({ ...draft, approximate: false })} »
+                partout dans l'application.
+              </Text>
+            </View>
+            <Switch
+              value={draft.approximate === true}
+              onValueChange={(approximate) =>
+                setDraft((state) =>
+                  approximate
+                    ? { ...state, approximate: true }
+                    : withoutApproximate(state),
+                )
+              }
+              trackColor={{ true: palette.wax, false: palette.line }}
+            />
+          </View>
 
           {draftEnd ? (
             <Pressable
@@ -408,6 +452,15 @@ const styles = StyleSheet.create({
   cell: { height: ROW, alignItems: "center", justifyContent: "center" },
   cellText: { fontSize: 17, color: palette.inkFaint },
   cellCurrent: { fontSize: 19, color: palette.ink, fontWeight: "600" },
+  aboutRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: space.md,
+  },
+  aboutText: { flex: 1, gap: 2 },
+  aboutLabel: { fontSize: 15, color: palette.ink, fontWeight: "600" },
+  aboutHint: { ...type.caption, color: palette.inkFaint },
   preview: {
     textAlign: "center",
     fontSize: 15,

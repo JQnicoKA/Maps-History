@@ -576,6 +576,24 @@ plus gros corps du formulaire — c'est elle qui déplace les frontières — et
 reste en ligne discrète dessous, qui dit « Année seule » quand il n'y a rien de
 plus. Un événement connu à l'année près doit avoir l'air délibéré, pas inachevé.
 
+**Toute date peut être déclarée incertaine**, et s'écrit alors avec une vague :
+`~1453`, `~mai 1453`, `~29 mai 1453`, `~44 av. J.-C.`. L'interrupteur est dans le
+sélecteur, sous l'aperçu, et porte sur **la date qu'on est en train de régler** —
+un événement peut commencer un jour connu et finir à une date approximative, une
+vie avoir une naissance devinée pour une mort attestée. C'est donc un drapeau par
+date, jusque dans le schéma : `start_approx`, `end_approx`, `birth_approx`,
+`death_approx`.
+
+Une seule fonction pose la vague, dans `historicalDate.ts`, et **toutes** les
+écritures de date de l'application passent par elle — la fiche, la tuile de
+résumé, la frise, les listes de personnages, les ronds d'un arbre. Une date ne
+peut donc pas être incertaine dans la fiche et certaine sur le marqueur.
+
+Le piège était ailleurs : les molettes **reconstruisaient** l'objet date pour
+effacer un jour ou un mois (`{ year: state.year }`), ce qui aurait jeté le
+drapeau à chaque tour de molette. Elles appellent maintenant `withoutDay` et
+`withoutMonth`, qui nomment ce qu'elles retirent au lieu de repartir de zéro.
+
 **Une seule commande pour une date ou une période.** Il y avait un interrupteur
 *Période* sur le formulaire, qui demandait de déclarer la **forme** de la réponse
 avant de la donner. La question est passée là où se trouve la réponse : la date

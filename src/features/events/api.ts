@@ -13,6 +13,7 @@ import type {
   EventType,
   Importance,
 } from "./types";
+import { compareByLife } from "./lifespan";
 import { decodeBase64 } from "../../lib/base64";
 import { PHOTO_BUCKET, supabase } from "../../lib/supabase";
 
@@ -24,9 +25,11 @@ type EventRow = {
   start_year: number;
   start_month: number | null;
   start_day: number | null;
+  start_approx: boolean;
   end_year: number | null;
   end_month: number | null;
   end_day: number | null;
+  end_approx: boolean;
   longitude: number;
   latitude: number;
   event_folders: { folder_id: string; importance: Importance }[];
@@ -41,8 +44,8 @@ type EventRow = {
 
 const EVENT_COLUMNS = `
   id, title, type, description,
-  start_year, start_month, start_day,
-  end_year, end_month, end_day,
+  start_year, start_month, start_day, start_approx,
+  end_year, end_month, end_day, end_approx,
   longitude, latitude,
   event_folders ( folder_id, importance ),
   event_characters ( character_id ),
@@ -53,11 +56,13 @@ function toDate(
   year: number,
   month: number | null,
   day: number | null,
+  approximate = false,
 ): HistoricalDate {
   return {
     year,
     ...(month === null ? {} : { month }),
     ...(day === null ? {} : { day }),
+    ...(approximate ? { approximate: true } : {}),
   };
 }
 
@@ -71,11 +76,16 @@ function toEvent(row: EventRow): HistoricalEvent {
     title: row.title,
     type: row.type,
     description: row.description,
-    start: toDate(row.start_year, row.start_month, row.start_day),
+    start: toDate(
+      row.start_year,
+      row.start_month,
+      row.start_day,
+      row.start_approx,
+    ),
     end:
       row.end_year === null
         ? null
-        : toDate(row.end_year, row.end_month, row.end_day),
+        : toDate(row.end_year, row.end_month, row.end_day, row.end_approx),
     longitude: row.longitude,
     latitude: row.latitude,
     folders: row.event_folders.map((link) => ({
@@ -309,9 +319,11 @@ export async function createEvent(draft: EventDraft): Promise<void> {
       start_year: draft.start.year,
       start_month: draft.start.month ?? null,
       start_day: draft.start.day ?? null,
+      start_approx: draft.start.approximate === true,
       end_year: draft.end?.year ?? null,
       end_month: draft.end?.month ?? null,
       end_day: draft.end?.day ?? null,
+      end_approx: draft.end?.approximate === true,
       longitude: draft.longitude,
       latitude: draft.latitude,
     })
@@ -366,9 +378,11 @@ function toRow(draft: EventDraft) {
     start_year: draft.start.year,
     start_month: draft.start.month ?? null,
     start_day: draft.start.day ?? null,
+    start_approx: draft.start.approximate === true,
     end_year: draft.end?.year ?? null,
     end_month: draft.end?.month ?? null,
     end_day: draft.end?.day ?? null,
+    end_approx: draft.end?.approximate === true,
     longitude: draft.longitude,
     latitude: draft.latitude,
   };
@@ -433,9 +447,11 @@ type CharacterRow = {
   birth_year: number | null;
   birth_month: number | null;
   birth_day: number | null;
+  birth_approx: boolean;
   death_year: number | null;
   death_month: number | null;
   death_day: number | null;
+  death_approx: boolean;
   character_photos: {
     id: string;
     storage_path: string;
@@ -446,8 +462,8 @@ type CharacterRow = {
 
 const CHARACTER_COLUMNS = `
   id, name, bio,
-  birth_year, birth_month, birth_day,
-  death_year, death_month, death_day,
+  birth_year, birth_month, birth_day, birth_approx,
+  death_year, death_month, death_day, death_approx,
   character_photos ( id, storage_path, position, source )
 `;
 
@@ -456,8 +472,9 @@ function toOptionalDate(
   year: number | null,
   month: number | null,
   day: number | null,
+  approximate = false,
 ): HistoricalDate | null {
-  return year === null ? null : toDate(year, month, day);
+  return year === null ? null : toDate(year, month, day, approximate);
 }
 
 function toCharacter(row: CharacterRow): Character {
@@ -465,8 +482,18 @@ function toCharacter(row: CharacterRow): Character {
     id: row.id,
     name: row.name,
     bio: row.bio,
-    birth: toOptionalDate(row.birth_year, row.birth_month, row.birth_day),
-    death: toOptionalDate(row.death_year, row.death_month, row.death_day),
+    birth: toOptionalDate(
+      row.birth_year,
+      row.birth_month,
+      row.birth_day,
+      row.birth_approx,
+    ),
+    death: toOptionalDate(
+      row.death_year,
+      row.death_month,
+      row.death_day,
+      row.death_approx,
+    ),
     photos: [...row.character_photos]
       .sort((a, b) => a.position - b.position)
       .map((photo) => ({
@@ -492,19 +519,23 @@ function characterRow(draft: CharacterDraft) {
     birth_year: draft.birth?.year ?? null,
     birth_month: draft.birth?.month ?? null,
     birth_day: draft.birth?.day ?? null,
+    birth_approx: draft.birth?.approximate === true,
     death_year: draft.death?.year ?? null,
     death_month: draft.death?.month ?? null,
     death_day: draft.death?.day ?? null,
+    death_approx: draft.death?.approximate === true,
   };
 }
 
 export async function fetchCharacters(): Promise<Character[]> {
   const { data, error } = await supabase()
     .from("characters")
-    .select(CHARACTER_COLUMNS)
-    .order("name");
+    .select(CHARACTER_COLUMNS);
   if (error) throw new Error(error.message);
-  return ((data ?? []) as CharacterRow[]).map(toCharacter);
+  // Ordered here rather than in SQL: the rule is "birth, else death, else
+  // first", which PostgREST cannot express in an `order` and which belongs
+  // next to the other things this app knows about a life.
+  return ((data ?? []) as CharacterRow[]).map(toCharacter).sort(compareByLife);
 }
 
 export async function createCharacter(
