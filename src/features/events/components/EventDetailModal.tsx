@@ -5,9 +5,10 @@ import { PhotoViewer } from "./PhotoViewer";
 import { InkButton, Sheet } from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
 import { formatEventPeriod } from "../historicalDate";
+import { lifespan } from "../lifespan";
 import {
   describeType,
-  type EventPhoto,
+  type StoredPhoto,
   type HistoricalEvent,
   type Importance,
 } from "../types";
@@ -33,9 +34,9 @@ export function EventDetailModal({
   onEdit,
   onClose,
 }: EventDetailModalProps) {
-  const { folders, removeEvent } = useEvents();
+  const { folders, characters, removeEvent } = useEvents();
   const [deleting, setDeleting] = useState(false);
-  const [viewing, setViewing] = useState<EventPhoto | null>(null);
+  const [viewing, setViewing] = useState<StoredPhoto | null>(null);
 
   if (!event) return null;
 
@@ -120,6 +121,39 @@ export function EventDetailModal({
           </ScrollView>
         ) : null}
 
+        {event.characters.length > 0 ? (
+          <View style={styles.section}>
+            <Text style={styles.legend}>Personnages</Text>
+            <View style={styles.cast}>
+              {event.characters.map((id) => {
+                const person = characters.find((one) => one.id === id);
+                const face = person?.photos[0];
+                return (
+                  <View key={id} style={styles.castMember}>
+                    <View style={styles.face}>
+                      {face ? (
+                        <Image source={{ uri: face.url }} style={styles.faceImage} />
+                      ) : (
+                        <Text style={styles.initial}>
+                          {person?.name.charAt(0).toUpperCase() ?? "?"}
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={styles.castName} numberOfLines={1}>
+                      {person?.name ?? "Personnage supprimé"}
+                    </Text>
+                    {person && lifespan(person) !== "" ? (
+                      <Text style={styles.castDates} numberOfLines={1}>
+                        {lifespan(person)}
+                      </Text>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+
         {event.folders.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.legend}>Classeurs</Text>
@@ -143,7 +177,29 @@ export function EventDetailModal({
   );
 }
 
+const FACE = 52;
+
 const styles = StyleSheet.create({
+  cast: { flexDirection: "row", flexWrap: "wrap", gap: space.md },
+  castMember: { width: FACE + 24, alignItems: "center", gap: 3 },
+  face: {
+    width: FACE,
+    height: FACE,
+    borderRadius: FACE / 2,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: palette.sunken,
+  },
+  faceImage: { width: "100%", height: "100%" },
+  initial: { fontSize: 20, fontWeight: "700", color: palette.inkFaint },
+  castName: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: palette.ink,
+    textAlign: "center",
+  },
+  castDates: { fontSize: 10, color: palette.inkFaint, textAlign: "center" },
   body: {
     paddingHorizontal: space.xl,
     paddingBottom: space.lg,

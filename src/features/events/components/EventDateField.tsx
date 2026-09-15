@@ -94,10 +94,52 @@ function detailOf(date: HistoricalDate): string {
   return date.day === undefined ? month : `${date.day} ${month}`;
 }
 
+/**
+ * The words the control wears. An event has a date and, if it lasted, an end;
+ * a person has a birth and, if they died, a death. Same two dates, same wheels,
+ * same magnetism — only the wording differs, so only the wording is a prop.
+ */
+export type DateLabels = {
+  field: string;
+  one: string;
+  two: string;
+  start: string;
+  end: string;
+  addEnd: string;
+  dropEnd: string;
+  backwards: [string, string];
+};
+
+const EVENT_LABELS: DateLabels = {
+  field: "Date",
+  one: "Date",
+  two: "Période",
+  start: "Début",
+  end: "Fin",
+  addEnd: "Ajouter une date de fin — pour ce qui dure",
+  dropEnd: "Retirer la date de fin",
+  backwards: [
+    "Période à l'envers",
+    "La date de fin tombe avant la date de début.",
+  ],
+};
+
+export const LIFE_LABELS: DateLabels = {
+  field: "Dates",
+  one: "Naissance",
+  two: "Naissance et mort",
+  start: "Naissance",
+  end: "Mort",
+  addEnd: "Ajouter une date de mort",
+  dropEnd: "Retirer la date de mort",
+  backwards: ["Dates à l'envers", "La mort tombe avant la naissance."],
+};
+
 export type EventDateFieldProps = {
   start: HistoricalDate | null;
   end: HistoricalDate | null;
   onChange: (start: HistoricalDate, end: HistoricalDate | null) => void;
+  labels?: DateLabels;
 };
 
 /**
@@ -119,7 +161,12 @@ export type EventDateFieldProps = {
  * before Christ. The dash at the top of the day and month wheels is what keeps
  * an imprecise date imprecise instead of inventing a 1st of January.
  */
-export function EventDateField({ start, end, onChange }: EventDateFieldProps) {
+export function EventDateField({
+  start,
+  end,
+  onChange,
+  labels = EVENT_LABELS,
+}: EventDateFieldProps) {
   const [open, setOpen] = useState(false);
 
   const years = useMemo(
@@ -165,10 +212,7 @@ export function EventDateField({ start, end, onChange }: EventDateFieldProps) {
     // Mirrors the database's own `end_after_start`, so a period the wrong way
     // round is caught here with a sentence rather than there with an error.
     if (draftEnd && toSortKey(draftEnd) < toSortKey(draftStart)) {
-      Alert.alert(
-        "Période à l'envers",
-        "La date de fin tombe avant la date de début.",
-      );
+      Alert.alert(labels.backwards[0], labels.backwards[1]);
       return;
     }
     onChange(draftStart, draftEnd);
@@ -179,11 +223,11 @@ export function EventDateField({ start, end, onChange }: EventDateFieldProps) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Date</Text>
+      <Text style={styles.label}>{labels.field}</Text>
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={start ? formatHistoricalDate(start) : "Date"}
+        accessibilityLabel={start ? formatHistoricalDate(start) : labels.field}
         onPress={reopen}
         style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
       >
@@ -216,7 +260,7 @@ export function EventDateField({ start, end, onChange }: EventDateFieldProps) {
       <Sheet
         visible={open}
         onClose={() => setOpen(false)}
-        title={draftEnd ? "Période" : "Date"}
+        title={draftEnd ? labels.two : labels.one}
         footer={
           <>
             <InkButton
@@ -233,8 +277,8 @@ export function EventDateField({ start, end, onChange }: EventDateFieldProps) {
           {draftEnd ? (
             <SegmentedControl
               segments={[
-                { value: "start" as const, label: "Début" },
-                { value: "end" as const, label: "Fin" },
+                { value: "start" as const, label: labels.start },
+                { value: "end" as const, label: labels.end },
               ]}
               value={editing}
               onChange={setEditing}
@@ -299,12 +343,12 @@ export function EventDateField({ start, end, onChange }: EventDateFieldProps) {
               hitSlop={6}
               style={styles.dropTarget}
             >
-              <Text style={styles.drop}>Retirer la date de fin</Text>
+              <Text style={styles.drop}>{labels.dropEnd}</Text>
             </Pressable>
           ) : (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Ajouter une date de fin"
+              accessibilityLabel={labels.addEnd}
               onPress={() => {
                 // Opens on the start's year, which is where a period begins.
                 setDraftEnd({ year: draftStart.year });
@@ -313,9 +357,7 @@ export function EventDateField({ start, end, onChange }: EventDateFieldProps) {
               style={({ pressed }) => [styles.add, pressed && styles.pressed]}
             >
               <Text style={styles.addGlyph}>+</Text>
-              <Text style={styles.addLabel}>
-                Ajouter une date de fin — pour ce qui dure
-              </Text>
+              <Text style={styles.addLabel}>{labels.addEnd}</Text>
             </Pressable>
           )}
         </View>

@@ -82,8 +82,14 @@ export type EventFolderLink = {
   importance: Importance;
 };
 
-/** A photo already stored; the path is what lets us delete it. */
-export type EventPhoto = {
+/**
+ * A photo already stored; the path is what lets us delete it.
+ *
+ * Shared by events and characters — the same bucket, the same shape, the same
+ * picker. It was `EventPhoto` while events were the only thing that could
+ * carry one.
+ */
+export type StoredPhoto = {
   id: string;
   path: string;
   url: string;
@@ -110,7 +116,34 @@ export type HistoricalEvent = {
   longitude: number;
   latitude: number;
   folders: EventFolderLink[];
-  photos: EventPhoto[];
+  /** Identifiers of the people this event is about. */
+  characters: string[];
+  photos: StoredPhoto[];
+};
+
+/**
+ * Someone an event was about.
+ *
+ * Both dates are optional, and each obeys the same rules as an event's: a year
+ * on its own is a complete answer, a day needs its month. One knows a name
+ * without its dates, and one knows the living.
+ */
+export type Character = {
+  id: string;
+  name: string;
+  bio: string | null;
+  birth: HistoricalDate | null;
+  death: HistoricalDate | null;
+  photos: StoredPhoto[];
+};
+
+export type CharacterDraft = {
+  name: string;
+  bio: string;
+  birth: HistoricalDate | null;
+  death: HistoricalDate | null;
+  /** Pictures to upload. On an edit, only the newly added ones. */
+  photos: PickedPhoto[];
 };
 
 export type EventDraft = {
@@ -122,6 +155,7 @@ export type EventDraft = {
   longitude: number;
   latitude: number;
   folders: EventFolderLink[];
+  characters: string[];
   /** Pictures to upload. On an edit, only the newly added ones. */
   photos: PickedPhoto[];
 };

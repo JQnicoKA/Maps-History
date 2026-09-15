@@ -14,8 +14,10 @@ import { matchesFilters } from "./filtering";
 import { toSortKey } from "./historicalDate";
 import {
   NO_FILTERS,
+  type Character,
+  type CharacterDraft,
   type EventDraft,
-  type EventPhoto,
+  type StoredPhoto,
   type EventFilters,
   type Folder,
   type HistoricalEvent,
@@ -27,6 +29,8 @@ type EventsContextValue = {
   /** Chronological, after filters — the list the map and timeline both read. */
   visibleEvents: HistoricalEvent[];
   folders: Folder[];
+  /** Everyone the collection knows about, by name. */
+  characters: Character[];
   filters: EventFilters;
   setFilters: (filters: EventFilters) => void;
   /**
@@ -64,14 +68,23 @@ type EventsContextValue = {
   renameFolder: (id: string, name: string) => Promise<void>;
   /** Drops a folder; the events it held survive, unfiled. */
   removeFolder: (folder: Folder) => Promise<void>;
+  addCharacter: (draft: CharacterDraft) => Promise<Character>;
+  editCharacter: (
+    id: string,
+    draft: CharacterDraft,
+    keptPhotos: StoredPhoto[],
+    droppedPhotos: StoredPhoto[],
+  ) => Promise<void>;
+  /** Drops a character; the events survive, one name shorter. */
+  removeCharacter: (character: Character) => Promise<void>;
   /** Sets or clears a folder's cover picture — the map marker's fallback. */
   setFolderPhoto: (folder: Folder, picked: PickedPhoto | null) => Promise<void>;
   addEvent: (draft: EventDraft) => Promise<void>;
   editEvent: (
     id: string,
     draft: EventDraft,
-    keptPhotos: EventPhoto[],
-    droppedPhotos: EventPhoto[],
+    keptPhotos: StoredPhoto[],
+    droppedPhotos: StoredPhoto[],
   ) => Promise<void>;
   removeEvent: (id: string) => Promise<void>;
 };
@@ -81,6 +94,7 @@ const EventsContext = createContext<EventsContextValue | null>(null);
 export function EventsProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<HistoricalEvent[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [characters, setCharacters] = useState<Character[]>([]);
   const [filters, setFilters] = useState<EventFilters>(NO_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [year, setYear] = useState<number | null>(null);
@@ -90,12 +104,14 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [loadedEvents, loadedFolders] = await Promise.all([
+      const [loadedEvents, loadedFolders, loadedCharacters] = await Promise.all([
         api.fetchEvents(),
         api.fetchFolders(),
+        api.fetchCharacters(),
       ]);
       setEvents(loadedEvents);
       setFolders(loadedFolders);
+      setCharacters(loadedCharacters);
       setError(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -219,6 +235,41 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const addCharacter = useCallback(async (draft: CharacterDraft) => {
+    const created = await api.createCharacter(draft);
+    // Re-read rather than splice in the returned row: the pictures were
+    // uploaded after it, so the row we hold does not carry them yet.
+    setCharacters(await api.fetchCharacters());
+    return created;
+  }, []);
+
+  const editCharacter = useCallback(
+    async (
+      id: string,
+      draft: CharacterDraft,
+      keptPhotos: StoredPhoto[],
+      droppedPhotos: StoredPhoto[],
+    ) => {
+      await api.updateCharacter(id, draft, keptPhotos, droppedPhotos);
+      setCharacters(await api.fetchCharacters());
+    },
+    [],
+  );
+
+  const removeCharacter = useCallback(async (character: Character) => {
+    await api.deleteCharacter(character);
+    setCharacters((current) =>
+      current.filter((one) => one.id !== character.id),
+    );
+    // The database cascades the links; mirror that here rather than reloading.
+    setEvents((current) =>
+      current.map((event) => ({
+        ...event,
+        characters: event.characters.filter((id) => id !== character.id),
+      })),
+    );
+  }, []);
+
   const addEvent = useCallback(
     async (draft: EventDraft) => {
       await api.createEvent(draft);
@@ -231,8 +282,8 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     async (
       id: string,
       draft: EventDraft,
-      keptPhotos: EventPhoto[],
-      droppedPhotos: EventPhoto[],
+      keptPhotos: StoredPhoto[],
+      droppedPhotos: StoredPhoto[],
     ) => {
       await api.updateEvent(id, draft, keptPhotos, droppedPhotos);
       await refresh();
@@ -251,6 +302,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       events,
       visibleEvents,
       folders,
+      characters,
       filters,
       setFilters,
       year,
@@ -264,15 +316,19 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       addFolder,
       renameFolder,
       removeFolder,
+      addCharacter,
+      editCharacter,
+      removeCharacter,
       setFolderPhoto,
       addEvent,
       editEvent,
       removeEvent,
     }),
     [
-      events, visibleEvents, folders, filters, year, selectedEvent, neighbours,
-      selectEvent, scrubTo, loading, error, refresh, addFolder, renameFolder,
-      removeFolder, setFolderPhoto, addEvent, editEvent, removeEvent,
+      events, visibleEvents, folders, characters, filters, year, selectedEvent,
+      neighbours, selectEvent, scrubTo, loading, error, refresh, addFolder,
+      renameFolder, removeFolder, addCharacter, editCharacter, removeCharacter,
+      setFolderPhoto, addEvent, editEvent, removeEvent,
     ],
   );
 

@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from "react";
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { CharacterManager } from "./CharacterManager";
+import { CharacterSelector } from "./CharacterSelector";
 import { FolderManager } from "./FolderManager";
 import { FolderSelector } from "./FolderSelector";
 import { EventDateField } from "./EventDateField";
@@ -18,7 +20,7 @@ import { useEvents } from "../EventsProvider";
 import {
   type EventDraft,
   type EventFolderLink,
-  type EventPhoto,
+  type StoredPhoto,
   type EventType,
   type HistoricalDate,
   type HistoricalEvent,
@@ -58,6 +60,7 @@ const STEPS = [
   "Ce qui s'est passé",
   "Quand",
   "Où",
+  "Qui",
   "Classement",
   "Images",
 ] as const;
@@ -116,13 +119,13 @@ export function EventFormModal({
   onCancel,
   onSaved,
 }: EventFormModalProps) {
-  const { folders, addEvent, editEvent } = useEvents();
+  const { folders, characters, addEvent, editEvent } = useEvents();
 
   /**
    * Which half of the Add sheet is showing. Editing an existing event has no
    * second half — there is nothing to add but the changes in front of you.
    */
-  const [tab, setTab] = useState<"event" | "folder">("event");
+  const [tab, setTab] = useState<"event" | "folder" | "character">("event");
   /**
    * Which of the five questions is on screen. Only when composing: correcting
    * an event is not a journey, it is one change, and walking a reader through
@@ -142,11 +145,12 @@ export function EventFormModal({
   );
   const [end, setEnd] = useState<HistoricalDate | null>(event?.end ?? null);
   const [links, setLinks] = useState<EventFolderLink[]>(event?.folders ?? []);
+  const [cast, setCast] = useState<string[]>(event?.characters ?? []);
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
-  const [keptPhotos, setKeptPhotos] = useState<EventPhoto[]>(
+  const [keptPhotos, setKeptPhotos] = useState<StoredPhoto[]>(
     event?.photos ?? [],
   );
-  const [droppedPhotos, setDroppedPhotos] = useState<EventPhoto[]>([]);
+  const [droppedPhotos, setDroppedPhotos] = useState<StoredPhoto[]>([]);
   const [saving, setSaving] = useState(false);
 
   const reset = () => {
@@ -158,6 +162,7 @@ export function EventFormModal({
     setStart(null);
     setEnd(null);
     setLinks([]);
+    setCast([]);
     setPhotos([]);
     setKeptPhotos([]);
     setDroppedPhotos([]);
@@ -207,6 +212,7 @@ export function EventFormModal({
       longitude: location.longitude,
       latitude: location.latitude,
       folders: links,
+      characters: cast,
       photos,
     };
 
@@ -237,7 +243,7 @@ export function EventFormModal({
       footer={
         // A folder is written the moment it is named, so that half of the
         // sheet has nothing to save and nothing to cancel.
-        tab === "folder" ? (
+        tab !== "event" ? (
           <InkButton
             label="Fermer"
             variant="tonal"
@@ -281,8 +287,9 @@ export function EventFormModal({
         <View style={styles.switcher}>
           <SegmentedControl
             segments={[
-              { value: "event" as const, label: "Nouvel événement" },
-              { value: "folder" as const, label: "Nouveau classeur" },
+              { value: "event" as const, label: "Événement" },
+              { value: "folder" as const, label: "Classeur" },
+              { value: "character" as const, label: "Personnage" },
             ]}
             value={tab}
             onChange={setTab}
@@ -293,9 +300,10 @@ export function EventFormModal({
       {stepped && tab === "event" ? <Progress step={step} /> : null}
 
       {tab === "folder" && !event ? <FolderManager /> : null}
+      {tab === "character" && !event ? <CharacterManager /> : null}
 
       <ScrollView
-        style={tab === "folder" && !event ? styles.hidden : null}
+        style={tab !== "event" && !event ? styles.hidden : null}
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
       >
@@ -355,6 +363,23 @@ export function EventFormModal({
 
         {show(3) ? (
           <Section
+            title="Qui"
+            answer={
+              cast.length === 0
+                ? undefined
+                : `${cast.length} personnage${cast.length > 1 ? "s" : ""}`
+            }
+          >
+            <CharacterSelector
+              characters={characters}
+              value={cast}
+              onChange={setCast}
+            />
+          </Section>
+        ) : null}
+
+        {show(4) ? (
+          <Section
             title="Classement"
             answer={
               links.length === 0
@@ -380,7 +405,7 @@ export function EventFormModal({
           </Section>
         ) : null}
 
-        {show(4) ? (
+        {show(5) ? (
           <Section title="Images">
             <PhotoPicker
               photos={photos}

@@ -236,6 +236,7 @@ src/
       historicalDate.ts           années signées, dates imprécises, formatage
       filtering.ts                importance effective + filtres
       cover.ts                    quelle image représente un événement
+      lifespan.ts                 « 1769 – 1821 », « né en 1769 », « † 1821 »
       pickPhotos.ts               ouverture de la photothèque, partagée
       EventsProvider.tsx          état partagé (Context + hooks)
       components/
@@ -249,9 +250,12 @@ src/
         TypePicker.tsx            rail des seize types
         PhotoViewer.tsx           photo plein écran + sa source
         FolderSelector.tsx        choix des classeurs + importance
-        FolderManager.tsx         l'autre moitié : la liste des classeurs
+        FolderManager.tsx         la liste des classeurs
         FolderEditModal.tsx       fiche d'un classeur : nom et couverture,
                                   en création comme en modification
+        CharacterManager.tsx      la liste des personnages
+        CharacterEditModal.tsx    fiche d'un personnage : nom, dates, portraits
+        CharacterSelector.tsx     qui un événement met en scène
         PhotoPicker.tsx           sélection des photos
         LocationReticle.tsx       placement du lieu au réticule
         AddEventButton.tsx        le bouton +
@@ -378,9 +382,9 @@ coordonnées, la saisie intacte.
 (`330 av`) signifie avant J.-C. L'emplacement pointillé sous les molettes ajoute
 une date de fin, pour ce qui dure.
 
-**Deux moitiés sous le bouton `+`.** La feuille s'appelle *Ajouter* et une
-bascule choisit ce qu'on ajoute : un **nouvel événement** ou un **nouveau
-classeur**. Les deux moitiés restent montées, la cachée mise à `display: "none"`
+**Trois moitiés sous le bouton `+`** — le mot est mauvais mais l'idée tient. La
+feuille s'appelle *Ajouter* et une bascule choisit ce qu'on ajoute : un
+**événement**, un **classeur** ou un **personnage**. Les deux moitiés restent montées, la cachée mise à `display: "none"`
 — on peut passer à l'onglet classeur au milieu d'un formulaire à moitié rempli
 et revenir sans avoir rien perdu.
 
@@ -428,6 +432,24 @@ marqueur cassé au lecteur.
 Modifier un événement n'a pas de seconde moitié : il n'y a rien à ajouter que
 les changements qu'on a sous les yeux, donc la bascule disparaît.
 
+**Personnages.** Un personnage porte un nom, des portraits, une date de
+naissance, une date de mort et quelques lignes. Un événement en lie autant qu'il
+en met en scène, et une même personne traverse autant d'événements qu'elle a
+vécu — `event_characters` est une table de liaison comme `event_folders`.
+
+Les dates d'une vie se saisissent avec **le contrôle qui sert aux dates d'un
+événement** : une naissance et une mort sont un début et une fin. Seuls les mots
+changent, passés en props — poser deux fois la même question avec deux
+sélecteurs différents reviendrait à prétendre que ce sont deux questions
+différentes. Les deux dates sont facultatives : on connaît des noms sans leurs
+dates, et on connaît des vivants.
+
+La base garde les mêmes règles que pour un événement — un jour exige son mois,
+une partie de date exige son année, et `death_after_birth` refuse une mort
+antérieure à la naissance. Supprimer un personnage le retire des événements sans
+les supprimer : `event_characters.character_id` est en `ON DELETE CASCADE`,
+comme ses portraits.
+
 **Classeurs et importance.** Dans le formulaire, le champ *Classeurs* ouvre une
 liste déroulante — elle reste lisible quel que soit le nombre de sujets — et
 **ne sert qu'à choisir**. Créer s'est déplacé dans l'autre moitié, pour que
@@ -436,8 +458,8 @@ formulaire. Chaque classeur coché reçoit ensuite sa propre importance. C'est l
 que se matérialise le modèle : un événement majeur pour un sujet et secondaire
 pour un autre.
 
-**Le formulaire est cinq questions, posées une par une.** *Ce qui s'est passé*,
-*Quand*, *Où*, *Classement*, *Images* — une page chacune, *Enregistrer* ne
+**Le formulaire est six questions, posées une par une.** *Ce qui s'est passé*,
+*Quand*, *Où*, *Qui*, *Classement*, *Images* — une page chacune, *Enregistrer* ne
 paraissant qu'à la dernière ; ailleurs c'est *Suivant*, et *Annuler* devient
 *Retour* dès la deuxième. Chaque titre porte à sa droite la réponse en cours (le
 type choisi, le nombre de classeurs).

@@ -1,10 +1,12 @@
 import type {
+  Character,
+  CharacterDraft,
   EventDraft,
   Folder,
   PickedPhoto,
   HistoricalDate,
   HistoricalEvent,
-  EventPhoto,
+  StoredPhoto,
   EventType,
   Importance,
 } from "./types";
@@ -25,6 +27,7 @@ type EventRow = {
   longitude: number;
   latitude: number;
   event_folders: { folder_id: string; importance: Importance }[];
+  event_characters: { character_id: string }[];
   event_photos: {
     id: string;
     storage_path: string;
@@ -39,6 +42,7 @@ const EVENT_COLUMNS = `
   end_year, end_month, end_day,
   longitude, latitude,
   event_folders ( folder_id, importance ),
+  event_characters ( character_id ),
   event_photos ( id, storage_path, position, source )
 `;
 
@@ -75,6 +79,7 @@ function toEvent(row: EventRow): HistoricalEvent {
       folderId: link.folder_id,
       importance: link.importance,
     })),
+    characters: row.event_characters.map((link) => link.character_id),
     photos: [...row.event_photos]
       .sort((a, b) => a.position - b.position)
       .map((photo) => ({
@@ -201,9 +206,22 @@ export async function fetchEvents(): Promise<HistoricalEvent[]> {
   return ((data ?? []) as EventRow[]).map(toEvent);
 }
 
+/**
+ * What a set of pictures belongs to. Events and characters keep theirs in the
+ * same bucket and the same shape; only the table, the pointing column and the
+ * path differ.
+ */
+type PhotoOwner = {
+  table: "event_photos" | "character_photos";
+  column: "event_id" | "character_id";
+  id: string;
+  /** Prepended to the storage path. Empty for events, which came first. */
+  prefix: string;
+};
+
 async function uploadPhotos(
-  eventId: string,
-  photos: EventDraft["photos"],
+  owner: PhotoOwner,
+  photos: PickedPhoto[],
   startAt = 0,
 ): Promise<void> {
   const storage = supabase().storage.from(PHOTO_BUCKET);
@@ -211,7 +229,7 @@ async function uploadPhotos(
   const paths = await Promise.all(
     photos.map(async (photo, index) => {
       const extension = photo.mimeType.split("/")[1] ?? "jpg";
-      const path = `${eventId}/${startAt + index}-${Date.now()}.${extension}`;
+      const path = `${owner.prefix}${owner.id}/${startAt + index}-${Date.now()}.${extension}`;
       const { error } = await storage.upload(path, decodeBase64(photo.base64), {
         contentType: photo.mimeType,
       });
@@ -221,10 +239,10 @@ async function uploadPhotos(
   );
 
   const { error } = await supabase()
-    .from("event_photos")
+    .from(owner.table)
     .insert(
       paths.map((photo, position) => ({
-        event_id: eventId,
+        [owner.column]: owner.id,
         storage_path: photo.path,
         position: startAt + position,
         source: photo.source,
@@ -232,6 +250,51 @@ async function uploadPhotos(
     );
   if (error) throw new Error(error.message);
 }
+
+/**
+ * Brings a stored set of pictures in line with what the reader left in the
+ * form: the ones dropped go from the table and the bucket, the ones staying
+ * have their source written back, the new ones are uploaded after them.
+ */
+async function syncPhotos(
+  owner: PhotoOwner,
+  added: PickedPhoto[],
+  kept: StoredPhoto[],
+  dropped: StoredPhoto[],
+): Promise<void> {
+  const client = supabase();
+
+  if (dropped.length > 0) {
+    const { error } = await client
+      .from(owner.table)
+      .delete()
+      .in("id", dropped.map((photo) => photo.id));
+    if (error) throw new Error(error.message);
+
+    // Best effort: an orphaned object costs storage, a failed save costs work.
+    await client.storage
+      .from(PHOTO_BUCKET)
+      .remove(dropped.map((photo) => photo.path));
+  }
+
+  // Sources are editable on photos that are staying.
+  for (const photo of kept) {
+    const { error } = await client
+      .from(owner.table)
+      .update({ source: photo.source?.trim() || null })
+      .eq("id", photo.id);
+    if (error) throw new Error(error.message);
+  }
+
+  if (added.length > 0) await uploadPhotos(owner, added, kept.length);
+}
+
+const photosOf = (eventId: string): PhotoOwner => ({
+  table: "event_photos",
+  column: "event_id",
+  id: eventId,
+  prefix: "",
+});
 
 export async function createEvent(draft: EventDraft): Promise<void> {
   const { data, error } = await supabase()
@@ -269,7 +332,21 @@ export async function createEvent(draft: EventDraft): Promise<void> {
       if (linkError) throw new Error(linkError.message);
     }
 
-    if (draft.photos.length > 0) await uploadPhotos(eventId, draft.photos);
+    if (draft.characters.length > 0) {
+      const { error: castError } = await supabase()
+        .from("event_characters")
+        .insert(
+          draft.characters.map((characterId) => ({
+            event_id: eventId,
+            character_id: characterId,
+          })),
+        );
+      if (castError) throw new Error(castError.message);
+    }
+
+    if (draft.photos.length > 0) {
+      await uploadPhotos(photosOf(eventId), draft.photos);
+    }
   } catch (cause) {
     // Rather than leave an event with no folders or half its photos, undo it —
     // the foreign keys cascade, so this cleans up whatever did land.
@@ -302,8 +379,8 @@ function toRow(draft: EventDraft) {
 export async function updateEvent(
   id: string,
   draft: EventDraft,
-  keptPhotos: EventPhoto[],
-  droppedPhotos: EventPhoto[],
+  keptPhotos: StoredPhoto[],
+  droppedPhotos: StoredPhoto[],
 ): Promise<void> {
   const client = supabase();
 
@@ -327,30 +404,164 @@ export async function updateEvent(
     if (linkError) throw new Error(linkError.message);
   }
 
-  if (droppedPhotos.length > 0) {
-    const { error: photoError } = await client
-      .from("event_photos")
-      .delete()
-      .in("id", droppedPhotos.map((photo) => photo.id));
-    if (photoError) throw new Error(photoError.message);
+  const { error: uncastError } = await client
+    .from("event_characters")
+    .delete()
+    .eq("event_id", id);
+  if (uncastError) throw new Error(uncastError.message);
 
-    // Best effort: an orphaned object costs storage, a failed save costs work.
+  if (draft.characters.length > 0) {
+    const { error: castError } = await client.from("event_characters").insert(
+      draft.characters.map((characterId) => ({
+        event_id: id,
+        character_id: characterId,
+      })),
+    );
+    if (castError) throw new Error(castError.message);
+  }
+
+  await syncPhotos(photosOf(id), draft.photos, keptPhotos, droppedPhotos);
+}
+
+type CharacterRow = {
+  id: string;
+  name: string;
+  bio: string | null;
+  birth_year: number | null;
+  birth_month: number | null;
+  birth_day: number | null;
+  death_year: number | null;
+  death_month: number | null;
+  death_day: number | null;
+  character_photos: {
+    id: string;
+    storage_path: string;
+    position: number;
+    source: string | null;
+  }[];
+};
+
+const CHARACTER_COLUMNS = `
+  id, name, bio,
+  birth_year, birth_month, birth_day,
+  death_year, death_month, death_day,
+  character_photos ( id, storage_path, position, source )
+`;
+
+/** Null when the year is missing: a month without a year is not a date. */
+function toOptionalDate(
+  year: number | null,
+  month: number | null,
+  day: number | null,
+): HistoricalDate | null {
+  return year === null ? null : toDate(year, month, day);
+}
+
+function toCharacter(row: CharacterRow): Character {
+  return {
+    id: row.id,
+    name: row.name,
+    bio: row.bio,
+    birth: toOptionalDate(row.birth_year, row.birth_month, row.birth_day),
+    death: toOptionalDate(row.death_year, row.death_month, row.death_day),
+    photos: [...row.character_photos]
+      .sort((a, b) => a.position - b.position)
+      .map((photo) => ({
+        id: photo.id,
+        path: photo.storage_path,
+        url: publicUrl(photo.storage_path),
+        source: photo.source,
+      })),
+  };
+}
+
+const portraitsOf = (characterId: string): PhotoOwner => ({
+  table: "character_photos",
+  column: "character_id",
+  id: characterId,
+  prefix: "characters/",
+});
+
+function characterRow(draft: CharacterDraft) {
+  return {
+    name: draft.name.trim(),
+    bio: draft.bio.trim() || null,
+    birth_year: draft.birth?.year ?? null,
+    birth_month: draft.birth?.month ?? null,
+    birth_day: draft.birth?.day ?? null,
+    death_year: draft.death?.year ?? null,
+    death_month: draft.death?.month ?? null,
+    death_day: draft.death?.day ?? null,
+  };
+}
+
+export async function fetchCharacters(): Promise<Character[]> {
+  const { data, error } = await supabase()
+    .from("characters")
+    .select(CHARACTER_COLUMNS)
+    .order("name");
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as CharacterRow[]).map(toCharacter);
+}
+
+export async function createCharacter(
+  draft: CharacterDraft,
+): Promise<Character> {
+  const { data, error } = await supabase()
+    .from("characters")
+    .insert(characterRow(draft))
+    .select(CHARACTER_COLUMNS)
+    .single();
+  if (error) throw new Error(error.message);
+
+  const created = toCharacter(data as CharacterRow);
+  if (draft.photos.length === 0) return created;
+
+  try {
+    await uploadPhotos(portraitsOf(created.id), draft.photos);
+  } catch (cause) {
+    // Same rule as an event: rather than leave someone with half a face, undo
+    // the whole thing. The photo rows cascade with the row.
+    await supabase().from("characters").delete().eq("id", created.id);
+    throw cause;
+  }
+  return { ...created, photos: [] };
+}
+
+export async function updateCharacter(
+  id: string,
+  draft: CharacterDraft,
+  keptPhotos: StoredPhoto[],
+  droppedPhotos: StoredPhoto[],
+): Promise<void> {
+  const { error } = await supabase()
+    .from("characters")
+    .update(characterRow(draft))
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+
+  await syncPhotos(portraitsOf(id), draft.photos, keptPhotos, droppedPhotos);
+}
+
+/**
+ * Removes a character.
+ *
+ * `event_characters.character_id` cascades, so the events survive and lose only
+ * this person from their cast — which is what the reader confirms. The row goes
+ * first and the pictures after, best effort.
+ */
+export async function deleteCharacter(character: Character): Promise<void> {
+  const client = supabase();
+  const { error } = await client
+    .from("characters")
+    .delete()
+    .eq("id", character.id);
+  if (error) throw new Error(error.message);
+
+  if (character.photos.length > 0) {
     await client.storage
       .from(PHOTO_BUCKET)
-      .remove(droppedPhotos.map((photo) => photo.path));
-  }
-
-  // Sources are editable on photos that are staying.
-  for (const photo of keptPhotos) {
-    const { error: sourceError } = await client
-      .from("event_photos")
-      .update({ source: photo.source?.trim() || null })
-      .eq("id", photo.id);
-    if (sourceError) throw new Error(sourceError.message);
-  }
-
-  if (draft.photos.length > 0) {
-    await uploadPhotos(id, draft.photos, keptPhotos.length);
+      .remove(character.photos.map((photo) => photo.path));
   }
 }
 

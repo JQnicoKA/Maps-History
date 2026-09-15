@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { EventPhoto } from "../types";
+import type { StoredPhoto } from "../types";
 import { palette } from "../../../theme/palette";
 import { radius, shadow, space, TOUCH, type } from "../../../theme/tokens";
 
@@ -48,7 +48,7 @@ function fit(ratio: number, room: Box): Box {
 }
 
 export type PhotoViewerProps = {
-  photo: EventPhoto | null;
+  photo: StoredPhoto | null;
   onClose: () => void;
 };
 

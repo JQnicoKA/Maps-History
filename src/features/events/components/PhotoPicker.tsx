@@ -11,7 +11,7 @@ import {
 
 import { InkButton, InkField, Sheet } from "../../../components/ui";
 import { pickPhotos } from "../pickPhotos";
-import type { EventPhoto, PickedPhoto } from "../types";
+import type { StoredPhoto, PickedPhoto } from "../types";
 import { palette } from "../../../theme/palette";
 import { radius, space, type } from "../../../theme/tokens";
 
@@ -19,9 +19,9 @@ export type PhotoPickerProps = {
   photos: PickedPhoto[];
   onChange: (photos: PickedPhoto[]) => void;
   /** Pictures already in storage — present when editing. */
-  existing?: EventPhoto[];
-  onChangeExisting?: (photos: EventPhoto[]) => void;
-  onRemoveExisting?: (photo: EventPhoto) => void;
+  existing?: StoredPhoto[];
+  onChangeExisting?: (photos: StoredPhoto[]) => void;
+  onRemoveExisting?: (photo: StoredPhoto) => void;
 };
 
 /** Which tile is open in the sheet: one already stored, or one just chosen. */
