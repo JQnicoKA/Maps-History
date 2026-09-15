@@ -1,13 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Alert,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -21,6 +13,7 @@ import {
   rowCount,
   rowY,
 } from "./layout";
+import { PanZoom } from "./PanZoom";
 import { TreeMemberSheet } from "./TreeMemberSheet";
 import { TreeNode } from "./TreeNode";
 import { InkButton, SelectField } from "../../components/ui";
@@ -39,8 +32,10 @@ export type TreeBuilderProps = {
  * The tree, and the tools to build it.
  *
  * Full screen, not a bottom sheet: a genealogy is wide and deep by nature, and
- * arranging one through a letterbox would be a punishment. The canvas scrolls
- * in both directions and the chrome floats over it.
+ * arranging one through a letterbox would be a punishment. The canvas is
+ * dragged in both directions and pinched to zoom, and the chrome floats over
+ * it — the bars' measured height is handed to `PanZoom`, which keeps the
+ * drawing out from under them.
  *
  * Two modes, and only two. Normally a tap opens someone's card. In **linking**
  * mode — entered from that card — a tap adds or removes a line from the chosen
@@ -122,76 +117,62 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
   return (
     <Modal visible animationType="slide" onRequestClose={onClose}>
       <View style={styles.root}>
-        <ScrollView style={styles.canvas}>
-          <ScrollView horizontal contentContainerStyle={{ minWidth: size.width }}>
-            {/* The bars float over the canvas, so the drawing is inset by
-                their height — otherwise the first generation sits under the
-                title and cannot even be tapped. */}
-            <View
-              style={{
-                paddingTop: chrome.top,
-                paddingBottom: chrome.bottom,
-              }}
-            >
-              <View style={{ width: size.width, height: size.height }}>
-                {lines.map((segment, index) => (
-                  <View
-                    key={index}
-                    style={[styles.line, segment]}
-                    pointerEvents="none"
-                  />
-                ))}
+        <PanZoom content={size} inset={chrome} subject={tree.id}>
+        {lines.map((segment, index) => (
+          <View
+            key={index}
+            style={[styles.line, segment]}
+            pointerEvents="none"
+          />
+        ))}
 
-                {placed.map((node) => (
-                  <TreeNode
-                    key={node.member.id}
-                    member={node.member}
-                    person={byId.get(node.member.characterId)}
-                    x={node.x}
-                    y={node.y}
-                    active={
-                      parent
-                        ? node.member.id === parent.id ||
-                          linked.has(node.member.id)
-                        : false
-                    }
-                    onPress={() => tap(node.member)}
-                  />
-                ))}
+        {placed.map((node) => (
+          <TreeNode
+            key={node.member.id}
+            member={node.member}
+            person={byId.get(node.member.characterId)}
+            x={node.x}
+            y={node.y}
+            active={
+              parent
+                ? node.member.id === parent.id ||
+                  linked.has(node.member.id)
+                : false
+            }
+            onPress={() => tap(node.member)}
+          />
+        ))}
 
-                {/* One slot closing every row, the two empty ones included —
-                    which is how a generation is added above or below without a
-                    button anywhere else to explain it. */}
-                {Array.from(
-                  { length: rows.to - rows.from + 1 },
-                  (_, index) => rows.from + index,
-                ).map((generation) => (
-                  <Pressable
-                    key={generation}
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      rowCount(tree, generation) === 0
-                        ? "Ajouter une génération"
-                        : "Ajouter à cette génération"
-                    }
-                    disabled={busy || parent !== null}
-                    onPress={() => setAdding(generation)}
-                    style={({ pressed }) => [
-                      styles.slot,
-                      pressed && styles.pressed,
-                      {
-                        left: columnX(rowCount(tree, generation)),
-                        top: rowY(generation, rows),
-                      },
-                    ]}
-                  >
-                    <Text style={styles.slotGlyph}>+</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          </ScrollView>
-        </ScrollView>
+        {/* One slot closing every row, the two empty ones included —
+            which is how a generation is added above or below without a
+            button anywhere else to explain it. */}
+        {Array.from(
+          { length: rows.to - rows.from + 1 },
+          (_, index) => rows.from + index,
+        ).map((generation) => (
+          <Pressable
+            key={generation}
+            accessibilityRole="button"
+            accessibilityLabel={
+              rowCount(tree, generation) === 0
+                ? "Ajouter une génération"
+                : "Ajouter à cette génération"
+            }
+            disabled={busy || parent !== null}
+            onPress={() => setAdding(generation)}
+            style={({ pressed }) => [
+              styles.slot,
+              pressed && styles.pressed,
+              {
+                left: columnX(rowCount(tree, generation)),
+                top: rowY(generation, rows),
+              },
+            ]}
+          >
+            <Text style={styles.slotGlyph}>+</Text>
+          </Pressable>
+        ))}
+        </PanZoom>
 
         <View
           style={[styles.top, { paddingTop: insets.top + space.sm }]}
@@ -355,7 +336,6 @@ const SLOT = 72;
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.paper },
-  canvas: { flex: 1 },
   line: { position: "absolute", backgroundColor: palette.inkSoft },
   slot: {
     position: "absolute",
