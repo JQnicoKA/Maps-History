@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import {
   InkButton,
@@ -10,14 +10,13 @@ import {
 import { useEvents } from "../events/EventsProvider";
 import { lifespan } from "../events/lifespan";
 import {
-  TREE_MARKS,
   type Character,
   type Importance,
   type Tree,
   type TreeMember,
 } from "../events/types";
 import { palette } from "../../theme/palette";
-import { radius, space, type } from "../../theme/tokens";
+import { space, type } from "../../theme/tokens";
 
 const IMPORTANCES: { value: Importance; label: string }[] = [
   { value: "low", label: "Discret" },
@@ -38,7 +37,7 @@ export type TreeMemberSheetProps = {
  * What can be said about someone's place in a tree.
  *
  * All of it belongs to the placement rather than to the person — the weight,
- * the mark, the note, the rank in the row. Editing a life is a different sheet,
+ * the note, the rank in the row. Editing a life is a different sheet,
  * reached from the Personnage half.
  */
 export function TreeMemberSheet({
@@ -154,41 +153,6 @@ export function TreeMemberSheet({
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.legend}>Fin précoce</Text>
-          <View style={styles.marks}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Aucune marque"
-              onPress={() => run(editTreeMember(tree.id, member.id, { mark: null }))}
-              style={({ pressed }) => [
-                styles.mark,
-                member.mark === null && styles.markOn,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.markGlyph}>—</Text>
-            </Pressable>
-            {TREE_MARKS.map((entry) => (
-              <Pressable
-                key={entry.value}
-                accessibilityRole="button"
-                accessibilityLabel={entry.label}
-                onPress={() =>
-                  run(editTreeMember(tree.id, member.id, { mark: entry.value }))
-                }
-                style={({ pressed }) => [
-                  styles.mark,
-                  member.mark === entry.value && styles.markOn,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={styles.markGlyph}>{entry.emoji}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.section}>
           <Text style={styles.legend}>Rang dans la génération</Text>
           <View style={styles.shiftRow}>
             <InkButton
@@ -241,19 +205,5 @@ const styles = StyleSheet.create({
   section: { gap: space.sm },
   legend: { ...type.legend, color: palette.inkSoft },
   hint: { ...type.caption, color: palette.inkFaint },
-  marks: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
-  mark: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.md,
-    backgroundColor: palette.sunken,
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  markOn: { backgroundColor: palette.paperLight, borderColor: palette.wax },
-  markGlyph: { fontSize: 20, color: palette.inkSoft },
-  pressed: { opacity: 0.6 },
   shiftRow: { flexDirection: "row", gap: space.sm },
 });

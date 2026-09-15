@@ -146,32 +146,6 @@ export type Character = {
 };
 
 /**
- * How a life ended, when it ended early enough to be worth a mark.
- *
- * Deliberately short: a genealogy reads at a glance, and a rail of twenty
- * emoji would turn a signal into a decoration. "Autre" carries the rest, and
- * the member's own note says what it was.
- */
-export const TREE_MARKS = [
-  { value: "illness", label: "Maladie", emoji: "🤒" },
-  { value: "poison", label: "Poison", emoji: "🧪" },
-  { value: "murder", label: "Assassinat", emoji: "🗡️" },
-  { value: "battle", label: "Bataille", emoji: "⚔️" },
-  { value: "execution", label: "Exécution", emoji: "🪓" },
-  { value: "accident", label: "Accident", emoji: "⚡" },
-  { value: "infancy", label: "En bas âge", emoji: "🕯️" },
-  { value: "other", label: "Autre", emoji: "✳️" },
-] as const;
-
-export type TreeMark = (typeof TREE_MARKS)[number]["value"];
-
-export function describeMark(
-  value: string,
-): { label: string; emoji: string } | null {
-  return TREE_MARKS.find((mark) => mark.value === value) ?? null;
-}
-
-/**
  * Someone's place in one tree.
  *
  * Everything here belongs to the placement, not to the person: the same
@@ -184,7 +158,6 @@ export type TreeMember = {
   generation: number;
   position: number;
   importance: Importance;
-  mark: TreeMark | null;
   note: string | null;
 };
 

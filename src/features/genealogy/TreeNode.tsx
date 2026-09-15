@@ -2,7 +2,7 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { FACE, FACE_BAND, NODE } from "./layout";
 import { lifespan } from "../events/lifespan";
-import { describeMark, type Character, type TreeMember } from "../events/types";
+import type { Character, TreeMember } from "../events/types";
 import { palette } from "../../theme/palette";
 import { radius, space } from "../../theme/tokens";
 
@@ -41,7 +41,6 @@ export function TreeNode({
   const size = FACE[member.importance];
   const face = person?.photos[0];
   const dates = person ? lifespan(person) : "";
-  const mark = member.mark ? describeMark(member.mark) : null;
 
   return (
     <Pressable
@@ -56,8 +55,8 @@ export function TreeNode({
       {/* The band is what keeps the axis: the circle is centred in it, so its
           middle is always FACE_BAND / 2 below the top of the box. */}
       <View style={styles.band}>
-        {/* Badges hang off the portrait itself rather than off the box, so they
-            follow it whatever size it is drawn at. */}
+        {/* The wax dot hangs off the portrait itself rather than off the box,
+            so it follows it whatever size it is drawn at. */}
         <View
           style={[
             styles.face,
@@ -77,12 +76,6 @@ export function TreeNode({
             </Text>
           )}
 
-          {mark ? (
-            <View style={styles.mark}>
-              <Text style={styles.markGlyph}>{mark.emoji}</Text>
-            </View>
-          ) : null}
-
           {member.note ? <View style={styles.hasNote} /> : null}
         </View>
       </View>
@@ -99,7 +92,6 @@ export function TreeNode({
   );
 }
 
-const BADGE = 26;
 const DOT = 10;
 
 const styles = StyleSheet.create({
@@ -127,20 +119,6 @@ const styles = StyleSheet.create({
   // is a child of the frame rather than the frame itself.
   image: { width: "100%", height: "100%", borderRadius: 999 },
   initial: { fontWeight: "700", color: palette.inkFaint },
-  mark: {
-    position: "absolute",
-    top: -4,
-    right: -6,
-    width: BADGE,
-    height: BADGE,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.pill,
-    backgroundColor: palette.paperLight,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.line,
-  },
-  markGlyph: { fontSize: 14 },
   /** A dot of wax: there is something written about this one. */
   hasNote: {
     position: "absolute",

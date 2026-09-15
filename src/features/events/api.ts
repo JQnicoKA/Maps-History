@@ -2,7 +2,6 @@ import type {
   Character,
   CharacterDraft,
   Tree,
-  TreeMark,
   TreeMember,
   EventDraft,
   Folder,
@@ -609,7 +608,6 @@ type TreeRow = {
     generation: number;
     position: number;
     importance: Importance;
-    mark: string | null;
     note: string | null;
   }[];
   tree_links: { parent_id: string; child_id: string }[];
@@ -617,7 +615,7 @@ type TreeRow = {
 
 const TREE_COLUMNS = `
   id, name, note,
-  tree_members ( id, character_id, generation, position, importance, mark, note ),
+  tree_members ( id, character_id, generation, position, importance, note ),
   tree_links ( parent_id, child_id )
 `;
 
@@ -634,7 +632,6 @@ function toTree(row: TreeRow): Tree {
         generation: member.generation,
         position: member.position,
         importance: member.importance,
-        mark: (member.mark as TreeMark | null) ?? null,
         note: member.note,
       })),
     links: row.tree_links.map((link) => ({
@@ -690,7 +687,7 @@ export async function addTreeMember(
       generation,
       position,
     })
-    .select("id, character_id, generation, position, importance, mark, note")
+    .select("id, character_id, generation, position, importance, note")
     .single();
   if (error) throw new Error(error.message);
   return {
@@ -699,14 +696,13 @@ export async function addTreeMember(
     generation: data.generation,
     position: data.position,
     importance: data.importance,
-    mark: (data.mark as TreeMark | null) ?? null,
     note: data.note,
   };
 }
 
 export async function updateTreeMember(
   id: string,
-  patch: Partial<Pick<TreeMember, "generation" | "position" | "importance" | "mark" | "note">>,
+  patch: Partial<Pick<TreeMember, "generation" | "position" | "importance" | "note">>,
 ): Promise<void> {
   const { error } = await supabase()
     .from("tree_members")
@@ -714,7 +710,6 @@ export async function updateTreeMember(
       ...(patch.generation === undefined ? {} : { generation: patch.generation }),
       ...(patch.position === undefined ? {} : { position: patch.position }),
       ...(patch.importance === undefined ? {} : { importance: patch.importance }),
-      ...(patch.mark === undefined ? {} : { mark: patch.mark }),
       ...(patch.note === undefined ? {} : { note: patch.note?.trim() || null }),
     })
     .eq("id", id);

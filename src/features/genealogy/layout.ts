@@ -5,9 +5,10 @@ import type { Tree, TreeMember } from "../events/types";
  *
  * Size and not opacity: a faded portrait reads as damaged or as loading, while
  * a small one reads as minor — which is what is meant. The middle size is the
- * one every face had before.
+ * one every face had before, and the largest is twice the smallest: a founder
+ * should be found without looking for them.
  */
-export const FACE = { low: 58, medium: 78, high: 96 } as const;
+export const FACE = { low: 58, medium: 78, high: 118 } as const;
 
 /**
  * The band every node reserves for its portrait, and the axis the circles are
@@ -32,7 +33,7 @@ export const FACE_AXIS = FACE_BAND / 2;
  * box: let it follow the portrait and every line in the tree would change
  * length when someone's weight changed.
  */
-export const NODE = { width: 120, height: 148 };
+export const NODE = { width: 126, height: 170 };
 
 /**
  * Between two nodes of the same generation, and between two generations.

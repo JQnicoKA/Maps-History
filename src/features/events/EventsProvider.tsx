@@ -101,7 +101,7 @@ type EventsContextValue = {
     treeId: string,
     id: string,
     patch: Partial<
-      Pick<TreeMember, "generation" | "position" | "importance" | "mark" | "note">
+      Pick<TreeMember, "generation" | "position" | "importance" | "note">
     >,
   ) => Promise<void>;
   removeFromTree: (treeId: string, memberId: string) => Promise<void>;
@@ -358,7 +358,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       _treeId: string,
       id: string,
       patch: Partial<
-        Pick<TreeMember, "generation" | "position" | "importance" | "mark" | "note">
+        Pick<TreeMember, "generation" | "position" | "importance" | "note">
       >,
     ) => {
       await api.updateTreeMember(id, patch);
