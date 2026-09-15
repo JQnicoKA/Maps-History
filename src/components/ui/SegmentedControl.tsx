@@ -39,6 +39,10 @@ export function SegmentedControl<T extends string>({
             <Text
               style={[styles.label, active && styles.activeLabel]}
               numberOfLines={1}
+              // Four segments on a phone leave under eighty points each; a
+              // label shrinks rather than becoming "Personn…".
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
             >
               {segment.label}
             </Text>

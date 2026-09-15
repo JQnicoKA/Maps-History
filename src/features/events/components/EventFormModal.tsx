@@ -4,6 +4,7 @@ import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { CharacterManager } from "./CharacterManager";
 import { CharacterSelector } from "./CharacterSelector";
 import { FolderManager } from "./FolderManager";
+import { TreeManager } from "../../genealogy/TreeManager";
 import { FolderSelector } from "./FolderSelector";
 import { EventDateField } from "./EventDateField";
 import { PhotoPicker } from "./PhotoPicker";
@@ -125,7 +126,9 @@ export function EventFormModal({
    * Which half of the Add sheet is showing. Editing an existing event has no
    * second half — there is nothing to add but the changes in front of you.
    */
-  const [tab, setTab] = useState<"event" | "folder" | "character">("event");
+  const [tab, setTab] = useState<
+    "event" | "folder" | "character" | "tree"
+  >("event");
   /**
    * Which of the five questions is on screen. Only when composing: correcting
    * an event is not a journey, it is one change, and walking a reader through
@@ -290,6 +293,7 @@ export function EventFormModal({
               { value: "event" as const, label: "Événement" },
               { value: "folder" as const, label: "Classeur" },
               { value: "character" as const, label: "Personnage" },
+              { value: "tree" as const, label: "Arbre" },
             ]}
             value={tab}
             onChange={setTab}
@@ -301,6 +305,7 @@ export function EventFormModal({
 
       {tab === "folder" && !event ? <FolderManager /> : null}
       {tab === "character" && !event ? <CharacterManager /> : null}
+      {tab === "tree" && !event ? <TreeManager /> : null}
 
       <ScrollView
         style={tab !== "event" && !event ? styles.hidden : null}

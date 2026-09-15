@@ -1,6 +1,9 @@
 import type {
   Character,
   CharacterDraft,
+  Tree,
+  TreeMark,
+  TreeMember,
   EventDraft,
   Folder,
   PickedPhoto,
@@ -563,6 +566,157 @@ export async function deleteCharacter(character: Character): Promise<void> {
       .from(PHOTO_BUCKET)
       .remove(character.photos.map((photo) => photo.path));
   }
+}
+
+type TreeRow = {
+  id: string;
+  name: string;
+  note: string | null;
+  tree_members: {
+    id: string;
+    character_id: string;
+    generation: number;
+    position: number;
+    importance: Importance;
+    mark: string | null;
+    note: string | null;
+  }[];
+  tree_links: { parent_id: string; child_id: string }[];
+};
+
+const TREE_COLUMNS = `
+  id, name, note,
+  tree_members ( id, character_id, generation, position, importance, mark, note ),
+  tree_links ( parent_id, child_id )
+`;
+
+function toTree(row: TreeRow): Tree {
+  return {
+    id: row.id,
+    name: row.name,
+    note: row.note,
+    members: [...row.tree_members]
+      .sort((a, b) => a.generation - b.generation || a.position - b.position)
+      .map((member) => ({
+        id: member.id,
+        characterId: member.character_id,
+        generation: member.generation,
+        position: member.position,
+        importance: member.importance,
+        mark: (member.mark as TreeMark | null) ?? null,
+        note: member.note,
+      })),
+    links: row.tree_links.map((link) => ({
+      parentId: link.parent_id,
+      childId: link.child_id,
+    })),
+  };
+}
+
+export async function fetchTrees(): Promise<Tree[]> {
+  const { data, error } = await supabase()
+    .from("trees")
+    .select(TREE_COLUMNS)
+    .order("name");
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as TreeRow[]).map(toTree);
+}
+
+export async function createTree(name: string): Promise<Tree> {
+  const { data, error } = await supabase()
+    .from("trees")
+    .insert({ name: name.trim() })
+    .select(TREE_COLUMNS)
+    .single();
+  if (error) throw new Error(error.message);
+  return toTree(data as TreeRow);
+}
+
+export async function renameTree(id: string, name: string): Promise<void> {
+  const { error } = await supabase()
+    .from("trees")
+    .update({ name: name.trim() })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteTree(id: string): Promise<void> {
+  const { error } = await supabase().from("trees").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function addTreeMember(
+  treeId: string,
+  characterId: string,
+  generation: number,
+  position: number,
+): Promise<TreeMember> {
+  const { data, error } = await supabase()
+    .from("tree_members")
+    .insert({
+      tree_id: treeId,
+      character_id: characterId,
+      generation,
+      position,
+    })
+    .select("id, character_id, generation, position, importance, mark, note")
+    .single();
+  if (error) throw new Error(error.message);
+  return {
+    id: data.id,
+    characterId: data.character_id,
+    generation: data.generation,
+    position: data.position,
+    importance: data.importance,
+    mark: (data.mark as TreeMark | null) ?? null,
+    note: data.note,
+  };
+}
+
+export async function updateTreeMember(
+  id: string,
+  patch: Partial<Pick<TreeMember, "generation" | "position" | "importance" | "mark" | "note">>,
+): Promise<void> {
+  const { error } = await supabase()
+    .from("tree_members")
+    .update({
+      ...(patch.generation === undefined ? {} : { generation: patch.generation }),
+      ...(patch.position === undefined ? {} : { position: patch.position }),
+      ...(patch.importance === undefined ? {} : { importance: patch.importance }),
+      ...(patch.mark === undefined ? {} : { mark: patch.mark }),
+      ...(patch.note === undefined ? {} : { note: patch.note?.trim() || null }),
+    })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+/** Removing a member takes its lines with it — the links cascade on it. */
+export async function removeTreeMember(id: string): Promise<void> {
+  const { error } = await supabase().from("tree_members").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function linkTreeMembers(
+  treeId: string,
+  parentId: string,
+  childId: string,
+): Promise<void> {
+  const { error } = await supabase()
+    .from("tree_links")
+    .insert({ tree_id: treeId, parent_id: parentId, child_id: childId });
+  if (error) throw new Error(error.message);
+}
+
+export async function unlinkTreeMembers(
+  parentId: string,
+  childId: string,
+): Promise<void> {
+  const { error } = await supabase()
+    .from("tree_links")
+    .delete()
+    .eq("parent_id", parentId)
+    .eq("child_id", childId);
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteEvent(id: string): Promise<void> {

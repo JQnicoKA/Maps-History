@@ -27,6 +27,12 @@ export type SelectFieldProps = {
    * dashed button — instead of one more slab in a column of slabs.
    */
   trigger?: (open: () => void) => ReactNode;
+  /**
+   * Fired when the sheet shuts, whichever way — a choice made, the button, the
+   * backdrop, a swipe. A caller that opened it from somewhere else needs to
+   * know, or that somewhere else stays stuck open forever.
+   */
+  onClose?: () => void;
 };
 
 /**
@@ -44,8 +50,14 @@ export function SelectField({
   footer,
   emptyMessage = "Aucune entrée pour l'instant.",
   trigger,
+  onClose,
 }: SelectFieldProps) {
   const [open, setOpen] = useState(false);
+
+  const shut = () => {
+    setOpen(false);
+    onClose?.();
+  };
 
   const chosen = options
     .filter((option) => selected.includes(option.value))
@@ -76,14 +88,14 @@ export function SelectField({
 
       <Sheet
         visible={open}
-        onClose={() => setOpen(false)}
+        onClose={shut}
         title={title}
         footer={
           <InkButton
             label="Fermer"
             variant="solid"
             grow
-            onPress={() => setOpen(false)}
+            onPress={shut}
           />
         }
       >
@@ -100,7 +112,7 @@ export function SelectField({
                   accessibilityState={{ checked: isSelected }}
                   onPress={() => {
                     onToggle(option.value);
-                    if (single) setOpen(false);
+                    if (single) shut();
                   }}
                   style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
                 >

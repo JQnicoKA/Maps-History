@@ -21,6 +21,8 @@ import {
   type EventFilters,
   type Folder,
   type HistoricalEvent,
+  type Tree,
+  type TreeMember,
   type PickedPhoto,
 } from "./types";
 
@@ -31,6 +33,8 @@ type EventsContextValue = {
   folders: Folder[];
   /** Everyone the collection knows about, by name. */
   characters: Character[];
+  /** The genealogies, each a cast of characters and the lines between them. */
+  trees: Tree[];
   filters: EventFilters;
   setFilters: (filters: EventFilters) => void;
   /**
@@ -77,6 +81,36 @@ type EventsContextValue = {
   ) => Promise<void>;
   /** Drops a character; the events survive, one name shorter. */
   removeCharacter: (character: Character) => Promise<void>;
+
+  addTree: (name: string) => Promise<Tree>;
+  renameTree: (id: string, name: string) => Promise<void>;
+  removeTree: (id: string) => Promise<void>;
+  /**
+   * Everything that changes a tree's shape.
+   *
+   * Each one writes, then re-reads the whole tree rather than patching what is
+   * held: a member carries a generation, a rank and its lines, and half a dozen
+   * little splices would each be a chance to drift. A tree is a few dozen rows.
+   */
+  addToTree: (
+    treeId: string,
+    characterId: string,
+    generation: number,
+  ) => Promise<void>;
+  editTreeMember: (
+    treeId: string,
+    id: string,
+    patch: Partial<
+      Pick<TreeMember, "generation" | "position" | "importance" | "mark" | "note">
+    >,
+  ) => Promise<void>;
+  removeFromTree: (treeId: string, memberId: string) => Promise<void>;
+  linkInTree: (
+    treeId: string,
+    parentId: string,
+    childId: string,
+    linked: boolean,
+  ) => Promise<void>;
   /** Sets or clears a folder's cover picture — the map marker's fallback. */
   setFolderPhoto: (folder: Folder, picked: PickedPhoto | null) => Promise<void>;
   addEvent: (draft: EventDraft) => Promise<void>;
@@ -95,6 +129,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<HistoricalEvent[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
+  const [trees, setTrees] = useState<Tree[]>([]);
   const [filters, setFilters] = useState<EventFilters>(NO_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [year, setYear] = useState<number | null>(null);
@@ -104,14 +139,17 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [loadedEvents, loadedFolders, loadedCharacters] = await Promise.all([
-        api.fetchEvents(),
-        api.fetchFolders(),
-        api.fetchCharacters(),
-      ]);
+      const [loadedEvents, loadedFolders, loadedCharacters, loadedTrees] =
+        await Promise.all([
+          api.fetchEvents(),
+          api.fetchFolders(),
+          api.fetchCharacters(),
+          api.fetchTrees(),
+        ]);
       setEvents(loadedEvents);
       setFolders(loadedFolders);
       setCharacters(loadedCharacters);
+      setTrees(loadedTrees);
       setError(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -270,6 +308,82 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  /** Re-reads every tree. Cheap, and it cannot fall out of step. */
+  const reloadTrees = useCallback(async () => {
+    setTrees(await api.fetchTrees());
+  }, []);
+
+  const addTree = useCallback(
+    async (name: string) => {
+      const created = await api.createTree(name);
+      await reloadTrees();
+      return created;
+    },
+    [reloadTrees],
+  );
+
+  const renameTree = useCallback(
+    async (id: string, name: string) => {
+      await api.renameTree(id, name);
+      await reloadTrees();
+    },
+    [reloadTrees],
+  );
+
+  const removeTree = useCallback(
+    async (id: string) => {
+      await api.deleteTree(id);
+      setTrees((current) => current.filter((tree) => tree.id !== id));
+    },
+    [],
+  );
+
+  const addToTree = useCallback(
+    async (treeId: string, characterId: string, generation: number) => {
+      const tree = await api.fetchTrees();
+      const target = tree.find((one) => one.id === treeId);
+      // Appended to the right of its generation, which is where a reader
+      // expects the newcomer to land.
+      const position = (target?.members ?? []).filter(
+        (member) => member.generation === generation,
+      ).length;
+      await api.addTreeMember(treeId, characterId, generation, position);
+      await reloadTrees();
+    },
+    [reloadTrees],
+  );
+
+  const editTreeMember = useCallback(
+    async (
+      _treeId: string,
+      id: string,
+      patch: Partial<
+        Pick<TreeMember, "generation" | "position" | "importance" | "mark" | "note">
+      >,
+    ) => {
+      await api.updateTreeMember(id, patch);
+      await reloadTrees();
+    },
+    [reloadTrees],
+  );
+
+  const removeFromTree = useCallback(
+    async (_treeId: string, memberId: string) => {
+      await api.removeTreeMember(memberId);
+      await reloadTrees();
+    },
+    [reloadTrees],
+  );
+
+  const linkInTree = useCallback(
+    async (treeId: string, parentId: string, childId: string, linked: boolean) => {
+      if (linked) await api.linkTreeMembers(treeId, parentId, childId);
+      else await api.unlinkTreeMembers(parentId, childId);
+      await reloadTrees();
+    },
+    [reloadTrees],
+  );
+
   const addEvent = useCallback(
     async (draft: EventDraft) => {
       await api.createEvent(draft);
@@ -303,6 +417,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       visibleEvents,
       folders,
       characters,
+      trees,
       filters,
       setFilters,
       year,
@@ -319,16 +434,25 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       addCharacter,
       editCharacter,
       removeCharacter,
+      addTree,
+      renameTree,
+      removeTree,
+      addToTree,
+      editTreeMember,
+      removeFromTree,
+      linkInTree,
       setFolderPhoto,
       addEvent,
       editEvent,
       removeEvent,
     }),
     [
-      events, visibleEvents, folders, characters, filters, year, selectedEvent,
-      neighbours, selectEvent, scrubTo, loading, error, refresh, addFolder,
-      renameFolder, removeFolder, addCharacter, editCharacter, removeCharacter,
-      setFolderPhoto, addEvent, editEvent, removeEvent,
+      events, visibleEvents, folders, characters, trees, filters, year,
+      selectedEvent, neighbours, selectEvent, scrubTo, loading, error, refresh,
+      addFolder, renameFolder, removeFolder, addCharacter, editCharacter,
+      removeCharacter, addTree, renameTree, removeTree, addToTree,
+      editTreeMember, removeFromTree, linkInTree, setFolderPhoto, addEvent,
+      editEvent, removeEvent,
     ],
   );
 

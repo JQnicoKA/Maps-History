@@ -230,6 +230,12 @@ src/
     supabase.ts                   client (construit paresseusement)
     base64.ts                     décodeur pour l'upload des photos
   features/
+    genealogy/
+      TreeManager.tsx             la liste des arbres, dans la feuille Ajouter
+      TreeBuilder.tsx             le constructeur plein écran
+      TreeNode.tsx                un rond : photo, nom, dates, marque
+      TreeMemberSheet.tsx         la place de quelqu'un : poids, marque, note
+      layout.ts                   positions et coudes, pure et testable
     events/
       types.ts                    modèle de domaine
       api.ts                      requêtes Supabase
@@ -382,9 +388,9 @@ coordonnées, la saisie intacte.
 (`330 av`) signifie avant J.-C. L'emplacement pointillé sous les molettes ajoute
 une date de fin, pour ce qui dure.
 
-**Trois moitiés sous le bouton `+`** — le mot est mauvais mais l'idée tient. La
-feuille s'appelle *Ajouter* et une bascule choisit ce qu'on ajoute : un
-**événement**, un **classeur** ou un **personnage**. Les deux moitiés restent montées, la cachée mise à `display: "none"`
+**Quatre sections sous le bouton `+`.** La feuille s'appelle *Ajouter* et une
+bascule choisit ce qu'on ajoute : un **événement**, un **classeur**, un
+**personnage** ou un **arbre** généalogique. Les deux moitiés restent montées, la cachée mise à `display: "none"`
 — on peut passer à l'onglet classeur au milieu d'un formulaire à moitié rempli
 et revenir sans avoir rien perdu.
 
@@ -449,6 +455,49 @@ une partie de date exige son année, et `death_after_birth` refuse une mort
 antérieure à la naissance. Supprimer un personnage le retire des événements sans
 les supprimer : `event_characters.character_id` est en `ON DELETE CASCADE`,
 comme ses portraits.
+
+**Généalogie.** Un arbre est une *mise en scène* des personnages, pas une
+propriété des personnages. Le même individu peut figurer dans plusieurs arbres
+et n'y porter ni la même importance ni la même note — ce qu'on dit de Louis XIV
+chez les Bourbons n'est pas ce qu'on en dit chez les Habsbourg. Tout ce qui
+tient à une place dans un arbre vit donc sur le **membre**, jamais sur la
+personne : le rang, la génération, le poids, la marque, le commentaire.
+
+Le constructeur s'ouvre **en plein écran** — une généalogie est large et
+profonde par nature, l'arranger par un hublot serait une punition. La toile
+défile dans les deux sens, la chrome flotte au-dessus.
+
+**Les `+` sont la seule façon d'ajouter quelqu'un.** Un rond en pointillés
+ferme chaque rangée — au bout d'une rangée peuplée pour la même génération,
+au-dessus de la première et en dessous de la dernière pour une génération de
+plus. Un arbre vide n'en montre qu'un. Il n'y a pas de bouton « ajouter une
+génération » ailleurs : la place où l'on touche *est* la place où la personne
+apparaîtra.
+
+Ce qui rend la chose possible, c'est que **les générations sont signées**.
+Ajouter au-dessus de la première ne renumérote personne : c'est une rangée à
+−1, et le cadre fait le décalage au moment du dessin. Renuméroter aurait été
+une écriture par membre à chaque fois, et autant d'occasions de désynchroniser.
+
+**Deux modes, et deux seulement.** Un appui ouvre la fiche de quelqu'un. En mode
+**liaison** — où l'on entre depuis cette fiche — un appui ajoute ou efface un
+trait du parent choisi vers celui qu'on touche. Pas de glissement, pas de geste
+caché, et un bandeau dit en permanence dans quel mode on est et comment en
+sortir. Un trait ne descend que vers une génération plus basse ; l'inverse est
+refusé d'une phrase plutôt que dessiné.
+
+**Les traits sont des rectangles.** React Native ne trace pas de diagonale sans
+module natif, et une généalogie n'en veut pas : chaque lien est un coude en
+trois segments — descente, traverse, descente. Quand un parent a plusieurs
+enfants, les premières descentes se confondent et se lisent comme un seul tronc.
+L'arithmétique vit dans `layout.ts`, à part et testable.
+
+Chaque personnage est un rond photographique avec son nom et ses dates.
+**L'importance atténue le dessin** — discret, normal, majeur — parce que c'est le
+lecteur qui sait lequel des deux cousins compte. Un **emoji** signale une fin
+précoce (maladie, poison, assassinat, bataille, exécution, accident, en bas âge),
+et un point de cire au bord du portrait dit qu'il y a quelque chose d'écrit à son
+sujet dans cet arbre.
 
 **Classeurs et importance.** Dans le formulaire, le champ *Classeurs* ouvre une
 liste déroulante — elle reste lisible quel que soit le nombre de sujets — et
