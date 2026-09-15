@@ -14,6 +14,7 @@ import {
   canvasSize,
   columnX,
   connectors,
+  FACE_AXIS,
   frame,
   NODE,
   place,
@@ -360,7 +361,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: SLOT,
     height: SLOT,
+    // Placed from the corner of a node box, then nudged onto the portrait
+    // axis: the `+` belongs on the same line as the faces of its generation.
     marginLeft: (NODE.width - SLOT) / 2,
+    marginTop: FACE_AXIS - SLOT / 2,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: SLOT / 2,

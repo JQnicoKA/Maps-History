@@ -1,24 +1,10 @@
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { NODE } from "./layout";
+import { FACE, FACE_BAND, NODE } from "./layout";
 import { lifespan } from "../events/lifespan";
 import { describeMark, type Character, type TreeMember } from "../events/types";
 import { palette } from "../../theme/palette";
 import { radius, space } from "../../theme/tokens";
-
-/**
- * How present a member is on the plate.
- *
- * The scale is the weight of the person *in this genealogy*, not in history:
- * a minor cousin drawn as faintly as a founder would make the tree unreadable,
- * and the reader is the one who knows which is which.
- */
-const WEIGHT: Record<TreeMember["importance"], { opacity: number; ring: number }> =
-  {
-    high: { opacity: 1, ring: 3 },
-    medium: { opacity: 0.82, ring: 2 },
-    low: { opacity: 0.52, ring: 1 },
-  };
 
 export type TreeNodeProps = {
   member: TreeMember;
@@ -30,6 +16,20 @@ export type TreeNodeProps = {
   onPress: () => void;
 };
 
+/**
+ * Someone, drawn: a round portrait, a name, two dates.
+ *
+ * **The weight they carry in the tree sets the size of the face** — small for a
+ * minor figure, larger for a founder. It used to set the opacity instead, which
+ * was a mistake: a faded portrait reads as damaged or as still loading, not as
+ * secondary. A small one reads as small.
+ *
+ * The box around it stays the same size for everyone, and the portrait hangs
+ * from a band as tall as the largest face — so two people of the same
+ * generation have their circles on one axis whatever their weight, and the row
+ * reads as a line. The connectors attach to the box, so a tree does not redraw
+ * every line because one person was promoted.
+ */
 export function TreeNode({
   member,
   person,
@@ -38,7 +38,7 @@ export function TreeNode({
   active = false,
   onPress,
 }: TreeNodeProps) {
-  const weight = WEIGHT[member.importance];
+  const size = FACE[member.importance];
   const face = person?.photos[0];
   const dates = person ? lifespan(person) : "";
   const mark = member.mark ? describeMark(member.mark) : null;
@@ -50,36 +50,42 @@ export function TreeNode({
       onPress={onPress}
       style={({ pressed }) => [
         styles.node,
-        { left: x, top: y, opacity: pressed ? 0.6 : weight.opacity },
+        { left: x, top: y, opacity: pressed ? 0.6 : 1 },
       ]}
     >
-      <View
-        style={[
-          styles.face,
-          {
-            borderWidth: weight.ring,
-            borderColor: active ? palette.wax : palette.ink,
-          },
-        ]}
-      >
-        {face ? (
-          <Image source={{ uri: face.url }} style={styles.image} />
-        ) : (
-          <Text style={styles.initial}>
-            {person?.name.charAt(0).toUpperCase() ?? "?"}
-          </Text>
-        )}
-      </View>
+      {/* The band is what keeps the axis: the circle is centred in it, so its
+          middle is always FACE_BAND / 2 below the top of the box. */}
+      <View style={styles.band}>
+        {/* Badges hang off the portrait itself rather than off the box, so they
+            follow it whatever size it is drawn at. */}
+        <View
+          style={[
+            styles.face,
+            {
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+              borderColor: active ? palette.wax : palette.ink,
+            },
+          ]}
+        >
+          {face ? (
+            <Image source={{ uri: face.url }} style={styles.image} />
+          ) : (
+            <Text style={[styles.initial, { fontSize: size * 0.36 }]}>
+              {person?.name.charAt(0).toUpperCase() ?? "?"}
+            </Text>
+          )}
 
-      {/* The mark rides the portrait rather than the name: it is about the
-          life, and it has to be legible at a glance over a whole tree. */}
-      {mark ? (
-        <View style={styles.mark}>
-          <Text style={styles.markGlyph}>{mark.emoji}</Text>
+          {mark ? (
+            <View style={styles.mark}>
+              <Text style={styles.markGlyph}>{mark.emoji}</Text>
+            </View>
+          ) : null}
+
+          {member.note ? <View style={styles.hasNote} /> : null}
         </View>
-      ) : null}
-
-      {member.note ? <View style={styles.hasNote} /> : null}
+      </View>
 
       <Text style={styles.name} numberOfLines={2}>
         {person?.name ?? "Supprimé"}
@@ -93,7 +99,8 @@ export function TreeNode({
   );
 }
 
-const FACE = 78;
+const BADGE = 26;
+const DOT = 10;
 
 const styles = StyleSheet.create({
   node: {
@@ -103,23 +110,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 3,
   },
+  band: {
+    width: NODE.width,
+    height: FACE_BAND,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   face: {
-    width: FACE,
-    height: FACE,
-    borderRadius: FACE / 2,
-    overflow: "hidden",
+    overflow: "visible",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: palette.paperLight,
+    borderWidth: 2.5,
   },
-  image: { width: "100%", height: "100%" },
-  initial: { fontSize: 28, fontWeight: "700", color: palette.inkFaint },
+  // Clipped to the circle by the parent's radius — which is why the portrait
+  // is a child of the frame rather than the frame itself.
+  image: { width: "100%", height: "100%", borderRadius: 999 },
+  initial: { fontWeight: "700", color: palette.inkFaint },
   mark: {
     position: "absolute",
-    top: -2,
-    right: (NODE.width - FACE) / 2 - 11,
-    width: 26,
-    height: 26,
+    top: -4,
+    right: -6,
+    width: BADGE,
+    height: BADGE,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
@@ -131,10 +144,10 @@ const styles = StyleSheet.create({
   /** A dot of wax: there is something written about this one. */
   hasNote: {
     position: "absolute",
-    top: FACE - 14,
-    left: (NODE.width - FACE) / 2 - 4,
-    width: 10,
-    height: 10,
+    bottom: 0,
+    left: -2,
+    width: DOT,
+    height: DOT,
     borderRadius: radius.pill,
     backgroundColor: palette.wax,
     borderWidth: 1.5,

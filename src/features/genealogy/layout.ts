@@ -1,7 +1,38 @@
 import type { Tree, TreeMember } from "../events/types";
 
-/** A node's box. Wide enough for a face, a name and two dates under it. */
-export const NODE = { width: 120, height: 136 };
+/**
+ * How big a face is drawn, by the weight its member carries in this tree.
+ *
+ * Size and not opacity: a faded portrait reads as damaged or as loading, while
+ * a small one reads as minor — which is what is meant. The middle size is the
+ * one every face had before.
+ */
+export const FACE = { low: 58, medium: 78, high: 96 } as const;
+
+/**
+ * The band every node reserves for its portrait, and the axis the circles are
+ * hung from — measured down from the top of the node box.
+ *
+ * As tall as the largest face, so a row of mixed weights shares one axis: a
+ * small portrait keeps its centre where a large one would have it, and the
+ * generation still reads as a line rather than as a wobble. Everything below —
+ * name, dates — flows under the band, where an uneven bottom edge costs
+ * nothing.
+ *
+ * The `+` that closes a row is centred on the same axis, so the invitation
+ * sits among the faces and not above or below them.
+ */
+export const FACE_BAND = FACE.high;
+export const FACE_AXIS = FACE_BAND / 2;
+
+/**
+ * A node's box — the same for everyone whatever their face.
+ *
+ * Fixed, and sized for the largest face, because the connectors attach to the
+ * box: let it follow the portrait and every line in the tree would change
+ * length when someone's weight changed.
+ */
+export const NODE = { width: 120, height: 148 };
 
 /**
  * Between two nodes of the same generation, and between two generations.
@@ -10,7 +41,7 @@ export const NODE = { width: 120, height: 136 };
  * generations apart until a grandparent and a grandchild could not be seen at
  * once, which is the one thing a genealogy is for.
  */
-export const GAP = { x: 16, y: 52 };
+export const GAP = { x: 16, y: 46 };
 
 export const PADDING = 24;
 
