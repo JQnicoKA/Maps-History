@@ -137,7 +137,8 @@ type EventsContextValue = {
     keptPhotos: StoredPhoto[],
     droppedPhotos: StoredPhoto[],
   ) => Promise<void>;
-  removeEvent: (id: string) => Promise<void>;
+  /** Takes the whole event: its pictures have to be swept from the bucket. */
+  removeEvent: (event: HistoricalEvent) => Promise<void>;
 };
 
 const EventsContext = createContext<EventsContextValue | null>(null);
@@ -462,10 +463,10 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
-  const removeEvent = useCallback(async (id: string) => {
-    await api.deleteEvent(id);
+  const removeEvent = useCallback(async (gone: HistoricalEvent) => {
+    await api.deleteEvent(gone);
     setSelectedId(null);
-    setEvents((current) => current.filter((event) => event.id !== id));
+    setEvents((current) => current.filter((event) => event.id !== gone.id));
   }, []);
 
   const value = useMemo<EventsContextValue>(

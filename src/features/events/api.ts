@@ -15,7 +15,7 @@ import type {
 } from "./types";
 import { compareByLife } from "./lifespan";
 import { decodeBase64 } from "../../lib/base64";
-import { PHOTO_BUCKET, supabase } from "../../lib/supabase";
+import { currentUserId, PHOTO_BUCKET, supabase } from "../../lib/supabase";
 
 type EventRow = {
   id: string;
@@ -184,7 +184,7 @@ export async function setFolderPhoto(
 
   if (picked) {
     const extension = picked.mimeType.split("/")[1] ?? "jpg";
-    path = `folders/${folder.id}/${Date.now()}.${extension}`;
+    path = `${await currentUserId()}/folders/${folder.id}/${Date.now()}.${extension}`;
     const { error } = await client.storage
       .from(PHOTO_BUCKET)
       .upload(path, decodeBase64(picked.base64), {
@@ -228,8 +228,8 @@ type PhotoOwner = {
   table: "event_photos" | "character_photos";
   column: "event_id" | "character_id";
   id: string;
-  /** Prepended to the storage path. Empty for events, which came first. */
-  prefix: string;
+  /** The shelf of the bucket this kind of picture is filed on. */
+  prefix: "events/" | "characters/";
 };
 
 async function uploadPhotos(
@@ -238,11 +238,14 @@ async function uploadPhotos(
   startAt = 0,
 ): Promise<void> {
   const storage = supabase().storage.from(PHOTO_BUCKET);
+  // Every path begins with the account: it is the only thing the bucket can be
+  // told about ownership, and the storage policies read exactly this segment.
+  const mine = await currentUserId();
 
   const paths = await Promise.all(
     photos.map(async (photo, index) => {
       const extension = photo.mimeType.split("/")[1] ?? "jpg";
-      const path = `${owner.prefix}${owner.id}/${startAt + index}-${Date.now()}.${extension}`;
+      const path = `${mine}/${owner.prefix}${owner.id}/${startAt + index}-${Date.now()}.${extension}`;
       const { error } = await storage.upload(path, decodeBase64(photo.base64), {
         contentType: photo.mimeType,
       });
@@ -306,7 +309,7 @@ const photosOf = (eventId: string): PhotoOwner => ({
   table: "event_photos",
   column: "event_id",
   id: eventId,
-  prefix: "",
+  prefix: "events/",
 });
 
 export async function createEvent(draft: EventDraft): Promise<void> {
@@ -760,7 +763,25 @@ export async function unlinkTreeMembers(
   if (error) throw new Error(error.message);
 }
 
-export async function deleteEvent(id: string): Promise<void> {
-  const { error } = await supabase().from("events").delete().eq("id", id);
+/**
+ * Removes an event, its rows, and the pictures that belonged to it.
+ *
+ * The bucket has no notion of the row that pointed at it: deleting the event
+ * cascades through `event_photos` and leaves the files behind for good. The
+ * folder and the character have always swept up after themselves; the event was
+ * the one that did not, and nothing ever told anybody.
+ *
+ * Row first, files after, best effort — an orphaned object costs a few
+ * kilobytes, a row pointing at nothing costs the reader a broken card.
+ */
+export async function deleteEvent(event: HistoricalEvent): Promise<void> {
+  const client = supabase();
+  const { error } = await client.from("events").delete().eq("id", event.id);
   if (error) throw new Error(error.message);
+
+  if (event.photos.length > 0) {
+    await client.storage
+      .from(PHOTO_BUCKET)
+      .remove(event.photos.map((photo) => photo.path));
+  }
 }

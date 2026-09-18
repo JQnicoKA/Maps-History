@@ -131,11 +131,17 @@ fragments) ne sont à personne : lecture pour tous, écriture par personne. Les
 scripts de chargement utilisent la clé `service_role`, qui passe outre les
 policies — et qui n'a rien à faire dans `.env`.
 
-Le bucket `event-photos` reste public en lecture (une `<Image>` a besoin d'une
-URL qui s'ouvre), mais seul un lecteur connecté peut y déposer ou y retirer un
-fichier. Les chemins ne sont pas cloisonnés par compte : deux comptes ne
-peuvent pas se voir en base, mais un fichier reste lisible par quiconque
-connaît son URL.
+Le bucket `event-photos` reste public **en lecture** — une `<Image>` a besoin
+d'une URL qui s'ouvre — mais l'écriture est cloisonnée par compte. Un seau n'a
+pas de colonnes où accrocher un propriétaire : le compte est donc écrit dans le
+chemin, `<user id>/events/<event id>/…`, `<user id>/characters/…`,
+`<user id>/folders/…`, et les policies lisent ce premier segment
+(`(storage.foldername(name))[1] = auth.uid()::text`). On écrit et on efface
+sous soi, nulle part ailleurs — pas même à la racine du seau.
+
+Reste vrai, et c'est assumé : un fichier est lisible par quiconque connaît son
+URL. Les chemins contiennent des UUID, donc ils ne se devinent pas, mais une URL
+partagée l'est pour de bon.
 
 **Réglage à faire dans le tableau de bord Supabase** : *Authentication →
 Sign In / Providers → Email*. Tant que « Confirm email » est coché, une

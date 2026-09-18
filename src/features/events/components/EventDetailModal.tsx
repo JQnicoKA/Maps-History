@@ -52,7 +52,7 @@ export function EventDetailModal({
     setAsking(false);
     setDeleting(true);
     try {
-      await removeEvent(event.id);
+      await removeEvent(event);
       onClose();
     } catch (cause) {
       say(

@@ -35,3 +35,21 @@ export function supabase(): SupabaseClient {
 }
 
 export const PHOTO_BUCKET = "event-photos";
+
+/**
+ * The signed-in account, for the one thing the database cannot stamp itself:
+ * the path a picture is filed under.
+ *
+ * Rows get their owner from a column default; objects in a bucket have no
+ * columns, so the account has to be written into the path — that is what the
+ * storage policies read to keep one reader out of another's files. Taken from
+ * the stored session rather than from the network: it is already on the device,
+ * and an upload should not wait on a round trip to learn who is uploading.
+ */
+export async function currentUserId(): Promise<string> {
+  const { data, error } = await supabase().auth.getSession();
+  if (error) throw new Error(error.message);
+  const id = data.session?.user.id;
+  if (!id) throw new Error("Session expirée — reconnectez-vous pour envoyer une photo.");
+  return id;
+}
