@@ -38,14 +38,14 @@ export const EVENT_TYPES: { value: EventType; label: string; emoji: string }[] =
   { value: "discovery", label: "Découverte / Invention", emoji: "💡" },
   { value: "culture", label: "Culture / Œuvre", emoji: "🎨" },
   { value: "disaster", label: "Catastrophe / Épidémie", emoji: "🌋" },
-  { value: "other", label: "Autre", emoji: "🔹" },
+  { value: "other", label: "Autre", emoji: "📎" },
 ];
 
 export function describeType(type: EventType): { label: string; emoji: string } {
   return (
     EVENT_TYPES.find((entry) => entry.value === type) ?? {
       label: "Autre",
-      emoji: "🔹",
+      emoji: "📎",
     }
   );
 }
