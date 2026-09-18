@@ -5,8 +5,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MissingConfigNotice } from "./MissingConfigNotice";
-import { AccountButton } from "../../features/auth";
-import { ViewToggleButton, type ScreenView } from "./ViewToggleButton";
+import { AccountButton, type ScreenView } from "./AccountButton";
 import { Paper } from "../../components/ui";
 import { ParchmentOverlay, WorldMap } from "../../components/WorldMap";
 import { env } from "../../config/env";
@@ -145,8 +144,7 @@ export function MapScreen() {
             pointerEvents="box-none"
           >
             <View style={styles.topLeft}>
-              <ViewToggleButton view={view} onChange={setView} />
-              <AccountButton />
+              <AccountButton view={view} onChange={setView} />
             </View>
             <FilterButton />
             <View style={styles.topRight}>
@@ -246,8 +244,7 @@ const styles = StyleSheet.create({
     right: 10,
     alignItems: "center",
   },
-  // Two buttons now: the view toggle, and whose map this is.
-  topLeft: { position: "absolute", left: 0, top: 0, flexDirection: "row", gap: space.sm },
+  topLeft: { position: "absolute", left: 0, top: 0 },
   topRight: { position: "absolute", right: 0, top: 0 },
   stage: { flex: 1 },
   hidden: { display: "none" },

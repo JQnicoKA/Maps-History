@@ -118,11 +118,8 @@ export function AuthScreen() {
       >
         <View style={styles.brand}>
           <Image source={LOGO} style={styles.logo} resizeMode="cover" />
-          <Text style={styles.name}>Maps History</Text>
-          <Text style={styles.line}>
-            Votre collection — événements, classeurs, personnages et arbres —
-            vous suit d'un appareil à l'autre.
-          </Text>
+          <Text style={styles.name}>HistoryNote</Text>
+          <Text style={styles.motto}>L'histoire, à sa place.</Text>
         </View>
 
         <View style={styles.card}>
@@ -217,7 +214,8 @@ export function AuthScreen() {
   );
 }
 
-const LOGO_SIZE = 84;
+/** Large enough to be the reason the screen exists. */
+const LOGO_SIZE = 148;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: palette.paper },
@@ -228,15 +226,33 @@ const styles = StyleSheet.create({
     gap: space.xxl,
     paddingHorizontal: space.xl,
   },
-  brand: { alignItems: "center", gap: space.sm },
+  brand: { alignItems: "center", gap: space.md },
   logo: {
     width: LOGO_SIZE,
     height: LOGO_SIZE,
-    borderRadius: radius.xl,
+    // The proportion iOS itself rounds an icon by, so the badge on this screen
+    // and the one on the home screen read as the same object.
+    borderRadius: LOGO_SIZE * 0.24,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.line,
   },
-  name: { ...type.title, fontWeight: "700", color: palette.ink },
+  name: {
+    fontSize: 38,
+    lineHeight: 44,
+    letterSpacing: 0.4,
+    fontWeight: "700",
+    color: palette.ink,
+  },
+  /**
+   * Two readings, and both are the app: history put back in its place, and
+   * every event set down at the spot on the map where it happened.
+   */
+  motto: {
+    ...type.body,
+    fontStyle: "italic",
+    color: palette.inkSoft,
+    textAlign: "center",
+  },
   line: { ...type.caption, color: palette.inkSoft, textAlign: "center" },
   strong: { color: palette.ink, fontWeight: "700" },
   card: {

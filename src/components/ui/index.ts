@@ -5,7 +5,6 @@ export { GlyphButton, type GlyphButtonProps } from "./GlyphButton";
 export { InkButton, type InkButtonProps } from "./InkButton";
 export { InkField, type InkFieldProps } from "./InkField";
 export { Paper } from "./Paper";
-export { PromptDialog, type PromptDialogProps } from "./PromptDialog";
 export {
   SegmentedControl,
   type Segment,

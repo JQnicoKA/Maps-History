@@ -1,9 +1,21 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type ImageSourcePropType,
+} from "react-native";
 
 import { palette } from "../../theme/palette";
 import { radius } from "../../theme/tokens";
 
-export type Segment<T extends string> = { value: T; label: string };
+export type Segment<T extends string> = {
+  value: T;
+  label: string;
+  /** Drawn before the label, tinted to match it. Optional everywhere. */
+  icon?: ImageSourcePropType;
+};
 
 export type SegmentedControlProps<T extends string> = {
   segments: Segment<T>[];
@@ -36,6 +48,16 @@ export function SegmentedControl<T extends string>({
               pressed && !active && styles.pressed,
             ]}
           >
+            {segment.icon ? (
+              <Image
+                source={segment.icon}
+                style={[
+                  styles.icon,
+                  { tintColor: active ? palette.ink : palette.inkSoft },
+                ]}
+                resizeMode="contain"
+              />
+            ) : null}
             <Text
               style={[styles.label, active && styles.activeLabel]}
               numberOfLines={1}
@@ -64,10 +86,13 @@ const styles = StyleSheet.create({
   segment: {
     flex: 1,
     minHeight: 36,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 6,
     borderRadius: radius.sm + 1,
   },
+  icon: { width: 16, height: 16 },
   active: { backgroundColor: palette.paperLight },
   pressed: { opacity: 0.6 },
   label: { fontSize: 13, color: palette.inkSoft, fontWeight: "500" },

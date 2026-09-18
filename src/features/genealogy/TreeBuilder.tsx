@@ -19,10 +19,9 @@ import { lineBetween, spouses, tied } from "../events/rows";
 import { TreeMemberSheet } from "./TreeMemberSheet";
 import { TreeNode } from "./TreeNode";
 import {
-  ConfirmDialog,
   Dialog,
   InkButton,
-  PromptDialog,
+  InkField,
   SelectField,
   useNotice,
 } from "../../components/ui";
@@ -70,12 +69,10 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
     useEvents();
 
   const [openId, setOpenId] = useState<string | null>(null);
-  /** The ··· menu: rename, delete. */
-  const [menu, setMenu] = useState(false);
-  /** The confirmation before the whole tree goes. */
-  const [felling, setFelling] = useState(false);
-  /** The field asking for a new name. */
-  const [renaming, setRenaming] = useState(false);
+  /** Which face the ··· card is showing, if it is open at all. */
+  const [menu, setMenu] = useState<"menu" | "rename" | "delete" | null>(null);
+  /** The new name being typed on the card's second face. */
+  const [name, setName] = useState("");
   const { say, dialog } = useNotice();
   /** The dialogue asking what the next taps will do. */
   const [choosing, setChoosing] = useState(false);
@@ -195,6 +192,16 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
         ),
       )
       .finally(() => setBusy(false));
+  };
+
+  const rename = () => {
+    const wanted = name.trim();
+    if (wanted === "" || wanted === tree.name) {
+      setMenu(null);
+      return;
+    }
+    setMenu(null);
+    run(renameTree(tree.id, wanted));
   };
 
   const tap = (member: TreeMember) => {
@@ -337,7 +344,7 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
               accessibilityRole="button"
               accessibilityLabel="Options de l'arbre"
               hitSlop={8}
-              onPress={() => setMenu(true)}
+              onPress={() => setMenu("menu")}
               style={({ pressed }) => [styles.icon, pressed && styles.pressed]}
             >
               <Text style={styles.moreGlyph}>···</Text>
@@ -458,56 +465,77 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
           )}
         />
 
+        {/* One card, three faces — the menu, the new name, the confirmation.
+            Never a second card over the first: iOS refuses to present a modal
+            from a controller already presenting one, and the button that opened
+            it would appear to do nothing at all. */}
         <Dialog
-          visible={menu}
-          onClose={() => setMenu(false)}
-          title={tree.name}
+          visible={menu !== null}
+          onClose={() => setMenu(null)}
+          title={
+            menu === "rename"
+              ? "Renommer l'arbre"
+              : menu === "delete"
+                ? `Supprimer « ${tree.name} » ?`
+                : tree.name
+          }
+          hint={
+            menu === "delete"
+              ? "Les personnages restent dans la collection ; seul l'arbre disparaît."
+              : undefined
+          }
+          dismissLabel={menu === "menu" ? null : "Retour"}
+          onDismiss={() => setMenu("menu")}
         >
-          <InkButton
-            label="Renommer"
-            variant="tonal"
-            onPress={() => {
-              setMenu(false);
-              setRenaming(true);
-            }}
-          />
-          <InkButton
-            label="Supprimer l'arbre"
-            variant="solid"
-            tone="danger"
-            onPress={() => {
-              setMenu(false);
-              setFelling(true);
-            }}
-          />
+          {menu === "rename" ? (
+            <>
+              <InkField
+                label="Nom de l'arbre"
+                value={name}
+                onChangeText={setName}
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={() => rename()}
+              />
+              <InkButton
+                label="Renommer"
+                variant="solid"
+                disabled={busy || name.trim() === ""}
+                onPress={rename}
+              />
+            </>
+          ) : menu === "delete" ? (
+            <InkButton
+              label="Supprimer"
+              variant="solid"
+              tone="danger"
+              disabled={busy}
+              onPress={() => {
+                setMenu(null);
+                run(removeTree(tree.id).then(onClose));
+              }}
+            />
+          ) : (
+            <>
+              <InkButton
+                label="Renommer"
+                variant="tonal"
+                onPress={() => {
+                  setName(tree.name);
+                  setMenu("rename");
+                }}
+              />
+              <InkButton
+                label="Supprimer l'arbre"
+                variant="solid"
+                tone="danger"
+                onPress={() => setMenu("delete")}
+              />
+            </>
+          )}
         </Dialog>
 
         {dialog}
-
-        <PromptDialog
-          visible={renaming}
-          title="Renommer l'arbre"
-          label="Nom de l'arbre"
-          initial={tree.name}
-          confirmLabel="Renommer"
-          onConfirm={(name) => {
-            setRenaming(false);
-            run(renameTree(tree.id, name));
-          }}
-          onClose={() => setRenaming(false)}
-        />
-
-        <ConfirmDialog
-          visible={felling}
-          title={`Supprimer « ${tree.name} » ?`}
-          message="Les personnages restent dans la collection ; seul l'arbre disparaît."
-          confirmLabel="Supprimer"
-          onConfirm={() => {
-            setFelling(false);
-            run(removeTree(tree.id).then(onClose));
-          }}
-          onClose={() => setFelling(false)}
-        />
 
         <LinkChoice
           visible={choosing}
