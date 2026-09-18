@@ -1055,9 +1055,22 @@ imposent ce crédit visible : ne pas le supprimer.
   publishable : la base estampille le propriétaire, un compte ne peut pas écrire
   au nom d'un autre, un visiteur non connecté ne lit ni ne supprime rien, et le
   dépôt d'une photo lui est refusé alors que la lecture par URL fonctionne.
+- **Suppression de compte** : disponible dans la carte du compte (bouton
+  profil → « Supprimer le compte »), avec ressaisie du mot de passe. L'ordre
+  compte — les photos du seau d'abord, tant qu'une session peut encore les
+  effacer, puis `delete_own_account()`, une fonction `security definer` qui ne
+  supprime jamais que `auth.uid()` ; tout le reste suit par
+  `on delete cascade`.
 - Pas encore fait côté comptes : la réinitialisation du mot de passe, qui
   suppose un envoi de courriel configuré et un lien de retour vers
   l'application.
+- **Images** : chaque photo est ramenée à 1600 px de côté et réencodée en JPEG
+  avant l'envoi (`src/features/events/shrink.ts`) — environ un cinquième du
+  poids, et plus de HEIC dans le seau. Servir en plus des vignettes demanderait
+  les transformations d'images de Supabase, qui sont réservées au plan payant.
+- **Écran blanc** : `src/components/ErrorBoundary.tsx` entoure toute
+  l'application. Une exception de rendu affiche désormais un écran lisible avec
+  le message d'erreur et un bouton « Réessayer » qui remonte l'arbre à neuf.
 - `@react-native-async-storage/async-storage` est une nouvelle dépendance
   native : **il faut reconstruire l'application** (`npx expo run:ios`) pour que
   la session survive à la fermeture. Sans reconstruction l'app fonctionne, mais

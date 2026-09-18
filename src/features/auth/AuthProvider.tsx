@@ -23,6 +23,13 @@ type AuthContextValue = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
+  /**
+   * Erases the account and everything hanging off it. Irreversible.
+   *
+   * The password is asked for again and checked against the server: this is one
+   * tap away from the map, and a borrowed phone should not be enough.
+   */
+  deleteAccount: (password: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -102,9 +109,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw new Error(translate(error.message));
   }, []);
 
+  const deleteAccount = useCallback(async (password: string) => {
+    const client = supabase();
+    const { data } = await client.auth.getSession();
+    const email = data.session?.user.email;
+    if (!email) throw new Error("Session expirée — reconnectez-vous.");
+
+    // Proof it is really them, and not a phone left on a table.
+    const { error: refused } = await client.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (refused) throw new Error(translate(refused.message));
+
+    const { error } = await client.rpc("delete_own_account");
+    if (error) throw new Error(translate(error.message));
+
+    // Locally, and on purpose: the account no longer exists, so a server-side
+    // sign-out would be answered by a session that is already void.
+    await client.auth.signOut({ scope: "local" });
+  }, []);
+
   const value = useMemo(
-    () => ({ account, signIn, signUp, signOut }),
-    [account, signIn, signUp, signOut],
+    () => ({ account, signIn, signUp, signOut, deleteAccount }),
+    [account, signIn, signUp, signOut, deleteAccount],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

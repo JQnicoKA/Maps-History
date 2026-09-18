@@ -1,6 +1,7 @@
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AuthProvider, AuthScreen, useAuth } from "./features/auth";
 import { EventsProvider } from "./features/events/EventsProvider";
 import { MapScreen } from "./screens/MapScreen";
@@ -9,9 +10,14 @@ import { palette } from "./theme/palette";
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <Gate />
-      </AuthProvider>
+      {/* Outside the providers, so a failure while loading the session or the
+          collection is caught too — those are the ones that leave no screen at
+          all behind them. */}
+      <ErrorBoundary>
+        <AuthProvider>
+          <Gate />
+        </AuthProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }

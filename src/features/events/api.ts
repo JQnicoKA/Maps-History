@@ -774,6 +774,39 @@ export async function unlinkTreeMembers(
  * Row first, files after, best effort — an orphaned object costs a few
  * kilobytes, a row pointing at nothing costs the reader a broken card.
  */
+/**
+ * Empties the bucket of everything this account filed there.
+ *
+ * Rows vanish on their own when an account goes — every table hangs off
+ * `auth.users` with `on delete cascade` — but a bucket is not a table and
+ * nothing cascades into it. Called before the account is deleted, while there
+ * is still a session allowed to delete those files.
+ *
+ * Read through the three tables that name them rather than by listing the
+ * bucket: RLS already limits each of them to this account, and a listing would
+ * have to walk a folder per event.
+ */
+export async function deleteOwnPhotos(): Promise<void> {
+  const client = supabase();
+  const [events, characters, folders] = await Promise.all([
+    client.from("event_photos").select("storage_path"),
+    client.from("character_photos").select("storage_path"),
+    client.from("folders").select("photo_path").not("photo_path", "is", null),
+  ]);
+
+  const paths = [
+    ...((events.data ?? []) as { storage_path: string }[]).map((row) => row.storage_path),
+    ...((characters.data ?? []) as { storage_path: string }[]).map((row) => row.storage_path),
+    ...((folders.data ?? []) as { photo_path: string | null }[]).flatMap((row) =>
+      row.photo_path === null ? [] : [row.photo_path],
+    ),
+  ];
+  if (paths.length === 0) return;
+
+  const { error } = await client.storage.from(PHOTO_BUCKET).remove(paths);
+  if (error) throw new Error(error.message);
+}
+
 export async function deleteEvent(event: HistoricalEvent): Promise<void> {
   const client = supabase();
   const { error } = await client.from("events").delete().eq("id", event.id);

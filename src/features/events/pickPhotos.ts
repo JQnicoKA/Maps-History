@@ -1,5 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 
+import { shrink } from "./shrink";
 import type { PickedPhoto } from "./types";
 
 /** Why nothing came back, in the words the reader should see. */
@@ -39,9 +40,18 @@ export async function pickPhotos(
     result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsMultipleSelection: multiple,
-      // Uploads go through base64, so the picture is held in memory once —
-      // quality is capped to keep that reasonable.
-      quality: 0.7,
+      // The picker's own re-encode is left near lossless: `shrink` does the
+      // real work afterwards, and compressing twice only loses detail.
+      quality: 0.9,
+      /**
+       * Still asked for, as a safety net.
+       *
+       * `shrink` returns a much smaller base64 and is what normally travels;
+       * but it needs a native module, and in a build that predates it the only
+       * thing standing between the reader and a failed upload is this. Once
+       * every build carries the manipulator, this can go — and with it the
+       * largest string this app ever holds.
+       */
       base64: true,
       /**
        * Ask iOS for the most compatible representation rather than whatever
@@ -75,17 +85,22 @@ export async function pickPhotos(
 
   if (result.canceled) return { photos: [], problem: null };
 
-  const photos = result.assets.flatMap((asset) =>
-    asset.base64
-      ? [
-          {
-            uri: asset.uri,
-            base64: asset.base64,
-            mimeType: asset.mimeType ?? "image/jpeg",
-            source: "",
-          },
-        ]
-      : [],
-  );
+  const photos: PickedPhoto[] = [];
+  for (const asset of result.assets) {
+    const smaller = await shrink(asset);
+    if (smaller) {
+      photos.push({ ...smaller, source: "" });
+      continue;
+    }
+    // No manipulator: send what the picker gave, HEIC and all.
+    if (asset.base64) {
+      photos.push({
+        uri: asset.uri,
+        base64: asset.base64,
+        mimeType: asset.mimeType ?? "image/jpeg",
+        source: "",
+      });
+    }
+  }
   return { photos, problem: null };
 }

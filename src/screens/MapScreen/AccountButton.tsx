@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 
-import { Dialog, GlyphButton, InkButton, SegmentedControl } from "../../components/ui";
+import {
+  Dialog,
+  GlyphButton,
+  InkButton,
+  InkField,
+  SegmentedControl,
+} from "../../components/ui";
 import { useAuth } from "../../features/auth";
+import { deleteOwnPhotos } from "../../features/events/api";
 import { palette } from "../../theme/palette";
 import { space, type } from "../../theme/tokens";
 
@@ -33,34 +40,52 @@ export type AccountButtonProps = {
  * déconnecter" did nothing at all. So the card changes what it holds instead of
  * putting a second card on top of itself.
  */
+/** Which of the card's three faces is showing. */
+type Face = "account" | "leaving" | "erasing";
+
 export function AccountButton({ view, onChange }: AccountButtonProps) {
-  const { account, signOut } = useAuth();
+  const { account, signOut, deleteAccount } = useAuth();
   const [open, setOpen] = useState(false);
-  /** Whether the card is showing the account or asking to leave it. */
-  const [asking, setAsking] = useState(false);
+  const [face, setFace] = useState<Face>("account");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
   const close = () => {
     setOpen(false);
-    setAsking(false);
+    setFace("account");
+    setPassword("");
     setProblem(null);
   };
 
-  const leave = async () => {
+  const back = () => {
+    setFace("account");
+    setPassword("");
+    setProblem(null);
+  };
+
+  /** Shared by both irreversible answers: they end the same way. */
+  const attempt = async (deed: () => Promise<void>) => {
     setBusy(true);
     setProblem(null);
     try {
       // On success there is nothing to tidy: the whole screen is replaced by
       // the sign-in one, this component included.
-      await signOut();
+      await deed();
     } catch (cause) {
       setProblem(cause instanceof Error ? cause.message : String(cause));
-      setAsking(false);
     } finally {
       setBusy(false);
     }
   };
+
+  const erase = () =>
+    attempt(async () => {
+      // The bucket first, while there is still a session allowed to empty it:
+      // rows cascade when the account goes, files do not.
+      await deleteOwnPhotos();
+      await deleteAccount(password);
+    });
 
   return (
     <>
@@ -71,11 +96,23 @@ export function AccountButton({ view, onChange }: AccountButtonProps) {
       <Dialog
         visible={open}
         onClose={close}
-        title={asking ? "Se déconnecter ?" : "Votre compte"}
-        hint={asking ? "Il faudra vous reconnecter." : account?.email}
+        title={
+          face === "leaving"
+            ? "Se déconnecter ?"
+            : face === "erasing"
+              ? "Supprimer le compte ?"
+              : "Votre compte"
+        }
+        hint={
+          face === "leaving"
+            ? "Il faudra vous reconnecter."
+            : face === "erasing"
+              ? "Événements, classeurs, personnages, arbres et photos seront effacés. C'est définitif."
+              : account?.email
+        }
         dismissLabel={null}
       >
-        {asking ? (
+        {face === "leaving" ? (
           // Side by side, and the way out carries a background of its own:
           // between two answers to one question, neither should look like an
           // afterthought.
@@ -85,7 +122,7 @@ export function AccountButton({ view, onChange }: AccountButtonProps) {
               variant="tonal"
               grow
               disabled={busy}
-              onPress={() => setAsking(false)}
+              onPress={back}
             />
             <InkButton
               label={busy ? "…" : "Confirmer"}
@@ -93,9 +130,46 @@ export function AccountButton({ view, onChange }: AccountButtonProps) {
               tone="danger"
               grow
               disabled={busy}
-              onPress={() => void leave()}
+              onPress={() => void attempt(signOut)}
             />
           </View>
+        ) : face === "erasing" ? (
+          <>
+            {/* The password again: this is two taps from the map, and a phone
+                left on a table should not be enough to empty an account. */}
+            <InkField
+              label="Votre mot de passe"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              textContentType="password"
+              returnKeyType="done"
+            />
+
+            {problem === null ? null : (
+              <Text style={styles.problem}>{problem}</Text>
+            )}
+
+            <View style={styles.answers}>
+              <InkButton
+                label="Annuler"
+                variant="tonal"
+                grow
+                disabled={busy}
+                onPress={back}
+              />
+              <InkButton
+                label={busy ? "Suppression…" : "Supprimer"}
+                variant="solid"
+                tone="danger"
+                grow
+                disabled={busy || password === ""}
+                onPress={() => void erase()}
+              />
+            </View>
+          </>
         ) : (
           <>
             <View style={styles.section}>
@@ -118,7 +192,15 @@ export function AccountButton({ view, onChange }: AccountButtonProps) {
               label="Se déconnecter"
               variant="solid"
               tone="danger"
-              onPress={() => setAsking(true)}
+              onPress={() => setFace("leaving")}
+            />
+            {/* Quiet, and last: it must be findable — the App Store asks for
+                exactly that — without sitting under the thumb. */}
+            <InkButton
+              label="Supprimer le compte"
+              variant="quiet"
+              tone="danger"
+              onPress={() => setFace("erasing")}
             />
           </>
         )}
