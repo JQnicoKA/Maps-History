@@ -130,71 +130,126 @@ export function canvasSize(tree: Tree): { width: number; height: number } {
  * Every line in the tree, as axis-aligned rectangles.
  *
  * Rectangles because React Native draws no diagonals without a native module —
- * and because a genealogy is drawn with set squares anyway. The two kinds read
- * differently on purpose:
+ * and because a genealogy is drawn with set squares anyway. Three shapes:
  *
- * - **descent** is an elbow, three segments: down out of the parent, across at
- *   mid-gap, down into the child. Where a parent has several children the first
- *   segments coincide and read as one trunk, which is the drawing one wants and
- *   costs nothing to arrange.
- * - **couple** is a single bar between the two portraits, on the axis the faces
- *   are hung from. It never crosses a stranger: a couple is kept standing
- *   together in its row (`events/rows.ts`), so the bar only ever spans its own
- *   household.
+ * - **couple**: a single bar between the two portraits, on the axis the faces
+ *   are hung from. It never crosses a stranger, because a couple is kept
+ *   standing together in its row (`events/rows.ts`).
+ * - **descent from one parent**: an elbow leaving the bottom of their box,
+ *   running across at mid-gap, and dropping into the child. Where a parent has
+ *   several children the first segments coincide and read as one trunk.
+ * - **descent from two**: the same elbow, but leaving the **middle of their
+ *   marriage bar** rather than either of them — which is how a genealogist
+ *   draws a child of the couple, and the only honest way to say that the child
+ *   belongs to both. The run still sits at mid-gap, so it lines up with every
+ *   other family on the row.
  */
 export function connectors(tree: Tree, placed: Placed[]): Segment[] {
   const at = new Map(placed.map((node) => [node.member.id, node]));
   const out: Segment[] = [];
 
   for (const link of tree.links) {
-    const a = at.get(link.from);
-    const b = at.get(link.to);
-    if (!a || !b) continue;
-
-    if (link.kind === "couple") {
-      // Same row, or the equals sign would be a diagonal. Nothing in the app
-      // draws such a link; a hand-edited database still must not break this.
-      if (a.member.generation !== b.member.generation) continue;
-
-      const [left, right] = a.x <= b.x ? [a, b] : [b, a];
-      const gap = {
-        from: left.x + NODE.width / 2 + FACE[left.member.importance] / 2,
-        to: right.x + NODE.width / 2 - FACE[right.member.importance] / 2,
-      };
+    if (link.kind !== "couple") continue;
+    const bar = marriage(at.get(link.from), at.get(link.to));
+    if (bar) {
       out.push({
-        left: gap.from,
-        top: left.y + FACE_AXIS - STROKE / 2,
-        width: Math.max(gap.to - gap.from, STROKE),
+        left: bar.from,
+        top: bar.y - STROKE / 2,
+        width: Math.max(bar.to - bar.from, STROKE),
         height: STROKE,
       });
-      continue;
     }
+  }
 
-    const from = { x: a.x + NODE.width / 2, y: a.y + NODE.height };
-    const to = { x: b.x + NODE.width / 2, y: b.y };
-    // Halfway down the gap, so siblings share one horizontal run.
-    const mid = from.y + (to.y - from.y) / 2;
+  for (const [childId, parentIds] of parentage(tree)) {
+    const child = at.get(childId);
+    if (!child) continue;
 
-    out.push({
-      left: from.x - STROKE / 2,
-      top: from.y,
-      width: STROKE,
-      height: Math.max(mid - from.y, 0),
-    });
-    out.push({
-      left: Math.min(from.x, to.x) - STROKE / 2,
-      top: mid - STROKE / 2,
-      width: Math.abs(to.x - from.x) + STROKE,
-      height: STROKE,
-    });
-    out.push({
-      left: to.x - STROKE / 2,
-      top: mid,
-      width: STROKE,
-      height: Math.max(to.y - mid, 0),
-    });
+    const drawn = new Set<string>();
+    for (const parentId of parentIds) {
+      if (drawn.has(parentId)) continue;
+      const parent = at.get(parentId);
+      if (!parent) continue;
+      drawn.add(parentId);
+
+      // Both parents of this child, married to each other: one line for the
+      // two of them, from the middle of what marries them.
+      const mateId = parentIds.find(
+        (other) =>
+          other !== parentId && !drawn.has(other) && married(tree, parentId, other),
+      );
+      const bar = mateId ? marriage(parent, at.get(mateId)) : null;
+      if (mateId && bar) drawn.add(mateId);
+
+      const start = bar
+        ? { x: (bar.from + bar.to) / 2, y: bar.y }
+        : { x: parent.x + NODE.width / 2, y: parent.y + NODE.height };
+      const to = { x: child.x + NODE.width / 2, y: child.y };
+      // Measured from the foot of the row and not from the start, so a line
+      // dropping from a marriage bar crosses the gap at the same height as one
+      // leaving a single parent's box.
+      const mid = parent.y + NODE.height + (to.y - parent.y - NODE.height) / 2;
+
+      out.push({
+        left: start.x - STROKE / 2,
+        top: start.y,
+        width: STROKE,
+        height: Math.max(mid - start.y, 0),
+      });
+      out.push({
+        left: Math.min(start.x, to.x) - STROKE / 2,
+        top: mid - STROKE / 2,
+        width: Math.abs(to.x - start.x) + STROKE,
+        height: STROKE,
+      });
+      out.push({
+        left: to.x - STROKE / 2,
+        top: mid,
+        width: STROKE,
+        height: Math.max(to.y - mid, 0),
+      });
+    }
   }
   return out;
+}
+
+/** Every child of the tree, with the parents claimed for them. */
+function parentage(tree: Tree): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const link of tree.links) {
+    if (link.kind !== "descent") continue;
+    const parents = out.get(link.to) ?? [];
+    parents.push(link.from);
+    out.set(link.to, parents);
+  }
+  return out;
+}
+
+const married = (tree: Tree, a: string, b: string): boolean =>
+  tree.links.some(
+    (link) =>
+      link.kind === "couple" &&
+      ((link.from === a && link.to === b) || (link.from === b && link.to === a)),
+  );
+
+/**
+ * Where the bar between two spouses runs: from the edge of one face to the edge
+ * of the other, on the axis they are both hung from.
+ *
+ * `null` when they do not share a row. Nothing in the app draws such a link,
+ * but a hand-edited database must not turn an equals sign into a diagonal.
+ */
+function marriage(
+  a: Placed | undefined,
+  b: Placed | undefined,
+): { from: number; to: number; y: number } | null {
+  if (!a || !b || a.member.generation !== b.member.generation) return null;
+  const [left, right] = a.x <= b.x ? [a, b] : [b, a];
+  return {
+    from: left.x + NODE.width / 2 + FACE[left.member.importance] / 2,
+    to: right.x + NODE.width / 2 - FACE[right.member.importance] / 2,
+    y: left.y + FACE_AXIS,
+  };
 }
 
 /** How many generations actually hold someone. */

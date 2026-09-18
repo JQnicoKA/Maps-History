@@ -14,6 +14,7 @@ import {
   rowY,
 } from "./layout";
 import { PanZoom } from "./PanZoom";
+import { spouses } from "../events/rows";
 import { TreeMemberSheet } from "./TreeMemberSheet";
 import { TreeNode } from "./TreeNode";
 import { InkButton, SelectField } from "../../components/ui";
@@ -23,8 +24,14 @@ import type { Tree, TreeBond, TreeMember } from "../events/types";
 import { palette } from "../../theme/palette";
 import { radius, shadow, space, TOUCH, type } from "../../theme/tokens";
 
-/** The line under construction: what kind, and which end is fixed. */
-type Tracing = { kind: TreeBond | null; anchor: string | null };
+/**
+ * The line under construction: what kind, and which end is held.
+ *
+ * `chosen` is a list because a descent may be claimed by two parents at once —
+ * the first touched, and their spouse if they are touched next. For a couple it
+ * never holds more than the first of the two.
+ */
+type Tracing = { kind: TreeBond | null; chosen: string[] };
 
 export type TreeBuilderProps = {
   tree: Tree | null;
@@ -43,10 +50,11 @@ export type TreeBuilderProps = {
  * Two modes, and only two. Normally a tap opens someone's card. **Tracer un
  * lien**, at the top right, starts the other: choose couple or descent, touch
  * one person, and then touch everyone to be joined to them — touching again
- * erases the line. Only the members that can legally take that link stay lit,
- * so the rule is shown rather than explained and there is no wrong move to
- * refuse. No dragging, no hidden gesture; the bar at the foot says where you
- * are and how to leave.
+ * erases the line. On a descent the spouse of the first person may be touched
+ * too, and the children then belong to the couple. Only the members that can
+ * legally take that link stay lit, so the rule is shown rather than explained
+ * and there is no wrong move to refuse. No dragging, no hidden gesture; the bar
+ * at the foot says where you are and how to leave.
  */
 export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
   const insets = useSafeAreaInsets();
@@ -57,8 +65,8 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
    * The line being drawn, if any.
    *
    * Three stages in one value: `null` is the ordinary mode; a `kind` of `null`
-   * is the moment between pressing the button and saying which kind; and an
-   * anchor set means the far end is being chosen.
+   * is the moment between pressing the button and saying which kind; and once
+   * someone is chosen, the far end is being picked.
    */
   const [tracing, setTracing] = useState<Tracing | null>(null);
   /** Which generation the picker is adding to. */
@@ -89,34 +97,54 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
   const byId = new Map(characters.map((person) => [person.id, person]));
   const open = tree.members.find((member) => member.id === openId) ?? null;
   const bond = tracing?.kind ?? null;
-  const anchor =
-    tree.members.find((member) => member.id === tracing?.anchor) ?? null;
+  const held = (tracing?.chosen ?? []).flatMap((id) => {
+    const member = tree.members.find((one) => one.id === id);
+    return member ? [member] : [];
+  });
+  const anchor = held[0] ?? null;
 
-  /** Who the anchor already holds a line of this kind to. */
+  /** Who the held members already hold a line of this kind to. */
   const attached = new Set<string>();
   if (anchor && bond) {
     for (const link of tree.links) {
       if (link.kind !== bond) continue;
-      if (link.from === anchor.id) attached.add(link.to);
+      // A child counts as attached only once every chosen parent claims it;
+      // touching it otherwise finishes the family rather than undoing it.
+      if (bond === "descent") {
+        if (held.every((one) => hasLine(tree, one.id, link.to))) attached.add(link.to);
+      } else if (link.from === anchor.id) attached.add(link.to);
       // A couple has no direction, so the row may have been written either way
       // round; a descent read backwards would put a child above its parent.
-      else if (bond === "couple" && link.to === anchor.id) attached.add(link.from);
+      else if (link.to === anchor.id) attached.add(link.from);
     }
   }
 
   /**
    * Whether this member may take the line being drawn.
    *
-   * The whole rule of the feature, in three lines: a couple runs along a row,
-   * a descent runs into the row below. Everyone else is dimmed, which is why
+   * The whole rule of the feature: a couple runs along a row and joins two
+   * people and no more; a descent runs into the row below, and may be claimed
+   * by the first person's spouse as well. Everyone else is dimmed, which is why
    * nothing here ever has to refuse a tap with an alert.
    */
   const reachable = (member: TreeMember): boolean => {
     if (!bond) return false;
     if (!anchor || member.id === anchor.id) return true;
-    return bond === "couple"
-      ? member.generation === anchor.generation
-      : member.generation === anchor.generation + 1;
+
+    if (bond === "descent") {
+      if (member.generation === anchor.generation + 1) return true;
+      // The spouse, to give the children two parents. Only the anchor's, so
+      // the second parent is never someone else's husband.
+      return spouses(tree, anchor.id).includes(member.id);
+    }
+
+    if (member.generation !== anchor.generation) return false;
+    if (spouses(tree, anchor.id).includes(member.id)) return true;
+    // Two to a couple: neither may already be married, or the bar would run
+    // through a row that can no longer be kept in order.
+    return (
+      spouses(tree, anchor.id).length === 0 && spouses(tree, member.id).length === 0
+    );
   };
 
   const run = (work: Promise<unknown>) => {
@@ -138,17 +166,34 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
     }
     if (!bond || !reachable(member)) return;
     if (!anchor) {
-      setTracing({ kind: bond, anchor: member.id });
+      setTracing({ kind: bond, chosen: [member.id] });
       return;
     }
-    // Touching the anchor again lets go of it, so a mis-tap costs one tap
-    // rather than a trip out of the mode and back in.
-    if (member.id === anchor.id) {
-      setTracing({ kind: bond, anchor: null });
+    // Touching someone already held lets go of them, so a mis-tap costs one
+    // tap rather than a trip out of the mode and back in.
+    if (held.some((one) => one.id === member.id)) {
+      setTracing({
+        kind: bond,
+        chosen: tracing.chosen.filter((id) => id !== member.id),
+      });
       return;
     }
+    // The spouse joins the parents rather than becoming a child: same row.
+    if (bond === "descent" && member.generation === anchor.generation) {
+      setTracing({ kind: bond, chosen: [...tracing.chosen, member.id] });
+      return;
+    }
+
+    const linked = !attached.has(member.id);
     run(
-      linkInTree(tree.id, bond, anchor.id, member.id, !attached.has(member.id)),
+      (async () => {
+        for (const parent of bond === "descent" ? held : [anchor]) {
+          // A parent that already claims this child is left alone, so adding a
+          // second parent does not undo the first one's line.
+          if (linked === hasLine(tree, parent.id, member.id)) continue;
+          await linkInTree(tree.id, bond, parent.id, member.id, linked);
+        }
+      })(),
     );
   };
 
@@ -173,7 +218,8 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
             y={node.y}
             active={
               tracing !== null &&
-              (node.member.id === anchor?.id || attached.has(node.member.id))
+              (held.some((one) => one.id === node.member.id) ||
+                attached.has(node.member.id))
             }
             muted={tracing !== null && !reachable(node.member)}
             onPress={() => tap(node.member)}
@@ -228,7 +274,7 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
           {tracing === null ? (
             <Pressable
               accessibilityRole="button"
-              onPress={() => setTracing({ kind: null, anchor: null })}
+              onPress={() => setTracing({ kind: null, chosen: [] })}
               style={({ pressed }) => [styles.trace, pressed && styles.pressed]}
             >
               <Text style={styles.traceLabel}>Tracer un lien</Text>
@@ -267,13 +313,13 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
                   label="Couple"
                   variant="tonal"
                   grow
-                  onPress={() => setTracing({ kind: "couple", anchor: null })}
+                  onPress={() => setTracing({ kind: "couple", chosen: [] })}
                 />
                 <InkButton
                   label="Descendance"
                   variant="tonal"
                   grow
-                  onPress={() => setTracing({ kind: "descent", anchor: null })}
+                  onPress={() => setTracing({ kind: "descent", chosen: [] })}
                 />
               </View>
             </View>
@@ -290,11 +336,18 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
                   <>
                     {bond === "couple" ? "Touchez qui est uni à " : "Touchez les enfants de "}
                     <Text style={styles.bannerName}>
-                      {byId.get(anchor.characterId)?.name ?? "ce personnage"}
+                      {held
+                        .map(
+                          (one) =>
+                            byId.get(one.characterId)?.name ?? "ce personnage",
+                        )
+                        .join(" et ")}
                     </Text>
                     {bond === "couple"
                       ? ", sur la même ligne. À nouveau pour effacer le trait."
-                      : ", sur la ligne du dessous. À nouveau pour effacer un trait."}
+                      : held.length > 1
+                        ? ", sur la ligne du dessous. À nouveau pour effacer un trait."
+                        : ", sur la ligne du dessous — ou son conjoint, pour une descendance commune."}
                   </>
                 )}
               </Text>
@@ -358,15 +411,26 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
           }
           placeholder=""
           options={characters
+            // Someone may stand twice on one row — a man is drawn once beside
+            // each of his wives — but never on two, which would make him his
+            // own ancestor. So only the other generations rule a name out.
             .filter(
               (person) =>
-                !tree.members.some((member) => member.characterId === person.id),
+                !tree.members.some(
+                  (member) =>
+                    member.characterId === person.id &&
+                    member.generation !== adding,
+                ),
             )
             .map((person) => {
               const dates = lifespan(person);
+              const again = tree.members.some(
+                (member) => member.characterId === person.id,
+              );
+              const said = dates === "" ? person.name : `${person.name} · ${dates}`;
               return {
                 value: person.id,
-                label: dates === "" ? person.name : `${person.name} · ${dates}`,
+                label: again ? `${said} · encore une fois` : said,
               };
             })}
           selected={[]}
@@ -392,6 +456,14 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
         />
       </View>
     </Modal>
+  );
+}
+
+/** Does this member already claim that one as their child? */
+function hasLine(tree: Tree, parentId: string, childId: string): boolean {
+  return tree.links.some(
+    (link) =>
+      link.kind === "descent" && link.from === parentId && link.to === childId,
   );
 }
 

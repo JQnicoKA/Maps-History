@@ -46,6 +46,23 @@ export function couple(tree: Tree, id: string): Set<string> {
 }
 
 /**
+ * Who this member is married to — at most one person now.
+ *
+ * A pair and not a household: three people on one couple link produced a row
+ * nobody could read, and a man with three wives is drawn three times instead,
+ * once beside each of them.
+ */
+export function spouses(tree: Tree, id: string): string[] {
+  const found: string[] = [];
+  for (const link of tree.links) {
+    if (link.kind !== "couple") continue;
+    if (link.from === id) found.push(link.to);
+    else if (link.to === id) found.push(link.from);
+  }
+  return found;
+}
+
+/**
  * The row as the blocks it is made of: each couple whole, each single alone,
  * in the order they are read.
  *
