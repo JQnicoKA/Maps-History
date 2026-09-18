@@ -1098,11 +1098,14 @@ imposent ce crédit visible : ne pas le supprimer.
 - Chaîne complète vérifiée à travers RLS avec la clé publishable : lecture,
   écriture, modification, rejet des dates incohérentes, aller-retour du type et
   de la source des photos.
-- Territoires : les deux jeux sont en base — Cliopatria 27 Mo, OHM 76 Mo —
-  pour 128 Mo au total, dans les 500 Mo du plan gratuit. Chaîne RPC vérifiée
-  avec la clé publishable sur les deux : Cliopatria rend n'importe quelle date
-  en moins d'un mégaoctet et sous 450 ms ; OHM, son cas le plus lourd (l'an
-  2000, zoom pays), 994 entités et 7,51 Mo en 2,2 s. Voir [docs/territoires.md](docs/territoires.md).
+- Territoires : **Cliopatria seul**, 27 Mo. Les 76 Mo d'OpenHistoricalMap ont
+  été supprimés de la base une fois Cliopatria devenu la source — la base passe
+  de 130 à 54 Mo sur les 500 du plan gratuit. Ils se reconstruisent avec
+  `scripts/extract-territories.mjs` puis `scripts/load-territories.mjs` : c'est
+  un cache d'une extraction publique, pas une donnée unique. Chaîne RPC
+  revérifiée après la suppression : 130 entités en 1453, 189 en l'an 2000,
+  géométrie de 120 d'entre elles en moins de 600 ms. Voir
+  [docs/territoires.md](docs/territoires.md).
 - Sept événements de démonstration sont en base (987 à 1812), supprimables
   depuis la fiche de chacun.
 - **Comptes** : premier compte `testmaps@gmail.com` / `Test123` (l'adresse

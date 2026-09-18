@@ -18,7 +18,7 @@ export const TERRITORY_SOURCE: "cliopatria" | "ohm" = "cliopatria";
 
 | | Cliopatria | OpenHistoricalMap |
 | --- | --- | --- |
-| table | `polities` — 27 Mo | `territories` — 76 Mo |
+| table | `polities` — 27 Mo | `territories` — 76 Mo, **supprimée** |
 | enregistrements | 12 043 versions de 1 540 polités | 8 765 versions |
 | étendue | 3400 av. J.-C. → 2024 | toutes époques |
 | rangs politiques | un seul | trois (`admin_level` 2, 3, 4) |

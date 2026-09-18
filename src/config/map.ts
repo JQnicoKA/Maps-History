@@ -55,6 +55,12 @@ export const MAP_FEATURES = {
  * - `ohm` — OpenHistoricalMap, CC0. Finer tracing and period-correct endonyms
  *   where it exists, but the late Middle Ages are mapped fief by fief and whole
  *   regions have nothing at all: no Kingdom of France between 1051 and 1659.
+ *
+ * **`ohm` is no longer loaded.** Its two tables took 76 MB of the 130 the
+ * database held — more than everything else together — and were dropped once
+ * Cliopatria became the source. Flipping this line back means first running
+ * `scripts/extract-territories.mjs` then `scripts/load-territories.mjs`, which
+ * rebuild both the tables and the two functions.
  */
 export const TERRITORY_SOURCE: "cliopatria" | "ohm" = "cliopatria";
 
