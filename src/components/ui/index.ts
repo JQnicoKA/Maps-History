@@ -1,4 +1,5 @@
 export { Chip, type ChipProps } from "./Chip";
+export { Dialog, type DialogProps } from "./Dialog";
 export { GlyphButton, type GlyphButtonProps } from "./GlyphButton";
 export { InkButton, type InkButtonProps } from "./InkButton";
 export { InkField, type InkFieldProps } from "./InkField";

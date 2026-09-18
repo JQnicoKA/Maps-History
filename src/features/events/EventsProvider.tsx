@@ -12,7 +12,7 @@ import * as api from "./api";
 import { DEFAULT_YEAR } from "../../config/history";
 import { matchesFilters } from "./filtering";
 import { toSortKey } from "./historicalDate";
-import { tidy } from "./rows";
+import { erasure, tidy } from "./rows";
 import {
   NO_FILTERS,
   type Character,
@@ -116,6 +116,11 @@ type EventsContextValue = {
    * arrangement on its way to the intended one.
    */
   orderRow: (treeId: string, moves: Move[]) => Promise<void>;
+  /**
+   * Erases the line between two members, and whatever depended on it — see
+   * `erasure` in `rows.ts` for what that means and why.
+   */
+  eraseLink: (treeId: string, a: string, b: string) => Promise<void>;
   linkInTree: (
     treeId: string,
     kind: TreeBond,
@@ -397,6 +402,17 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     [reloadTrees],
   );
 
+  const eraseLink = useCallback(
+    async (treeId: string, a: string, b: string) => {
+      const fresh = (await api.fetchTrees()).find((one) => one.id === treeId);
+      for (const line of fresh ? erasure(fresh, a, b) : []) {
+        await api.unlinkTreeMembers(line.from, line.to);
+      }
+      await reloadTrees();
+    },
+    [reloadTrees],
+  );
+
   const linkInTree = useCallback(
     async (
       treeId: string,
@@ -482,6 +498,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       editTreeMember,
       removeFromTree,
       orderRow,
+      eraseLink,
       linkInTree,
       setFolderPhoto,
       addEvent,
@@ -493,7 +510,8 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       selectedEvent, neighbours, selectEvent, scrubTo, loading, error, refresh,
       addFolder, renameFolder, removeFolder, addCharacter, editCharacter,
       removeCharacter, addTree, renameTree, removeTree, addToTree,
-      editTreeMember, removeFromTree, orderRow, linkInTree, setFolderPhoto, addEvent,
+      editTreeMember, removeFromTree, orderRow, eraseLink, linkInTree, setFolderPhoto,
+      addEvent,
       editEvent, removeEvent,
     ],
   );

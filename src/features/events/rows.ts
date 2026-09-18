@@ -1,4 +1,4 @@
-import type { Move, Tree, TreeMember } from "./types";
+import type { Move, Tree, TreeLink, TreeMember } from "./types";
 
 /**
  * The one rule a row of a genealogy obeys: **a couple stands together.**
@@ -149,6 +149,75 @@ export function slide(tree: Tree, member: TreeMember, by: -1 | 1): Move[] {
   rearranged[to] = household;
   return renumber(rearranged);
 }
+
+/** The line drawn directly between these two, if there is one. */
+export function lineBetween(
+  tree: Tree,
+  a: string,
+  b: string,
+): TreeLink | undefined {
+  return tree.links.find(
+    (link) =>
+      (link.from === a && link.to === b) || (link.from === b && link.to === a),
+  );
+}
+
+/** Does this member hold any line at all? */
+export function tied(tree: Tree, id: string): boolean {
+  return tree.links.some((link) => link.from === id || link.to === id);
+}
+
+/**
+ * Everything that must go when the line between two members is erased.
+ *
+ * A line is never quite alone. Erasing a marriage erases the children **of
+ * that marriage** — the ones both spouses claim — because a child drawn hanging
+ * from a bar that no longer exists belongs to nobody. Erasing one parent's
+ * claim on a child erases the other parent's too, for the same reason read the
+ * other way: what was said was "these two had this child", and half of that
+ * sentence is not a smaller truth, it is a different one.
+ *
+ * Children claimed by only one of the two spouses are left alone: they were
+ * never the couple's, and the line saying so is still true.
+ */
+export function erasure(tree: Tree, a: string, b: string): TreeLink[] {
+  const line = lineBetween(tree, a, b);
+  if (!line) return [];
+  const going = [line];
+
+  if (line.kind === "couple") {
+    for (const child of childrenOf(tree, a)) {
+      if (!claims(tree, b, child)) continue;
+      const ours = tree.links.filter(
+        (link) =>
+          link.kind === "descent" &&
+          link.to === child &&
+          (link.from === a || link.from === b),
+      );
+      going.push(...ours);
+    }
+    return going;
+  }
+
+  // The other parent, if the two were married: a child has one set of parents.
+  const child = line.to;
+  for (const partner of spouses(tree, line.from)) {
+    const theirs = lineBetween(tree, partner, child);
+    if (theirs?.kind === "descent" && theirs.from === partner) going.push(theirs);
+  }
+  return going;
+}
+
+const childrenOf = (tree: Tree, id: string): string[] =>
+  tree.links
+    .filter((link) => link.kind === "descent" && link.from === id)
+    .map((link) => link.to);
+
+const claims = (tree: Tree, parent: string, child: string): boolean =>
+  tree.links.some(
+    (link) =>
+      link.kind === "descent" && link.from === parent && link.to === child,
+  );
 
 /** Positions 0, 1, 2… over the given order — reporting only what changes. */
 function renumber(order: TreeMember[][]): Move[] {

@@ -179,8 +179,8 @@ export function PhotoPicker({
           <>
             <InkButton
               label="Retirer"
-              variant="quiet"
-              tone="wax"
+              variant="solid"
+              tone="danger"
               grow
               onPress={remove}
             />

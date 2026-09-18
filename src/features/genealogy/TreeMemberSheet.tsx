@@ -115,8 +115,8 @@ export function TreeMemberSheet({
         <>
           <InkButton
             label="Retirer"
-            variant="quiet"
-            tone="wax"
+            variant="solid"
+            tone="danger"
             grow
             disabled={busy}
             onPress={() =>

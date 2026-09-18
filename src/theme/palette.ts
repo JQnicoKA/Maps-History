@@ -65,6 +65,15 @@ export const palette = {
   /** Recessed surfaces — inputs, tracks, unselected segments. */
   sunken: "#E3D6B8",
 
+  /**
+   * Deletion, and nothing else.
+   *
+   * A true red rather than the wax: the wax means "here is what you are
+   * reading", and the two must not be confused on a button that destroys
+   * something. Still slightly warm, so it belongs to this paper.
+   */
+  danger: "#B3261E",
+
   /** Sealing wax — marks the event currently under the reader's eye. */
   wax: "#8C3A2B",
   waxDeep: "#6E2C21",

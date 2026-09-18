@@ -11,7 +11,8 @@ export type InkButtonProps = {
   disabled?: boolean;
   /** Fills the row it sits in — sheet footers use this. */
   grow?: boolean;
-  tone?: "ink" | "wax";
+  /** `danger` is for deleting: red fill when solid, red text when not. */
+  tone?: "ink" | "danger";
   style?: ViewStyle;
 };
 
@@ -24,7 +25,7 @@ export function InkButton({
   tone = "ink",
   style,
 }: InkButtonProps) {
-  const accent = tone === "wax" ? palette.wax : palette.ink;
+  const accent = tone === "danger" ? palette.danger : palette.ink;
 
   return (
     <Pressable
@@ -60,7 +61,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.xl,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: radius.md,
+    // Softer than the fields and cards around them: a button is the one thing
+    // on a sheet meant to be reached for, and the roundness is what says so.
+    borderRadius: radius.lg,
   },
   grow: { flex: 1 },
   tonal: { backgroundColor: palette.sunken },
