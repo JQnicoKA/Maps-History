@@ -12,6 +12,7 @@ import * as api from "./api";
 import { DEFAULT_YEAR } from "../../config/history";
 import { matchesFilters } from "./filtering";
 import { toSortKey } from "./historicalDate";
+import { tidy } from "./rows";
 import {
   NO_FILTERS,
   type Character,
@@ -21,7 +22,9 @@ import {
   type EventFilters,
   type Folder,
   type HistoricalEvent,
+  type Move,
   type Tree,
+  type TreeBond,
   type TreeMember,
   type PickedPhoto,
 } from "./types";
@@ -105,10 +108,19 @@ type EventsContextValue = {
     >,
   ) => Promise<void>;
   removeFromTree: (treeId: string, memberId: string) => Promise<void>;
+  /**
+   * Rearranges a row wholesale — see `rows.ts`, which computes the moves.
+   *
+   * One call rather than one per member: the tree is re-read after a write, and
+   * a row shuffled member by member would flicker through every intermediate
+   * arrangement on its way to the intended one.
+   */
+  orderRow: (treeId: string, moves: Move[]) => Promise<void>;
   linkInTree: (
     treeId: string,
-    parentId: string,
-    childId: string,
+    kind: TreeBond,
+    from: string,
+    to: string,
     linked: boolean,
   ) => Promise<void>;
   /** Sets or clears a folder's cover picture — the map marker's fallback. */
@@ -375,10 +387,39 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     [reloadTrees],
   );
 
+  const orderRow = useCallback(
+    async (_treeId: string, moves: Move[]) => {
+      for (const move of moves) {
+        await api.updateTreeMember(move.id, { position: move.position });
+      }
+      await reloadTrees();
+    },
+    [reloadTrees],
+  );
+
   const linkInTree = useCallback(
-    async (treeId: string, parentId: string, childId: string, linked: boolean) => {
-      if (linked) await api.linkTreeMembers(treeId, parentId, childId);
-      else await api.unlinkTreeMembers(parentId, childId);
+    async (
+      treeId: string,
+      kind: TreeBond,
+      from: string,
+      to: string,
+      linked: boolean,
+    ) => {
+      if (linked) await api.linkTreeMembers(treeId, kind, from, to);
+      else await api.unlinkTreeMembers(from, to);
+
+      // Marrying two people who had someone between them closes the gap at
+      // once. The alternative — drawing the bar across a stranger and waiting
+      // for the reader to sort it out — is how the drawing comes to lie.
+      if (linked && kind === "couple") {
+        const fresh = (await api.fetchTrees()).find((one) => one.id === treeId);
+        const married = fresh?.members.find((member) => member.id === from);
+        if (fresh && married) {
+          for (const move of tidy(fresh, married.generation)) {
+            await api.updateTreeMember(move.id, { position: move.position });
+          }
+        }
+      }
       await reloadTrees();
     },
     [reloadTrees],
@@ -440,6 +481,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       addToTree,
       editTreeMember,
       removeFromTree,
+      orderRow,
       linkInTree,
       setFolderPhoto,
       addEvent,
@@ -451,7 +493,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       selectedEvent, neighbours, selectEvent, scrubTo, loading, error, refresh,
       addFolder, renameFolder, removeFolder, addCharacter, editCharacter,
       removeCharacter, addTree, renameTree, removeTree, addToTree,
-      editTreeMember, removeFromTree, linkInTree, setFolderPhoto, addEvent,
+      editTreeMember, removeFromTree, orderRow, linkInTree, setFolderPhoto, addEvent,
       editEvent, removeEvent,
     ],
   );

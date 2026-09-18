@@ -127,25 +127,51 @@ export function canvasSize(tree: Tree): { width: number; height: number } {
 }
 
 /**
- * The lines from parents to children, as axis-aligned rectangles.
+ * Every line in the tree, as axis-aligned rectangles.
  *
- * Three segments per link — down out of the parent, across, down into the
- * child — because React Native draws no diagonals without a native module, and
- * because an elbow is what a genealogy uses anyway. Where a parent has several
- * children the first segments coincide and read as one trunk, which is exactly
- * the drawing one wants and costs nothing to arrange.
+ * Rectangles because React Native draws no diagonals without a native module —
+ * and because a genealogy is drawn with set squares anyway. The two kinds read
+ * differently on purpose:
+ *
+ * - **descent** is an elbow, three segments: down out of the parent, across at
+ *   mid-gap, down into the child. Where a parent has several children the first
+ *   segments coincide and read as one trunk, which is the drawing one wants and
+ *   costs nothing to arrange.
+ * - **couple** is a single bar between the two portraits, on the axis the faces
+ *   are hung from. It never crosses a stranger: a couple is kept standing
+ *   together in its row (`events/rows.ts`), so the bar only ever spans its own
+ *   household.
  */
 export function connectors(tree: Tree, placed: Placed[]): Segment[] {
   const at = new Map(placed.map((node) => [node.member.id, node]));
   const out: Segment[] = [];
 
   for (const link of tree.links) {
-    const parent = at.get(link.parentId);
-    const child = at.get(link.childId);
-    if (!parent || !child) continue;
+    const a = at.get(link.from);
+    const b = at.get(link.to);
+    if (!a || !b) continue;
 
-    const from = { x: parent.x + NODE.width / 2, y: parent.y + NODE.height };
-    const to = { x: child.x + NODE.width / 2, y: child.y };
+    if (link.kind === "couple") {
+      // Same row, or the equals sign would be a diagonal. Nothing in the app
+      // draws such a link; a hand-edited database still must not break this.
+      if (a.member.generation !== b.member.generation) continue;
+
+      const [left, right] = a.x <= b.x ? [a, b] : [b, a];
+      const gap = {
+        from: left.x + NODE.width / 2 + FACE[left.member.importance] / 2,
+        to: right.x + NODE.width / 2 - FACE[right.member.importance] / 2,
+      };
+      out.push({
+        left: gap.from,
+        top: left.y + FACE_AXIS - STROKE / 2,
+        width: Math.max(gap.to - gap.from, STROKE),
+        height: STROKE,
+      });
+      continue;
+    }
+
+    const from = { x: a.x + NODE.width / 2, y: a.y + NODE.height };
+    const to = { x: b.x + NODE.width / 2, y: b.y };
     // Halfway down the gap, so siblings share one horizontal run.
     const mid = from.y + (to.y - from.y) / 2;
 

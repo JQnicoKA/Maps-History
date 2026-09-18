@@ -9,6 +9,7 @@ import {
 } from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import { lifespan } from "../events/lifespan";
+import { blockOf, blocks, slide } from "../events/rows";
 import {
   type Character,
   type Importance,
@@ -17,6 +18,14 @@ import {
 } from "../events/types";
 import { palette } from "../../theme/palette";
 import { space, type } from "../../theme/tokens";
+
+/** "1 conjoint · 3 enfants", or what is left of it. */
+function describeTies({ children, spouses }: { children: number; spouses: number }): string {
+  const said: string[] = [];
+  if (spouses > 0) said.push(`${spouses} conjoint${spouses > 1 ? "s" : ""}`);
+  if (children > 0) said.push(`${children} enfant${children > 1 ? "s" : ""}`);
+  return said.length === 0 ? "Aucun lien tracé" : said.join(" · ");
+}
 
 const IMPORTANCES: { value: Importance; label: string }[] = [
   { value: "low", label: "Discret" },
@@ -29,8 +38,6 @@ export type TreeMemberSheetProps = {
   member: TreeMember | null;
   person: Character | undefined;
   onClose: () => void;
-  /** Enters the mode where the next taps choose this member's children. */
-  onStartLinking: () => void;
 };
 
 /**
@@ -45,9 +52,8 @@ export function TreeMemberSheet({
   member,
   person,
   onClose,
-  onStartLinking,
 }: TreeMemberSheetProps) {
-  const { editTreeMember, removeFromTree } = useEvents();
+  const { editTreeMember, orderRow, removeFromTree } = useEvents();
   const [note, setNote] = useState(member?.note ?? "");
   const [busy, setBusy] = useState(false);
 
@@ -65,24 +71,40 @@ export function TreeMemberSheet({
       .finally(() => setBusy(false));
   };
 
-  const siblings = tree.members.filter(
-    (one) => one.generation === member.generation,
-  );
-  const rank = siblings.findIndex((one) => one.id === member.id);
+  /**
+   * The row as blocks — a couple counts as one — and this member's two steps.
+   *
+   * A step means one of two things now: a spouse changes places inside their
+   * own couple, or, standing at its edge, carries the whole couple over the
+   * neighbouring block. Either way nobody ends up between two spouses.
+   */
+  const order = blocks(tree, member.generation);
+  const married = (order[blockOf(tree, member)]?.length ?? 1) > 1;
+  // Asked of the rule itself rather than worked out here: whether a step is
+  // possible and what it costs are the same question, and one answer cannot
+  // then disagree with the other.
+  const step = { left: slide(tree, member, -1), right: slide(tree, member, 1) };
 
-  /** Swaps ranks with the neighbour, which is all "move left" can mean here. */
   const shift = (by: -1 | 1) => {
-    const other = siblings[rank + by];
-    if (!other) return;
-    run(
-      (async () => {
-        await editTreeMember(tree.id, member.id, { position: other.position });
-        await editTreeMember(tree.id, other.id, { position: member.position });
-      })(),
-    );
+    const moves = by === -1 ? step.left : step.right;
+    if (moves.length > 0) run(orderRow(tree.id, moves));
   };
 
-  const children = tree.links.filter((link) => link.parentId === member.id).length;
+  /**
+   * What this member is tied to, counted for the reader.
+   *
+   * Shown and not edited here: lines are drawn on the canvas, where both ends
+   * can be seen at once, which a sheet covering half the tree cannot offer.
+   */
+  const ties = { children: 0, spouses: 0 };
+  for (const link of tree.links) {
+    if (link.kind === "descent") {
+      // Only downwards: a member's own parents are someone else's children.
+      if (link.from === member.id) ties.children += 1;
+    } else if (link.from === member.id || link.to === member.id) {
+      ties.spouses += 1;
+    }
+  }
 
   return (
     <Sheet
@@ -137,6 +159,7 @@ export function TreeMemberSheet({
         {person && lifespan(person) !== "" ? (
           <Text style={styles.dates}>{lifespan(person)}</Text>
         ) : null}
+        <Text style={styles.ties}>{describeTies(ties)}</Text>
 
         <View style={styles.section}>
           <Text style={styles.legend}>Place dans la généalogie</Text>
@@ -158,29 +181,22 @@ export function TreeMemberSheet({
             <InkButton
               label="‹  Gauche"
               grow
-              disabled={busy || rank <= 0}
+              disabled={busy || step.left.length === 0}
               onPress={() => shift(-1)}
             />
             <InkButton
               label="Droite  ›"
               grow
-              disabled={busy || rank < 0 || rank >= siblings.length - 1}
+              disabled={busy || step.right.length === 0}
               onPress={() => shift(1)}
             />
           </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.legend}>Descendance</Text>
-          <InkButton
-            label={
-              children === 0
-                ? "Tracer vers ses enfants"
-                : `Tracer vers ses enfants · ${children} tracé${children > 1 ? "s" : ""}`
-            }
-            variant="tonal"
-            onPress={onStartLinking}
-          />
+          {married ? (
+            <Text style={styles.hint}>
+              Au sein de son couple il échange sa place ; au bord, c'est tout le
+              couple qui enjambe le voisin.
+            </Text>
+          ) : null}
         </View>
 
         <InkField
@@ -202,6 +218,7 @@ const styles = StyleSheet.create({
     gap: space.xl,
   },
   dates: { ...type.body, color: palette.inkSoft, textAlign: "center" },
+  ties: { ...type.caption, color: palette.inkFaint, textAlign: "center" },
   section: { gap: space.sm },
   legend: { ...type.legend, color: palette.inkSoft },
   hint: { ...type.caption, color: palette.inkFaint },

@@ -19,9 +19,12 @@ import { TreeNode } from "./TreeNode";
 import { InkButton, SelectField } from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import { lifespan } from "../events/lifespan";
-import type { Tree, TreeMember } from "../events/types";
+import type { Tree, TreeBond, TreeMember } from "../events/types";
 import { palette } from "../../theme/palette";
 import { radius, shadow, space, TOUCH, type } from "../../theme/tokens";
+
+/** The line under construction: what kind, and which end is fixed. */
+type Tracing = { kind: TreeBond | null; anchor: string | null };
 
 export type TreeBuilderProps = {
   tree: Tree | null;
@@ -37,18 +40,27 @@ export type TreeBuilderProps = {
  * it — the bars' measured height is handed to `PanZoom`, which keeps the
  * drawing out from under them.
  *
- * Two modes, and only two. Normally a tap opens someone's card. In **linking**
- * mode — entered from that card — a tap adds or removes a line from the chosen
- * parent to whoever is tapped. That is the whole interaction: no dragging, no
- * hidden gesture, and the banner says which mode you are in and how to leave.
+ * Two modes, and only two. Normally a tap opens someone's card. **Tracer un
+ * lien**, at the top right, starts the other: choose couple or descent, touch
+ * one person, and then touch everyone to be joined to them — touching again
+ * erases the line. Only the members that can legally take that link stay lit,
+ * so the rule is shown rather than explained and there is no wrong move to
+ * refuse. No dragging, no hidden gesture; the bar at the foot says where you
+ * are and how to leave.
  */
 export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
   const insets = useSafeAreaInsets();
   const { characters, addToTree, linkInTree, removeTree, renameTree } = useEvents();
 
   const [openId, setOpenId] = useState<string | null>(null);
-  /** The parent whose children are being chosen, if any. */
-  const [linking, setLinking] = useState<string | null>(null);
+  /**
+   * The line being drawn, if any.
+   *
+   * Three stages in one value: `null` is the ordinary mode; a `kind` of `null`
+   * is the moment between pressing the button and saying which kind; and an
+   * anchor set means the far end is being chosen.
+   */
+  const [tracing, setTracing] = useState<Tracing | null>(null);
   /** Which generation the picker is adding to. */
   const [adding, setAdding] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
@@ -76,13 +88,36 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
   const rows = frame(tree);
   const byId = new Map(characters.map((person) => [person.id, person]));
   const open = tree.members.find((member) => member.id === openId) ?? null;
-  const parent = tree.members.find((member) => member.id === linking) ?? null;
+  const bond = tracing?.kind ?? null;
+  const anchor =
+    tree.members.find((member) => member.id === tracing?.anchor) ?? null;
 
-  const childrenOf = (id: string) =>
-    new Set(
-      tree.links.filter((link) => link.parentId === id).map((link) => link.childId),
-    );
-  const linked = parent ? childrenOf(parent.id) : new Set<string>();
+  /** Who the anchor already holds a line of this kind to. */
+  const attached = new Set<string>();
+  if (anchor && bond) {
+    for (const link of tree.links) {
+      if (link.kind !== bond) continue;
+      if (link.from === anchor.id) attached.add(link.to);
+      // A couple has no direction, so the row may have been written either way
+      // round; a descent read backwards would put a child above its parent.
+      else if (bond === "couple" && link.to === anchor.id) attached.add(link.from);
+    }
+  }
+
+  /**
+   * Whether this member may take the line being drawn.
+   *
+   * The whole rule of the feature, in three lines: a couple runs along a row,
+   * a descent runs into the row below. Everyone else is dimmed, which is why
+   * nothing here ever has to refuse a tap with an alert.
+   */
+  const reachable = (member: TreeMember): boolean => {
+    if (!bond) return false;
+    if (!anchor || member.id === anchor.id) return true;
+    return bond === "couple"
+      ? member.generation === anchor.generation
+      : member.generation === anchor.generation + 1;
+  };
 
   const run = (work: Promise<unknown>) => {
     setBusy(true);
@@ -97,21 +132,24 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
   };
 
   const tap = (member: TreeMember) => {
-    if (!parent) {
+    if (!tracing) {
       setOpenId(member.id);
       return;
     }
-    if (member.id === parent.id) return;
-    // A line only ever runs downwards; anything else is a mistake worth
-    // refusing plainly rather than drawing and letting the reader wonder.
-    if (member.generation <= parent.generation) {
-      Alert.alert(
-        "Pas dans ce sens",
-        "Un enfant se place dans une génération plus basse que son parent.",
-      );
+    if (!bond || !reachable(member)) return;
+    if (!anchor) {
+      setTracing({ kind: bond, anchor: member.id });
       return;
     }
-    run(linkInTree(tree.id, parent.id, member.id, !linked.has(member.id)));
+    // Touching the anchor again lets go of it, so a mis-tap costs one tap
+    // rather than a trip out of the mode and back in.
+    if (member.id === anchor.id) {
+      setTracing({ kind: bond, anchor: null });
+      return;
+    }
+    run(
+      linkInTree(tree.id, bond, anchor.id, member.id, !attached.has(member.id)),
+    );
   };
 
   return (
@@ -134,11 +172,10 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
             x={node.x}
             y={node.y}
             active={
-              parent
-                ? node.member.id === parent.id ||
-                  linked.has(node.member.id)
-                : false
+              tracing !== null &&
+              (node.member.id === anchor?.id || attached.has(node.member.id))
             }
+            muted={tracing !== null && !reachable(node.member)}
             onPress={() => tap(node.member)}
           />
         ))}
@@ -158,10 +195,11 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
                 ? "Ajouter une génération"
                 : "Ajouter à cette génération"
             }
-            disabled={busy || parent !== null}
+            disabled={busy || tracing !== null}
             onPress={() => setAdding(generation)}
             style={({ pressed }) => [
               styles.slot,
+              tracing !== null && styles.away,
               pressed && styles.pressed,
               {
                 left: columnX(rowCount(tree, generation)),
@@ -187,6 +225,15 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
           <Text style={styles.title} numberOfLines={1}>
             {tree.name}
           </Text>
+          {tracing === null ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setTracing({ kind: null, anchor: null })}
+              style={({ pressed }) => [styles.trace, pressed && styles.pressed]}
+            >
+              <Text style={styles.traceLabel}>Tracer un lien</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Fermer"
@@ -205,19 +252,56 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
             setChrome((current) => ({ ...current, bottom: height }));
           }}
         >
-          {parent ? (
+          {tracing !== null && bond === null ? (
+            <View style={styles.choice}>
+              <View style={styles.banner}>
+                <Text style={styles.bannerText}>Quel lien voulez-vous tracer ?</Text>
+                <InkButton
+                  label="Annuler"
+                  variant="quiet"
+                  onPress={() => setTracing(null)}
+                />
+              </View>
+              <View style={styles.tools}>
+                <InkButton
+                  label="Couple"
+                  variant="tonal"
+                  grow
+                  onPress={() => setTracing({ kind: "couple", anchor: null })}
+                />
+                <InkButton
+                  label="Descendance"
+                  variant="tonal"
+                  grow
+                  onPress={() => setTracing({ kind: "descent", anchor: null })}
+                />
+              </View>
+            </View>
+          ) : tracing !== null && bond !== null ? (
             <View style={styles.banner}>
-              <Text style={styles.bannerText} numberOfLines={2}>
-                Touchez les enfants de{" "}
-                <Text style={styles.bannerName}>
-                  {byId.get(parent.characterId)?.name ?? "ce personnage"}
-                </Text>
-                . Touchez à nouveau pour effacer un trait.
+              <Text style={styles.bannerText} numberOfLines={3}>
+                {anchor === null ? (
+                  bond === "couple" ? (
+                    "Touchez l'un des deux conjoints."
+                  ) : (
+                    "Touchez le parent."
+                  )
+                ) : (
+                  <>
+                    {bond === "couple" ? "Touchez qui est uni à " : "Touchez les enfants de "}
+                    <Text style={styles.bannerName}>
+                      {byId.get(anchor.characterId)?.name ?? "ce personnage"}
+                    </Text>
+                    {bond === "couple"
+                      ? ", sur la même ligne. À nouveau pour effacer le trait."
+                      : ", sur la ligne du dessous. À nouveau pour effacer un trait."}
+                  </>
+                )}
               </Text>
               <InkButton
                 label="Terminé"
                 variant="solid"
-                onPress={() => setLinking(null)}
+                onPress={() => setTracing(null)}
               />
             </View>
           ) : (
@@ -305,10 +389,6 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
           member={open}
           person={open ? byId.get(open.characterId) : undefined}
           onClose={() => setOpenId(null)}
-          onStartLinking={() => {
-            setLinking(open?.id ?? null);
-            setOpenId(null);
-          }}
         />
       </View>
     </Modal>
@@ -370,6 +450,14 @@ const styles = StyleSheet.create({
     borderBottomColor: palette.line,
   },
   title: { flex: 1, ...type.heading, fontWeight: "700", color: palette.ink },
+  trace: {
+    minHeight: 34,
+    justifyContent: "center",
+    paddingHorizontal: space.md,
+    borderRadius: radius.pill,
+    backgroundColor: palette.sunken,
+  },
+  traceLabel: { ...type.caption, fontWeight: "700", color: palette.ink },
   close: {
     width: TOUCH,
     height: TOUCH,
@@ -392,6 +480,9 @@ const styles = StyleSheet.create({
     ...shadow.lifted,
   },
   tools: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  choice: { gap: space.sm },
+  /** Dimmed as a node is, so "not now" looks the same everywhere. */
+  away: { opacity: 0.25 },
   banner: { flexDirection: "row", alignItems: "center", gap: space.md },
   bannerText: { flex: 1, ...type.caption, color: palette.inkSoft },
   bannerName: { color: palette.ink, fontWeight: "700" },

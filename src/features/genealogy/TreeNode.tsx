@@ -11,8 +11,14 @@ export type TreeNodeProps = {
   person: Character | undefined;
   x: number;
   y: number;
-  /** Ringed in wax: the one being worked on, or a child being chosen. */
+  /** Ringed in wax: the one being worked on, or someone already linked to it. */
   active?: boolean;
+  /**
+   * Out of reach while a line is being drawn — the wrong generation for the
+   * kind of link being traced. Faded rather than hidden: the reader still needs
+   * to see where they are in the tree.
+   */
+  muted?: boolean;
   onPress: () => void;
 };
 
@@ -36,6 +42,7 @@ export function TreeNode({
   x,
   y,
   active = false,
+  muted = false,
   onPress,
 }: TreeNodeProps) {
   const size = FACE[member.importance];
@@ -47,9 +54,10 @@ export function TreeNode({
       accessibilityRole="button"
       accessibilityLabel={person?.name ?? "Personnage"}
       onPress={onPress}
+      disabled={muted}
       style={({ pressed }) => [
         styles.node,
-        { left: x, top: y, opacity: pressed ? 0.6 : 1 },
+        { left: x, top: y, opacity: muted ? 0.25 : pressed ? 0.6 : 1 },
       ]}
     >
       {/* The band is what keeps the axis: the circle is centred in it, so its

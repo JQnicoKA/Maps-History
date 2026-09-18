@@ -2,6 +2,7 @@ import type {
   Character,
   CharacterDraft,
   Tree,
+  TreeBond,
   TreeMember,
   EventDraft,
   Folder,
@@ -610,13 +611,13 @@ type TreeRow = {
     importance: Importance;
     note: string | null;
   }[];
-  tree_links: { parent_id: string; child_id: string }[];
+  tree_links: { parent_id: string; child_id: string; kind: TreeBond }[];
 };
 
 const TREE_COLUMNS = `
   id, name, note,
   tree_members ( id, character_id, generation, position, importance, note ),
-  tree_links ( parent_id, child_id )
+  tree_links ( parent_id, child_id, kind )
 `;
 
 function toTree(row: TreeRow): Tree {
@@ -634,9 +635,13 @@ function toTree(row: TreeRow): Tree {
         importance: member.importance,
         note: member.note,
       })),
+    // The columns are still named for descent, which is what they held before
+    // couples existed; on a couple row they are simply the two spouses, in the
+    // order they were touched.
     links: row.tree_links.map((link) => ({
-      parentId: link.parent_id,
-      childId: link.child_id,
+      kind: link.kind,
+      from: link.parent_id,
+      to: link.child_id,
     })),
   };
 }
@@ -724,24 +729,34 @@ export async function removeTreeMember(id: string): Promise<void> {
 
 export async function linkTreeMembers(
   treeId: string,
-  parentId: string,
-  childId: string,
+  kind: TreeBond,
+  from: string,
+  to: string,
 ): Promise<void> {
   const { error } = await supabase()
     .from("tree_links")
-    .insert({ tree_id: treeId, parent_id: parentId, child_id: childId });
+    .insert({ tree_id: treeId, parent_id: from, child_id: to, kind });
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Erases the line between two members, drawn in either direction.
+ *
+ * Both orders are tried because a couple has no first and second: the row was
+ * written the way the two were touched, and whoever erases it a month later
+ * will not touch them in the same order.
+ */
 export async function unlinkTreeMembers(
-  parentId: string,
-  childId: string,
+  from: string,
+  to: string,
 ): Promise<void> {
   const { error } = await supabase()
     .from("tree_links")
     .delete()
-    .eq("parent_id", parentId)
-    .eq("child_id", childId);
+    .or(
+      `and(parent_id.eq.${from},child_id.eq.${to}),` +
+        `and(parent_id.eq.${to},child_id.eq.${from})`,
+    );
   if (error) throw new Error(error.message);
 }
 

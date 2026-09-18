@@ -161,8 +161,27 @@ export type TreeMember = {
   note: string | null;
 };
 
-/** A line drawn from a parent to a child, both members of the same tree. */
-export type TreeLink = { parentId: string; childId: string };
+/**
+ * What a line between two members means.
+ *
+ * Two, and the geometry follows from them: **descent** runs down a generation
+ * and is drawn as an elbow, **couple** runs across one and is drawn as the
+ * equals sign a genealogist would pencil between two spouses.
+ */
+export const BONDS = ["descent", "couple"] as const;
+export type TreeBond = (typeof BONDS)[number];
+
+/**
+ * A line between two members of one tree.
+ *
+ * `from` and `to` rather than parent and child, because only half the lines
+ * have a parent: on a couple the pair is symmetrical and `from` is merely
+ * whoever was touched first. For a descent, `from` is the parent.
+ */
+export type TreeLink = { kind: TreeBond; from: string; to: string };
+
+/** Where a member is to stand, once a row has been rearranged. */
+export type Move = { id: string; position: number };
 
 export type Tree = {
   id: string;
