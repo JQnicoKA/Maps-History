@@ -34,6 +34,15 @@ const DRIVER = false;
 export type SheetProps = {
   visible: boolean;
   onClose: () => void;
+  /**
+   * Fired once the panel has finished leaving and the modal is gone.
+   *
+   * For what must not happen while it is still on screen: iOS will not present
+   * a second modal from a controller that is dismissing one, so "close this
+   * sheet, then open that screen" has to wait for this rather than guess at a
+   * delay.
+   */
+  onClosed?: () => void;
   title?: string;
   /** Pinned below the scrolling content — where the actions live. */
   footer?: ReactNode;
@@ -53,8 +62,20 @@ export type SheetProps = {
  * in a Pressable steals the touch responder and stops lists inside from
  * scrolling.
  */
-export function Sheet({ visible, onClose, title, footer, children }: SheetProps) {
+export function Sheet({
+  visible,
+  onClose,
+  onClosed,
+  title,
+  footer,
+  children,
+}: SheetProps) {
   const insets = useSafeAreaInsets();
+
+  // Read through a ref: listing the callback among the effect's dependencies
+  // would replay the exit animation every time the caller re-renders.
+  const closed = useRef(onClosed);
+  closed.current = onClosed;
 
   /** Kept mounted through the exit animation, then torn down. */
   const [mounted, setMounted] = useState(visible);
@@ -94,7 +115,9 @@ export function Sheet({ visible, onClose, title, footer, children }: SheetProps)
         useNativeDriver: DRIVER,
       }),
     ]).start(({ finished }) => {
-      if (finished) setMounted(false);
+      if (!finished) return;
+      setMounted(false);
+      closed.current?.();
     });
     // `mounted` is read, not tracked: adding it would re-run the exit on unmount.
     // eslint-disable-next-line react-hooks/exhaustive-deps

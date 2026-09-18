@@ -9,11 +9,7 @@ import {
 
 import { generationCount } from "./layout";
 import { TreeBuilder } from "./TreeBuilder";
-import {
-  InkButton,
-  InkField,
-  useNotice,
-} from "../../components/ui";
+import { InkButton, InkField, Sheet, useNotice } from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import type { Tree } from "../events/types";
 import { palette } from "../../theme/palette";
@@ -22,16 +18,26 @@ import { radius, space, type } from "../../theme/tokens";
 /**
  * The genealogies, listed.
  *
- * A tree is made in one field — it needs nothing but a name to exist — and
- * built afterwards, full screen, where there is room to arrange it. The sheet
- * is the index; the builder is the work.
+ * The same shape as the characters' half, and deliberately: a slot at the top
+ * of the list opens a sheet, the sheet asks for the one thing a tree needs — a
+ * name — and the list below is the index. A tree is made in a word and built
+ * afterwards, full screen, where there is room to arrange it.
  */
 export function TreeManager() {
   const { trees, characters, addTree } = useEvents();
+  const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
   const { say, dialog } = useNotice();
   const [open, setOpen] = useState<string | null>(null);
+  /**
+   * A tree made but not yet shown.
+   *
+   * The builder is a modal and the naming sheet is another; iOS refuses to
+   * present one while dismissing the other, so the new tree waits here until
+   * the sheet has finished leaving.
+   */
+  const [pending, setPending] = useState<string | null>(null);
 
   const create = async () => {
     const trimmed = name.trim();
@@ -40,7 +46,8 @@ export function TreeManager() {
     try {
       const tree = await addTree(trimmed);
       setName("");
-      setOpen(tree.id);
+      setPending(tree.id);
+      setNaming(false);
     } catch (cause) {
       say(
         "Arbre non créé",
@@ -59,23 +66,6 @@ export function TreeManager() {
       keyboardShouldPersistTaps="handled"
     >
       {dialog}
-      <View style={styles.createRow}>
-        <View style={styles.createField}>
-          <InkField
-            label="Nom de l'arbre"
-            value={name}
-            onChangeText={setName}
-            placeholder="Les Capétiens"
-            onSubmitEditing={() => void create()}
-          />
-        </View>
-        <InkButton
-          label={creating ? "…" : "Créer"}
-          variant="solid"
-          disabled={creating || name.trim() === ""}
-          onPress={() => void create()}
-        />
-      </View>
 
       <View style={styles.list}>
         <Text style={styles.legend}>
@@ -84,11 +74,26 @@ export function TreeManager() {
             : `${trees.length} arbre${trees.length > 1 ? "s" : ""}`}
         </Text>
 
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Nouvel arbre"
+          onPress={() => {
+            setName("");
+            setNaming(true);
+          }}
+          style={({ pressed }) => [styles.new, pressed && styles.pressed]}
+        >
+          <View style={styles.newThumb}>
+            <Text style={styles.newGlyph}>+</Text>
+          </View>
+          <Text style={styles.newLabel}>Nouvel arbre</Text>
+        </Pressable>
+
         {trees.length === 0 ? (
           <Text style={styles.empty}>
             {characters.length === 0
               ? "Créez d'abord des personnages : un arbre se bâtit avec eux."
-              : "Nommez-en un ci-dessus. Il s'ouvrira en plein écran pour être bâti."}
+              : "Un arbre relie des personnages entre eux, génération par génération."}
           </Text>
         ) : (
           trees.map((tree) => (
@@ -113,6 +118,46 @@ export function TreeManager() {
         )}
       </View>
 
+      <Sheet
+        visible={naming}
+        onClose={() => setNaming(false)}
+        onClosed={() => {
+          if (pending === null) return;
+          setOpen(pending);
+          setPending(null);
+        }}
+        title="Nouvel arbre"
+        footer={
+          <>
+            <InkButton
+              label="Annuler"
+              variant="tonal"
+              grow
+              onPress={() => setNaming(false)}
+            />
+            <InkButton
+              label={creating ? "Création…" : "Créer"}
+              variant="solid"
+              grow
+              disabled={creating || name.trim() === ""}
+              onPress={() => void create()}
+            />
+          </>
+        }
+      >
+        <View style={styles.form}>
+          <InkField
+            label="Nom de l'arbre"
+            value={name}
+            onChangeText={setName}
+            placeholder="Les Capétiens"
+            autoFocus
+            returnKeyType="done"
+            onSubmitEditing={() => void create()}
+          />
+        </View>
+      </Sheet>
+
       <TreeBuilder tree={shown} onClose={() => setOpen(null)} />
     </ScrollView>
   );
@@ -132,21 +177,44 @@ function summarise(tree: Tree): string {
     .join(" · ");
 }
 
+/** The round slot of the `+`, the size of a portrait on the other list. */
+const THUMB = 44;
+
 const styles = StyleSheet.create({
   body: {
     paddingHorizontal: space.xl,
     paddingBottom: space.lg,
     gap: space.xl,
   },
-  createRow: { flexDirection: "row", alignItems: "flex-end", gap: space.sm },
-  createField: { flex: 1 },
+  form: { paddingHorizontal: space.xl, paddingBottom: space.lg },
   list: { gap: space.sm },
+  /** The slot that makes one — dashed, like the characters' and the folders'. */
+  new: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    padding: space.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: palette.line,
+  },
+  newThumb: {
+    width: THUMB,
+    height: THUMB,
+    borderRadius: THUMB / 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  newGlyph: { fontSize: 24, lineHeight: 28, color: palette.inkSoft },
+  newLabel: { flex: 1, fontSize: 15, fontWeight: "600", color: palette.inkSoft },
   legend: { ...type.legend, color: palette.inkSoft },
   empty: { ...type.body, color: palette.inkFaint },
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: space.md,
+    minHeight: THUMB + 2 * space.sm,
     paddingVertical: space.md,
     paddingHorizontal: space.lg,
     borderRadius: radius.md,
