@@ -213,6 +213,30 @@ Sur cette machine, ni le SDK Android ni un JDK ne sont installés — il faut
 d'abord Android Studio (SDK Platform 35 + un AVD) et un JDK 17, avec
 `ANDROID_HOME` et `JAVA_HOME` exportés.
 
+### Tests
+
+```bash
+npm test          # une fois
+npm run test:watch
+```
+
+Vitest, sur Node, sans simulateur ni réseau. Ce qui est couvert est la part de
+l'application qui n'a besoin ni de l'un ni de l'autre : les règles d'une ligne
+de généalogie (`events/rows.ts`), la géométrie des traits
+(`genealogy/layout.ts`), l'arithmétique du déplacement et du zoom
+(`genealogy/viewport.ts`), l'écriture et le tri des dates
+(`events/historicalDate.ts`, `events/lifespan.ts`), les filtres
+(`events/filtering.ts`) et la solidité d'un mot de passe (`auth/password.ts`).
+
+Ces modules sont purs **par construction**, et c'est ce qui rend l'interface
+autour d'eux réinscriptible sans crainte. Les composants React Native ne sont
+pas testés : les monter demande un simulateur ou une montagne de doublures, et
+ce qu'on vérifierait serait surtout que React fonctionne encore.
+
+`.github/workflows/ci.yml` rejoue à chaque poussée les trois mêmes portes que
+ci-dessus : types, tests, puis `expo export` — cette dernière étant la seule à
+attraper un chemin faux ou un module absent, que le typage ne voit pas.
+
 ### Autres commandes
 
 ```bash
@@ -1075,5 +1099,8 @@ imposent ce crédit visible : ne pas le supprimer.
   native : **il faut reconstruire l'application** (`npx expo run:ios`) pour que
   la session survive à la fermeture. Sans reconstruction l'app fonctionne, mais
   redemande le mot de passe à chaque lancement.
+- **Tests** : 81, sur 7 fichiers, en moins d'une seconde — voir la section
+  Tests. Ils ne couvrent que les modules purs ; l'interface reste jugée à
+  l'œil.
 - Le rendu n'a jamais été jugé autrement que par son auteur : la palette de
   `src/theme/palette.ts` reste le premier endroit à ajuster.

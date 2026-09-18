@@ -1,0 +1,37 @@
+# Ce que la machine vérifie à chaque poussée, pour que personne n'ait à y penser.
+#
+# Trois portes, de la plus rapide à la plus lente : les types, les tests, puis
+# la construction du bundle. La dernière est la seule qui attrape ce que les
+# deux premières ne voient pas — un chemin de fichier faux, un module absent,
+# un `require` qui ne résout pas.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Types
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      # Sans clés : le bundle se construit de la même façon, seules les valeurs
+      # injectées manquent. Ce qui est vérifié ici, c'est que Metro sait
+      # résoudre et empaqueter toute l'application.
+      - name: Bundle iOS
+        run: npx expo export --platform ios

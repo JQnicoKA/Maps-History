@@ -22,7 +22,8 @@
     "@resvg/resvg-js": "^2.6.2",
     "@types/react": "~19.2.2",
     "pbf": "^5.1.2",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.11"
   },
   "scripts": {
     "start": "expo start",
@@ -30,6 +31,8 @@
     "android": "expo run:android",
     "prebuild": "expo prebuild --clean",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "textures": "node scripts/generate-textures.mjs",
     "icons": "node scripts/generate-icons.mjs"
   },
