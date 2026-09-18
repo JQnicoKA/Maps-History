@@ -67,7 +67,12 @@ export const TERRITORY_RPC =
 const CREDITS = ["© MapTiler", "© OpenStreetMap"];
 if (MAP_FEATURES.territories) {
   CREDITS.push(
-    TERRITORY_SOURCE === "cliopatria" ? "© Cliopatria (CC BY)" : "© OpenHistoricalMap",
+    // "modified" is not politeness, it is the second half of CC BY: the licence
+    // asks that changes be indicated, and the polity names in this database no
+    // longer all read as Cliopatria published them.
+    TERRITORY_SOURCE === "cliopatria"
+      ? "© Cliopatria (CC BY, modified)"
+      : "© OpenHistoricalMap",
   );
 }
 if (MAP_FEATURES.places) CREDITS.push("© OpenHistoricalMap");
