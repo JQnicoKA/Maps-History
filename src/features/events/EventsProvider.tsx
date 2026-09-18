@@ -326,27 +326,42 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  /** Re-reads every tree. Cheap, and it cannot fall out of step. */
-  const reloadTrees = useCallback(async () => {
-    setTrees(await api.fetchTrees());
+  /**
+   * Re-reads the one tree that was just written to.
+   *
+   * Every edit inside a tree used to re-read all of them, members and links
+   * included, to learn that somebody had moved one place to the left. One tree
+   * is what changed, so one tree is what is read.
+   */
+  const reloadTree = useCallback(async (treeId: string) => {
+    const fresh = await api.fetchTree(treeId);
+    setTrees((current) =>
+      fresh === null
+        ? current.filter((tree) => tree.id !== treeId)
+        : current.map((tree) => (tree.id === treeId ? fresh : tree)),
+    );
+    return fresh;
   }, []);
 
-  const addTree = useCallback(
-    async (name: string) => {
-      const created = await api.createTree(name);
-      await reloadTrees();
-      return created;
-    },
-    [reloadTrees],
-  );
+  /** Trees are kept sorted by name, as the list shows them. */
+  const byTreeName = (a: Tree, b: Tree) => a.name.localeCompare(b.name);
 
-  const renameTree = useCallback(
-    async (id: string, name: string) => {
-      await api.renameTree(id, name);
-      await reloadTrees();
-    },
-    [reloadTrees],
-  );
+  const addTree = useCallback(async (name: string) => {
+    const created = await api.createTree(name);
+    setTrees((current) => [...current, created].sort(byTreeName));
+    return created;
+  }, []);
+
+  const renameTree = useCallback(async (id: string, name: string) => {
+    await api.renameTree(id, name);
+    // A name is the whole of what changed; asking the server to read it back
+    // would only confirm what we just sent.
+    setTrees((current) =>
+      current
+        .map((tree) => (tree.id === id ? { ...tree, name: name.trim() } : tree))
+        .sort(byTreeName),
+    );
+  }, []);
 
   const removeTree = useCallback(
     async (id: string) => {
@@ -358,60 +373,59 @@ export function EventsProvider({ children }: { children: ReactNode }) {
 
   const addToTree = useCallback(
     async (treeId: string, characterId: string, generation: number) => {
-      const tree = await api.fetchTrees();
-      const target = tree.find((one) => one.id === treeId);
+      const target = await api.fetchTree(treeId);
       // Appended to the right of its generation, which is where a reader
       // expects the newcomer to land.
       const position = (target?.members ?? []).filter(
         (member) => member.generation === generation,
       ).length;
       await api.addTreeMember(treeId, characterId, generation, position);
-      await reloadTrees();
+      await reloadTree(treeId);
     },
-    [reloadTrees],
+    [reloadTree],
   );
 
   const editTreeMember = useCallback(
     async (
-      _treeId: string,
+      treeId: string,
       id: string,
       patch: Partial<
         Pick<TreeMember, "generation" | "position" | "importance" | "note">
       >,
     ) => {
       await api.updateTreeMember(id, patch);
-      await reloadTrees();
+      await reloadTree(treeId);
     },
-    [reloadTrees],
+    [reloadTree],
   );
 
   const removeFromTree = useCallback(
-    async (_treeId: string, memberId: string) => {
+    async (treeId: string, memberId: string) => {
       await api.removeTreeMember(memberId);
-      await reloadTrees();
+      await reloadTree(treeId);
     },
-    [reloadTrees],
+    [reloadTree],
   );
 
   const orderRow = useCallback(
-    async (_treeId: string, moves: Move[]) => {
+    async (treeId: string, moves: Move[]) => {
       for (const move of moves) {
         await api.updateTreeMember(move.id, { position: move.position });
       }
-      await reloadTrees();
+      await reloadTree(treeId);
     },
-    [reloadTrees],
+    [reloadTree],
   );
 
   const eraseLink = useCallback(
     async (treeId: string, a: string, b: string) => {
-      const fresh = (await api.fetchTrees()).find((one) => one.id === treeId);
+      const fresh = await api.fetchTree(treeId);
       for (const line of fresh ? erasure(fresh, a, b) : []) {
         await api.unlinkTreeMembers(line.from, line.to);
       }
-      await reloadTrees();
+      await reloadTree(treeId);
     },
-    [reloadTrees],
+    [reloadTree],
   );
 
   const linkInTree = useCallback(
@@ -429,7 +443,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       // once. The alternative — drawing the bar across a stranger and waiting
       // for the reader to sort it out — is how the drawing comes to lie.
       if (linked && kind === "couple") {
-        const fresh = (await api.fetchTrees()).find((one) => one.id === treeId);
+        const fresh = await api.fetchTree(treeId);
         const married = fresh?.members.find((member) => member.id === from);
         if (fresh && married) {
           for (const move of tidy(fresh, married.generation)) {
@@ -437,18 +451,25 @@ export function EventsProvider({ children }: { children: ReactNode }) {
           }
         }
       }
-      await reloadTrees();
+      await reloadTree(treeId);
     },
-    [reloadTrees],
+    [reloadTree],
   );
 
-  const addEvent = useCallback(
-    async (draft: EventDraft) => {
-      await api.createEvent(draft);
-      await refresh();
-    },
-    [refresh],
-  );
+  /**
+   * Chronological, as the database hands them over and as every reader of this
+   * list assumes: the timeline walks it, and so do the two arrows.
+   */
+  const inOrder = (list: HistoricalEvent[]) =>
+    [...list].sort((a, b) => toSortKey(a.start) - toSortKey(b.start));
+
+  const addEvent = useCallback(async (draft: EventDraft) => {
+    // Placed in the list rather than fetched again with everything else: one
+    // new event used to cost a re-read of the whole collection — events,
+    // folders, characters and trees — which is four queries to learn one row.
+    const created = await api.createEvent(draft);
+    setEvents((current) => inOrder([...current, created]));
+  }, []);
 
   const editEvent = useCallback(
     async (
@@ -457,10 +478,14 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       keptPhotos: StoredPhoto[],
       droppedPhotos: StoredPhoto[],
     ) => {
-      await api.updateEvent(id, draft, keptPhotos, droppedPhotos);
-      await refresh();
+      const updated = await api.updateEvent(id, draft, keptPhotos, droppedPhotos);
+      // Re-sorted, not merely replaced: an edit may have moved its date, and
+      // an event out of order would put the timeline's arrows out of order too.
+      setEvents((current) =>
+        inOrder(current.map((event) => (event.id === id ? updated : event))),
+      );
     },
-    [refresh],
+    [],
   );
 
   const removeEvent = useCallback(async (gone: HistoricalEvent) => {

@@ -312,7 +312,16 @@ const photosOf = (eventId: string): PhotoOwner => ({
   prefix: "events/",
 });
 
-export async function createEvent(draft: EventDraft): Promise<void> {
+/**
+ * Writes an event and hands back what was written.
+ *
+ * Returned rather than voided so the caller can place it in the list it already
+ * holds: re-reading the whole collection to learn about one new row is the kind
+ * of waste nobody notices at forty events and everybody notices at four
+ * thousand. Read back from the database rather than assembled here, because the
+ * pictures and the links are written after the row.
+ */
+export async function createEvent(draft: EventDraft): Promise<HistoricalEvent> {
   const { data, error } = await supabase()
     .from("events")
     .insert({
@@ -365,12 +374,24 @@ export async function createEvent(draft: EventDraft): Promise<void> {
     if (draft.photos.length > 0) {
       await uploadPhotos(photosOf(eventId), draft.photos);
     }
+    return await fetchEvent(eventId);
   } catch (cause) {
     // Rather than leave an event with no folders or half its photos, undo it —
     // the foreign keys cascade, so this cleans up whatever did land.
     await supabase().from("events").delete().eq("id", eventId);
     throw cause;
   }
+}
+
+/** One event, read whole — what both writers hand back to the caller. */
+async function fetchEvent(id: string): Promise<HistoricalEvent> {
+  const { data, error } = await supabase()
+    .from("events")
+    .select(EVENT_COLUMNS)
+    .eq("id", id)
+    .single();
+  if (error) throw new Error(error.message);
+  return toEvent(data as EventRow);
 }
 
 function toRow(draft: EventDraft) {
@@ -401,7 +422,7 @@ export async function updateEvent(
   draft: EventDraft,
   keptPhotos: StoredPhoto[],
   droppedPhotos: StoredPhoto[],
-): Promise<void> {
+): Promise<HistoricalEvent> {
   const client = supabase();
 
   const { error } = await client.from("events").update(toRow(draft)).eq("id", id);
@@ -441,6 +462,7 @@ export async function updateEvent(
   }
 
   await syncPhotos(photosOf(id), draft.photos, keptPhotos, droppedPhotos);
+  return await fetchEvent(id);
 }
 
 type CharacterRow = {
@@ -656,6 +678,23 @@ export async function fetchTrees(): Promise<Tree[]> {
     .order("name");
   if (error) throw new Error(error.message);
   return ((data ?? []) as TreeRow[]).map(toTree);
+}
+
+/**
+ * One tree, read whole.
+ *
+ * What every edit inside a tree asks for afterwards. Reading all of them to
+ * learn that one member moved a place to the left was cheap at one tree and
+ * absurd at twenty — and the collection is meant to grow.
+ */
+export async function fetchTree(id: string): Promise<Tree | null> {
+  const { data, error } = await supabase()
+    .from("trees")
+    .select(TREE_COLUMNS)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data === null ? null : toTree(data as TreeRow);
 }
 
 export async function createTree(name: string): Promise<Tree> {

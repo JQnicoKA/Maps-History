@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MissingConfigNotice } from "./MissingConfigNotice";
 import { AccountButton, type ScreenView } from "./AccountButton";
-import { Paper } from "../../components/ui";
+import { InkButton, Paper } from "../../components/ui";
 import { ParchmentOverlay, WorldMap } from "../../components/WorldMap";
 import { env } from "../../config/env";
 import { MAP_FEATURES } from "../../config/map";
@@ -42,7 +42,7 @@ const CREDITS_STRIP = 22;
 export function MapScreen() {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapRef>(null);
-  const { selectedEvent, error } = useEvents();
+  const { selectedEvent, error, refresh } = useEvents();
   // The opening shot should not fly across the world; every later move should.
   const hasFramed = useRef(false);
 
@@ -180,8 +180,16 @@ export function MapScreen() {
             pointerEvents="box-none"
           >
             {error ? (
-              <Paper>
+              // A way back, not just a complaint: the collection is loaded once
+              // at launch, so a network that was down at that moment used to
+              // leave an empty map and nothing to do about it.
+              <Paper style={styles.errorCard}>
                 <Text style={styles.error}>{error}</Text>
+                <InkButton
+                  label="Réessayer"
+                  variant="tonal"
+                  onPress={() => void refresh()}
+                />
               </Paper>
             ) : null}
             {selectedEvent && view === "map" ? (
@@ -250,8 +258,8 @@ const styles = StyleSheet.create({
   hidden: { display: "none" },
   bottom: { position: "absolute", left: 10, right: 10, gap: 8 },
   frieze: { position: "absolute", left: 0, right: 0 },
+  errorCard: { padding: space.md, gap: space.sm },
   error: {
-    padding: 10,
     fontSize: 12,
     color: palette.wax,
     textAlign: "center",
