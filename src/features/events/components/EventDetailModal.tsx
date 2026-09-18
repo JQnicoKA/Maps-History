@@ -1,5 +1,13 @@
-import { useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { PhotoViewer } from "./PhotoViewer";
 import {
@@ -13,9 +21,10 @@ import { formatEventPeriod } from "../historicalDate";
 import { lifespan } from "../lifespan";
 import {
   describeType,
-  type StoredPhoto,
+  type EventSummary,
   type HistoricalEvent,
   type Importance,
+  type StoredPhoto,
 } from "../types";
 import { palette } from "../../../theme/palette";
 import { radius, space, TOUCH, type } from "../../../theme/tokens";
@@ -29,8 +38,10 @@ const IMPORTANCE_LABEL: Record<Importance, string> = {
 };
 
 export type EventDetailModalProps = {
-  event: HistoricalEvent | null;
-  onEdit: () => void;
+  /** What the collection holds: enough to draw the sheet's head at once. */
+  event: EventSummary | null;
+  /** Handed the whole event, which is the only thing the form may be given. */
+  onEdit: (whole: HistoricalEvent) => void;
   onClose: () => void;
 };
 
@@ -39,12 +50,40 @@ export function EventDetailModal({
   onEdit,
   onClose,
 }: EventDetailModalProps) {
-  const { folders, characters, removeEvent } = useEvents();
+  const { folders, characters, removeEvent, loadEvent } = useEvents();
+  /**
+   * The text and the pictures, which the list does not carry.
+   *
+   * The sheet opens on what is already known — type, date, title — and fills
+   * in underneath. Nothing waits on the network that does not have to.
+   */
+  const [whole, setWhole] = useState<HistoricalEvent | null>(null);
   const [deleting, setDeleting] = useState(false);
   /** The confirmation standing between the trash button and the deed. */
   const [asking, setAsking] = useState(false);
   const { say, dialog } = useNotice();
   const [viewing, setViewing] = useState<StoredPhoto | null>(null);
+
+  const id = event?.id;
+  useEffect(() => {
+    if (id === undefined) return;
+    let current = true;
+    void loadEvent(id)
+      .then((loaded) => {
+        if (current) setWhole(loaded);
+      })
+      .catch((cause: unknown) =>
+        say(
+          "Événement illisible",
+          cause instanceof Error ? cause.message : String(cause),
+        ),
+      );
+    return () => {
+      current = false;
+    };
+    // `say` is rebuilt on every render; following it would re-read endlessly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, loadEvent]);
 
   if (!event) return null;
 
@@ -52,7 +91,7 @@ export function EventDetailModal({
     setAsking(false);
     setDeleting(true);
     try {
-      await removeEvent(event);
+      await removeEvent(event.id);
       onClose();
     } catch (cause) {
       say(
@@ -84,7 +123,17 @@ export function EventDetailModal({
           >
             <Image source={TRASH} style={styles.trashGlyph} resizeMode="contain" />
           </Pressable>
-          <InkButton label="Modifier" variant="tonal" grow onPress={onEdit} />
+          <InkButton
+            label="Modifier"
+            variant="tonal"
+            grow
+            // Out of reach until the whole event is in hand: editing from a
+            // summary would save the event back with one picture out of five.
+            disabled={whole === null}
+            onPress={() => {
+              if (whole) onEdit(whole);
+            }}
+          />
           <InkButton label="Fermer" variant="solid" grow onPress={onClose} />
         </>
       }
@@ -110,14 +159,18 @@ export function EventDetailModal({
           <Text style={styles.title}>{event.title}</Text>
         </View>
 
-        {event.description ? (
-          <Text style={styles.description}>{event.description}</Text>
+        {whole?.description ? (
+          <Text style={styles.description}>{whole.description}</Text>
         ) : null}
 
-        {event.photos.length > 0 ? (
+        {whole === null ? (
+          <ActivityIndicator color={palette.inkFaint} />
+        ) : null}
+
+        {(whole?.photos ?? []).length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.photos}>
-              {event.photos.map((photo) => (
+              {(whole?.photos ?? []).map((photo) => (
                 <Pressable
                   key={photo.id}
                   accessibilityRole="imagebutton"

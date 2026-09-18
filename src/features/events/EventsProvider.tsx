@@ -23,6 +23,7 @@ import {
   type Folder,
   type HistoricalEvent,
   type Move,
+  type EventSummary,
   type Tree,
   type TreeBond,
   type TreeMember,
@@ -30,9 +31,9 @@ import {
 } from "./types";
 
 type EventsContextValue = {
-  events: HistoricalEvent[];
+  events: EventSummary[];
   /** Chronological, after filters — the list the map and timeline both read. */
-  visibleEvents: HistoricalEvent[];
+  visibleEvents: EventSummary[];
   folders: Folder[];
   /** Everyone the collection knows about, by name. */
   characters: Character[];
@@ -50,16 +51,16 @@ type EventsContextValue = {
    */
   year: number | null;
   /** The event being read, when the year has come to rest on one. */
-  selectedEvent: HistoricalEvent | null;
+  selectedEvent: EventSummary | null;
   /**
    * The event being read and the ones flanking the current year. `current` is
    * null between two events; `previous` and `next` are still the ones on
    * either side.
    */
   neighbours: {
-    previous: HistoricalEvent | null;
-    current: HistoricalEvent | null;
-    next: HistoricalEvent | null;
+    previous: EventSummary | null;
+    current: EventSummary | null;
+    next: EventSummary | null;
   };
   /** Selects an event and moves the year onto its date. */
   selectEvent: (id: string | null) => void;
@@ -137,14 +138,20 @@ type EventsContextValue = {
     keptPhotos: StoredPhoto[],
     droppedPhotos: StoredPhoto[],
   ) => Promise<void>;
-  /** Takes the whole event: its pictures have to be swept from the bucket. */
-  removeEvent: (event: HistoricalEvent) => Promise<void>;
+  removeEvent: (id: string) => Promise<void>;
+  /**
+   * Reads one event whole — text and every picture.
+   *
+   * The collection is held in summaries; this is how a sheet that needs more
+   * than a summary gets it, and the only shape the editing form accepts.
+   */
+  loadEvent: (id: string) => Promise<HistoricalEvent>;
 };
 
 const EventsContext = createContext<EventsContextValue | null>(null);
 
 export function EventsProvider({ children }: { children: ReactNode }) {
-  const [events, setEvents] = useState<HistoricalEvent[]>([]);
+  const [events, setEvents] = useState<EventSummary[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [trees, setTrees] = useState<Tree[]>([]);
@@ -460,7 +467,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
    * Chronological, as the database hands them over and as every reader of this
    * list assumes: the timeline walks it, and so do the two arrows.
    */
-  const inOrder = (list: HistoricalEvent[]) =>
+  const inOrder = (list: EventSummary[]) =>
     [...list].sort((a, b) => toSortKey(a.start) - toSortKey(b.start));
 
   const addEvent = useCallback(async (draft: EventDraft) => {
@@ -488,11 +495,13 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const removeEvent = useCallback(async (gone: HistoricalEvent) => {
-    await api.deleteEvent(gone);
+  const removeEvent = useCallback(async (id: string) => {
+    await api.deleteEvent(id);
     setSelectedId(null);
-    setEvents((current) => current.filter((event) => event.id !== gone.id));
+    setEvents((current) => current.filter((event) => event.id !== id));
   }, []);
+
+  const loadEvent = useCallback((id: string) => api.fetchEvent(id), []);
 
   const value = useMemo<EventsContextValue>(
     () => ({
@@ -530,6 +539,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       addEvent,
       editEvent,
       removeEvent,
+      loadEvent,
     }),
     [
       events, visibleEvents, folders, characters, trees, filters, year,
@@ -538,7 +548,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       removeCharacter, addTree, renameTree, removeTree, addToTree,
       editTreeMember, removeFromTree, orderRow, eraseLink, linkInTree, setFolderPhoto,
       addEvent,
-      editEvent, removeEvent,
+      editEvent, removeEvent, loadEvent,
     ],
   );
 

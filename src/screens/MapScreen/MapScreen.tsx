@@ -227,13 +227,14 @@ export function MapScreen() {
       {detailOpen ? (
         <EventDetailModal
           event={selectedEvent}
-          onEdit={() => {
-            if (!selectedEvent) return;
+          // The sheet hands over the event it has read whole; the form is
+          // never seeded from the summary the map holds.
+          onEdit={(whole) => {
             setDetailOpen(false);
-            setEditing(selectedEvent);
+            setEditing(whole);
             setDraftLocation({
-              longitude: selectedEvent.longitude,
-              latitude: selectedEvent.latitude,
+              longitude: whole.longitude,
+              latitude: whole.latitude,
             });
             setComposing(true);
           }}

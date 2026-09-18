@@ -1,7 +1,7 @@
 import {
   IMPORTANCE_ORDER,
   type EventFilters,
-  type HistoricalEvent,
+  type EventSummary,
   type Importance,
 } from "./types";
 
@@ -22,7 +22,7 @@ function highest(links: { importance: Importance }[]): Importance {
  * it is incidental to another.
  */
 export function effectiveImportance(
-  event: HistoricalEvent,
+  event: EventSummary,
   filters: EventFilters,
 ): Importance {
   if (filters.folders.length === 0) return highest(event.folders);
@@ -38,7 +38,7 @@ export function effectiveImportance(
  * one folder line, an importance narrows it further.
  */
 export function matchesFilters(
-  event: HistoricalEvent,
+  event: EventSummary,
   filters: EventFilters,
 ): boolean {
   if (filters.folders.length === 0) return true;

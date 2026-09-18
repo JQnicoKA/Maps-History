@@ -1,4 +1,4 @@
-import type { HistoricalDate, HistoricalEvent } from "./types";
+import type { EventSummary, HistoricalDate } from "./types";
 
 /** Shared with the date wheels, so the two can never disagree. */
 export const MONTHS = [
@@ -45,7 +45,7 @@ export function formatHistoricalDate(date: HistoricalDate): string {
 }
 
 /** "1453" for an instant, "1337 – 1453" for a period. */
-export function formatEventPeriod(event: HistoricalEvent): string {
+export function formatEventPeriod(event: EventSummary): string {
   const start = formatHistoricalDate(event.start);
   return event.end ? `${start} – ${formatHistoricalDate(event.end)}` : start;
 }

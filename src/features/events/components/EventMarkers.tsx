@@ -3,7 +3,7 @@ import { Marker } from "@maplibre/maplibre-react-native";
 import { EventMarker, type MarkerVariant } from "./EventMarker";
 import { coverFor } from "../cover";
 import { useEvents } from "../EventsProvider";
-import type { HistoricalEvent } from "../types";
+import type { EventSummary } from "../types";
 
 /**
  * At most three markers stand on the plate at once — the event being read, the
@@ -16,7 +16,7 @@ import type { HistoricalEvent } from "../types";
 export function EventMarkers() {
   const { neighbours, folders, selectEvent } = useEvents();
 
-  const shown: { event: HistoricalEvent; variant: MarkerVariant }[] = [
+  const shown: { event: EventSummary; variant: MarkerVariant }[] = [
     ...(neighbours.previous
       ? [{ event: neighbours.previous, variant: "previous" as const }]
       : []),

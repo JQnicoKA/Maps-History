@@ -1,20 +1,19 @@
 import { describe, expect, it } from "vitest";
 
 import { effectiveImportance, matchesFilters } from "./filtering";
-import type { EventFilters, HistoricalEvent, Importance } from "./types";
+import type { EventFilters, EventSummary, Importance } from "./types";
 
-const event = (folders: { folderId: string; importance: Importance }[]): HistoricalEvent => ({
+const event = (folders: { folderId: string; importance: Importance }[]): EventSummary => ({
   id: "e",
   title: "t",
   type: "other",
-  description: null,
   start: { year: 1453 },
   end: null,
   longitude: 0,
   latitude: 0,
   folders,
   characters: [],
-  photos: [],
+  cover: null,
 });
 
 const filters = (

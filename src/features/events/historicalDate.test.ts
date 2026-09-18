@@ -8,7 +8,7 @@ import {
   formatYear,
   toSortKey,
 } from "./historicalDate";
-import type { HistoricalEvent } from "./types";
+import type { EventSummary } from "./types";
 
 describe("écrire une date", () => {
   it("écrit une année seule", () => {
@@ -41,18 +41,17 @@ describe("écrire une date", () => {
 });
 
 describe("écrire une période", () => {
-  const event = (over: Partial<HistoricalEvent>): HistoricalEvent => ({
+  const event = (over: Partial<EventSummary>): EventSummary => ({
     id: "e",
     title: "t",
     type: "other",
-    description: null,
     start: { year: 1337 },
     end: null,
     longitude: 0,
     latitude: 0,
     folders: [],
     characters: [],
-    photos: [],
+    cover: null,
     ...over,
   });
 

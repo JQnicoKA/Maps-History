@@ -126,6 +126,40 @@ Deux choses portent ce cloisonnement sans une ligne de code applicatif :
   `event_characters` et `tree_members`, les deux extrémités sont vérifiées — on
   ne range pas son événement dans le classeur d'autrui.
 
+### Deux lectures d'un événement
+
+La carte, la frise et la liste tiennent **tous** les événements en mémoire : la
+frise en marque chacun sur cinq millénaires, les deux flèches parcourent la
+liste ordonnée entière, les marqueurs en sont tirés. Ce qui peut manquer, en
+revanche, c'est ce que seul un événement ouvert montre.
+
+D'où deux types, et l'un **étend** l'autre :
+
+- `EventSummary` — ce que porte la collection : titre, type, dates, position,
+  classeurs, personnages, et la **première** photo, seule chose qu'un marqueur
+  ou une tuile affiche ;
+- `HistoricalEvent = EventSummary & { description, photos }` — lu quand on
+  ouvre une fiche.
+
+L'héritage n'est pas décoratif : un événement complet passe partout où un
+résumé est attendu, tandis qu'un résumé est **refusé** là où le tout est exigé.
+Le formulaire d'édition n'accepte que `HistoricalEvent`, donc il est
+impossible de le nourrir d'une photo sur cinq et de réécrire l'événement en
+effaçant les quatre autres — le compilateur l'interdit.
+
+Côté SQL, `event_photos` est trié et limité **dans la jointure**
+(`event_photos.order=position&event_photos.limit=1`) : la base envoie une ligne
+par événement au lieu de toutes pour qu'on les jette. Mesuré sur la collection
+réelle : 1 292 → 696 octets par événement, soit **46 % de moins**, et l'écart
+grandit avec les photos.
+
+L'index qui porte la lecture principale suit cette même logique :
+`events (user_id, start_year, start_month nulls first, start_day nulls first)`.
+Il mène par le compte — puisque la policy filtre là-dessus avant tout — puis
+reprend exactement l'ordre de tri demandé, `nulls first` compris, pour qu'une
+année nue se lise avant les mois de la même année sans que Postgres ait à
+retrier après coup.
+
 Les données de référence (`places`, `polities`, `territories` et leurs
 fragments) ne sont à personne : lecture pour tous, écriture par personne. Les
 scripts de chargement utilisent la clé `service_role`, qui passe outre les

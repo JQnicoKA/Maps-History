@@ -3,7 +3,7 @@ import { FlatList, StyleSheet, Text, View } from "react-native";
 
 import { EventSummaryCard } from "./EventSummaryCard";
 import { useEvents } from "../EventsProvider";
-import type { HistoricalEvent } from "../types";
+import type { EventSummary } from "../types";
 import { palette } from "../../../theme/palette";
 
 export type EventListViewProps = {
@@ -19,7 +19,7 @@ export type EventListViewProps = {
  */
 export function EventListView({ onOpen, contentPadding }: EventListViewProps) {
   const { visibleEvents, selectedEvent, selectEvent } = useEvents();
-  const listRef = useRef<FlatList<HistoricalEvent>>(null);
+  const listRef = useRef<FlatList<EventSummary>>(null);
 
   const index = visibleEvents.findIndex(
     (event) => event.id === selectedEvent?.id,

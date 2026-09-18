@@ -1,4 +1,4 @@
-import type { Folder, HistoricalEvent } from "./types";
+import type { EventSummary, Folder } from "./types";
 
 /**
  * The picture that stands for an event — in its marker on the plate and in its
@@ -11,11 +11,10 @@ import type { Folder, HistoricalEvent } from "./types";
  * has to be.
  */
 export function coverFor(
-  event: HistoricalEvent,
+  event: EventSummary,
   folders: Folder[],
 ): string | undefined {
-  const own = event.photos[0];
-  if (own) return own.url;
+  if (event.cover) return event.cover.url;
 
   return folders.find(
     (folder) =>

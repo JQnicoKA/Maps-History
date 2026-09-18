@@ -1,13 +1,13 @@
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { describeType, type HistoricalEvent } from "../types";
+import { describeType, type EventSummary } from "../types";
 import { palette } from "../../../theme/palette";
 
 /** Where the event sits relative to the one being read. */
 export type MarkerVariant = "previous" | "current" | "next";
 
 export type EventMarkerProps = {
-  event: HistoricalEvent;
+  event: EventSummary;
   variant: MarkerVariant;
   /** What `coverFor` chose; the emoji stands in when there is nothing. */
   cover?: string | undefined;

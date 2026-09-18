@@ -4,12 +4,12 @@ import { Paper } from "../../../components/ui";
 import { coverFor } from "../cover";
 import { useEvents } from "../EventsProvider";
 import { formatEventPeriod } from "../historicalDate";
-import { describeType, type HistoricalEvent } from "../types";
+import { describeType, type EventSummary } from "../types";
 import { palette } from "../../../theme/palette";
 import { radius, space, type } from "../../../theme/tokens";
 
 export type EventSummaryCardProps = {
-  event: HistoricalEvent;
+  event: EventSummary;
   onOpen: () => void;
   /** Marks the event being read when the tile sits among others in the list. */
   highlighted?: boolean;

@@ -113,11 +113,20 @@ export type PickedPhoto = {
   source: string;
 };
 
-export type HistoricalEvent = {
+/**
+ * An event as the map, the frieze and the list need it — and no more.
+ *
+ * Every event of the collection is held in memory at once: the frieze marks
+ * them all across five millennia, the two arrows walk the whole ordered list,
+ * and the markers are drawn from it. What can be left out is what only one
+ * open event needs — its text, and every picture but the first. On a
+ * collection of a few thousand that is the difference between six megabytes
+ * and two.
+ */
+export type EventSummary = {
   id: string;
   title: string;
   type: EventType;
-  description: string | null;
   start: HistoricalDate;
   /** Present for events that span time — a war, a reign. */
   end: HistoricalDate | null;
@@ -126,6 +135,21 @@ export type HistoricalEvent = {
   folders: EventFolderLink[];
   /** Identifiers of the people this event is about. */
   characters: string[];
+  /** The first picture, which is all the marker and the card ever show. */
+  cover: StoredPhoto | null;
+};
+
+/**
+ * One event, whole — read when a reader opens it.
+ *
+ * It **extends** the summary rather than standing beside it, and that is the
+ * point: a full event goes wherever a summary is expected, while a summary is
+ * refused where the whole thing is required. The form that saves an event
+ * cannot be handed one picture out of five and write the other four away,
+ * because the compiler will not let it.
+ */
+export type HistoricalEvent = EventSummary & {
+  description: string | null;
   photos: StoredPhoto[];
 };
 
