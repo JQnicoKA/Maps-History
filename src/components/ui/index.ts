@@ -1,9 +1,11 @@
 export { Chip, type ChipProps } from "./Chip";
+export { ConfirmDialog, type ConfirmDialogProps } from "./ConfirmDialog";
 export { Dialog, type DialogProps } from "./Dialog";
 export { GlyphButton, type GlyphButtonProps } from "./GlyphButton";
 export { InkButton, type InkButtonProps } from "./InkButton";
 export { InkField, type InkFieldProps } from "./InkField";
 export { Paper } from "./Paper";
+export { PromptDialog, type PromptDialogProps } from "./PromptDialog";
 export {
   SegmentedControl,
   type Segment,
@@ -15,3 +17,4 @@ export {
   type SelectOption,
 } from "./SelectField";
 export { Sheet, type SheetProps } from "./Sheet";
+export { useNotice, type NoticeHandle } from "./useNotice";

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -11,7 +10,13 @@ import {
 
 import { EventDateField, LIFE_LABELS } from "./EventDateField";
 import { PhotoPicker } from "./PhotoPicker";
-import { InkButton, InkField, Sheet } from "../../../components/ui";
+import {
+  ConfirmDialog,
+  InkButton,
+  InkField,
+  Sheet,
+  useNotice,
+} from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
 import type {
   Character,
@@ -63,6 +68,9 @@ export function CharacterEditModal({
   );
   const [droppedPhotos, setDroppedPhotos] = useState<StoredPhoto[]>([]);
   const [saving, setSaving] = useState(false);
+  /** The confirmation standing between the trash button and the deed. */
+  const [asking, setAsking] = useState(false);
+  const { say, dialog } = useNotice();
 
   if (target === null) return null;
 
@@ -70,40 +78,32 @@ export function CharacterEditModal({
     ? events.filter((event) => event.characters.includes(person.id)).length
     : 0;
 
-  const confirmDelete = () => {
+  /** What the reader stands to lose, said plainly before they decide. */
+  const stake =
+    appears === 0
+      ? "Aucun événement ne le mentionne."
+      : `${appears} événement${appears > 1 ? "s" : ""} le mentionne${appears > 1 ? "nt" : ""}. ` +
+        `${appears > 1 ? "Ils ne seront pas supprimés" : "Il ne sera pas supprimé"}, seulement délié${appears > 1 ? "s" : ""}.`;
+
+  const erase = () => {
     if (!person) return;
-    Alert.alert(
-      `Supprimer « ${person.name} » ?`,
-      appears === 0
-        ? "Aucun événement ne le mentionne."
-        : `${appears} événement${appears > 1 ? "s" : ""} le mentionne${appears > 1 ? "nt" : ""}. ` +
-          `${appears > 1 ? "Ils ne seront pas supprimés" : "Il ne sera pas supprimé"}, seulement délié${appears > 1 ? "s" : ""}.`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: () => {
-            setSaving(true);
-            void removeCharacter(person)
-              .then(onClose)
-              .catch((cause: unknown) =>
-                Alert.alert(
-                  "Suppression impossible",
-                  cause instanceof Error ? cause.message : String(cause),
-                ),
-              )
-              .finally(() => setSaving(false));
-          },
-        },
-      ],
-    );
+    setAsking(false);
+    setSaving(true);
+    void removeCharacter(person)
+      .then(onClose)
+      .catch((cause: unknown) =>
+        say(
+          "Suppression impossible",
+          cause instanceof Error ? cause.message : String(cause),
+        ),
+      )
+      .finally(() => setSaving(false));
   };
 
   const save = async () => {
     const trimmed = name.trim();
     if (trimmed === "") {
-      Alert.alert("Nom manquant", "Un personnage a besoin d'un nom.");
+      say("Nom manquant", "Un personnage a besoin d'un nom.");
       return;
     }
     if (
@@ -113,7 +113,7 @@ export function CharacterEditModal({
           other.name.toLowerCase() === trimmed.toLowerCase(),
       )
     ) {
-      Alert.alert("Personnage existant", `« ${trimmed} » est déjà dans la liste.`);
+      say("Personnage existant", `« ${trimmed} » est déjà dans la liste.`);
       return;
     }
 
@@ -128,7 +128,7 @@ export function CharacterEditModal({
       }
       onClose();
     } catch (cause) {
-      Alert.alert(
+      say(
         "Enregistrement impossible",
         cause instanceof Error ? cause.message : String(cause),
       );
@@ -149,7 +149,7 @@ export function CharacterEditModal({
               accessibilityRole="button"
               accessibilityLabel="Supprimer ce personnage"
               disabled={saving}
-              onPress={confirmDelete}
+              onPress={() => setAsking(true)}
               style={({ pressed }) => [
                 styles.trash,
                 (pressed || saving) && styles.pressed,
@@ -169,6 +169,17 @@ export function CharacterEditModal({
         </>
       }
     >
+      {dialog}
+
+      <ConfirmDialog
+        visible={asking}
+        title={`Supprimer « ${person?.name ?? ""} » ?`}
+        message={stake}
+        confirmLabel="Supprimer"
+        onConfirm={erase}
+        onClose={() => setAsking(false)}
+      />
+
       <ScrollView
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { CharacterManager } from "./CharacterManager";
 import { CharacterSelector } from "./CharacterSelector";
@@ -14,6 +14,7 @@ import {
   InkField,
   SegmentedControl,
   Sheet,
+  useNotice,
 } from "../../../components/ui";
 import { radius, space, type } from "../../../theme/tokens";
 import { useEvents } from "../EventsProvider";
@@ -155,6 +156,7 @@ export function EventFormModal({
   );
   const [droppedPhotos, setDroppedPhotos] = useState<StoredPhoto[]>([]);
   const [saving, setSaving] = useState(false);
+  const { say, dialog } = useNotice();
 
   const reset = () => {
     setTab("event");
@@ -189,7 +191,7 @@ export function EventFormModal({
   const next = () => {
     const missing = missingAt(step);
     if (missing) {
-      Alert.alert(missing[0], missing[1]);
+      say(missing[0], missing[1]);
       return;
     }
     setStep((current) => Math.min(current + 1, STEPS.length - 1));
@@ -199,7 +201,7 @@ export function EventFormModal({
     for (let index = 0; index < STEPS.length; index++) {
       const missing = missingAt(index);
       if (missing) {
-        Alert.alert(missing[0], missing[1]);
+        say(missing[0], missing[1]);
         if (stepped) setStep(index);
         return;
       }
@@ -229,7 +231,7 @@ export function EventFormModal({
       }
       onSaved();
     } catch (cause) {
-      Alert.alert(
+      say(
         "Enregistrement impossible",
         cause instanceof Error ? cause.message : String(cause),
       );
@@ -286,6 +288,8 @@ export function EventFormModal({
         )
       }
     >
+      {dialog}
+
       {event ? null : (
         <View style={styles.switcher}>
           <SegmentedControl

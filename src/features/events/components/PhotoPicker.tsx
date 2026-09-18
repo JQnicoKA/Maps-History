@@ -9,7 +9,12 @@ import {
   View,
 } from "react-native";
 
-import { InkButton, InkField, Sheet } from "../../../components/ui";
+import {
+  InkButton,
+  InkField,
+  Sheet,
+  useNotice,
+} from "../../../components/ui";
 import { pickPhotos } from "../pickPhotos";
 import type { StoredPhoto, PickedPhoto } from "../types";
 import { palette } from "../../../theme/palette";
@@ -77,12 +82,14 @@ export function PhotoPicker({
    * like it swallowed the tap.
    */
   const [adding, setAdding] = useState(false);
+  const { say, dialog } = useNotice();
 
   const add = async () => {
     setAdding(true);
     try {
-      const picked = await pickPhotos({ multiple: true });
-      if (picked.length > 0) onChange([...photos, ...picked]);
+      const { photos: picked, problem } = await pickPhotos({ multiple: true });
+      if (problem) say(problem.title, problem.message);
+      else if (picked.length > 0) onChange([...photos, ...picked]);
     } finally {
       setAdding(false);
     }
@@ -125,6 +132,7 @@ export function PhotoPicker({
 
   return (
     <View style={styles.container}>
+      {dialog}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

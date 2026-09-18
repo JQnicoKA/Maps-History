@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from "react";
 import {
-  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -13,6 +12,7 @@ import {
   InkButton,
   SegmentedControl,
   Sheet,
+  useNotice,
 } from "../../../components/ui";
 import { HISTORY } from "../../../config/history";
 import {
@@ -193,6 +193,7 @@ export function EventDateField({
   labels = EVENT_LABELS,
 }: EventDateFieldProps) {
   const [open, setOpen] = useState(false);
+  const { say, dialog } = useNotice();
 
   const years = useMemo(
     () =>
@@ -237,7 +238,7 @@ export function EventDateField({
     // Mirrors the database's own `end_after_start`, so a period the wrong way
     // round is caught here with a sentence rather than there with an error.
     if (draftEnd && toSortKey(draftEnd) < toSortKey(draftStart)) {
-      Alert.alert(labels.backwards[0], labels.backwards[1]);
+      say(labels.backwards[0], labels.backwards[1]);
       return;
     }
     onChange(draftStart, draftEnd);
@@ -248,6 +249,7 @@ export function EventDateField({
 
   return (
     <View style={styles.container}>
+      {dialog}
       <Text style={styles.label}>{labels.field}</Text>
 
       <Pressable

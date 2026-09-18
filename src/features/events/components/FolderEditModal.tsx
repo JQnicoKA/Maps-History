@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Pressable,
   StyleSheet,
@@ -9,7 +8,13 @@ import {
   View,
 } from "react-native";
 
-import { InkButton, InkField, Sheet } from "../../../components/ui";
+import {
+  ConfirmDialog,
+  InkButton,
+  InkField,
+  Sheet,
+  useNotice,
+} from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
 import { pickPhotos } from "../pickPhotos";
 import type { Folder, PickedPhoto } from "../types";
@@ -49,8 +54,11 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
   /** The existing cover is on its way out. */
   const [cleared, setCleared] = useState(false);
   const [saving, setSaving] = useState(false);
+  /** The confirmation standing between the trash button and the deed. */
+  const [asking, setAsking] = useState(false);
   /** Reading and encoding the picture takes a moment; the frame says so. */
   const [picking, setPicking] = useState(false);
+  const { say, dialog } = useNotice();
 
   if (target === null) return null;
 
@@ -59,7 +67,12 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
   const choose = async () => {
     setPicking(true);
     try {
-      const [photo] = await pickPhotos({ multiple: false });
+      const { photos, problem } = await pickPhotos({ multiple: false });
+      if (problem) {
+        say(problem.title, problem.message);
+        return;
+      }
+      const photo = photos[0];
       if (!photo) return;
       setPicked(photo);
       setCleared(false);
@@ -73,44 +86,38 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
     setCleared(true);
   };
 
-  const confirmDelete = () => {
-    if (!folder) return;
-    const filed = events.filter((event) =>
-      event.folders.some((link) => link.folderId === folder.id),
-    ).length;
+  /** What the reader stands to lose, said plainly before they decide. */
+  const stake = () => {
+    const filed = folder
+      ? events.filter((event) =>
+          event.folders.some((link) => link.folderId === folder.id),
+        ).length
+      : 0;
+    return filed === 0
+      ? "Ce classeur est vide."
+      : `${filed} événement${filed > 1 ? "s" : ""} y ${filed > 1 ? "sont rangés" : "est rangé"}. ` +
+        `${filed > 1 ? "Ils ne seront pas supprimés" : "Il ne sera pas supprimé"}, seulement retiré${filed > 1 ? "s" : ""} de ce classeur.`;
+  };
 
-    Alert.alert(
-      `Supprimer « ${folder.name} » ?`,
-      filed === 0
-        ? "Ce classeur est vide."
-        : `${filed} événement${filed > 1 ? "s" : ""} y ${filed > 1 ? "sont rangés" : "est rangé"}. ` +
-          `${filed > 1 ? "Ils ne seront pas supprimés" : "Il ne sera pas supprimé"}, seulement retiré${filed > 1 ? "s" : ""} de ce classeur.`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: () => {
-            setSaving(true);
-            void removeFolder(folder)
-              .then(onClose)
-              .catch((cause: unknown) =>
-                Alert.alert(
-                  "Suppression impossible",
-                  cause instanceof Error ? cause.message : String(cause),
-                ),
-              )
-              .finally(() => setSaving(false));
-          },
-        },
-      ],
-    );
+  const erase = () => {
+    if (!folder) return;
+    setAsking(false);
+    setSaving(true);
+    void removeFolder(folder)
+      .then(onClose)
+      .catch((cause: unknown) =>
+        say(
+          "Suppression impossible",
+          cause instanceof Error ? cause.message : String(cause),
+        ),
+      )
+      .finally(() => setSaving(false));
   };
 
   const save = async () => {
     const trimmed = name.trim();
     if (trimmed === "") {
-      Alert.alert("Nom manquant", "Un classeur a besoin d'un nom.");
+      say("Nom manquant", "Un classeur a besoin d'un nom.");
       return;
     }
     // Case-insensitive, and the folder being renamed does not count against
@@ -122,7 +129,7 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
           other.name.toLowerCase() === trimmed.toLowerCase(),
       )
     ) {
-      Alert.alert("Classeur existant", `« ${trimmed} » est déjà dans la liste.`);
+      say("Classeur existant", `« ${trimmed} » est déjà dans la liste.`);
       return;
     }
 
@@ -138,7 +145,7 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
           try {
             await setFolderPhoto(created, picked);
           } catch (cause) {
-            Alert.alert(
+            say(
               "Classeur créé sans sa photo",
               cause instanceof Error ? cause.message : String(cause),
             );
@@ -154,7 +161,7 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
       }
       onClose();
     } catch (cause) {
-      Alert.alert(
+      say(
         "Enregistrement impossible",
         cause instanceof Error ? cause.message : String(cause),
       );
@@ -177,7 +184,7 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
               accessibilityRole="button"
               accessibilityLabel="Supprimer ce classeur"
               disabled={saving}
-              onPress={confirmDelete}
+              onPress={() => setAsking(true)}
               style={({ pressed }) => [
                 styles.trash,
                 (pressed || saving) && styles.pressed,
@@ -197,6 +204,17 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
         </>
       }
     >
+      {dialog}
+
+      <ConfirmDialog
+        visible={asking}
+        title={`Supprimer « ${folder?.name ?? ""} » ?`}
+        message={stake()}
+        confirmLabel="Supprimer"
+        onConfirm={erase}
+        onClose={() => setAsking(false)}
+      />
+
       <View style={styles.body}>
         <View style={styles.cover}>
           <Pressable

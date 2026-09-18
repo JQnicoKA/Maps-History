@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -18,7 +18,14 @@ import { PanZoom } from "./PanZoom";
 import { lineBetween, spouses, tied } from "../events/rows";
 import { TreeMemberSheet } from "./TreeMemberSheet";
 import { TreeNode } from "./TreeNode";
-import { Dialog, InkButton, SelectField } from "../../components/ui";
+import {
+  ConfirmDialog,
+  Dialog,
+  InkButton,
+  PromptDialog,
+  SelectField,
+  useNotice,
+} from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import { lifespan } from "../events/lifespan";
 import type { Tree, TreeMember } from "../events/types";
@@ -65,6 +72,11 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
   const [openId, setOpenId] = useState<string | null>(null);
   /** The ··· menu: rename, delete. */
   const [menu, setMenu] = useState(false);
+  /** The confirmation before the whole tree goes. */
+  const [felling, setFelling] = useState(false);
+  /** The field asking for a new name. */
+  const [renaming, setRenaming] = useState(false);
+  const { say, dialog } = useNotice();
   /** The dialogue asking what the next taps will do. */
   const [choosing, setChoosing] = useState(false);
   /** What they are doing, once it has been answered. */
@@ -177,7 +189,7 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
     setBusy(true);
     void work
       .catch((cause: unknown) =>
-        Alert.alert(
+        say(
           "Modification impossible",
           cause instanceof Error ? cause.message : String(cause),
         ),
@@ -456,15 +468,7 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
             variant="tonal"
             onPress={() => {
               setMenu(false);
-              Alert.prompt?.(
-                "Renommer l'arbre",
-                undefined,
-                (name?: string) => {
-                  if (name && name.trim() !== "") run(renameTree(tree.id, name));
-                },
-                "plain-text",
-                tree.name,
-              );
+              setRenaming(true);
             }}
           />
           <InkButton
@@ -473,21 +477,37 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
             tone="danger"
             onPress={() => {
               setMenu(false);
-              Alert.alert(
-                `Supprimer « ${tree.name} » ?`,
-                "Les personnages restent dans la collection ; seul l'arbre disparaît.",
-                [
-                  { text: "Annuler", style: "cancel" },
-                  {
-                    text: "Supprimer",
-                    style: "destructive",
-                    onPress: () => run(removeTree(tree.id).then(onClose)),
-                  },
-                ],
-              );
+              setFelling(true);
             }}
           />
         </Dialog>
+
+        {dialog}
+
+        <PromptDialog
+          visible={renaming}
+          title="Renommer l'arbre"
+          label="Nom de l'arbre"
+          initial={tree.name}
+          confirmLabel="Renommer"
+          onConfirm={(name) => {
+            setRenaming(false);
+            run(renameTree(tree.id, name));
+          }}
+          onClose={() => setRenaming(false)}
+        />
+
+        <ConfirmDialog
+          visible={felling}
+          title={`Supprimer « ${tree.name} » ?`}
+          message="Les personnages restent dans la collection ; seul l'arbre disparaît."
+          confirmLabel="Supprimer"
+          onConfirm={() => {
+            setFelling(false);
+            run(removeTree(tree.id).then(onClose));
+          }}
+          onClose={() => setFelling(false)}
+        />
 
         <LinkChoice
           visible={choosing}

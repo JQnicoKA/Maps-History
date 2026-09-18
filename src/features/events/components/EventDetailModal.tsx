@@ -1,8 +1,13 @@
 import { useState } from "react";
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { PhotoViewer } from "./PhotoViewer";
-import { InkButton, Sheet } from "../../../components/ui";
+import {
+  ConfirmDialog,
+  InkButton,
+  Sheet,
+  useNotice,
+} from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
 import { formatEventPeriod } from "../historicalDate";
 import { lifespan } from "../lifespan";
@@ -36,32 +41,27 @@ export function EventDetailModal({
 }: EventDetailModalProps) {
   const { folders, characters, removeEvent } = useEvents();
   const [deleting, setDeleting] = useState(false);
+  /** The confirmation standing between the trash button and the deed. */
+  const [asking, setAsking] = useState(false);
+  const { say, dialog } = useNotice();
   const [viewing, setViewing] = useState<StoredPhoto | null>(null);
 
   if (!event) return null;
 
-  const confirmDelete = () => {
-    Alert.alert("Supprimer cet événement ?", "Cette action est définitive.", [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Supprimer",
-        style: "destructive",
-        onPress: async () => {
-          setDeleting(true);
-          try {
-            await removeEvent(event.id);
-            onClose();
-          } catch (cause) {
-            Alert.alert(
-              "Suppression impossible",
-              cause instanceof Error ? cause.message : String(cause),
-            );
-          } finally {
-            setDeleting(false);
-          }
-        },
-      },
-    ]);
+  const erase = async () => {
+    setAsking(false);
+    setDeleting(true);
+    try {
+      await removeEvent(event.id);
+      onClose();
+    } catch (cause) {
+      say(
+        "Suppression impossible",
+        cause instanceof Error ? cause.message : String(cause),
+      );
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const { emoji, label } = describeType(event.type);
@@ -76,7 +76,7 @@ export function EventDetailModal({
             accessibilityRole="button"
             accessibilityLabel="Supprimer cet événement"
             disabled={deleting}
-            onPress={confirmDelete}
+            onPress={() => setAsking(true)}
             style={({ pressed }) => [
               styles.trash,
               (pressed || deleting) && styles.trashPressed,
@@ -89,6 +89,17 @@ export function EventDetailModal({
         </>
       }
     >
+      {dialog}
+
+      <ConfirmDialog
+        visible={asking}
+        title="Supprimer cet événement ?"
+        message="Cette action est définitive."
+        confirmLabel="Supprimer"
+        onConfirm={() => void erase()}
+        onClose={() => setAsking(false)}
+      />
+
       <ScrollView contentContainerStyle={styles.body}>
         <View style={styles.header}>
           <View style={styles.badge}>

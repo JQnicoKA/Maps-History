@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import {
+  ConfirmDialog,
   InkButton,
   InkField,
   SegmentedControl,
   Sheet,
+  useNotice,
 } from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import { lifespan } from "../events/lifespan";
@@ -56,6 +58,9 @@ export function TreeMemberSheet({
   const { editTreeMember, orderRow, removeFromTree } = useEvents();
   const [note, setNote] = useState(member?.note ?? "");
   const [busy, setBusy] = useState(false);
+  /** The confirmation before this member leaves the tree. */
+  const [leaving, setLeaving] = useState(false);
+  const { say, dialog } = useNotice();
 
   if (!member) return null;
 
@@ -63,7 +68,7 @@ export function TreeMemberSheet({
     setBusy(true);
     void work
       .catch((cause: unknown) =>
-        Alert.alert(
+        say(
           "Modification impossible",
           cause instanceof Error ? cause.message : String(cause),
         ),
@@ -119,22 +124,7 @@ export function TreeMemberSheet({
             tone="danger"
             grow
             disabled={busy}
-            onPress={() =>
-              Alert.alert(
-                "Retirer de l'arbre ?",
-                "Le personnage reste dans la collection ; seules sa place ici et ses lignes disparaissent.",
-                [
-                  { text: "Annuler", style: "cancel" },
-                  {
-                    text: "Retirer",
-                    style: "destructive",
-                    onPress: () => {
-                      run(removeFromTree(tree.id, member.id).then(onClose));
-                    },
-                  },
-                ],
-              )
-            }
+            onPress={() => setLeaving(true)}
           />
           <InkButton
             label="Terminé"
@@ -152,6 +142,20 @@ export function TreeMemberSheet({
         </>
       }
     >
+      {dialog}
+
+      <ConfirmDialog
+        visible={leaving}
+        title="Retirer de l'arbre ?"
+        message="Le personnage reste dans la collection ; seules sa place ici et ses lignes disparaissent."
+        confirmLabel="Retirer"
+        onConfirm={() => {
+          setLeaving(false);
+          run(removeFromTree(tree.id, member.id).then(onClose));
+        }}
+        onClose={() => setLeaving(false)}
+      />
+
       <ScrollView
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"

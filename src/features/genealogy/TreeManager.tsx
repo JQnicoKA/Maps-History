@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,7 +9,11 @@ import {
 
 import { generationCount } from "./layout";
 import { TreeBuilder } from "./TreeBuilder";
-import { InkButton, InkField } from "../../components/ui";
+import {
+  InkButton,
+  InkField,
+  useNotice,
+} from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import type { Tree } from "../events/types";
 import { palette } from "../../theme/palette";
@@ -27,6 +30,7 @@ export function TreeManager() {
   const { trees, characters, addTree } = useEvents();
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
+  const { say, dialog } = useNotice();
   const [open, setOpen] = useState<string | null>(null);
 
   const create = async () => {
@@ -38,7 +42,7 @@ export function TreeManager() {
       setName("");
       setOpen(tree.id);
     } catch (cause) {
-      Alert.alert(
+      say(
         "Arbre non créé",
         cause instanceof Error ? cause.message : String(cause),
       );
@@ -54,6 +58,7 @@ export function TreeManager() {
       contentContainerStyle={styles.body}
       keyboardShouldPersistTaps="handled"
     >
+      {dialog}
       <View style={styles.createRow}>
         <View style={styles.createField}>
           <InkField
