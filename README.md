@@ -91,11 +91,11 @@ Quatre tables, un bucket. Le point de conception qui structure tout le reste :
 **l'importance n'appartient pas à l'événement mais au couple événement/classeur**.
 
 ```
-folders         id, name
-events          id, title, type, description, dates…, longitude, latitude
+folders         id, name, user_id
+events          id, title, type, description, dates…, longitude, latitude, user_id
 event_folders   (event_id, folder_id) → importance    ← clé primaire composite
 event_photos    id, event_id, storage_path, position, source
-bucket          event-photos (public)
+bucket          event-photos (public en lecture, écriture réservée aux connectés)
 ```
 
 La prise de Constantinople est ainsi « élevée » dans *Empire ottoman* et
@@ -108,9 +108,40 @@ plus un mois et un jour facultatifs, avec les contraintes qui vont avec : un
 jour sans son mois est refusé, une fin antérieure au début aussi. `end_*` est
 renseigné pour les événements qui durent (une guerre, un règne).
 
-RLS est **activé** sur les quatre tables, avec une policy permissive pour `anon`
-explicitement marquée comme temporaire. Le jour où les comptes arrivent, ce sont
-ces quatre policies qui changent — pas le schéma.
+### Comptes et cloisonnement
+
+Depuis l'arrivée des comptes, **tout ce qu'un lecteur crée appartient à son
+compte** : `events`, `folders`, `characters` et `trees` portent un `user_id`
+(`references auth.users on delete cascade`), et les tables filles — photos,
+liaisons, membres et liens d'arbre — héritent de ce propriétaire à travers leur
+parent. Il n'y a donc qu'un seul endroit où la propriété est définie.
+
+Deux choses portent ce cloisonnement sans une ligne de code applicatif :
+
+- `user_id` a pour défaut `auth.uid()`. Le client n'envoie jamais de
+  propriétaire ; c'est la base qui l'estampille.
+- les policies RLS valent `using (user_id = auth.uid())` **et**
+  `with check (...)`. Le `with check` est celui qui compte : sans lui, on peut
+  écrire une ligne au nom de quelqu'un d'autre. Pour `event_folders`,
+  `event_characters` et `tree_members`, les deux extrémités sont vérifiées — on
+  ne range pas son événement dans le classeur d'autrui.
+
+Les données de référence (`places`, `polities`, `territories` et leurs
+fragments) ne sont à personne : lecture pour tous, écriture par personne. Les
+scripts de chargement utilisent la clé `service_role`, qui passe outre les
+policies — et qui n'a rien à faire dans `.env`.
+
+Le bucket `event-photos` reste public en lecture (une `<Image>` a besoin d'une
+URL qui s'ouvre), mais seul un lecteur connecté peut y déposer ou y retirer un
+fichier. Les chemins ne sont pas cloisonnés par compte : deux comptes ne
+peuvent pas se voir en base, mais un fichier reste lisible par quiconque
+connaît son URL.
+
+**Réglage à faire dans le tableau de bord Supabase** : *Authentication →
+Sign In / Providers → Email*. Tant que « Confirm email » est coché, une
+inscription attend un courriel de confirmation que le service d'envoi par
+défaut ne délivre qu'aux adresses de l'équipe du projet. Pour un prototype,
+décochez-le ; pour de vrai, configurez un SMTP.
 
 ---
 
@@ -1010,5 +1041,20 @@ imposent ce crédit visible : ne pas le supprimer.
   2000, zoom pays), 994 entités et 7,51 Mo en 2,2 s. Voir [docs/territoires.md](docs/territoires.md).
 - Sept événements de démonstration sont en base (987 à 1812), supprimables
   depuis la fiche de chacun.
+- **Comptes** : premier compte `testmaps@gmail.com` / `Test123` (l'adresse
+  demandée, `test@gmail.com`, est refusée par Supabase : la validation applique
+  les règles de Gmail, qui exigent six caractères avant le `@`). Les 38
+  événements, 3 classeurs, 8 personnages et l'arbre créés avant les comptes lui
+  ont été attribués. Cloisonnement vérifié de bout en bout avec la clé
+  publishable : la base estampille le propriétaire, un compte ne peut pas écrire
+  au nom d'un autre, un visiteur non connecté ne lit ni ne supprime rien, et le
+  dépôt d'une photo lui est refusé alors que la lecture par URL fonctionne.
+- Pas encore fait côté comptes : la réinitialisation du mot de passe, qui
+  suppose un envoi de courriel configuré et un lien de retour vers
+  l'application.
+- `@react-native-async-storage/async-storage` est une nouvelle dépendance
+  native : **il faut reconstruire l'application** (`npx expo run:ios`) pour que
+  la session survive à la fermeture. Sans reconstruction l'app fonctionne, mais
+  redemande le mot de passe à chaque lancement.
 - Le rendu n'a jamais été jugé autrement que par son auteur : la palette de
   `src/theme/palette.ts` reste le premier endroit à ajuster.

@@ -5,6 +5,7 @@ import "react-native-url-polyfill/auto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { env } from "../config/env";
+import { sessionStore } from "./sessionStore";
 
 let client: SupabaseClient | null = null;
 
@@ -18,9 +19,16 @@ export function supabase(): SupabaseClient {
       throw new Error("Supabase is not configured — see .env.example");
     }
     client = createClient(env.supabaseUrl, env.supabaseAnonKey, {
-      // No accounts yet: nothing to persist, and persistence would pull in a
-      // storage adapter we do not need.
-      auth: { persistSession: false, autoRefreshToken: false },
+      auth: {
+        storage: sessionStore,
+        // Signed in once, signed in until they say otherwise: the session is
+        // written to the device and the access token renewed behind their back.
+        persistSession: true,
+        autoRefreshToken: true,
+        // A phone has no URL to read a session out of; leaving this on makes
+        // supabase-js poke at `window.location`, which does not exist here.
+        detectSessionInUrl: false,
+      },
     });
   }
   return client;
