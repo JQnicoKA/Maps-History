@@ -19,7 +19,7 @@ import { radius, shadow, space, type } from "../../theme/tokens";
 
 const LOGO = require("../../../assets/logo.png");
 
-type Mode = "in" | "up";
+type Mode = "in" | "up" | "forgot";
 
 const MODES = [
   { value: "in" as const, label: "Connexion" },
@@ -40,7 +40,7 @@ const MODES = [
  */
 export function AuthScreen() {
   const insets = useSafeAreaInsets();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, sendReset } = useAuth();
 
   const [mode, setMode] = useState<Mode>("in");
   const [email, setEmail] = useState("");
@@ -48,18 +48,27 @@ export function AuthScreen() {
   const [shown, setShown] = useState(false);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  /** Set when a sign-up ends with a message rather than a session. */
+  /** Set when a sign-up, or a reset, ends with a message rather than a session. */
   const [sent, setSent] = useState(false);
 
   const missing = mode === "up" ? failures(password) : [];
   const ready =
     looksLikeEmail(email) &&
-    (mode === "in" ? password !== "" : isStrong(password));
+    (mode === "forgot"
+      ? true
+      : mode === "in"
+        ? password !== ""
+        : isStrong(password));
 
   const submit = async () => {
     setBusy(true);
     setProblem(null);
     try {
+      if (mode === "forgot") {
+        await sendReset(email);
+        setSent(true);
+        return;
+      }
       if (mode === "in") {
         await signIn(email, password);
         return;
@@ -86,9 +95,13 @@ export function AuthScreen() {
         <View style={styles.card}>
           <Text style={styles.title}>Vérifiez votre courrier</Text>
           <Text style={styles.line}>
-            Un lien de confirmation est parti vers{" "}
-            <Text style={styles.strong}>{email.trim()}</Text>. Ouvrez-le, puis
-            revenez vous connecter.
+            {mode === "forgot"
+              ? "Un lien de réinitialisation est parti vers "
+              : "Un lien de confirmation est parti vers "}
+            <Text style={styles.strong}>{email.trim()}</Text>
+            {mode === "forgot"
+              ? ". Ouvrez-le depuis ce téléphone : il rouvrira l'application sur le choix du nouveau mot de passe."
+              : ". Ouvrez-le, puis revenez vous connecter."}
           </Text>
           <InkButton
             label="Revenir à la connexion"
@@ -123,7 +136,15 @@ export function AuthScreen() {
         </View>
 
         <View style={styles.card}>
-          <SegmentedControl segments={MODES} value={mode} onChange={change} />
+          {mode === "forgot" ? (
+            <Text style={styles.forgotTitle}>Mot de passe oublié</Text>
+          ) : (
+            <SegmentedControl
+              segments={MODES}
+              value={mode === "in" ? "in" : "up"}
+              onChange={change}
+            />
+          )}
 
           <InkField
             label="Adresse électronique"
@@ -138,6 +159,7 @@ export function AuthScreen() {
             returnKeyType="next"
           />
 
+          {mode === "forgot" ? null : (
           <View>
             <InkField
               label="Mot de passe"
@@ -164,6 +186,7 @@ export function AuthScreen() {
               <Text style={styles.revealLabel}>{shown ? "Masquer" : "Afficher"}</Text>
             </Pressable>
           </View>
+          )}
 
           {mode === "up" ? (
             <View style={styles.rules}>
@@ -196,7 +219,9 @@ export function AuthScreen() {
                 ? "…"
                 : mode === "in"
                   ? "Se connecter"
-                  : "Créer le compte"
+                  : mode === "up"
+                    ? "Créer le compte"
+                    : "Envoyer le lien"
             }
             variant="solid"
             disabled={busy || !ready}
@@ -204,11 +229,23 @@ export function AuthScreen() {
           />
         </View>
 
-        <Text style={styles.footnote}>
-          {mode === "in"
-            ? "Pas encore de compte ? Passez à Inscription."
-            : "Déjà un compte ? Passez à Connexion."}
-        </Text>
+        {mode === "forgot" ? (
+          <InkButton
+            label="Revenir à la connexion"
+            variant="quiet"
+            onPress={() => change("in")}
+          />
+        ) : mode === "in" ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => change("forgot")}
+            hitSlop={8}
+          >
+            <Text style={styles.footnote}>Mot de passe oublié ?</Text>
+          </Pressable>
+        ) : (
+          <Text style={styles.footnote}>Déjà un compte ? Passez à Connexion.</Text>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -279,4 +316,5 @@ const styles = StyleSheet.create({
   rulesText: { ...type.caption, color: palette.inkSoft },
   problem: { ...type.caption, color: palette.danger },
   footnote: { ...type.caption, color: palette.inkFaint, textAlign: "center" },
+  forgotTitle: { ...type.heading, fontWeight: "700", color: palette.ink },
 });

@@ -1122,9 +1122,15 @@ imposent ce crédit visible : ne pas le supprimer.
   effacer, puis `delete_own_account()`, une fonction `security definer` qui ne
   supprime jamais que `auth.uid()` ; tout le reste suit par
   `on delete cascade`.
-- Pas encore fait côté comptes : la réinitialisation du mot de passe, qui
-  suppose un envoi de courriel configuré et un lien de retour vers
-  l'application.
+- **Mot de passe oublié** : depuis l'écran de connexion. Le lien revient dans
+  l'application par le schéma `mapshistory://reset`, en flux **PKCE** — le lien
+  ne porte qu'un code, inutilisable sans le vérificateur que ce téléphone a
+  gardé. Deux conséquences : la demande et l'ouverture du lien doivent se faire
+  **sur le même appareil**, et `mapshistory://reset` doit figurer dans
+  *Authentication → URL Configuration → Redirect URLs* du tableau de bord,
+  faute de quoi Supabase renvoie silencieusement vers le site du projet.
+  L'envoi passe par le service de courriel intégré, plafonné à quelques
+  messages par heure : pour de vrai, il faudra un SMTP.
 - **Images** : chaque photo est ramenée à 1600 px de côté et réencodée en JPEG
   avant l'envoi (`src/features/events/shrink.ts`) — environ un cinquième du
   poids, et plus de HEIC dans le seau. Servir en plus des vignettes demanderait

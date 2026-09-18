@@ -27,7 +27,17 @@ export function supabase(): SupabaseClient {
         autoRefreshToken: true,
         // A phone has no URL to read a session out of; leaving this on makes
         // supabase-js poke at `window.location`, which does not exist here.
+        // The recovery link is read by hand instead — see `features/auth`.
         detectSessionInUrl: false,
+        /**
+         * The exchange a phone can do safely.
+         *
+         * A recovery link arrives through the operating system, in the clear,
+         * and any app registered for the scheme could read it. With PKCE the
+         * link carries only a code, useless without the verifier that this
+         * device generated and kept in its own storage.
+         */
+        flowType: "pkce",
       },
     });
   }

@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { AppState } from "react-native";
+import { AppState, Linking } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 
 import { supabase } from "../../lib/supabase";
@@ -30,7 +30,27 @@ type AuthContextValue = {
    * tap away from the map, and a borrowed phone should not be enough.
    */
   deleteAccount: (password: string) => Promise<void>;
+
+  /** Sends the link that lets a forgotten password be replaced. */
+  sendReset: (email: string) => Promise<void>;
+  /**
+   * True from the moment a recovery link is opened until a new password is
+   * written. The app shows one screen and one only while it holds.
+   */
+  recovering: boolean;
+  /** Writes the new password and ends the recovery. */
+  setPassword: (password: string) => Promise<void>;
 };
+
+/**
+ * Where the recovery link comes back to.
+ *
+ * The scheme is the app's own (`app.json`), so the link opens HistoryNote and
+ * nothing else. **It has to be listed in the Supabase dashboard**, under
+ * Authentication → URL Configuration → Redirect URLs, or the server quietly
+ * sends the reader to the project's site instead.
+ */
+const RETURN_TO = "mapshistory://reset";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -47,6 +67,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<Account | null | undefined>(undefined);
+  const [recovering, setRecovering] = useState(false);
 
   useEffect(() => {
     const client = supabase();
@@ -82,6 +103,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  /**
+   * The recovery link, read by hand.
+   *
+   * `detectSessionInUrl` is for a browser; here the link arrives through the
+   * operating system, either while the app is running or as the very thing
+   * that launched it — so both are listened for. The code is exchanged for a
+   * session, and `recovering` then keeps the reader on the one screen that
+   * matters until they have chosen a password. Signing them straight into the
+   * map would leave them with a session and no way to know what their password
+   * is.
+   */
+  useEffect(() => {
+    const open = async (url: string | null) => {
+      if (!url || !url.startsWith(RETURN_TO)) return;
+      const query = new URL(url).searchParams;
+
+      const failed = query.get("error_description") ?? query.get("error");
+      if (failed) {
+        console.warn("Lien de réinitialisation refusé :", failed);
+        return;
+      }
+
+      const code = query.get("code");
+      if (!code) return;
+
+      const { error } = await supabase().auth.exchangeCodeForSession(code);
+      if (error) {
+        console.warn("Lien de réinitialisation expiré :", error.message);
+        return;
+      }
+      setRecovering(true);
+    };
+
+    void Linking.getInitialURL().then(open);
+    const listening = Linking.addEventListener("url", (event) => void open(event.url));
+    return () => listening.remove();
+  }, []);
+
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase().auth.signInWithPassword({
       email: email.trim(),
@@ -107,6 +166,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     const { error } = await supabase().auth.signOut();
     if (error) throw new Error(translate(error.message));
+    // Leaving mid-recovery is a way out of it, not a way to skip it.
+    setRecovering(false);
   }, []);
 
   const deleteAccount = useCallback(async (password: string) => {
@@ -130,9 +191,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await client.auth.signOut({ scope: "local" });
   }, []);
 
+  const sendReset = useCallback(async (email: string) => {
+    const { error } = await supabase().auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: RETURN_TO,
+    });
+    if (error) throw new Error(translate(error.message));
+  }, []);
+
+  const setPassword = useCallback(async (password: string) => {
+    const { error } = await supabase().auth.updateUser({ password });
+    if (error) throw new Error(translate(error.message));
+    setRecovering(false);
+  }, []);
+
   const value = useMemo(
-    () => ({ account, signIn, signUp, signOut, deleteAccount }),
-    [account, signIn, signUp, signOut, deleteAccount],
+    () => ({
+      account,
+      signIn,
+      signUp,
+      signOut,
+      deleteAccount,
+      sendReset,
+      recovering,
+      setPassword,
+    }),
+    [account, signIn, signUp, signOut, deleteAccount, sendReset, recovering, setPassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -169,6 +252,9 @@ function translate(message: string): string {
   }
   if (said.includes("is invalid")) {
     return "Cette adresse est refusée. Vérifiez-la, ou essayez-en une autre.";
+  }
+  if (said.includes("new password should be different")) {
+    return "Choisissez un mot de passe différent de l'ancien.";
   }
   if (said.includes("password should be")) {
     return "Mot de passe trop court pour ce projet.";
