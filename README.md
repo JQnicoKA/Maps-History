@@ -1135,6 +1135,15 @@ imposent ce crédit visible : ne pas le supprimer.
   avant l'envoi (`src/features/events/shrink.ts`) — environ un cinquième du
   poids, et plus de HEIC dans le seau. Servir en plus des vignettes demanderait
   les transformations d'images de Supabase, qui sont réservées au plan payant.
+- **Rapports de plantage** : Sentry, branché dans `src/lib/monitoring.ts` et
+  démarré depuis `index.ts` avant le premier composant. Ce qui part : l'erreur,
+  sa pile, l'écran concerné et l'**identifiant** du compte — jamais son adresse,
+  jamais son IP (`sendDefaultPii: false`), et aucune mesure de performance
+  (`tracesSampleRate: 0`, quota séparé). Sans `EXPO_PUBLIC_SENTRY_DSN`, rien
+  n'est envoyé et rien d'autre ne change. La carte du compte porte, **en build
+  de développement seulement**, un bouton qui provoque une vraie erreur de
+  rendu : un dispositif de surveillance qu'on ne peut pas exercer est un
+  dispositif dont on ignore qu'il est cassé.
 - **Écran blanc** : `src/components/ErrorBoundary.tsx` entoure toute
   l'application. Une exception de rendu affiche désormais un écran lisible avec
   le message d'erreur et un bouton « Réessayer » qui remonte l'arbre à neuf.
