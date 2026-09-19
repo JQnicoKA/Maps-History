@@ -8,6 +8,7 @@
 const maptilerApiKey = process.env.EXPO_PUBLIC_MAPTILER_API_KEY?.trim() ?? "";
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim() ?? "";
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
+const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN?.trim() ?? "";
 
 export const env = {
   maptilerApiKey,
@@ -15,4 +16,7 @@ export const env = {
   supabaseUrl,
   supabaseAnonKey,
   hasSupabase: supabaseUrl.length > 0 && supabaseAnonKey.length > 0,
+  sentryDsn,
+  /** Without it, nothing is reported and nothing else changes. */
+  hasSentry: sentryDsn.length > 0,
 } as const;

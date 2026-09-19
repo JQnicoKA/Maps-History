@@ -30,7 +30,8 @@
         {
           "photosPermission": "HistoryNote accède à vos photos pour illustrer les événements historiques que vous ajoutez."
         }
-      ]
+      ],
+      "@sentry/react-native"
     ]
   }
 }

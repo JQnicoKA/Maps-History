@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { InkButton } from "./ui";
+import { report } from "../lib/monitoring";
 import { palette } from "../theme/palette";
 import { radius, space, type } from "../theme/tokens";
 
@@ -32,8 +33,10 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   override componentDidCatch(failure: Error, info: ErrorInfo) {
-    // The one place a crash report would be sent from, the day there is one.
     console.error("Écran interrompu :", failure, info.componentStack);
+    // The reader has been told; now tell whoever can fix it. The component
+    // trail says which screen broke, which a stack trace alone rarely does.
+    report(failure, { componentStack: info.componentStack });
   }
 
   override render() {

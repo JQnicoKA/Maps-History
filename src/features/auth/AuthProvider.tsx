@@ -10,6 +10,7 @@ import {
 import { AppState, Linking } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 
+import { watchAccount } from "../../lib/monitoring";
 import { supabase } from "../../lib/supabase";
 
 export type Account = { id: string; email: string };
@@ -80,7 +81,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Fires for sign-in, sign-out, and every silent token refresh — which is
     // why the whole state is derived from it rather than set by the callers.
     const { data } = client.auth.onAuthStateChange((_event, session) => {
-      setAccount(toAccount(session));
+      const who = toAccount(session);
+      setAccount(who);
+      // So a crash report can say "the same reader, four times" without ever
+      // saying who that reader is.
+      watchAccount(who?.id ?? null);
     });
 
     /**

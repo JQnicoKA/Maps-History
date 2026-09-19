@@ -50,6 +50,14 @@ export function AccountButton({ view, onChange }: AccountButtonProps) {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  /** Set by the development-only button below; read on the next render. */
+  const [breaking, setBreaking] = useState(false);
+
+  if (breaking) {
+    throw new Error(
+      "Erreur de vérification déclenchée depuis la carte du compte (test Sentry)",
+    );
+  }
 
   const close = () => {
     setOpen(false);
@@ -194,6 +202,19 @@ export function AccountButton({ view, onChange }: AccountButtonProps) {
               tone="danger"
               onPress={() => setFace("leaving")}
             />
+
+            {/* Only in a development build, and deliberately kept rather than
+                deleted after the first check: a reporting pipeline nobody can
+                exercise is one nobody knows is broken. It throws during a
+                render, which is the path a real bug takes — boundary, screen,
+                report — and not merely a call to the reporter. */}
+            {__DEV__ ? (
+              <InkButton
+                label="Provoquer une erreur (dev)"
+                variant="quiet"
+                onPress={() => setBreaking(true)}
+              />
+            ) : null}
             {/* Quiet, and last: it must be findable — the App Store asks for
                 exactly that — without sitting under the thumb. */}
             <InkButton
