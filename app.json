@@ -10,7 +10,10 @@
     "backgroundColor": "#E7D8B8",
     "ios": {
       "bundleIdentifier": "com.mapshistory.app",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.mapshistory.app",
@@ -20,7 +23,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": []
     },
     "plugins": [
       "@maplibre/maplibre-react-native",
@@ -28,7 +32,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "HistoryNote accède à vos photos pour illustrer les événements historiques que vous ajoutez."
+          "photosPermission": "HistoryNote accède à vos photos pour illustrer les événements historiques que vous ajoutez.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ],
       [
@@ -39,6 +45,18 @@
           "url": "https://de.sentry.io/"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9461c858-cd2f-41fe-be81-b4406df0ceef"
+      }
+    },
+    "owner": "jqnicoka",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/9461c858-cd2f-41fe-be81-b4406df0ceef"
+    }
   }
 }

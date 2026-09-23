@@ -271,6 +271,57 @@ ce qu'on vérifierait serait surtout que React fonctionne encore.
 ci-dessus : types, tests, puis `expo export` — cette dernière étant la seule à
 attraper un chemin faux ou un module absent, que le typage ne voit pas.
 
+### Construire pour distribuer (EAS)
+
+`eas.json` décrit trois profils :
+
+| profil | ce qu'il produit |
+|---|---|
+| `development` | une build de développement, avec le client Expo, distribuée en interne |
+| `preview` | la même sans le client de développement — pour faire essayer l'app |
+| `production` | la build soumise à l'App Store, **numéro de build incrémenté automatiquement** |
+
+```bash
+npx eas-cli login
+npx eas-cli init          # une seule fois : relie le dépôt au projet EAS
+npx eas-cli build --platform ios --profile production
+```
+
+**La version se gère à deux niveaux, et c'est volontaire.** `app.json` porte la
+version affichée aux lecteurs (`1.0.0`) — c'est une décision éditoriale, on la
+change à la main. Le numéro de build, lui, n'intéresse que l'App Store, qui
+exige seulement qu'il augmente : `"appVersionSource": "remote"` et
+`"autoIncrement": true` le font compter par EAS. Rien à retenir, rien à
+oublier, et deux builds ne peuvent pas porter le même numéro.
+
+**Les variables d'environnement ne voyagent pas avec le dépôt.** `.env` est
+ignoré par Git, donc une build EAS ne le verra jamais. Il faut les déclarer une
+fois côté EAS :
+
+```bash
+npx eas-cli env:create --name EXPO_PUBLIC_MAPTILER_API_KEY   --value "…" --visibility plaintext
+npx eas-cli env:create --name EXPO_PUBLIC_SUPABASE_URL       --value "…" --visibility plaintext
+npx eas-cli env:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY  --value "…" --visibility plaintext
+npx eas-cli env:create --name EXPO_PUBLIC_SENTRY_DSN         --value "…" --visibility plaintext
+npx eas-cli env:create --name SENTRY_AUTH_TOKEN              --value "…" --visibility secret
+```
+
+Les quatre premières finissent de toute façon dans le bundle : les marquer
+secrètes serait un mensonge. La cinquième, non — elle ne sert qu'à téléverser
+les cartes de sources pendant la construction, et `secret` la rend illisible
+même depuis le tableau de bord.
+
+La section `submit` porte l'identifiant App Store Connect de l'app et celui de
+l'équipe — deux identifiants publics, que n'importe qui peut lire dans une app
+publiée. **L'identifiant Apple (l'adresse) n'y est pas**, et c'est délibéré :
+ce fichier est versionné, et une adresse dans un dépôt est une adresse
+moissonnée. `eas submit` la demande au moment de l'envoi, ou la lit dans la
+variable `EXPO_APPLE_ID` :
+
+```bash
+EXPO_APPLE_ID="vous@exemple.fr" npx eas-cli submit --platform ios --profile production
+```
+
 ### Autres commandes
 
 ```bash
@@ -1108,14 +1159,20 @@ imposent ce crédit visible : ne pas le supprimer.
   [docs/territoires.md](docs/territoires.md).
 - Sept événements de démonstration sont en base (987 à 1812), supprimables
   depuis la fiche de chacun.
-- **Comptes** : premier compte `testmaps@gmail.com` / `Test123` (l'adresse
-  demandée, `test@gmail.com`, est refusée par Supabase : la validation applique
-  les règles de Gmail, qui exigent six caractères avant le `@`). Les 38
-  événements, 3 classeurs, 8 personnages et l'arbre créés avant les comptes lui
-  ont été attribués. Cloisonnement vérifié de bout en bout avec la clé
-  publishable : la base estampille le propriétaire, un compte ne peut pas écrire
-  au nom d'un autre, un visiteur non connecté ne lit ni ne supprime rien, et le
-  dépôt d'une photo lui est refusé alors que la lecture par URL fonctionne.
+- **Comptes** : un seul compte existe, celui de l'auteur, et il détient la
+  collection créée avant l'arrivée des comptes — 38 événements, 3 classeurs,
+  8 personnages, 1 arbre, 69 photographies. Aucun identifiant n'est écrit ici :
+  le compte de test qui servait pendant la mise en place a été renommé puis
+  doté d'un mot de passe choisi par son propriétaire, via le parcours de
+  réinitialisation de l'application. Cloisonnement vérifié de bout en bout avec
+  la clé publishable : la base estampille le propriétaire, un compte ne peut pas
+  écrire au nom d'un autre, un visiteur non connecté ne lit ni ne supprime rien,
+  et le dépôt d'une photo lui est refusé alors que la lecture par URL
+  fonctionne.
+
+  Une note pour la suite : `test@gmail.com` est refusé par Supabase à
+  l'inscription — sa validation applique les règles de Gmail, qui exigent six
+  caractères avant le `@`. Ce n'est pas un défaut de l'application.
 - **Suppression de compte** : disponible dans la carte du compte (bouton
   profil → « Supprimer le compte »), avec ressaisie du mot de passe. L'ordre
   compte — les photos du seau d'abord, tant qu'une session peut encore les
@@ -1151,6 +1208,10 @@ imposent ce crédit visible : ne pas le supprimer.
   native : **il faut reconstruire l'application** (`npx expo run:ios`) pour que
   la session survive à la fermeture. Sans reconstruction l'app fonctionne, mais
   redemande le mot de passe à chaque lancement.
+- **Distribution** : `eas.json` en place (trois profils, numéro de build
+  incrémenté par EAS). Manquent encore, et seulement le jour de la soumission :
+  un compte développeur Apple pour remplir la section `submit`, les variables
+  d'environnement déclarées côté EAS, et une politique de confidentialité.
 - **Tests** : 81, sur 7 fichiers, en moins d'une seconde — voir la section
   Tests. Ils ne couvrent que les modules purs ; l'interface reste jugée à
   l'œil.

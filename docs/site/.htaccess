@@ -1,0 +1,13 @@
+# Tout le site en HTTPS, sans exception.
+#
+# Sur l'hébergement mutualisé d'OVH, la requête arrive en clair au serveur
+# Apache même quand le visiteur est en HTTPS : c'est l'en-tête posé par le
+# répartiteur qui dit la vérité. On teste donc les deux, sans quoi la règle
+# boucle indéfiniment.
+RewriteEngine On
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+RewriteCond %{HTTPS} !=on
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
+# Une page absente répond « absente », et non la page d'accueil.
+ErrorDocument 404 /404.html

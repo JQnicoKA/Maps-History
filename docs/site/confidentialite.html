@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HistoryNote — Politique de confidentialité</title>
+<style>
+  :root {
+    --papier: #E7D8B8;
+    --papier-clair: #F0E4CA;
+    --encre: #4A3927;
+    --encre-douce: #6E5940;
+    --encre-pale: #8C7A5F;
+    --ligne: #D8CBAE;
+    --cire: #8C3A2B;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 2rem 1.25rem 4rem;
+    background: var(--papier);
+    color: var(--encre);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  main {
+    max-width: 44rem;
+    margin: 0 auto;
+    padding: 2rem;
+    background: var(--papier-clair);
+    border: 1px solid var(--ligne);
+    border-radius: 16px;
+  }
+  h1 { font-size: 1.9rem; margin: 0 0 .25rem; letter-spacing: .3px; }
+  h2 { font-size: 1.15rem; margin: 2.25rem 0 .5rem; }
+  .date { color: var(--encre-pale); font-size: .9rem; margin: 0 0 2rem; }
+  p, li { color: var(--encre-douce); }
+  strong { color: var(--encre); }
+  a { color: var(--cire); }
+  ul { padding-left: 1.2rem; }
+  li { margin: .35rem 0; }
+  table { width: 100%; border-collapse: collapse; margin: .75rem 0 1rem; font-size: .95rem; }
+  th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--ligne); vertical-align: top; }
+  th { color: var(--encre); font-weight: 700; }
+  footer { max-width: 44rem; margin: 1.5rem auto 0; color: var(--encre-pale); font-size: .85rem; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Politique de confidentialité</h1>
+<p class="date">HistoryNote — dernière mise à jour : 22 septembre 2026</p>
+
+<p>
+  HistoryNote est une application de cartographie historique : vous y posez des
+  événements sur une carte, vous les rangez dans des classeurs, vous y associez
+  des personnages, des photographies et des arbres généalogiques. Ce document
+  décrit les données que cela suppose, où elles vont, et ce que vous pouvez en
+  faire.
+</p>
+
+<h2>Qui est responsable</h2>
+<p>
+  <strong>Nicolas Lecas</strong>, éditeur de l'application HistoryNote, agissant en
+  son nom propre. Pour toute question ou pour exercer vos droits :
+  <a href="mailto:contact@historynote.fr">contact@historynote.fr</a>.
+</p>
+
+<h2>Ce qui est collecté, et pourquoi</h2>
+<table>
+  <tr>
+    <th>Données</th><th>Pourquoi</th><th>Base légale</th>
+  </tr>
+  <tr>
+    <td><strong>Votre adresse électronique</strong> et votre mot de passe, ce
+      dernier conservé sous forme chiffrée et jamais lisible</td>
+    <td>Créer votre compte, vous y reconnecter, vous permettre de réinitialiser
+      votre mot de passe</td>
+    <td>Exécution du service que vous demandez</td>
+  </tr>
+  <tr>
+    <td><strong>Ce que vous créez</strong> : événements, dates, positions que
+      vous choisissez sur la carte, descriptions, classeurs, personnages,
+      arbres, photographies que vous ajoutez</td>
+    <td>C'est le contenu de l'application ; il vous est restitué à chaque
+      ouverture</td>
+    <td>Exécution du service que vous demandez</td>
+  </tr>
+  <tr>
+    <td><strong>Rapports d'erreur</strong> : le message d'erreur, l'endroit du
+      code, l'écran concerné, la version de l'application, le modèle d'appareil
+      et sa version de système, et l'identifiant interne de votre compte</td>
+    <td>Découvrir et corriger les pannes, qui autrement resteraient invisibles</td>
+    <td>Intérêt légitime à maintenir l'application en état de marche</td>
+  </tr>
+</table>
+
+<h2>Ce qui n'est pas collecté</h2>
+<ul>
+  <li><strong>Votre position.</strong> L'application ne demande jamais l'accès
+    à la localisation de votre appareil : les coordonnées enregistrées sont
+    celles que vous désignez vous-même sur la carte.</li>
+  <li><strong>Aucune mesure d'audience, aucun traceur publicitaire, aucun
+    identifiant publicitaire.</strong> L'application ne contient ni publicité ni
+    outil d'analyse comportementale.</li>
+  <li><strong>Ni votre adresse électronique ni votre adresse IP ne sont jointes
+    aux rapports d'erreur</strong> : seul un identifiant interne y figure, qui
+    permet de distinguer « un lecteur a rencontré ce bug quarante fois » de
+    « quarante lecteurs l'ont rencontré une fois », sans dire de qui il s'agit.</li>
+  <li>L'accès à l'appareil photo, au microphone, aux contacts et au calendrier
+    n'est jamais demandé. Seul l'accès à votre photothèque l'est, au moment où
+    vous choisissez une image.</li>
+</ul>
+
+<h2>Où vos données sont hébergées</h2>
+<p>
+  Tout est traité dans l'Union européenne. Aucune donnée n'est transférée hors
+  de l'Espace économique européen.
+</p>
+<table>
+  <tr><th>Prestataire</th><th>Rôle</th><th>Lieu</th></tr>
+  <tr><td>Supabase</td><td>Base de données, comptes, stockage des photographies</td><td>Irlande</td></tr>
+  <tr><td>Resend</td><td>Envoi des courriels de compte (réinitialisation du mot de passe)</td><td>Irlande</td></tr>
+  <tr><td>Sentry</td><td>Rapports d'erreur</td><td>Allemagne</td></tr>
+  <tr><td>MapTiler</td><td>Fonds de carte</td><td>Suisse — décision d'adéquation de la Commission européenne</td></tr>
+</table>
+<p>
+  L'affichage de la carte suppose que votre appareil télécharge des tuiles
+  auprès de MapTiler, qui voit alors votre adresse IP, comme tout serveur que
+  vous consultez. MapTiler ne reçoit rien de votre collection.
+</p>
+
+<h2>Vos photographies, et une franchise nécessaire</h2>
+<p>
+  Vos images sont conservées dans un espace de stockage dont les adresses sont
+  imprévisibles — elles contiennent des identifiants aléatoires. Personne ne
+  peut les deviner, et aucun autre compte ne peut les modifier ni les supprimer.
+  <strong>En revanche, une adresse d'image qui serait divulguée resterait
+  consultable par qui la détient.</strong> Ne déposez pas dans HistoryNote une
+  image que la fuite de son adresse rendrait problématique.
+</p>
+
+<h2>Combien de temps</h2>
+<p>
+  Vos données sont conservées tant que votre compte existe. L'application vous
+  permet de le supprimer vous-même : bouton de profil, puis
+  <em>Supprimer le compte</em>. La suppression est immédiate et définitive —
+  événements, classeurs, personnages, arbres et photographies sont effacés, sans
+  copie de sauvegarde récupérable. Les rapports d'erreur déjà transmis, qui ne
+  contiennent aucune donnée personnelle, sont conservés quatre-vingt-dix jours
+  puis disparaissent.
+</p>
+
+<h2>Vos droits</h2>
+<p>
+  Vous disposez d'un droit d'accès, de rectification, d'effacement, de
+  limitation, d'opposition et de portabilité de vos données. La suppression et
+  la rectification sont directement accessibles dans l'application ; pour tout
+  le reste, écrivez à <a href="mailto:contact@historynote.fr">contact@historynote.fr</a>. Une réponse
+  vous sera apportée dans un délai d'un mois.
+</p>
+<p>
+  Si cette réponse ne vous satisfait pas, vous pouvez saisir la Commission
+  nationale de l'informatique et des libertés (CNIL),
+  <a href="https://www.cnil.fr">cnil.fr</a>.
+</p>
+
+<h2>Mineurs</h2>
+<p>
+  HistoryNote n'est pas destinée aux personnes de moins de quinze ans et ne
+  collecte pas sciemment leurs données.
+</p>
+
+<h2>Modifications</h2>
+<p>
+  Ce document peut évoluer avec l'application. La date de dernière mise à jour
+  figure en tête ; les changements substantiels seront signalés dans
+  l'application.
+</p>
+
+</main>
+<footer>HistoryNote — L'histoire, à sa place.</footer>
+</body>
+</html>
