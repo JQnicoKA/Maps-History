@@ -7,6 +7,7 @@ import { useTerritoriesAt } from "./useTerritoriesAt";
 import { ZOOM } from "../../config/map";
 import { fonts, HALO } from "../../map/style/typography";
 import { useEvents } from "../events/EventsProvider";
+import { useHidden } from "./HiddenProvider";
 import { palette } from "../../theme/palette";
 
 /**
@@ -85,9 +86,16 @@ const LABEL: ExpressionSpecification = [
  * stitches and simplifies it, and the app fetches each polygon at most once per
  * session. Which is also what lets the wash show at world zoom.
  */
-export function TerritoryLayers({ detailed }: { detailed: boolean }) {
+export type TerritoryLayersProps = {
+  detailed: boolean;
+  /** Fired with the name of whatever territory the finger landed on. */
+  onTouch?: (name: string) => void;
+};
+
+export function TerritoryLayers({ detailed, onTouch }: TerritoryLayersProps) {
   const { year } = useEvents();
-  const collection = useTerritoriesAt(year, detailed);
+  const { mask } = useHidden();
+  const collection = useTerritoriesAt(year, detailed, mask);
 
   /**
    * One label anchor per entity, not per polygon: MapLibre labels every part of
@@ -117,7 +125,16 @@ export function TerritoryLayers({ detailed }: { detailed: boolean }) {
 
   return (
     <>
-      <GeoJSONSource id="territories" data={collection}>
+      <GeoJSONSource
+        id="territories"
+        data={collection}
+        // The source reports which feature was under the finger, so nothing
+        // here has to hit-test a polygon by hand.
+        onPress={(event) => {
+          const name = event.nativeEvent.features[0]?.properties?.["name"];
+          if (typeof name === "string" && name !== "") onTouch?.(name);
+        }}
+      >
         {/* Beneath the sea, not above it.
             Cliopatria is digitised at about a point every 25 km, so its
             coastlines only roughly follow the real ones and the wash spills

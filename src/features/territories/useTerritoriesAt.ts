@@ -38,6 +38,14 @@ const LEVEL = { sovereign: 2, fief: 4 };
 export function useTerritoriesAt(
   year: number | null,
   detailed: boolean,
+  /**
+   * Bumped whenever the reader hides or restores a territory.
+   *
+   * The list of identifiers is decided by the server, which now skips what
+   * this account has masked — so a change to the mask has to make the hook ask
+   * again. Nothing else here would notice: the year and the zoom are the same.
+   */
+  mask = 0,
 ): TerritoryCollection | null {
   const [collection, setCollection] = useState<TerritoryCollection | null>(null);
   const entities = useRef(new Map<string, TerritoryFeature>());
@@ -84,7 +92,7 @@ export function useTerritoriesAt(
     return () => {
       current = false;
     };
-  }, [year, detailed]);
+  }, [year, detailed, mask]);
 
   return collection;
 }

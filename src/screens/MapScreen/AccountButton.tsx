@@ -9,6 +9,7 @@ import {
   SegmentedControl,
 } from "../../components/ui";
 import { useAuth } from "../../features/auth";
+import { HiddenTerritories } from "../../features/territories/TerritorySheet";
 import { deleteOwnPhotos } from "../../features/events/api";
 import { palette } from "../../theme/palette";
 import { space, type } from "../../theme/tokens";
@@ -191,6 +192,9 @@ export function AccountButton({ view, onChange }: AccountButtonProps) {
                 }}
               />
             </View>
+
+            {/* Only shows itself when something has been hidden. */}
+            <HiddenTerritories />
 
             {problem === null ? null : (
               <Text style={styles.problem}>{problem}</Text>

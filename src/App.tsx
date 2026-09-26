@@ -9,6 +9,7 @@ import {
   useAuth,
 } from "./features/auth";
 import { EventsProvider } from "./features/events/EventsProvider";
+import { HiddenProvider } from "./features/territories/HiddenProvider";
 import { MapScreen } from "./screens/MapScreen";
 import { palette } from "./theme/palette";
 
@@ -60,7 +61,9 @@ function Gate() {
 
   return (
     <EventsProvider key={account.id}>
-      <MapScreen />
+      <HiddenProvider key={account.id}>
+        <MapScreen />
+      </HiddenProvider>
     </EventsProvider>
   );
 }

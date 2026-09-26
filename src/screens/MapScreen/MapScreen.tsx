@@ -22,6 +22,7 @@ import { LocationReticle } from "../../features/events/components/LocationReticl
 import { FilterButton } from "../../features/filters/FilterButton";
 import { PlaceLayers } from "../../features/places/PlaceLayers";
 import { TerritoryLayers } from "../../features/territories/TerritoryLayers";
+import { TerritorySheet } from "../../features/territories/TerritorySheet";
 import { FRIEZE_HEIGHT, Timeline } from "../../features/timeline/Timeline";
 import { palette } from "../../theme/palette";
 import { space } from "../../theme/tokens";
@@ -56,6 +57,8 @@ export function MapScreen() {
   const [detailOpen, setDetailOpen] = useState(false);
   /** True from country zoom on, where the fiefs are worth drawing. */
   const [detailed, setDetailed] = useState(false);
+  /** The territory the finger last landed on, if its card is open. */
+  const [touched, setTouched] = useState<string | null>(null);
 
   // Selecting an event recentres the plate; the zoom the reader chose is left
   // alone on purpose.
@@ -114,7 +117,12 @@ export function MapScreen() {
               against the town names crowding around its anchor. */}
           {MAP_FEATURES.places ? <PlaceLayers /> : null}
           {MAP_FEATURES.territories ? (
-            <TerritoryLayers detailed={detailed} />
+            <TerritoryLayers
+              detailed={detailed}
+              // Not while an event is being placed: every touch belongs to
+              // that, and the reticle is what the reader is aiming with.
+              onTouch={placing ? undefined : setTouched}
+            />
           ) : null}
           <EventMarkers />
         </WorldMap>
@@ -222,6 +230,11 @@ export function MapScreen() {
           setEditing(null);
           setDraftLocation(null);
         }}
+      />
+
+      <TerritorySheet
+        territory={touched === null ? null : { name: touched }}
+        onClose={() => setTouched(null)}
       />
 
       {detailOpen ? (
