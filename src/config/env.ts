@@ -10,6 +10,18 @@ const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim() ?? "";
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN?.trim() ?? "";
 
+/**
+ * Laquelle des trois applications s'exécute — `app.config.ts` lit la même
+ * variable pour décider du nom, de l'identifiant et du schéma d'URL.
+ *
+ * Le schéma est reconstruit ici plutôt que codé en dur : une build de
+ * développement doit renvoyer les liens vers *elle-même*, et non vers la
+ * version de l'App Store installée à côté.
+ */
+const variant = process.env.EXPO_PUBLIC_APP_VARIANT?.trim() || "production";
+const scheme =
+  variant === "production" ? "mapshistory" : `mapshistory-${variant}`;
+
 export const env = {
   maptilerApiKey,
   hasMapTilerApiKey: maptilerApiKey.length > 0,
@@ -19,4 +31,6 @@ export const env = {
   sentryDsn,
   /** Without it, nothing is reported and nothing else changes. */
   hasSentry: sentryDsn.length > 0,
+  variant,
+  scheme,
 } as const;

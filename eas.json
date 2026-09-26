@@ -10,18 +10,27 @@
       "ios": {
         "simulator": false
       },
-      "channel": "development"
+      "channel": "development",
+      "env": {
+        "EXPO_PUBLIC_APP_VARIANT": "development"
+      }
     },
     "preview": {
       "extends": "development",
       "developmentClient": false,
-      "channel": "preview"
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_APP_VARIANT": "preview"
+      }
     },
     "production": {
       "autoIncrement": true,
       "channel": "production",
       "ios": {
         "resourceClass": "m-medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_APP_VARIANT": "production"
       }
     }
   },

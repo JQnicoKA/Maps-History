@@ -10,6 +10,7 @@ import {
 import { AppState, Linking } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 
+import { env } from "../../config/env";
 import { watchAccount } from "../../lib/monitoring";
 import { supabase } from "../../lib/supabase";
 
@@ -46,12 +47,16 @@ type AuthContextValue = {
 /**
  * Where the recovery link comes back to.
  *
- * The scheme is the app's own (`app.json`), so the link opens HistoryNote and
- * nothing else. **It has to be listed in the Supabase dashboard**, under
+ * Built from the running variant's own scheme, never written out: three
+ * applications can sit side by side on one phone — production, test,
+ * development — and a link must reopen the one that asked for it, not
+ * whichever iOS picks first.
+ *
+ * **Each scheme has to be listed in the Supabase dashboard**, under
  * Authentication → URL Configuration → Redirect URLs, or the server quietly
  * sends the reader to the project's site instead.
  */
-const RETURN_TO = "mapshistory://reset";
+const RETURN_TO = `${env.scheme}://reset`;
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 

@@ -44,6 +44,14 @@
           "project": "historynote",
           "url": "https://de.sentry.io/"
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "buildReactNativeFromSource": true
+          }
+        }
       ]
     ],
     "extra": {

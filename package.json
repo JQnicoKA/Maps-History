@@ -8,6 +8,7 @@
     "@sentry/react-native": "~7.11.0",
     "@supabase/supabase-js": "^2.109.0",
     "expo": "~56.0.21",
+    "expo-build-properties": "~56.0.27",
     "expo-image-manipulator": "~56.0.26",
     "expo-image-picker": "~56.0.25",
     "expo-status-bar": "~56.0.4",
@@ -28,15 +29,16 @@
     "vitest": "^4.1.11"
   },
   "scripts": {
-    "start": "expo start",
-    "ios": "expo run:ios",
+    "start": "EXPO_PUBLIC_APP_VARIANT=development expo start",
+    "ios": "EXPO_PUBLIC_APP_VARIANT=development expo run:ios --device",
     "android": "expo run:android",
     "prebuild": "expo prebuild --clean",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "textures": "node scripts/generate-textures.mjs",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "ios:prod": "EXPO_PUBLIC_APP_VARIANT=production expo run:ios --device --configuration Release"
   },
   "private": true
 }

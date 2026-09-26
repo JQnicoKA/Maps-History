@@ -271,6 +271,52 @@ ce qu'on vérifierait serait surtout que React fonctionne encore.
 ci-dessus : types, tests, puis `expo export` — cette dernière étant la seule à
 attraper un chemin faux ou un module absent, que le typage ne voit pas.
 
+### React Native est compilé depuis les sources
+
+`app.json` porte `expo-build-properties` avec
+`ios.buildReactNativeFromSource: true`, et ce n'est pas un réglage de confort.
+
+Expo SDK 56 livre par défaut un React Native **précompilé**
+(`React.xcframework`). Son binaire de débogage n'exporte pas
+`facebook::react::Sealable::Sealable()` — vérifié au `nm` : seul le `typeinfo`
+y figure. Or le composant Fabric `MLRNCallout` de
+`@maplibre/maplibre-react-native` appelle ce constructeur, et l'édition de
+liens échoue :
+
+```
+Undefined symbols for architecture arm64
+  facebook::react::Sealable::Sealable()
+  referenced from: MLRNCalloutProps::MLRNCalloutProps() in libMapLibreReactNative.a
+```
+
+C'est pourquoi la build **Release** passait et la build **Debug** non : les
+deux binaires précompilés n'exportent pas les mêmes symboles. Compiler React
+depuis les sources règle les deux cas d'un coup. La contrepartie est le temps :
+la première compilation prend une trentaine de minutes.
+
+### Trois applications, un seul code
+
+iOS identifie une application par son *bundle identifier*, pas par son nom :
+deux builds qui le partagent sont la même app pour le téléphone, et la seconde
+installée écrase la première — session comprise. `app.config.ts` donne donc à
+chaque variante son identifiant, son nom et son schéma d'URL :
+
+| variante | nom sur l'écran | identifiant | schéma |
+|---|---|---|---|
+| `development` | HistoryNote dev | `com.mapshistory.app.dev` | `mapshistory-dev://` |
+| `preview` | HistoryNote test | `com.mapshistory.app.preview` | `mapshistory-preview://` |
+| `production` | HistoryNote | `com.mapshistory.app` | `mapshistory://` |
+
+La variante est choisie par `EXPO_PUBLIC_APP_VARIANT` : les profils d'`eas.json`
+la posent pour les builds dans le nuage, `npm start` et `npm run ios` la posent
+en local. Le préfixe `EXPO_PUBLIC_` est délibéré — **l'application lit la même
+variable à l'exécution** (`src/config/env.ts`) pour reconstruire son propre
+schéma, et renvoyer les liens de réinitialisation vers elle-même plutôt que
+vers la version de l'App Store installée à côté.
+
+Chaque schéma doit figurer dans *Authentication → URL Configuration →
+Redirect URLs* côté Supabase.
+
 ### Construire pour distribuer (EAS)
 
 `eas.json` décrit trois profils :
