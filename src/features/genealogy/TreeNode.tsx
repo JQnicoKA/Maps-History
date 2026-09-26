@@ -42,6 +42,15 @@ export type TreeNodeProps = {
     held: { current: boolean };
     magnification: { current: number };
     onStart: () => void;
+    /**
+     * Fired only when the landing column **changes**, never on every frame.
+     *
+     * The tree draws a mark where the card would come to rest, and that mark
+     * only moves a dozen times in a long drag. Reporting each frame would
+     * re-render every node in the generation sixty times a second to say
+     * nothing new.
+     */
+    onMove: (columns: number) => void;
     onDrop: (columns: number) => void;
   };
 };
@@ -51,6 +60,13 @@ const HOLD = 260;
 
 /** Past this much travel before the hold fires, it was a pan, not a grab. */
 const WANDER = 8;
+
+/**
+ * How many whole columns a finger has covered — the one conversion both the
+ * landing mark and the drop itself go through, so they cannot disagree.
+ */
+const columnsTravelled = (dx: number, magnification: number): number =>
+  Math.round(dx / magnification / (NODE.width + GAP.x));
 
 /**
  * Someone, drawn: a round portrait, a name, two dates.
@@ -91,6 +107,9 @@ export function TreeNode({
   const live = useRef({ drag, lifted, muted, onPress });
   live.current = { drag, lifted, muted, onPress };
 
+  /** The last column reported, so the tree hears only about changes. */
+  const announced = useRef(0);
+
   const hold = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stopHold = () => {
     if (hold.current !== null) clearTimeout(hold.current);
@@ -103,10 +122,10 @@ export function TreeNode({
     stopHold();
     const held = live.current.drag;
     if (live.current.lifted && held) {
-      const step = NODE.width + GAP.x;
-      held.onDrop(Math.round(dx / held.magnification.current / step));
+      held.onDrop(columnsTravelled(dx, held.magnification.current));
       held.held.current = false;
     }
+    announced.current = 0;
     setLifted(false);
     setPressed(false);
     travel.setValue({ x: 0, y: 0 });
@@ -158,6 +177,12 @@ export function TreeNode({
          * dropping into another row, where the meaning would be ambiguous.
          */
         travel.setValue({ x: gesture.dx / held.magnification.current, y: 0 });
+
+        const columns = columnsTravelled(gesture.dx, held.magnification.current);
+        if (columns !== announced.current) {
+          announced.current = columns;
+          held.onMove(columns);
+        }
       },
 
       onPanResponderRelease: (_event, gesture) => {

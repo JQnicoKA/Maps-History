@@ -4,10 +4,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   canvasSize,
+  CARD_TOP,
   columnX,
   connectors,
   FACE_AXIS,
   frame,
+  GAP,
   nextColumn,
   NODE,
   place,
@@ -17,7 +19,7 @@ import {
 } from "./layout";
 import { LinkChoice, type LinkMode } from "./LinkChoice";
 import { PanZoom } from "./PanZoom";
-import { dropAt, lineBetween, spouses, tied } from "../events/rows";
+import { blocks, dropAt, lineBetween, spouses, tied } from "../events/rows";
 import { TreeMemberSheet } from "./TreeMemberSheet";
 import { TreeNode } from "./TreeNode";
 import {
@@ -107,6 +109,11 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
    */
   const dragging = useRef(false);
   const magnification = useRef(1);
+  /** Where a card in the air would come to rest, while it is in the air. */
+  const [landing, setLanding] = useState<{
+    id: string;
+    columns: number;
+  } | null>(null);
 
   const placed = useMemo(() => (tree ? place(tree) : []), [tree]);
   const lines = useMemo(
@@ -201,6 +208,40 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
     );
   };
 
+  /**
+   * The outline that shows where a card in the air would come to rest.
+   *
+   * Drawn for the **whole household**, because that is what travels: a spouse
+   * dragged alone would land with their partner, and a mark under one of the
+   * two would promise something the drop does not deliver.
+   *
+   * Computed from the same conversion the drop uses, so the card cannot land
+   * anywhere but where this says.
+   */
+  const target = (() => {
+    // Guarded rather than cleared: were a drag ever cut short by the canvas
+    // changing meaning, a hollow left behind would have no way to explain
+    // itself. Derived state cannot get stuck.
+    if (landing === null || tracing !== null) return null;
+    const dragged = tree.members.find((one) => one.id === landing.id);
+    if (!dragged) return null;
+
+    const household =
+      blocks(tree, dragged.generation).find((block) =>
+        block.some((one) => one.id === dragged.id),
+      ) ?? [];
+    const first = household[0];
+    if (!first) return null;
+
+    return {
+      left: columnX(first.position + landing.columns, columns),
+      top: rowY(dragged.generation, rows) + CARD_TOP,
+      width:
+        household.length * NODE.width + (household.length - 1) * GAP.x,
+      height: NODE.height - CARD_TOP,
+    };
+  })();
+
   const run = (work: Promise<unknown>) => {
     setBusy(true);
     void work
@@ -277,6 +318,11 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
           inset={{ top: chrome.top, bottom: tracing === null ? 0 : chrome.bottom }}
           subject={tree.id}
         >
+        {/* Under the lines and the cards: a hollow, not an object. */}
+        {target ? (
+          <View style={[styles.landing, target]} pointerEvents="none" />
+        ) : null}
+
         {lines.map((segment, index) => (
           <View
             key={index}
@@ -306,8 +352,14 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
                 ? {
                     held: dragging,
                     magnification,
-                    onStart: () => setOpenId(null),
+                    onStart: () => {
+                      setOpenId(null);
+                      setLanding({ id: node.member.id, columns: 0 });
+                    },
+                    onMove: (columns) =>
+                      setLanding({ id: node.member.id, columns }),
                     onDrop: (columns) => {
+                      setLanding(null);
                       if (columns === 0) return;
                       const moves = dropAt(
                         tree,
@@ -629,6 +681,19 @@ const SLOT = 72;
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.paper },
   line: { position: "absolute", backgroundColor: palette.inkSoft },
+  /**
+   * Dashed and empty, in wax: the colour the app keeps for "this is where you
+   * are". An outline rather than a filled shape, so it reads as a place being
+   * held open and not as another card.
+   */
+  landing: {
+    position: "absolute",
+    borderRadius: radius.lg,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderColor: palette.wax,
+    backgroundColor: palette.paperDeep,
+  },
   slot: {
     position: "absolute",
     width: SLOT,
