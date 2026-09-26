@@ -11,6 +11,7 @@ import {
 import { CARD_TOP, FACE, FACE_BAND, GAP, NODE } from "./layout";
 import { lifespan } from "../events/lifespan";
 import type { Character, TreeMember } from "../events/types";
+import { lifted as tapLifted, shifted } from "../../lib/touch";
 import { palette } from "../../theme/palette";
 import { radius, shadow, space } from "../../theme/tokens";
 
@@ -154,6 +155,9 @@ export function TreeNode({
         hold.current = setTimeout(() => {
           held.held.current = true;
           setLifted(true);
+          // Before the card has finished growing: the tap is what tells the
+          // reader the hold took, and it should not arrive second.
+          tapLifted();
           held.onStart();
         }, HOLD);
       },
@@ -181,6 +185,7 @@ export function TreeNode({
         const columns = columnsTravelled(gesture.dx, held.magnification.current);
         if (columns !== announced.current) {
           announced.current = columns;
+          shifted();
           held.onMove(columns);
         }
       },
