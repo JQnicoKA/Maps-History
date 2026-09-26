@@ -1,19 +1,21 @@
 import { useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { generationCount } from "./layout";
 import { TreeBuilder } from "./TreeBuilder";
-import { InkButton, InkField, Sheet, useNotice } from "../../components/ui";
+import {
+  InkButton,
+  InkField,
+  Roster,
+  RosterEmpty,
+  RosterRow,
+  Sheet,
+  useNotice,
+} from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import type { Tree } from "../events/types";
 import { palette } from "../../theme/palette";
-import { radius, space, type } from "../../theme/tokens";
+import { space } from "../../theme/tokens";
 
 /**
  * The genealogies, listed.
@@ -67,56 +69,36 @@ export function TreeManager() {
     >
       {dialog}
 
-      <View style={styles.list}>
-        <Text style={styles.legend}>
-          {trees.length === 0
+      <Roster
+        count={
+          trees.length === 0
             ? "Aucun arbre"
-            : `${trees.length} arbre${trees.length > 1 ? "s" : ""}`}
-        </Text>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Nouvel arbre"
-          onPress={() => {
-            setName("");
-            setNaming(true);
-          }}
-          style={({ pressed }) => [styles.new, pressed && styles.pressed]}
-        >
-          <View style={styles.newThumb}>
-            <Text style={styles.newGlyph}>+</Text>
-          </View>
-          <Text style={styles.newLabel}>Nouvel arbre</Text>
-        </Pressable>
-
+            : `${trees.length} arbre${trees.length > 1 ? "s" : ""}`
+        }
+        addLabel="Nouvel arbre"
+        onAdd={() => {
+          setName("");
+          setNaming(true);
+        }}
+      >
         {trees.length === 0 ? (
-          <Text style={styles.empty}>
+          <RosterEmpty>
             {characters.length === 0
               ? "Créez d'abord des personnages : un arbre se bâtit avec eux."
               : "Un arbre relie des personnages entre eux, génération par génération."}
-          </Text>
+          </RosterEmpty>
         ) : (
           trees.map((tree) => (
-            <Pressable
+            <RosterRow
               key={tree.id}
-              accessibilityRole="button"
-              accessibilityLabel={`Ouvrir ${tree.name}`}
+              thumb={<Text style={styles.glyph}>⚘</Text>}
+              title={tree.name}
+              detail={summarise(tree)}
               onPress={() => setOpen(tree.id)}
-              style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-            >
-              <View style={styles.rowText}>
-                <Text style={styles.name} numberOfLines={1}>
-                  {tree.name}
-                </Text>
-                <Text style={styles.detail} numberOfLines={1}>
-                  {summarise(tree)}
-                </Text>
-              </View>
-              <Text style={styles.chevron}>›</Text>
-            </Pressable>
+            />
           ))
         )}
-      </View>
+      </Roster>
 
       <Sheet
         visible={naming}
@@ -177,9 +159,6 @@ function summarise(tree: Tree): string {
     .join(" · ");
 }
 
-/** The round slot of the `+`, the size of a portrait on the other list. */
-const THUMB = 44;
-
 const styles = StyleSheet.create({
   body: {
     paddingHorizontal: space.xl,
@@ -187,42 +166,6 @@ const styles = StyleSheet.create({
     gap: space.xl,
   },
   form: { paddingHorizontal: space.xl, paddingBottom: space.lg },
-  list: { gap: space.sm },
-  /** The slot that makes one — dashed, like the characters' and the folders'. */
-  new: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.md,
-    padding: space.sm,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: palette.line,
-  },
-  newThumb: {
-    width: THUMB,
-    height: THUMB,
-    borderRadius: THUMB / 2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  newGlyph: { fontSize: 24, lineHeight: 28, color: palette.inkSoft },
-  newLabel: { flex: 1, fontSize: 15, fontWeight: "600", color: palette.inkSoft },
-  legend: { ...type.legend, color: palette.inkSoft },
-  empty: { ...type.body, color: palette.inkFaint },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.md,
-    minHeight: THUMB + 2 * space.sm,
-    paddingVertical: space.md,
-    paddingHorizontal: space.lg,
-    borderRadius: radius.md,
-    backgroundColor: palette.sunken,
-  },
-  rowText: { flex: 1, gap: 2 },
-  name: { fontSize: 15, fontWeight: "600", color: palette.ink },
-  detail: { ...type.caption, color: palette.inkFaint },
-  chevron: { fontSize: 22, color: palette.inkFaint },
-  pressed: { opacity: 0.6 },
+  /** A sprig, for want of a portrait: a tree has no face of its own. */
+  glyph: { fontSize: 20, color: palette.inkFaint },
 });

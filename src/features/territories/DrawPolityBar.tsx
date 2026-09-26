@@ -52,13 +52,13 @@ export function DrawPolityBar({
           ? strokes === 0
             ? "Peignez le territoire avec le doigt."
             : `${strokes} coup${strokes > 1 ? "s" : ""} de pinceau.`
-          : "Déplacez et zoomez la carte librement ; ce qui est peint reste en place."}
+          : "Déplacez et zoomez la carte librement"}
       </Text>
 
       <View style={styles.row}>
         <InkButton label="Annuler" variant="quiet" grow onPress={onCancel} />
         <InkButton
-          label="Effacer le dernier"
+          label="Effacer"
           variant="tonal"
           grow
           disabled={strokes === 0 || busy}

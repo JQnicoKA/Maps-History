@@ -100,6 +100,20 @@ function Progress({ step }: { step: number }) {
   );
 }
 
+/** The four things the sheet can show, in two families of two. */
+type Tab = "event" | "folder" | "character" | "tree";
+
+const FAMILIES = {
+  event: [
+    { value: "event" as const, label: "Événement" },
+    { value: "folder" as const, label: "Classeurs" },
+  ],
+  people: [
+    { value: "character" as const, label: "Personnages" },
+    { value: "tree" as const, label: "Arbres" },
+  ],
+} as const;
+
 export type EventFormModalProps = {
   visible: boolean;
   /**
@@ -107,6 +121,8 @@ export type EventFormModalProps = {
    * it, so switching events remounts the form and the state below re-seeds.
    */
   event?: HistoricalEvent | null;
+  /** Which pair of tabs this sheet carries. Ignored when editing. */
+  family?: keyof typeof FAMILIES;
   location: { longitude: number; latitude: number } | null;
   onRequestPlacement: () => void;
   onCancel: () => void;
@@ -116,6 +132,7 @@ export type EventFormModalProps = {
 export function EventFormModal({
   visible,
   event,
+  family = "event",
   location,
   onRequestPlacement,
   onCancel,
@@ -124,12 +141,16 @@ export function EventFormModal({
   const { folders, characters, addEvent, editEvent } = useEvents();
 
   /**
-   * Which half of the Add sheet is showing. Editing an existing event has no
-   * second half — there is nothing to add but the changes in front of you.
+   * Which tab of the sheet is showing.
+   *
+   * Only ever one of the two its family holds — what happened and where it is
+   * filed, or who it happened to and how they are related. Editing an
+   * existing event has no second tab: there is nothing to add but the changes
+   * in front of you.
    */
-  const [tab, setTab] = useState<
-    "event" | "folder" | "character" | "tree"
-  >("event");
+  const [tab, setTab] = useState<Tab>(
+    family === "people" ? "character" : "event",
+  );
   /**
    * Which of the five questions is on screen. Only when composing: correcting
    * an event is not a journey, it is one change, and walking a reader through
@@ -244,7 +265,13 @@ export function EventFormModal({
     <Sheet
       visible={visible}
       onClose={onCancel}
-      title={event ? "Modifier l'événement" : "Ajouter"}
+      title={
+        event
+          ? "Modifier l'événement"
+          : family === "people"
+            ? "Personnages"
+            : "Événements"
+      }
       footer={
         // A folder is written the moment it is named, so that half of the
         // sheet has nothing to save and nothing to cancel.
@@ -293,12 +320,7 @@ export function EventFormModal({
       {event ? null : (
         <View style={styles.switcher}>
           <SegmentedControl
-            segments={[
-              { value: "event" as const, label: "Événement" },
-              { value: "folder" as const, label: "Classeur" },
-              { value: "character" as const, label: "Personnage" },
-              { value: "tree" as const, label: "Arbre" },
-            ]}
+            segments={[...FAMILIES[family]]}
             value={tab}
             onChange={setTab}
           />

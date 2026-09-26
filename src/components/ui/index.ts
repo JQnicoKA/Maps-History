@@ -6,6 +6,14 @@ export { InkButton, type InkButtonProps } from "./InkButton";
 export { InkField, type InkFieldProps } from "./InkField";
 export { Paper } from "./Paper";
 export {
+  Roster,
+  RosterEmpty,
+  RosterRow,
+  THUMB,
+  type RosterProps,
+  type RosterRowProps,
+} from "./Roster";
+export {
   SegmentedControl,
   type Segment,
   type SegmentedControlProps,

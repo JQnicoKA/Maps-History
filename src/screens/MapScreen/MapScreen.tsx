@@ -12,7 +12,10 @@ import { env } from "../../config/env";
 import { MAP_FEATURES } from "../../config/map";
 import { useEvents } from "../../features/events/EventsProvider";
 import type { HistoricalEvent } from "../../features/events/types";
-import { AddEventButton } from "../../features/events/components/AddEventButton";
+import {
+  AddEventButton,
+  AddPersonButton,
+} from "../../features/events/components/AddEventButton";
 import { EventDetailModal } from "../../features/events/components/EventDetailModal";
 import { EventFormModal } from "../../features/events/components/EventFormModal";
 import { EventListView } from "../../features/events/components/EventListView";
@@ -60,6 +63,8 @@ export function MapScreen() {
 
   const [view, setView] = useState<ScreenView>("map");
   const [composing, setComposing] = useState(false);
+  /** Which pair of tabs the sheet opens on. */
+  const [family, setFamily] = useState<"event" | "people">("event");
   const [editing, setEditing] = useState<HistoricalEvent | null>(null);
   const [placing, setPlacing] = useState(false);
   const [draftLocation, setDraftLocation] = useState<DraftLocation | null>(
@@ -266,6 +271,15 @@ export function MapScreen() {
                 onPress={() => {
                   setEditing(null);
                   setDraftLocation(null);
+                  setFamily("event");
+                  setComposing(true);
+                }}
+              />
+              <AddPersonButton
+                onPress={() => {
+                  setEditing(null);
+                  setDraftLocation(null);
+                  setFamily("people");
                   setComposing(true);
                 }}
               />
@@ -322,8 +336,10 @@ export function MapScreen() {
       )}
 
       <EventFormModal
-        // Remounting on identity re-seeds every field from the event.
-        key={editing?.id ?? "new"}
+        // Remounting re-seeds every field — on the event being edited, and on
+        // the family, whose first tab decides what the sheet opens on.
+        key={editing?.id ?? `new-${family}`}
+        family={family}
         visible={composing && !placing}
         event={editing}
         location={draftLocation}
