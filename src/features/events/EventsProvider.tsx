@@ -425,12 +425,38 @@ export function EventsProvider({ children }: { children: ReactNode }) {
 
   const orderRow = useCallback(
     async (treeId: string, moves: Move[]) => {
-      for (const move of moves) {
-        await api.updateTreeMember(move.id, { position: move.position });
+      /**
+       * Shown first, written second.
+       *
+       * A rearranged row used to wait on the network before anything moved:
+       * the card sprang back to where it started, paused for a second or
+       * four, then jumped. The reader's own gesture already said where it
+       * goes, and the answer is not the server's to give — so the tree is
+       * rearranged here and now, and the writing catches up behind.
+       */
+      const applied = new Map(moves.map((move) => [move.id, move.position]));
+      const rearrange = (tree: Tree): Tree => ({
+        ...tree,
+        members: tree.members.map((member) => {
+          const position = applied.get(member.id);
+          return position === undefined ? member : { ...member, position };
+        }),
+      });
+      const before = trees;
+      setTrees((current) =>
+        current.map((tree) => (tree.id === treeId ? rearrange(tree) : tree)),
+      );
+
+      try {
+        await api.reorderTreeMembers(moves);
+      } catch (cause) {
+        // Put back exactly what was there. A row left showing an arrangement
+        // the server refused would be a lie the reader cannot see through.
+        setTrees(before);
+        throw cause;
       }
-      await reloadTree(treeId);
     },
-    [reloadTree],
+    [trees],
   );
 
   const eraseLink = useCallback(
@@ -462,9 +488,9 @@ export function EventsProvider({ children }: { children: ReactNode }) {
         const fresh = await api.fetchTree(treeId);
         const married = fresh?.members.find((member) => member.id === from);
         if (fresh && married) {
-          for (const move of tidy(fresh, married.generation)) {
-            await api.updateTreeMember(move.id, { position: move.position });
-          }
+          // One request, and all of it or none: the same guarantee `orderRow`
+          // relies on, for the same reason.
+          await api.reorderTreeMembers(tidy(fresh, married.generation));
         }
       }
       await reloadTree(treeId);

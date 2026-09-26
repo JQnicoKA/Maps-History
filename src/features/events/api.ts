@@ -2,6 +2,7 @@ import type {
   Character,
   CharacterDraft,
   EventSummary,
+  Move,
   Tree,
   TreeBond,
   TreeMember,
@@ -803,6 +804,20 @@ export async function updateTreeMember(
       ...(patch.note === undefined ? {} : { note: patch.note?.trim() || null }),
     })
     .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Writes a whole rearranged row at once.
+ *
+ * One request instead of one per person, and — the part that matters —
+ * **atomic**: the loop it replaces could be cut in half by a dropped
+ * connection and leave two members sharing a column, which is exactly what
+ * `dropAt` exists to prevent.
+ */
+export async function reorderTreeMembers(moves: Move[]): Promise<void> {
+  if (moves.length === 0) return;
+  const { error } = await supabase().rpc("reorder_tree_members", { moves });
   if (error) throw new Error(error.message);
 }
 
