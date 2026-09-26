@@ -8,10 +8,12 @@ import {
   connectors,
   FACE_AXIS,
   frame,
+  nextColumn,
   NODE,
   place,
   rowCount,
   rowY,
+  span,
 } from "./layout";
 import { LinkChoice, type LinkMode } from "./LinkChoice";
 import { PanZoom } from "./PanZoom";
@@ -103,6 +105,7 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
   if (!tree) return null;
 
   const rows = frame(tree);
+  const columns = span(tree);
   const byId = new Map(characters.map((person) => [person.id, person]));
   const open = tree.members.find((member) => member.id === openId) ?? null;
   const mode = tracing?.mode ?? null;
@@ -303,7 +306,7 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
               tracing !== null && styles.away,
               pressed && styles.pressed,
               {
-                left: columnX(rowCount(tree, generation)),
+                left: columnX(nextColumn(tree, generation), columns),
                 top: rowY(generation, rows),
               },
             ]}

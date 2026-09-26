@@ -8,7 +8,9 @@ import {
   frame,
   generationCount,
   NODE,
+  PADDING,
   place,
+  span,
   STROKE,
 } from "./layout";
 import type { Importance, Tree, TreeLink, TreeMember } from "../events/types";
@@ -184,6 +186,24 @@ describe("la toile", () => {
 
   it("garde une rangée vide au-dessus et au-dessous", () => {
     expect(frame(subject)).toEqual({ from: -1, to: 2 });
+  });
+
+  it("garde une colonne libre à droite, pour le +", () => {
+    expect(span(subject)).toEqual({ from: 0, to: 2 });
+  });
+
+  it("recale les colonnes négatives au moment de dessiner", () => {
+    const ecarte = tree([at("gauche", 0, -3), at("droite", 0, 1)], []);
+    const [premier] = place(ecarte);
+    // La colonne −3 se dessine au bord, pas hors de la toile.
+    expect(premier!.x).toBe(PADDING);
+    expect(canvasSize(ecarte).width).toBeGreaterThan(4 * NODE.width);
+  });
+
+  it("compte la largeur sur la colonne la plus à droite, pas sur l'effectif", () => {
+    const clairseme = tree([at("a", 0, 0), at("b", 0, 9)], []);
+    const serre = tree([at("a", 0, 0), at("b", 0, 1)], []);
+    expect(canvasSize(clairseme).width).toBeGreaterThan(canvasSize(serre).width);
   });
 
   it("est assez grande pour la rangée la plus large et sa case libre", () => {

@@ -195,12 +195,11 @@ export function TreeMemberSheet({
               onPress={() => shift(1)}
             />
           </View>
-          {married ? (
-            <Text style={styles.hint}>
-              Au sein de son couple il échange sa place ; au bord, c'est tout le
-              couple qui enjambe le voisin.
-            </Text>
-          ) : null}
+          <Text style={styles.hint}>
+            {married
+              ? "Au sein de son couple il échange sa place ; au bord, c'est tout le couple qui se déplace. Rien ne borne la ligne : on peut l'écarter dans le vide pour l'amener sous ses parents."
+              : "Rien ne borne la ligne : on peut l'écarter dans le vide pour l'amener sous ses parents."}
+          </Text>
         </View>
 
         <InkField

@@ -99,26 +99,52 @@ export function blockOf(tree: Tree, member: TreeMember): number {
  * Whoever is met first keeps their place and their household is gathered
  * around them, so the row a reader knows stays broadly the row they get: a
  * spouse is fetched to their partner rather than the whole line redrawn.
+ *
+ * **Gaps elsewhere in the row survive.** Each block keeps the column its
+ * leftmost member already occupies, and only shifts when the block before it
+ * has grown into that column. A hole the reader left on purpose between two
+ * families is not theirs to tidy away.
  */
 export function tidy(tree: Tree, generation: number): Move[] {
-  return renumber(blocks(tree, generation));
+  const moves: Move[] = [];
+  let taken = -Infinity;
+
+  for (const block of blocks(tree, generation)) {
+    const first = block[0];
+    if (!first) continue;
+
+    // Where the block would like to start — where its leftmost member already
+    // stands — unless the block before it has grown into that column. A
+    // household gathering is allowed to push a stranger aside; it is not
+    // allowed to land on top of one.
+    const start = Math.max(first.position, taken + 1);
+    block.forEach((member, step) => {
+      const wanted = start + step;
+      if (member.position !== wanted) moves.push({ id: member.id, position: wanted });
+    });
+    taken = start + block.length - 1;
+  }
+  return moves;
 }
 
 /**
  * A member's step to the left or to the right, as the moves it costs.
  *
- * Two different steps, and which one it is depends on where in their household
- * they stand:
+ * Three different steps, and which one it is depends on what lies that way:
  *
- * - **Inside it**, they simply change places with the spouse next to them. The
- *   household does not move, so neither does anyone else in the row: in `1 2
- *   [3 4 5]`, sending 4 left gives `1 2 [4 3 5]`.
- * - **At its edge**, there is no spouse to trade with, so the whole household
- *   steps over the neighbouring block — a single person or another household,
- *   never half of one. In the same row, sending 3 left gives `1 [3 4 5] 2`.
+ * - **A spouse beside them inside their own household**: they change places.
+ *   Nothing else in the row moves — in `1 2 [3 4 5]`, sending 4 left gives
+ *   `1 2 [4 3 5]`.
+ * - **Empty space**: the household simply moves one column into it. This is
+ *   what lets a reader push a family left until it sits under its parents, or
+ *   leave a hole where nobody belongs.
+ * - **Another household, immediately adjacent**: the two swap whole. Never
+ *   half of one, which is what keeps a couple standing together.
  *
- * A single person is a household of one and is therefore always at its edge,
- * which is why this reads as a plain swap for everyone unmarried.
+ * Columns are signed, so there is no left edge to bump into: pushing left from
+ * the leftmost column reaches −1, and the drawing shifts everything at the
+ * last moment (`span` in `genealogy/layout.ts`). Nobody else has to move for
+ * one person to move.
  */
 export function slide(tree: Tree, member: TreeMember, by: -1 | 1): Move[] {
   const order = blocks(tree, member.generation);
@@ -126,28 +152,56 @@ export function slide(tree: Tree, member: TreeMember, by: -1 | 1): Move[] {
   const household = order[from];
   if (from < 0 || !household) return [];
 
+  // Inside the household: trade places with the spouse on that side.
   const rank = household.findIndex((one) => one.id === member.id);
-  const spouse = rank + by;
-  if (spouse >= 0 && spouse < household.length) {
-    const swapped = [...household];
-    const moving = household[rank];
-    const displaced = household[spouse];
-    if (!moving || !displaced) return [];
-    swapped[rank] = displaced;
-    swapped[spouse] = moving;
-    const rearranged = [...order];
-    rearranged[from] = swapped;
-    return renumber(rearranged);
+  const mate = household[rank + by];
+  const self = household[rank];
+  if (mate && self) {
+    return [
+      { id: self.id, position: mate.position },
+      { id: mate.id, position: self.position },
+    ];
   }
 
-  const to = from + by;
-  if (to < 0 || to >= order.length) return [];
-  const rearranged = [...order];
-  const displaced = rearranged[to];
-  if (!displaced) return [];
-  rearranged[from] = displaced;
-  rearranged[to] = household;
-  return renumber(rearranged);
+  const neighbour = order[from + by];
+  const edge =
+    by === -1
+      ? household[0]?.position
+      : household[household.length - 1]?.position;
+  if (edge === undefined) return [];
+
+  // Empty space that way: step into it, and take the household along.
+  const touching =
+    neighbour !== undefined &&
+    (by === -1
+      ? (neighbour[neighbour.length - 1]?.position ?? -Infinity) === edge - 1
+      : (neighbour[0]?.position ?? Infinity) === edge + 1);
+
+  if (!touching) {
+    return household.map((one) => ({ id: one.id, position: one.position + by }));
+  }
+
+  // Shoulder to shoulder: the two households exchange their stretches of row.
+  if (!neighbour) return [];
+  const moves: Move[] = [];
+  const width = (block: TreeMember[]) => block.length;
+  if (by === -1) {
+    const start = neighbour[0]!.position;
+    household.forEach((one, step) => moves.push({ id: one.id, position: start + step }));
+    neighbour.forEach((one, step) =>
+      moves.push({ id: one.id, position: start + width(household) + step }),
+    );
+  } else {
+    const start = household[0]!.position;
+    neighbour.forEach((one, step) => moves.push({ id: one.id, position: start + step }));
+    household.forEach((one, step) =>
+      moves.push({ id: one.id, position: start + width(neighbour) + step }),
+    );
+  }
+  return moves.filter((move) => {
+    const was = [...household, ...neighbour].find((one) => one.id === move.id);
+    return was !== undefined && was.position !== move.position;
+  });
 }
 
 /** The line drawn directly between these two, if there is one. */
@@ -218,16 +272,3 @@ const claims = (tree: Tree, parent: string, child: string): boolean =>
     (link) =>
       link.kind === "descent" && link.from === parent && link.to === child,
   );
-
-/** Positions 0, 1, 2… over the given order — reporting only what changes. */
-function renumber(order: TreeMember[][]): Move[] {
-  const moves: Move[] = [];
-  let position = 0;
-  for (const block of order) {
-    for (const member of block) {
-      if (member.position !== position) moves.push({ id: member.id, position });
-      position += 1;
-    }
-  }
-  return moves;
-}

@@ -92,15 +92,45 @@ export function frame(tree: Tree): Frame {
   return { from: Math.min(...rows) - 1, to: Math.max(...rows) + 1 };
 }
 
+/**
+ * The columns the canvas draws, left to right.
+ *
+ * **Positions are signed too, and sparse.** A reader arranging a tree wants to
+ * push someone left to line them up under their parents, and to leave a hole
+ * where nobody belongs — so positions are neither renumbered to close gaps nor
+ * kept above zero. Pushing left from the leftmost column simply reaches −1,
+ * and this frame does the shifting at drawing time, exactly as `frame` does
+ * for generations. Nobody else has to move for one person to move.
+ *
+ * One spare column on the right, where the `+` that closes a row lives.
+ */
+export function span(tree: Tree): Frame {
+  if (tree.members.length === 0) return { from: 0, to: 0 };
+  const columns = tree.members.map((member) => member.position);
+  return { from: Math.min(...columns), to: Math.max(...columns) + 1 };
+}
+
 export const rowY = (generation: number, within: Frame): number =>
   PADDING + (generation - within.from) * (NODE.height + GAP.y);
 
-export const columnX = (position: number): number =>
-  PADDING + position * (NODE.width + GAP.x);
+export const columnX = (position: number, across: Frame): number =>
+  PADDING + (position - across.from) * (NODE.width + GAP.x);
 
 /** How many members stand in a given row. */
 export const rowCount = (tree: Tree, generation: number): number =>
   tree.members.filter((member) => member.generation === generation).length;
+
+/**
+ * The column where a row's `+` sits: just past its rightmost member.
+ *
+ * Past the *position*, not past the count — with gaps allowed, a row of three
+ * can perfectly well end at column 7.
+ */
+export function nextColumn(tree: Tree, generation: number): number {
+  const row = tree.members.filter((member) => member.generation === generation);
+  if (row.length === 0) return span(tree).from;
+  return Math.max(...row.map((member) => member.position)) + 1;
+}
 
 /**
  * Where every member sits on the canvas.
@@ -112,9 +142,10 @@ export const rowCount = (tree: Tree, generation: number): number =>
  */
 export function place(tree: Tree): Placed[] {
   const within = frame(tree);
+  const across = span(tree);
   return tree.members.map((member) => ({
     member,
-    x: columnX(member.position),
+    x: columnX(member.position, across),
     y: rowY(member.generation, within),
   }));
 }
@@ -125,12 +156,10 @@ export function place(tree: Tree): Placed[] {
  */
 export function canvasSize(tree: Tree): { width: number; height: number } {
   const within = frame(tree);
-  let width = 0;
-  for (let row = within.from; row <= within.to; row++) {
-    width = Math.max(width, columnX(rowCount(tree, row)) + NODE.width);
-  }
+  const across = span(tree);
   return {
-    width: width + PADDING,
+    // `across.to` is already one past the rightmost member — the slot's column.
+    width: columnX(across.to, across) + NODE.width + PADDING,
     height: rowY(within.to, within) + NODE.height + PADDING,
   };
 }

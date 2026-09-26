@@ -381,11 +381,20 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   const addToTree = useCallback(
     async (treeId: string, characterId: string, generation: number) => {
       const target = await api.fetchTree(treeId);
-      // Appended to the right of its generation, which is where a reader
-      // expects the newcomer to land.
-      const position = (target?.members ?? []).filter(
+      // Just past the rightmost member of that generation — past the
+      // *position*, not past the count: with gaps allowed, a row of three can
+      // perfectly well end at column 7. An empty row starts where the tree's
+      // leftmost column is, so a new generation lines up with the others.
+      const row = (target?.members ?? []).filter(
         (member) => member.generation === generation,
-      ).length;
+      );
+      const position =
+        row.length > 0
+          ? Math.max(...row.map((member) => member.position)) + 1
+          : Math.min(
+              0,
+              ...(target?.members ?? []).map((member) => member.position),
+            );
       await api.addTreeMember(treeId, characterId, generation, position);
       await reloadTree(treeId);
     },

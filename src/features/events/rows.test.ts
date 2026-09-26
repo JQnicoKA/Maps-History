@@ -106,10 +106,40 @@ describe("un pas à gauche ou à droite", () => {
     expect(row(subject, slide(subject, who(subject, "3"), 1))).toBe("12435");
   });
 
-  it("ne sort personne de la ligne", () => {
+  it("s'écarte dans le vide plutôt que de buter sur un bord", () => {
     const subject = household();
-    expect(slide(subject, who(subject, "1"), -1)).toEqual([]);
-    expect(slide(subject, who(subject, "5"), 1)).toEqual([]);
+    // Les colonnes sont signées : il n'y a pas de bord gauche où buter.
+    expect(slide(subject, who(subject, "1"), -1)).toEqual([
+      { id: "1", position: -1 },
+    ]);
+  });
+
+  it("emmène tout le ménage quand il s'écarte dans le vide", () => {
+    const subject = household();
+    // 5 est au bord droit de son ménage et rien ne le touche à droite :
+    // les trois avancent d'un cran, ensemble.
+    expect(slide(subject, who(subject, "5"), 1)).toEqual([
+      { id: "3", position: 3 },
+      { id: "4", position: 4 },
+      { id: "5", position: 5 },
+    ]);
+  });
+
+  it("garde le ménage soudé en s'écartant", () => {
+    const subject = tree(
+      [at("A", 0), at("B", 1), at("loin", 6)],
+      [wed("A", "B")],
+    );
+    // B est au bord droit, et le vide s'étend jusqu'à la colonne 6.
+    expect(slide(subject, subject.members[1]!, 1)).toEqual([
+      { id: "A", position: 1 },
+      { id: "B", position: 2 },
+    ]);
+  });
+
+  it("laisse les trous voulus par le lecteur", () => {
+    const subject = tree([at("A", 0), at("B", 5)], []);
+    expect(tidy(subject, 0)).toEqual([]);
   });
 
   it("fait enjamber un ménage par une personne seule", () => {
