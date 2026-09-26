@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import { fetchHiddenPolities, hidePolity, showPolity } from "./hidden";
+import { drawPolity, eraseDrawn, fetchDrawn, type DrawnPolity, type Stroke } from "./drawn";
 
 type HiddenContextValue = {
   /** Names this account has taken off its map, most recent first. */
@@ -24,6 +25,18 @@ type HiddenContextValue = {
    * it to ask again.
    */
   mask: number;
+
+  /** The territories this account has painted itself. */
+  drawn: DrawnPolity[];
+  /** Paints one and keeps it. Returns once the map can show it. */
+  draw: (options: {
+    strokes: Stroke[];
+    brushMetres: number;
+    name: string;
+    from: number;
+    to: number;
+  }) => Promise<void>;
+  erase: (id: string) => Promise<void>;
 };
 
 const HiddenContext = createContext<HiddenContextValue | null>(null);
@@ -37,17 +50,20 @@ const HiddenContext = createContext<HiddenContextValue | null>(null);
  */
 export function HiddenProvider({ children }: { children: ReactNode }) {
   const [hidden, setHidden] = useState<string[]>([]);
+  const [drawn, setDrawn] = useState<DrawnPolity[]>([]);
   const [mask, setMask] = useState(0);
 
   useEffect(() => {
     let alive = true;
-    void fetchHiddenPolities()
-      .then((names) => {
+    void Promise.all([fetchHiddenPolities(), fetchDrawn()])
+      .then(([names, mine]) => {
         if (!alive) return;
         setHidden(names);
-        // Only if there is something to apply: an account that has hidden
-        // nothing must not make the map fetch its territories twice at launch.
-        if (names.length > 0) setMask((count) => count + 1);
+        setDrawn(mine);
+        // Only if there is something to apply: an account with nothing hidden
+        // and nothing drawn must not make the map fetch its territories twice
+        // at launch.
+        if (names.length > 0 || mine.length > 0) setMask((count) => count + 1);
       })
       .catch(() => undefined);
     return () => {
@@ -67,9 +83,32 @@ export function HiddenProvider({ children }: { children: ReactNode }) {
     setMask((count) => count + 1);
   }, []);
 
+  const draw = useCallback(
+    async (options: {
+      strokes: Stroke[];
+      brushMetres: number;
+      name: string;
+      from: number;
+      to: number;
+    }) => {
+      await drawPolity(options);
+      // Re-read rather than splice in what we sent: the colour and the label
+      // anchor are decided by the database, and only it knows them.
+      setDrawn(await fetchDrawn());
+      setMask((count) => count + 1);
+    },
+    [],
+  );
+
+  const erase = useCallback(async (id: string) => {
+    await eraseDrawn(id);
+    setDrawn((current) => current.filter((one) => one.id !== id));
+    setMask((count) => count + 1);
+  }, []);
+
   const value = useMemo(
-    () => ({ hidden, hide, show, mask }),
-    [hidden, hide, show, mask],
+    () => ({ hidden, hide, show, mask, drawn, draw, erase }),
+    [hidden, hide, show, mask, drawn, draw, erase],
   );
 
   return (

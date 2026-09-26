@@ -34,6 +34,14 @@ export type WorldMapProps = {
    * detail back until it can actually be read.
    */
   onDetailChange?: (detailed: boolean) => void;
+  /**
+   * Frees the single finger for something other than panning.
+   *
+   * While drawing, one finger paints and must not drag the plate. Pinch is
+   * left alone, so the reader can still zoom to where they are working — and
+   * `dragPan` is the only thing given up, which two fingers do not need.
+   */
+  frozen?: boolean;
 };
 
 export function WorldMap({
@@ -44,6 +52,7 @@ export function WorldMap({
   centerAnimationDuration = 650,
   attributionOffset,
   onDetailChange,
+  frozen = false,
 }: WorldMapProps) {
   const mapStyle = useMemo(
     () => createOldAtlasStyle({ apiKey: env.maptilerApiKey }),
@@ -77,6 +86,7 @@ export function WorldMap({
         // An atlas plate is read flat and square to the page: pan and zoom only.
         touchRotate={false}
         touchPitch={false}
+        dragPan={!frozen}
         logo={false}
         compass={false}
         scaleBar={false}

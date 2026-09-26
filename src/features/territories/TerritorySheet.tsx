@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
 import { useHidden } from "./HiddenProvider";
 import { Dialog, InkButton, useNotice } from "../../components/ui";
 import { formatYear } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
-import { space, type } from "../../theme/tokens";
+import { type } from "../../theme/tokens";
 
 /** What a tap on the plate turned up. */
 export type TouchedTerritory = {
@@ -76,38 +76,6 @@ export function TerritorySheet({ territory, onClose }: TerritorySheetProps) {
   );
 }
 
-/** The list, and the way back — shown wherever the account is managed. */
-export function HiddenTerritories() {
-  const { hidden, show } = useHidden();
-  const [busy, setBusy] = useState<string | null>(null);
-
-  if (hidden.length === 0) return null;
-
-  return (
-    <View style={styles.section}>
-      <Text style={styles.legend}>
-        {hidden.length === 1
-          ? "1 territoire retiré"
-          : `${hidden.length} territoires retirés`}
-      </Text>
-      {hidden.map((name) => (
-        <InkButton
-          key={name}
-          label={busy === name ? "…" : `Rétablir ${name}`}
-          variant="tonal"
-          disabled={busy !== null}
-          onPress={() => {
-            setBusy(name);
-            void show(name).finally(() => setBusy(null));
-          }}
-        />
-      ))}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   line: { ...type.caption, color: palette.inkSoft },
-  section: { gap: space.sm },
-  legend: { ...type.legend, color: palette.inkSoft },
 });

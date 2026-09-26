@@ -6,6 +6,7 @@ import {
   fetchTerritoryIdsAt,
   type TerritoryFeature,
 } from "./api";
+import { fetchDrawnAt } from "./drawn";
 
 export type TerritoryCollection = FeatureCollection<Polygon | MultiPolygon>;
 
@@ -59,10 +60,12 @@ export function useTerritoriesAt(
     let current = true;
 
     (async () => {
-      const ids = await fetchTerritoryIdsAt(
-        year,
-        detailed ? LEVEL.fief : LEVEL.sovereign,
-      );
+      // Asked together: the reference set is a list of identifiers, the
+      // reader's own territories come whole. Neither waits on the other.
+      const [ids, mine] = await Promise.all([
+        fetchTerritoryIdsAt(year, detailed ? LEVEL.fief : LEVEL.sovereign),
+        fetchDrawnAt(year),
+      ]);
       const missing = ids.filter((id) => !entities.current.has(id));
 
       for (const feature of await fetchTerritoriesByIds(missing)) {
@@ -84,9 +87,26 @@ export function useTerritoriesAt(
         entities.current.delete(entities.current.keys().next().value!);
       }
 
+      /**
+       * The reader's own territories last, and therefore on top.
+       *
+       * A painted region is almost always drawn over something — that is the
+       * point of drawing it — and it would be strange for the reference set
+       * to cover what the reader put there deliberately.
+       *
+       * They are never cached: there are a few dozen at most, they arrive
+       * whole, and they change as soon as one is drawn or erased.
+       */
+      const drawn = (mine.features ?? []) as TerritoryFeature[];
+
       // The previous snapshot stays on screen until this one is ready, so
       // stepping through events never flashes an empty map.
-      if (current) setCollection({ type: "FeatureCollection", features });
+      if (current) {
+        setCollection({
+          type: "FeatureCollection",
+          features: [...features, ...drawn],
+        });
+      }
     })().catch(() => undefined);
 
     return () => {
