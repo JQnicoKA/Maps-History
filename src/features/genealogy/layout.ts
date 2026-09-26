@@ -1,29 +1,26 @@
 import type { Tree, TreeMember } from "../events/types";
 
 /**
- * How big a face is drawn, by the weight its member carries in this tree.
+ * How big a face is drawn. One size, for everyone.
  *
- * Size and not opacity: a faded portrait reads as damaged or as loading, while
- * a small one reads as minor — which is what is meant. The middle size is the
- * one every face had before, and the largest is twice the smallest: a founder
- * should be found without looking for them.
+ * Weight in the tree is carried by opacity instead (`TreeNode`), so a portrait
+ * is never shrunk: a face is a likeness before it is a rank, and a small one
+ * is simply harder to recognise. This is the size a major figure had when
+ * weight still governed it — the tree lost its smallest faces, not its
+ * largest.
  */
-export const FACE = { low: 58, medium: 78, high: 118 } as const;
+export const FACE = 118;
 
 /**
  * The band every node reserves for its portrait, and the axis the circles are
  * hung from — measured down from the top of the node box.
  *
- * As tall as the largest face, so a row of mixed weights shares one axis: a
- * small portrait keeps its centre where a large one would have it, and the
- * generation still reads as a line rather than as a wobble. Everything below —
- * name, dates — flows under the band, where an uneven bottom edge costs
- * nothing.
- *
- * The `+` that closes a row is centred on the same axis, so the invitation
- * sits among the faces and not above or below them.
+ * Kept as its own name although it now equals `FACE`: the axis is what makes a
+ * generation read as a line, and the drawing code asks for it by meaning
+ * rather than by coincidence. The `+` that closes a row is centred on it too,
+ * so the invitation sits among the faces and not above or below them.
  */
-export const FACE_BAND = FACE.high;
+export const FACE_BAND = FACE;
 export const FACE_AXIS = FACE_BAND / 2;
 
 /**
@@ -246,8 +243,8 @@ function marriage(
   if (!a || !b || a.member.generation !== b.member.generation) return null;
   const [left, right] = a.x <= b.x ? [a, b] : [b, a];
   return {
-    from: left.x + NODE.width / 2 + FACE[left.member.importance] / 2,
-    to: right.x + NODE.width / 2 - FACE[right.member.importance] / 2,
+    from: left.x + NODE.width / 2 + FACE / 2,
+    to: right.x + NODE.width / 2 - FACE / 2,
     y: left.y + FACE_AXIS,
   };
 }

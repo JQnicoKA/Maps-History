@@ -175,7 +175,7 @@ export function TreeMemberSheet({
             }
           />
           <Text style={styles.hint}>
-            Un personnage discret est dessiné plus petit, un majeur plus grand.
+            Un personnage discret est dessiné plus effacé, un majeur plus net.
           </Text>
         </View>
 

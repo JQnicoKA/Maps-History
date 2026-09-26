@@ -58,8 +58,20 @@ describe("le trait d'un couple", () => {
     const { at: node, segments } = drawn(subject);
     const [bar] = segments;
     expect(bar!.top + STROKE / 2).toBeCloseTo(node("f").y + FACE_AXIS, 9);
-    expect(bar!.left).toBeCloseTo(node("f").x + NODE.width / 2 + FACE.high / 2, 9);
-    expect(bar!.left + bar!.width).toBeCloseTo(node("m").x + NODE.width / 2 - FACE.low / 2, 9);
+    expect(bar!.left).toBeCloseTo(node("f").x + NODE.width / 2 + FACE / 2, 9);
+    expect(bar!.left + bar!.width).toBeCloseTo(node("m").x + NODE.width / 2 - FACE / 2, 9);
+  });
+
+  it("a la même longueur quelles que soient les importances", () => {
+    const pesants = tree(
+      [at("f", 0, 0, "high"), at("m", 0, 1, "high")],
+      [{ kind: "couple", from: "f", to: "m" }],
+    );
+    // Les visages ne changent plus de taille : le trait qui les joint non plus.
+    expect(drawn(pesants).segments[0]!.width).toBeCloseTo(
+      drawn(subject).segments[0]!.width,
+      9,
+    );
   });
 
   it("n'est pas tracé entre deux générations", () => {

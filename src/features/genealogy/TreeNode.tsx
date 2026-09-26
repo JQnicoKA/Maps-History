@@ -25,16 +25,14 @@ export type TreeNodeProps = {
 /**
  * Someone, drawn: a round portrait, a name, two dates.
  *
- * **The weight they carry in the tree sets the size of the face** — small for a
- * minor figure, larger for a founder. It used to set the opacity instead, which
- * was a mistake: a faded portrait reads as damaged or as still loading, not as
- * secondary. A small one reads as small.
+ * Every face is the same size — that of a major figure. **Weight in the tree
+ * is carried by opacity**: a minor figure recedes into the paper, a founder
+ * sits full on it. Size was tried and given up, because shrinking a portrait
+ * makes a face harder to recognise, and a likeness should stay legible
+ * whatever rank it holds.
  *
- * The box around it stays the same size for everyone, and the portrait hangs
- * from a band as tall as the largest face — so two people of the same
- * generation have their circles on one axis whatever their weight, and the row
- * reads as a line. The connectors attach to the box, so a tree does not redraw
- * every line because one person was promoted.
+ * The box is fixed and the portrait hangs from a band, so a generation reads
+ * as one line and the connectors never move.
  */
 export function TreeNode({
   member,
@@ -45,7 +43,6 @@ export function TreeNode({
   muted = false,
   onPress,
 }: TreeNodeProps) {
-  const size = FACE[member.importance];
   const face = person?.photos[0];
   const dates = person ? lifespan(person) : "";
 
@@ -57,7 +54,11 @@ export function TreeNode({
       disabled={muted}
       style={({ pressed }) => [
         styles.node,
-        { left: x, top: y, opacity: muted ? 0.25 : pressed ? 0.6 : 1 },
+        {
+          left: x,
+          top: y,
+          opacity: muted ? 0.25 : pressed ? 0.6 : WEIGHT[member.importance],
+        },
       ]}
     >
       {/* The band is what keeps the axis: the circle is centred in it, so its
@@ -68,18 +69,13 @@ export function TreeNode({
         <View
           style={[
             styles.face,
-            {
-              width: size,
-              height: size,
-              borderRadius: size / 2,
-              borderColor: active ? palette.wax : palette.ink,
-            },
+            { borderColor: active ? palette.wax : palette.ink },
           ]}
         >
           {face ? (
             <Image source={{ uri: face.url }} style={styles.image} />
           ) : (
-            <Text style={[styles.initial, { fontSize: size * 0.36 }]}>
+            <Text style={styles.initial}>
               {person?.name.charAt(0).toUpperCase() ?? "?"}
             </Text>
           )}
@@ -102,6 +98,18 @@ export function TreeNode({
 
 const DOT = 10;
 
+/**
+ * How present a face is, by the weight its member carries.
+ *
+ * `low` stays well clear of the 0.25 a muted node uses while a line is being
+ * drawn: "minor" and "out of reach right now" must not look alike.
+ */
+const WEIGHT: Record<TreeMember["importance"], number> = {
+  high: 1,
+  medium: 0.78,
+  low: 0.5,
+};
+
 const styles = StyleSheet.create({
   node: {
     position: "absolute",
@@ -117,6 +125,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   face: {
+    width: FACE,
+    height: FACE,
+    borderRadius: FACE / 2,
     overflow: "visible",
     alignItems: "center",
     justifyContent: "center",
@@ -126,7 +137,7 @@ const styles = StyleSheet.create({
   // Clipped to the circle by the parent's radius — which is why the portrait
   // is a child of the frame rather than the frame itself.
   image: { width: "100%", height: "100%", borderRadius: 999 },
-  initial: { fontWeight: "700", color: palette.inkFaint },
+  initial: { fontSize: FACE * 0.36, fontWeight: "700", color: palette.inkFaint },
   /** A dot of wax: there is something written about this one. */
   hasNote: {
     position: "absolute",
