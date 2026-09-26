@@ -88,8 +88,18 @@ const LABEL: ExpressionSpecification = [
  */
 export type TerritoryLayersProps = {
   detailed: boolean;
-  /** Fired with the name of whatever territory the finger landed on. */
-  onTouch?: (name: string) => void;
+  /**
+   * Fired with whatever territory the finger landed on.
+   *
+   * `id` and `drawn` come along because the two kinds part ways here: the
+   * reference set can only be masked, what the reader drew can be erased for
+   * good — and only the feature knows which it is.
+   */
+  onTouch?: (territory: {
+    name: string;
+    id: string;
+    drawn: boolean;
+  }) => void;
 };
 
 export function TerritoryLayers({ detailed, onTouch }: TerritoryLayersProps) {
@@ -131,8 +141,12 @@ export function TerritoryLayers({ detailed, onTouch }: TerritoryLayersProps) {
         // The source reports which feature was under the finger, so nothing
         // here has to hit-test a polygon by hand.
         onPress={(event) => {
-          const name = event.nativeEvent.features[0]?.properties?.["name"];
-          if (typeof name === "string" && name !== "") onTouch?.(name);
+          const touched = event.nativeEvent.features[0]?.properties;
+          const name = touched?.["name"];
+          const id = touched?.["id"];
+          if (typeof name !== "string" || name === "") return;
+          if (typeof id !== "string") return;
+          onTouch?.({ name, id, drawn: touched?.["drawn"] === true });
         }}
       >
         {/* Beneath the sea, not above it.

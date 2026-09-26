@@ -1,5 +1,6 @@
 import type { FeatureCollection, MultiPolygon, Polygon } from "geojson";
 
+import { washFor } from "./api";
 import { supabase } from "../../lib/supabase";
 
 /** A brush stroke: where the finger went, in longitude and latitude. */
@@ -57,7 +58,29 @@ export async function fetchDrawnAt(
     at_year: year,
   });
   if (error) throw new Error(error.message);
-  return data as FeatureCollection<Polygon | MultiPolygon>;
+
+  const collection = data as FeatureCollection<Polygon | MultiPolygon>;
+  return {
+    ...collection,
+    /**
+     * The wash arrives as an index and has to leave as a colour.
+     *
+     * The fill layer reads `["get", "wash"]` straight into `fill-color`, so a
+     * number reaches MapLibre where a string was wanted and the polygon comes
+     * out black. The reference set was already translated on its way in
+     * (`fetchChunk`); these were not, which is the whole of the bug.
+     */
+    features: collection.features.map((feature) => ({
+      ...feature,
+      properties: {
+        ...feature.properties,
+        wash: washFor(
+          String(feature.properties?.["name"] ?? ""),
+          feature.properties?.["wash"],
+        ),
+      },
+    })),
+  };
 }
 
 /** Everything this account has drawn, for the list that manages them. */

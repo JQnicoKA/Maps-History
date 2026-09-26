@@ -17,7 +17,7 @@ export type TerritoryFeature = Feature<Polygon | MultiPolygon>;
  * before — a hash of the name. Stable per polity, but blind to geography: it
  * gave the same wash to about one pair of neighbours in seven.
  */
-function washFor(name: string, index: unknown): string {
+export function washFor(name: string, index: unknown): string {
   const washes = palette.washes;
   if (typeof index === "number") return washes[index % washes.length]!;
 

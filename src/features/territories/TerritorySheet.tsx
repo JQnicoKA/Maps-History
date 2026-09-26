@@ -3,16 +3,15 @@ import { StyleSheet, Text } from "react-native";
 
 import { useHidden } from "./HiddenProvider";
 import { Dialog, InkButton, useNotice } from "../../components/ui";
-import { formatYear } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
 import { type } from "../../theme/tokens";
 
 /** What a tap on the plate turned up. */
 export type TouchedTerritory = {
   name: string;
-  /** Absent when the feature carried none — the map is not always sure. */
-  from?: number;
-  to?: number;
+  id: string;
+  /** True when the reader painted it; false when it came with the map. */
+  drawn: boolean;
 };
 
 export type TerritorySheetProps = {
@@ -23,49 +22,55 @@ export type TerritorySheetProps = {
 /**
  * A territory the reader has touched, and the one thing they can do with it.
  *
- * Removing it does not delete anything: `polities` is reference data, shared
- * by every account and reloadable from Cliopatria. This hides the entity on
- * this reader's map, for every century at once, and it can be brought back
- * from the account card.
+ * Which one depends on where it came from, and the difference is real rather
+ * than cosmetic:
+ *
+ * - **It came with the map.** `polities` is reference data, shared by every
+ *   account and reloadable from Cliopatria — nobody may delete from it. The
+ *   entity is masked on this reader's map, for every century at once, and can
+ *   be brought back.
+ * - **The reader painted it.** It is theirs, it exists nowhere else, and
+ *   removing it removes it. There is nothing to mask and nothing to restore,
+ *   so the card says so rather than promising otherwise.
  */
 export function TerritorySheet({ territory, onClose }: TerritorySheetProps) {
-  const { hide } = useHidden();
+  const { hide, erase } = useHidden();
   const [busy, setBusy] = useState(false);
   const { say, dialog } = useNotice();
 
-  const period =
-    territory?.from === undefined || territory.to === undefined
-      ? null
-      : `${formatYear(territory.from)} – ${formatYear(territory.to)}`;
+  const mine = territory?.drawn === true;
 
   return (
     <Dialog
       visible={territory !== null}
       onClose={onClose}
       title={territory?.name ?? ""}
-      hint={period ?? undefined}
+      hint={mine ? "Vous avez dessiné ce territoire." : undefined}
       dismissLabel="Fermer"
     >
       {dialog}
 
       <Text style={styles.line}>
-        Le retirer ne l'efface pas : il disparaît de votre carte, à toutes les
-        époques, et vous pourrez le rétablir depuis votre compte.
+        {mine
+          ? "Le supprimer est définitif : il n'existe que sur votre carte."
+          : "Le retirer ne l'efface pas : il disparaît de votre carte, à toutes les époques, et vous pourrez le rétablir depuis le crayon."}
       </Text>
 
       <InkButton
-        label={busy ? "…" : "Retirer de ma carte"}
+        label={
+          busy ? "…" : mine ? "Supprimer définitivement" : "Retirer de ma carte"
+        }
         variant="solid"
         tone="danger"
         disabled={busy || territory === null}
         onPress={() => {
           if (!territory) return;
           setBusy(true);
-          void hide(territory.name)
+          void (mine ? erase(territory.id) : hide(territory.name))
             .then(onClose)
             .catch((cause: unknown) =>
               say(
-                "Impossible de le retirer",
+                mine ? "Suppression impossible" : "Impossible de le retirer",
                 cause instanceof Error ? cause.message : String(cause),
               ),
             )

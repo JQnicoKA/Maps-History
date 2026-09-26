@@ -25,7 +25,10 @@ import { LocationReticle } from "../../features/events/components/LocationReticl
 import { FilterButton } from "../../features/filters/FilterButton";
 import { PlaceLayers } from "../../features/places/PlaceLayers";
 import { TerritoryLayers } from "../../features/territories/TerritoryLayers";
-import { TerritorySheet } from "../../features/territories/TerritorySheet";
+import {
+  TerritorySheet,
+  type TouchedTerritory,
+} from "../../features/territories/TerritorySheet";
 import { BrushLayers } from "../../features/territories/BrushLayers";
 import { BrushOverlay } from "../../features/territories/BrushOverlay";
 import { BRUSH_POINTS, brushMetres } from "../../features/territories/brush";
@@ -74,7 +77,7 @@ export function MapScreen() {
   /** True from country zoom on, where the fiefs are worth drawing. */
   const [detailed, setDetailed] = useState(false);
   /** The territory the finger last landed on, if its card is open. */
-  const [touched, setTouched] = useState<string | null>(null);
+  const [touched, setTouched] = useState<TouchedTerritory | null>(null);
 
   const { draw } = useHidden();
   /** Painting: the strokes laid down, the one under the finger, the state. */
@@ -359,10 +362,7 @@ export function MapScreen() {
         }}
       />
 
-      <TerritorySheet
-        territory={touched === null ? null : { name: touched }}
-        onClose={() => setTouched(null)}
-      />
+      <TerritorySheet territory={touched} onClose={() => setTouched(null)} />
 
       {detailOpen ? (
         <EventDetailModal
