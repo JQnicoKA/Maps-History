@@ -204,6 +204,70 @@ export function slide(tree: Tree, member: TreeMember, by: -1 | 1): Move[] {
   });
 }
 
+/**
+ * Where a dragged member is let go, as the moves it costs.
+ *
+ * The card under the finger lands on `column`; the rest of its household comes
+ * along, keeping its order. Whoever stood there is pushed aside rather than
+ * buried — a row never holds two people in one column.
+ *
+ * **Which way the bystanders go is decided once, and simply:** a block that
+ * already lay left of where the household lands is pushed further left, one
+ * that lay right is pushed right. Nobody crosses the arriving household, so
+ * the row a reader knew is the row they get back, minus the hole the
+ * household left and plus the one it made.
+ *
+ * Pushes cascade outwards — a displaced block can displace the next — but they
+ * stop as soon as there is room, so gaps the reader left on purpose absorb the
+ * movement instead of travelling to the end of the row.
+ */
+export function dropAt(tree: Tree, member: TreeMember, column: number): Move[] {
+  const order = blocks(tree, member.generation);
+  const index = blockOf(tree, member);
+  const household = order[index];
+  if (index < 0 || !household) return [];
+
+  const rank = household.findIndex((one) => one.id === member.id);
+  const start = column - rank;
+  const end = start + household.length - 1;
+
+  const moves: Move[] = [];
+  const put = (one: TreeMember, position: number) => {
+    if (one.position !== position) moves.push({ id: one.id, position });
+  };
+
+  household.forEach((one, step) => put(one, start + step));
+
+  /**
+   * Which side a bystander falls on is read from **where it stands**, not from
+   * its rank in the row. Ranking was the first attempt and it was wrong: a
+   * household dragged from the right end to column 0 would push the people
+   * already there further left, off into the negatives, instead of aside.
+   */
+  const others = order.filter((_, i) => i !== index);
+  const before = others.filter((block) => block[0]!.position < start);
+  const after = others.filter((block) => block[0]!.position >= start);
+
+  // Squeezed outwards from the landing: the nearest block first, so the far
+  // ones only move if the near one has nowhere left to go.
+  let free = start - 1;
+  for (let i = before.length - 1; i >= 0; i--) {
+    const block = before[i]!;
+    const right = Math.min(block[block.length - 1]!.position, free);
+    block.forEach((one, step) => put(one, right - (block.length - 1 - step)));
+    free = right - block.length;
+  }
+
+  free = end + 1;
+  for (const block of after) {
+    const left = Math.max(block[0]!.position, free);
+    block.forEach((one, step) => put(one, left + step));
+    free = left + block.length;
+  }
+
+  return moves;
+}
+
 /** The line drawn directly between these two, if there is one. */
 export function lineBetween(
   tree: Tree,

@@ -116,6 +116,16 @@ export const rowY = (generation: number, within: Frame): number =>
 export const columnX = (position: number, across: Frame): number =>
   PADDING + (position - across.from) * (NODE.width + GAP.x);
 
+/**
+ * The column a point on the canvas falls in — `columnX` read backwards.
+ *
+ * Rounded rather than floored, so a card released anywhere in a column's
+ * half-width lands in it: a finger is not precise, and the nearest column is
+ * always what was meant.
+ */
+export const columnAt = (x: number, across: Frame): number =>
+  across.from + Math.round((x - PADDING) / (NODE.width + GAP.x));
+
 /** How many members stand in a given row. */
 export const rowCount = (tree: Tree, generation: number): number =>
   tree.members.filter((member) => member.generation === generation).length;

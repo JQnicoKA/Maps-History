@@ -1,6 +1,14 @@
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Image,
+  PanResponder,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-import { CARD_TOP, FACE, FACE_BAND, NODE } from "./layout";
+import { CARD_TOP, FACE, FACE_BAND, GAP, NODE } from "./layout";
 import { lifespan } from "../events/lifespan";
 import type { Character, TreeMember } from "../events/types";
 import { palette } from "../../theme/palette";
@@ -20,7 +28,29 @@ export type TreeNodeProps = {
    */
   muted?: boolean;
   onPress: () => void;
+  /**
+   * Everything a drag needs, and nothing the node should know on its own.
+   *
+   * `held` tells the window to stand down — see `PanZoom`. `magnification`
+   * converts thumb into canvas. `onDrop` reports **whole columns travelled**,
+   * left negative, so the node says how far it went and the tree decides what
+   * that means.
+   *
+   * Absent, the node is simply not draggable.
+   */
+  drag?: {
+    held: { current: boolean };
+    magnification: { current: number };
+    onStart: () => void;
+    onDrop: (columns: number) => void;
+  };
 };
+
+/** How long a finger must rest before the card comes loose, in milliseconds. */
+const HOLD = 260;
+
+/** Past this much travel before the hold fires, it was a pan, not a grab. */
+const WANDER = 8;
 
 /**
  * Someone, drawn: a round portrait, a name, two dates.
@@ -47,22 +77,126 @@ export function TreeNode({
   active = false,
   muted = false,
   onPress,
+  drag,
 }: TreeNodeProps) {
   const face = person?.photos[0];
+  const [lifted, setLifted] = useState(false);
+  const [pressed, setPressed] = useState(false);
+  const travel = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+
+  /**
+   * Read by the responder, which is built once and would otherwise close over
+   * the first render's values for ever.
+   */
+  const live = useRef({ drag, lifted, muted, onPress });
+  live.current = { drag, lifted, muted, onPress };
+
+  const hold = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stopHold = () => {
+    if (hold.current !== null) clearTimeout(hold.current);
+    hold.current = null;
+  };
+  // A card must not stay stuck to a finger that left with the screen.
+  useEffect(() => stopHold, []);
+
+  const release = (dx: number) => {
+    stopHold();
+    const held = live.current.drag;
+    if (live.current.lifted && held) {
+      const step = NODE.width + GAP.x;
+      held.onDrop(Math.round(dx / held.magnification.current / step));
+      held.held.current = false;
+    }
+    setLifted(false);
+    setPressed(false);
+    travel.setValue({ x: 0, y: 0 });
+  };
+
+  /**
+   * One responder for the whole card: tap, hold, drag.
+   *
+   * There used to be a `Pressable` inside this, and it swallowed everything —
+   * the responder system offers a touch to the deepest view first, so the
+   * button claimed it and the hold below never started. A tap is therefore
+   * recognised here instead: a release that never lifted the card and never
+   * travelled far is a tap.
+   */
+  const responder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => !live.current.muted,
+      // Never on move: until the hold fires, a travelling finger belongs to
+      // the window behind, which is what pans the drawing.
+      onMoveShouldSetPanResponder: () => false,
+
+      onPanResponderGrant: () => {
+        setPressed(true);
+        const held = live.current.drag;
+        if (!held) return;
+        hold.current = setTimeout(() => {
+          held.held.current = true;
+          setLifted(true);
+          held.onStart();
+        }, HOLD);
+      },
+
+      onPanResponderMove: (_event, gesture) => {
+        const held = live.current.drag;
+        if (!live.current.lifted || !held) {
+          if (Math.hypot(gesture.dx, gesture.dy) > WANDER) stopHold();
+          return;
+        }
+        /**
+         * Divided by the magnification, and that is the whole trick.
+         *
+         * The finger travels in screen points; this card lives inside a sheet
+         * that is scaled. A translation of `dx` written here is drawn as
+         * `dx × scale`, so at two-thirds zoom the card lagged a third behind
+         * the thumb. Converted to canvas points first, it renders back at
+         * exactly `dx` and sticks to the finger at any zoom.
+         *
+         * Along the row only: a generation is changed from the card, never by
+         * dropping into another row, where the meaning would be ambiguous.
+         */
+        travel.setValue({ x: gesture.dx / held.magnification.current, y: 0 });
+      },
+
+      onPanResponderRelease: (_event, gesture) => {
+        const tapped =
+          !live.current.lifted && Math.hypot(gesture.dx, gesture.dy) <= WANDER;
+        release(gesture.dx);
+        if (tapped) live.current.onPress();
+      },
+      onPanResponderTerminate: () => release(0),
+    }),
+  ).current;
   const dates = person ? lifespan(person) : "";
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={person?.name ?? "Personnage"}
-      onPress={onPress}
-      disabled={muted}
-      style={({ pressed }) => [
-        styles.node,
+    <Animated.View
+      style={[
+        styles.holder,
         {
           left: x,
           top: y,
-          opacity: muted ? 0.25 : pressed ? 0.6 : WEIGHT[member.importance],
+          transform: travel.getTranslateTransform(),
+          // Lifted off the page, and over its neighbours while it travels.
+          zIndex: lifted ? 2 : 0,
+        },
+      ]}
+      {...responder.panHandlers}
+    >
+    <View
+      accessibilityRole="button"
+      accessibilityLabel={person?.name ?? "Personnage"}
+      style={[
+        styles.node,
+        lifted && styles.lifted,
+        {
+          opacity: muted
+            ? 0.25
+            : pressed && !lifted
+              ? 0.6
+              : WEIGHT[member.importance],
         },
       ]}
     >
@@ -96,7 +230,8 @@ export function TreeNode({
           {dates}
         </Text>
       )}
-    </Pressable>
+    </View>
+    </Animated.View>
   );
 }
 
@@ -115,13 +250,22 @@ const WEIGHT: Record<TreeMember["importance"], number> = {
 };
 
 const styles = StyleSheet.create({
+  /**
+   * Two boxes and not one: the outer is placed and dragged, the inner draws.
+   *
+   * A single view cannot both sit at an absolute position and carry a
+   * translation that starts from it — the transform would fight the layout on
+   * every frame of the drag.
+   */
+  holder: { position: "absolute", width: NODE.width, height: NODE.height },
   node: {
-    position: "absolute",
     width: NODE.width,
     height: NODE.height,
     alignItems: "center",
     gap: 3,
   },
+  /** A card off the page: bigger, and casting further. */
+  lifted: { transform: [{ scale: 1.06 }] },
   card: {
     position: "absolute",
     left: 0,

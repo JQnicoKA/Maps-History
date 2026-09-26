@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { blockOf, blocks, couple, erasure, lineBetween, slide, spouses, tidy, tied } from "./rows";
+import {
+  blockOf,
+  blocks,
+  couple,
+  dropAt,
+  erasure,
+  lineBetween,
+  slide,
+  spouses,
+  tidy,
+  tied,
+} from "./rows";
 import type { Move, Tree, TreeLink, TreeMember } from "./types";
 
 const at = (
@@ -155,6 +166,89 @@ describe("un pas à gauche ou à droite", () => {
     );
     // B is at the right edge of its household, so the whole of it travels.
     expect(row(subject, slide(subject, subject.members[1]!, 1))).toBe("CDAB");
+  });
+});
+
+describe("lâcher quelqu'un sur une colonne", () => {
+  const abc = () => tree([at("A", 0), at("B", 1), at("C", 2)], []);
+  const who = (subject: Tree, id: string) =>
+    subject.members.find((member) => member.id === id)!;
+
+  it("pose la carte là où le doigt la lâche", () => {
+    const subject = tree([at("A", 0), at("loin", 8)], []);
+    expect(dropAt(subject, who(subject, "A"), 4)).toEqual([
+      { id: "A", position: 4 },
+    ]);
+  });
+
+  it("ne bouge rien quand on repose au même endroit", () => {
+    const subject = abc();
+    expect(dropAt(subject, who(subject, "B"), 1)).toEqual([]);
+  });
+
+  it("décale celui dont on prend la place", () => {
+    const subject = abc();
+    expect(row(subject, dropAt(subject, who(subject, "C"), 0))).toBe("CAB");
+  });
+
+  it("insère au milieu en écartant la suite", () => {
+    const subject = tree([at("A", 0), at("B", 1), at("C", 2), at("D", 3)], []);
+    expect(row(subject, dropAt(subject, who(subject, "D"), 1))).toBe("ADBC");
+  });
+
+  it("laisse les voisins tranquilles quand la place est libre", () => {
+    const subject = tree([at("A", 0), at("B", 1), at("C", 9)], []);
+    const moves = dropAt(subject, who(subject, "A"), 5);
+    expect(moves).toEqual([{ id: "A", position: 5 }]);
+  });
+
+  it("laisse un trou absorber la poussée", () => {
+    // B est poussé de 1 vers 2 ; le trou avant C encaisse, C ne bouge pas.
+    const subject = tree([at("A", 0), at("B", 1), at("C", 9)], []);
+    const moves = dropAt(subject, who(subject, "A"), 1);
+    expect(moves).toEqual([
+      { id: "A", position: 1 },
+      { id: "B", position: 2 },
+    ]);
+  });
+
+  it("emmène le ménage entier, dans son ordre", () => {
+    const subject = tree(
+      [at("mari", 0), at("femme", 1), at("X", 5)],
+      [wed("mari", "femme")],
+    );
+    // On saisit l'épouse et on la lâche en colonne 4 : le mari suit en 3.
+    expect(dropAt(subject, who(subject, "femme"), 4)).toEqual([
+      { id: "mari", position: 3 },
+      { id: "femme", position: 4 },
+    ]);
+  });
+
+  it("ne coupe jamais un couple qu'on traverse", () => {
+    const subject = tree(
+      [at("seul", 0), at("mari", 1), at("femme", 2)],
+      [wed("mari", "femme")],
+    );
+    // Lâché sur le mari, le couple entier recule — on ne s'insère pas entre eux.
+    const apres = row(subject, dropAt(subject, who(subject, "seul"), 1));
+    expect(apres).toBe("seul" + "mari" + "femme");
+  });
+
+  it("ne met jamais deux personnes dans la même colonne", () => {
+    const subject = tree(
+      [at("A", 0), at("B", 1), at("C", 2), at("D", 3), at("E", 4)],
+      [wed("B", "C")],
+    );
+    for (const cible of [-2, -1, 0, 1, 2, 3, 4, 5, 6]) {
+      for (const qui of ["A", "B", "C", "D", "E"]) {
+        const moves = dropAt(subject, who(subject, qui), cible);
+        const finales = subject.members.map((member) => {
+          const move = moves.find((one) => one.id === member.id);
+          return move ? move.position : member.position;
+        });
+        expect(new Set(finales).size).toBe(finales.length);
+      }
+    }
   });
 });
 

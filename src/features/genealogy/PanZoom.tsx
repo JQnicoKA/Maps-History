@@ -29,6 +29,26 @@ export type PanZoomProps = {
    * not, since the reader is in the middle of arranging it.
    */
   subject: string;
+  /**
+   * While this reads true, the window keeps its hands off: no panning, no
+   * pinching, no glide.
+   *
+   * Something inside is being dragged, and this surface would otherwise steal
+   * the gesture the moment the finger travelled past its threshold — that is
+   * exactly what it is built to do. A ref and not a prop, because the decision
+   * is taken inside a responder that was created once and never re-reads its
+   * props.
+   */
+  held?: { current: boolean };
+  /**
+   * Kept up to date with how far the drawing is zoomed.
+   *
+   * A finger moves in screen points and the drawing thinks in its own; at half
+   * scale, a centimetre of thumb is two centimetres of canvas. Whatever is
+   * being dragged inside needs this number to convert, and needs it as a ref
+   * for the same reason as `held`.
+   */
+  magnification?: { current: number };
   children: ReactNode;
 };
 
@@ -53,7 +73,14 @@ const STILL = 0.4;
  * tapped. Past a few points of travel it takes the gesture away from whatever
  * child had it, which is exactly what dragging from a portrait should do.
  */
-export function PanZoom({ content, inset, subject, children }: PanZoomProps) {
+export function PanZoom({
+  content,
+  inset,
+  subject,
+  held,
+  magnification,
+  children,
+}: PanZoomProps) {
   const translateX = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(0)).current;
   const magnify = useRef(new Animated.Value(1)).current;
@@ -78,6 +105,7 @@ export function PanZoom({ content, inset, subject, children }: PanZoomProps) {
     translateX.setValue(view.current.offset.x);
     translateY.setValue(view.current.offset.y);
     magnify.setValue(view.current.scale);
+    if (magnification) magnification.current = view.current.scale;
   };
 
   const settle = () => {
@@ -118,11 +146,12 @@ export function PanZoom({ content, inset, subject, children }: PanZoomProps) {
     PanResponder.create({
       // Empty canvas: ours from the start. Anything with a button on it goes
       // through the capture below instead.
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => held?.current !== true,
       onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponderCapture: (event, gesture) =>
-        event.nativeEvent.touches.length >= 2 ||
-        Math.hypot(gesture.dx, gesture.dy) > SLOP,
+        held?.current !== true &&
+        (event.nativeEvent.touches.length >= 2 ||
+          Math.hypot(gesture.dx, gesture.dy) > SLOP),
       onPanResponderTerminationRequest: () => false,
 
       onPanResponderGrant: () => {

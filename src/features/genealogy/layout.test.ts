@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   canvasSize,
+  columnAt,
+  columnX,
   connectors,
   FACE,
   FACE_AXIS,
@@ -178,6 +180,23 @@ describe("ce que le dessin ne fait jamais", () => {
       ],
     );
     expect(drawn(subject).segments).toHaveLength(0);
+  });
+});
+
+describe("de la colonne au point, et retour", () => {
+  const across = { from: -2, to: 4 };
+
+  it("retrouve la colonne d'où vient le point", () => {
+    for (const column of [-2, -1, 0, 1, 4]) {
+      expect(columnAt(columnX(column, across), across)).toBe(column);
+    }
+  });
+
+  it("arrondit vers la colonne la plus proche", () => {
+    const pas = NODE.width + 16;
+    const zero = columnX(0, across);
+    expect(columnAt(zero + pas * 0.4, across)).toBe(0);
+    expect(columnAt(zero + pas * 0.6, across)).toBe(1);
   });
 });
 

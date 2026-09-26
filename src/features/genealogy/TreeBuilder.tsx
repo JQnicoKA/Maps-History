@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -17,7 +17,7 @@ import {
 } from "./layout";
 import { LinkChoice, type LinkMode } from "./LinkChoice";
 import { PanZoom } from "./PanZoom";
-import { lineBetween, spouses, tied } from "../events/rows";
+import { dropAt, lineBetween, spouses, tied } from "../events/rows";
 import { TreeMemberSheet } from "./TreeMemberSheet";
 import { TreeNode } from "./TreeNode";
 import {
@@ -67,8 +67,15 @@ export type TreeBuilderProps = {
  */
 export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
   const insets = useSafeAreaInsets();
-  const { characters, addToTree, eraseLink, linkInTree, removeTree, renameTree } =
-    useEvents();
+  const {
+    characters,
+    addToTree,
+    eraseLink,
+    linkInTree,
+    orderRow,
+    removeTree,
+    renameTree,
+  } = useEvents();
 
   const [openId, setOpenId] = useState<string | null>(null);
   /** Which face the ··· card is showing, if it is open at all. */
@@ -91,6 +98,15 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
    * reader has chosen. A number written here would be wrong on some phone.
    */
   const [chrome, setChrome] = useState({ top: 0, bottom: 0 });
+
+  /**
+   * Shared with the window behind and with every card: one says "a card is
+   * loose, keep your hands off", the other says how far the drawing is
+   * zoomed. Refs rather than state, because both are read inside gesture
+   * responders that are built once and never see a new render.
+   */
+  const dragging = useRef(false);
+  const magnification = useRef(1);
 
   const placed = useMemo(() => (tree ? place(tree) : []), [tree]);
   const lines = useMemo(
@@ -253,6 +269,8 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
     <Modal visible animationType="slide" onRequestClose={onClose}>
       <View style={styles.root}>
         <PanZoom
+          held={dragging}
+          magnification={magnification}
           content={size}
           // The foot of the screen is only occupied while a line is being
           // drawn; the rest of the time the canvas may use it.
@@ -281,6 +299,26 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
             }
             muted={tracing !== null && !reachable(node.member)}
             onPress={() => tap(node.member)}
+            // Not while a line is being traced: the canvas means something
+            // else then, and every tap belongs to that.
+            drag={
+              tracing === null
+                ? {
+                    held: dragging,
+                    magnification,
+                    onStart: () => setOpenId(null),
+                    onDrop: (columns) => {
+                      if (columns === 0) return;
+                      const moves = dropAt(
+                        tree,
+                        node.member,
+                        node.member.position + columns,
+                      );
+                      if (moves.length > 0) run(orderRow(tree.id, moves));
+                    },
+                  }
+                : undefined
+            }
           />
         ))}
 
