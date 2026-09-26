@@ -1,10 +1,10 @@
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { FACE, FACE_BAND, NODE } from "./layout";
+import { CARD_TOP, FACE, FACE_BAND, NODE } from "./layout";
 import { lifespan } from "../events/lifespan";
 import type { Character, TreeMember } from "../events/types";
 import { palette } from "../../theme/palette";
-import { radius, space } from "../../theme/tokens";
+import { radius, shadow, space } from "../../theme/tokens";
 
 export type TreeNodeProps = {
   member: TreeMember;
@@ -33,6 +33,11 @@ export type TreeNodeProps = {
  *
  * The box is fixed and the portrait hangs from a band, so a generation reads
  * as one line and the connectors never move.
+ *
+ * Behind the name and the lower half of the face sits a card in sealing wax —
+ * the app's one accent, the colour of the year in the frieze. The portrait
+ * overflows above it, which is what makes a face read as resting *on* a card
+ * rather than being framed inside one.
  */
 export function TreeNode({
   member,
@@ -61,17 +66,16 @@ export function TreeNode({
         },
       ]}
     >
+      {/* Drawn first so everything else sits over it; positioned rather than
+          in the flow, since it begins halfway up the portrait. */}
+      <View style={[styles.card, active && styles.cardActive]} />
+
       {/* The band is what keeps the axis: the circle is centred in it, so its
           middle is always FACE_BAND / 2 below the top of the box. */}
       <View style={styles.band}>
         {/* The wax dot hangs off the portrait itself rather than off the box,
             so it follows it whatever size it is drawn at. */}
-        <View
-          style={[
-            styles.face,
-            { borderColor: active ? palette.wax : palette.ink },
-          ]}
-        >
+        <View style={styles.face}>
           {face ? (
             <Image source={{ uri: face.url }} style={styles.image} />
           ) : (
@@ -118,6 +122,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 3,
   },
+  card: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: CARD_TOP,
+    bottom: 0,
+    borderRadius: radius.lg,
+    backgroundColor: palette.wax,
+    ...shadow.soft,
+  },
+  /**
+   * Ink, and not a brighter wax: the active state has to read against the wax
+   * it sits on, and dark-on-wax is the only pair that does.
+   */
+  cardActive: { borderWidth: 3, borderColor: palette.ink },
   band: {
     width: NODE.width,
     height: FACE_BAND,
@@ -132,13 +151,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: palette.paperLight,
-    borderWidth: 2.5,
+    // Cream, because this ring crosses two grounds: paper above, wax below.
+    borderWidth: 3,
+    borderColor: palette.paperLight,
+    ...shadow.soft,
   },
   // Clipped to the circle by the parent's radius — which is why the portrait
   // is a child of the frame rather than the frame itself.
   image: { width: "100%", height: "100%", borderRadius: 999 },
   initial: { fontSize: FACE * 0.36, fontWeight: "700", color: palette.inkFaint },
-  /** A dot of wax: there is something written about this one. */
+  /** A dot of cream: there is something written about this one. */
   hasNote: {
     position: "absolute",
     bottom: 0,
@@ -146,17 +168,31 @@ const styles = StyleSheet.create({
     width: DOT,
     height: DOT,
     borderRadius: radius.pill,
-    backgroundColor: palette.wax,
+    backgroundColor: palette.paperLight,
     borderWidth: 1.5,
-    borderColor: palette.paperLight,
+    borderColor: palette.wax,
   },
+  /**
+   * Sized to the room the card actually has.
+   *
+   * Below the portrait's band sit 74 points. A name on two lines at this size
+   * takes 40, the dates 16, the spacing 8 — 64 in all, which leaves the card a
+   * margin at the foot rather than text pressed against its edge.
+   */
   name: {
     marginTop: space.xs,
-    fontSize: 13,
-    lineHeight: 15,
+    paddingHorizontal: space.sm,
+    fontSize: 16,
+    lineHeight: 20,
     fontWeight: "700",
-    color: palette.ink,
+    color: palette.paperLight,
     textAlign: "center",
   },
-  dates: { fontSize: 11, color: palette.inkSoft, textAlign: "center" },
+  dates: {
+    fontSize: 13,
+    lineHeight: 16,
+    color: palette.paperLight,
+    opacity: 0.78,
+    textAlign: "center",
+  },
 });

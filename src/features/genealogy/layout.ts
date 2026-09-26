@@ -24,13 +24,20 @@ export const FACE_BAND = FACE;
 export const FACE_AXIS = FACE_BAND / 2;
 
 /**
- * A node's box — the same for everyone whatever their face.
+ * A node's box — the card, and the portrait that overflows above it.
  *
- * Fixed, and sized for the largest face, because the connectors attach to the
- * box: let it follow the portrait and every line in the tree would change
- * length when someone's weight changed.
+ * Wide enough that the card shows on either side of the face rather than being
+ * hidden behind it, and tall enough to hold a name on two lines plus dates.
+ * Fixed for everyone, because the connectors attach to the box.
  */
-export const NODE = { width: 126, height: 170 };
+export const NODE = { width: 152, height: 186 };
+
+/**
+ * Where the card begins, measured from the top of the box: halfway down the
+ * portrait, which is what makes the face read as resting *on* the card rather
+ * than inside it.
+ */
+export const CARD_TOP = FACE / 2;
 
 /**
  * Between two nodes of the same generation, and between two generations.
@@ -38,8 +45,13 @@ export const NODE = { width: 126, height: 170 };
  * The vertical gap is only what the elbow needs: a taller one pushed the
  * generations apart until a grandparent and a grandchild could not be seen at
  * once, which is the one thing a genealogy is for.
+ *
+ * It is also smaller than it looks, because the portrait of the row below
+ * overflows *upwards* out of its card: half a face — 59 points — already
+ * reaches into this gap. What separates two cards is therefore 36 points, and
+ * what separates a card from the face beneath it is the 36 written here.
  */
-export const GAP = { x: 16, y: 46 };
+export const GAP = { x: 16, y: 36 };
 
 export const PADDING = 24;
 
