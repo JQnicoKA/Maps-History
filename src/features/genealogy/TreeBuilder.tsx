@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -85,6 +85,48 @@ const HOLD = 260;
 /** How far either side of a stroke a finger still counts as on it. */
 const GRASP = 11;
 
+/**
+ * Every gesture the drawing answers to, in the order one meets them.
+ *
+ * Written out because none of them is announced by a button any more: the
+ * tree lost its mode and its banner, which is what made it quiet, and a quiet
+ * interface owes the reader one page saying what it can do.
+ */
+const GESTURES: { doing: string; means: string }[] = [
+  {
+    doing: "Toucher une carte",
+    means: "Ouvre sa fiche : sa vie, les événements qui la mentionnent, les arbres où elle se tient.",
+  },
+  {
+    doing: "Rester appuyé",
+    means: "Ouvre son placement dans cet arbre — discret, normal ou majeur, ce qui décide de sa présence à l'œil — et permet de l'en retirer.",
+  },
+  {
+    doing: "Rester appuyé, puis glisser",
+    means: "Déplace la personne dans sa ligne. Un couple voyage ensemble, et le cadre en pointillés montre où il se posera.",
+  },
+  {
+    doing: "Le + à droite d'une carte",
+    means: "La marie à quelqu'un de la même ligne. Deux par couple, et ni l'un ni l'autre déjà marié.",
+  },
+  {
+    doing: "Le + sous une carte",
+    means: "Lui donne pour enfant quelqu'un de la ligne du dessous. Si elle est mariée, l'enfant est celui du couple et le trait part du milieu de la barre.",
+  },
+  {
+    doing: "Le + au bout d'une ligne",
+    means: "Fait entrer un personnage de votre collection dans l'arbre. Les deux lignes vides, en haut et en bas, ouvrent une génération de plus.",
+  },
+  {
+    doing: "Rester appuyé sur un trait",
+    means: "Propose de l'effacer. Effacer un mariage efface les enfants de ce mariage : ils ne tiendraient plus à rien.",
+  },
+  {
+    doing: "Deux doigts",
+    means: "Zooment et déplacent le dessin ; un doigt sur le papier le déplace aussi.",
+  },
+];
+
 export function TreeBuilder({
   tree,
   onClose,
@@ -139,7 +181,9 @@ export function TreeBuilder({
     setOpenId(null);
   };
   /** Which face the ··· card is showing, if it is open at all. */
-  const [menu, setMenu] = useState<"menu" | "rename" | "delete" | null>(null);
+  const [menu, setMenu] = useState<
+    "menu" | "rename" | "delete" | "help" | null
+  >(null);
   /** The new name being typed on the card's second face. */
   const [name, setName] = useState("");
   const { say, dialog } = useNotice();
@@ -511,29 +555,51 @@ export function TreeBuilder({
           onLayout={(event) => setChrome(event.nativeEvent.layout.height)}
         >
           <View style={[styles.bar, { paddingTop: insets.top + space.sm }]}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Retour"
-              hitSlop={8}
-              onPress={onClose}
-              style={({ pressed }) => [styles.icon, pressed && styles.pressed]}
-            >
-              <Text style={styles.backGlyph}>‹</Text>
-            </Pressable>
-            {/* Centred by the two equal side buttons, not by guesswork: the
-                title takes what is left and prints in the middle of it. */}
+            {/* Two sides of the same width, so the title prints in the middle
+                of what is left. The right holds two buttons now, so the left
+                is given the same room whether it fills it or not. */}
+            <View style={styles.side}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Retour"
+                hitSlop={8}
+                onPress={onClose}
+                style={({ pressed }) => [styles.icon, pressed && styles.pressed]}
+              >
+                <Text style={styles.backGlyph}>‹</Text>
+              </Pressable>
+            </View>
+
             <Text style={styles.title} numberOfLines={1}>
               {tree.name}
             </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Options de l'arbre"
-              hitSlop={8}
-              onPress={() => setMenu("menu")}
-              style={({ pressed }) => [styles.icon, pressed && styles.pressed]}
-            >
-              <Text style={styles.moreGlyph}>···</Text>
-            </Pressable>
+
+            <View style={[styles.side, styles.sideRight]}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Comment ça marche"
+                hitSlop={8}
+                onPress={() => {
+                  setPlacing(null);
+                  setMenu("help");
+                }}
+                style={({ pressed }) => [styles.icon, pressed && styles.pressed]}
+              >
+                <Text style={styles.helpGlyph}>i</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Options de l'arbre"
+                hitSlop={8}
+                onPress={() => {
+                  setPlacing(null);
+                  setMenu("menu");
+                }}
+                style={({ pressed }) => [styles.icon, pressed && styles.pressed]}
+              >
+                <Text style={styles.moreGlyph}>···</Text>
+              </Pressable>
+            </View>
           </View>
 
         </View>
@@ -657,7 +723,8 @@ export function TreeBuilder({
           onClose={() => setCutting(null)}
         />
 
-        {/* One card, three faces — the menu, the new name, the confirmation.
+        {/* One card, four faces — the menu, the new name, the confirmation,
+            and what every gesture does.
             Never a second card over the first: iOS refuses to present a modal
             from a controller already presenting one, and the button that opened
             it would appear to do nothing at all. */}
@@ -669,17 +736,32 @@ export function TreeBuilder({
               ? "Renommer l'arbre"
               : menu === "delete"
                 ? `Supprimer « ${tree.name} » ?`
-                : tree.name
+                : menu === "help"
+                  ? "Comment ça marche"
+                  : tree.name
           }
           hint={
             menu === "delete"
               ? "Les personnages restent dans la collection ; seul l'arbre disparaît."
-              : undefined
+              : menu === "help"
+                ? "Tout part de la personne : on la touche, ou on reste appuyé dessus."
+                : undefined
           }
-          dismissLabel={menu === "menu" ? null : "Retour"}
+          dismissLabel={menu === "menu" || menu === "help" ? null : "Retour"}
           onDismiss={() => setMenu("menu")}
         >
-          {menu === "rename" ? (
+          {menu === "help" ? (
+            <ScrollView style={styles.helpBody}>
+              <View style={styles.help}>
+                {GESTURES.map((gesture) => (
+                  <View key={gesture.doing} style={styles.gesture}>
+                    <Text style={styles.gestureDoing}>{gesture.doing}</Text>
+                    <Text style={styles.gestureMeans}>{gesture.means}</Text>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          ) : menu === "rename" ? (
             <>
               <InkField
                 label="Nom de l'arbre"
@@ -834,6 +916,9 @@ const styles = StyleSheet.create({
     color: palette.ink,
     textAlign: "center",
   },
+  /** Equal on both sides, so the title between them sits in the middle. */
+  side: { flexDirection: "row", width: TOUCH * 2 },
+  sideRight: { justifyContent: "flex-end" },
   icon: {
     width: TOUCH,
     height: TOUCH,
@@ -843,5 +928,19 @@ const styles = StyleSheet.create({
   },
   backGlyph: { fontSize: 34, lineHeight: 38, color: palette.ink, marginTop: -4 },
   moreGlyph: { fontSize: 22, lineHeight: 26, color: palette.ink, marginTop: -6 },
+  /** Tall enough for the list, short enough that the card stays a card. */
+  helpBody: { maxHeight: 400 },
+  help: { gap: space.md, paddingBottom: space.xs },
+  gesture: { gap: 2 },
+  gestureDoing: { fontSize: 15, fontWeight: "700", color: palette.ink },
+  gestureMeans: { ...type.caption, color: palette.inkSoft },
+
+  /** A serif i in a ring: the mark a plate uses for a note in the margin. */
+  helpGlyph: {
+    ...type.plate,
+    fontSize: 19,
+    lineHeight: 23,
+    color: palette.ink,
+  },
 
 });
