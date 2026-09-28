@@ -384,6 +384,9 @@ export function TreeBuilder({
         <PanZoom
           held={dragging}
           magnification={magnification}
+          // Tapping the paper between the cards puts the placement menu away.
+          // React skips the render when there was nothing open.
+          onTouch={() => setPlacing(null)}
           content={size}
           // The foot of the screen is only occupied while a line is being
           // drawn; the rest of the time the canvas may use it.
@@ -494,7 +497,10 @@ export function TreeBuilder({
                 : "Ajouter à cette génération"
             }
             disabled={busy || tracing !== null}
-            onPress={() => setAdding(generation)}
+            onPress={() => {
+              setPlacing(null);
+              setAdding(generation);
+            }}
             style={({ pressed }) => [
               styles.slot,
               tracing !== null && styles.away,
@@ -552,7 +558,10 @@ export function TreeBuilder({
             <View style={styles.underBar}>
               <Pressable
                 accessibilityRole="button"
-                onPress={() => setChoosing(true)}
+                onPress={() => {
+                  setPlacing(null);
+                  setChoosing(true);
+                }}
                 style={({ pressed }) => [styles.trace, pressed && styles.pressed]}
               >
                 <Text style={styles.traceLabel}>Modifier les liens</Text>

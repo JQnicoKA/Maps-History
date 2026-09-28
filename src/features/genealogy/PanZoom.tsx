@@ -41,6 +41,14 @@ export type PanZoomProps = {
    */
   held?: { current: boolean };
   /**
+   * A finger landed on the drawing itself, rather than on anything drawn.
+   *
+   * For whatever is open over the canvas and should not be: a card claims its
+   * own touches, so this only ever hears about the paper between them — which
+   * is exactly "the reader tapped elsewhere".
+   */
+  onTouch?: () => void;
+  /**
    * Kept up to date with how far the drawing is zoomed.
    *
    * A finger moves in screen points and the drawing thinks in its own; at half
@@ -79,8 +87,16 @@ export function PanZoom({
   subject,
   held,
   magnification,
+  onTouch,
   children,
 }: PanZoomProps) {
+  /**
+   * Read through a ref: the responder below is built once and would otherwise
+   * call the first render's callback for ever.
+   */
+  const touched = useRef(onTouch);
+  touched.current = onTouch;
+
   const translateX = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(0)).current;
   const magnify = useRef(new Animated.Value(1)).current;
@@ -155,6 +171,7 @@ export function PanZoom({
       onPanResponderTerminationRequest: () => false,
 
       onPanResponderGrant: () => {
+        touched.current?.();
         stopGlide();
         grip.current = null;
         drift.current = { x: 0, y: 0 };
