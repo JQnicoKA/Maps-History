@@ -1,5 +1,12 @@
 import type { ReactNode } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type ImageSourcePropType,
+} from "react-native";
 
 import { lean } from "./Scrapbook";
 import { palette } from "../../theme/palette";
@@ -66,6 +73,14 @@ export type RosterRowProps = {
   /** The pencil, when there is something to edit. */
   onEdit?: () => void;
   editLabel?: string;
+  /**
+   * What that button shows, when a pencil would be a lie.
+   *
+   * Most rows open a card to be corrected. A few carry their one action on the
+   * row itself — rubbing out a territory, putting one back — and a pencil over
+   * a deletion is worse than no icon at all.
+   */
+  editIcon?: ImageSourcePropType;
   /** The whole row, when the row itself opens something. */
   onPress?: () => void;
   /**
@@ -83,6 +98,7 @@ export function RosterRow({
   detail,
   onEdit,
   editLabel,
+  editIcon = PENCIL,
   onPress,
   index = 0,
 }: RosterRowProps) {
@@ -111,7 +127,7 @@ export function RosterRow({
           onPress={onEdit}
           style={({ pressed }) => [styles.edit, pressed && styles.editPressed]}
         >
-          <Image source={PENCIL} style={styles.pencil} resizeMode="contain" />
+          <Image source={editIcon} style={styles.pencil} resizeMode="contain" />
         </Pressable>
       ) : null}
       {onPress && !onEdit ? <Text style={styles.chevron}>›</Text> : null}

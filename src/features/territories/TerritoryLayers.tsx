@@ -93,12 +93,15 @@ export type TerritoryLayersProps = {
    *
    * `id` and `drawn` come along because the two kinds part ways here: the
    * reference set can only be masked, what the reader drew can be erased for
-   * good — and only the feature knows which it is.
+   * good — and only the feature knows which it is. `from` and `to` come along
+   * because the card that opens has nothing else to say about a shape.
    */
   onTouch?: (territory: {
     name: string;
     id: string;
     drawn: boolean;
+    from: number;
+    to: number;
   }) => void;
 };
 
@@ -144,9 +147,15 @@ export function TerritoryLayers({ detailed, onTouch }: TerritoryLayersProps) {
           const touched = event.nativeEvent.features[0]?.properties;
           const name = touched?.["name"];
           const id = touched?.["id"];
+          const from = touched?.["from"];
+          const to = touched?.["to"];
           if (typeof name !== "string" || name === "") return;
           if (typeof id !== "string") return;
-          onTouch?.({ name, id, drawn: touched?.["drawn"] === true });
+          // Both functions send them and both columns are NOT NULL, so a
+          // missing span means a feature from somewhere unexpected rather
+          // than a territory with no dates. Nothing to open a card on.
+          if (typeof from !== "number" || typeof to !== "number") return;
+          onTouch?.({ name, id, drawn: touched?.["drawn"] === true, from, to });
         }}
       >
         {/* Beneath the sea, not above it.

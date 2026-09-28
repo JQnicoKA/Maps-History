@@ -19,3 +19,12 @@ export const HISTORY = { from: -3000, to: 2100 } as const;
  * full coverage and is the map most people can place themselves on.
  */
 export const DEFAULT_YEAR = 2000;
+
+/**
+ * The last year Cliopatria draws.
+ *
+ * 384 of its entities end here, which is not the year they fell — it is where
+ * the dataset stops. A card saying "de 1991 à 2024" would be inventing a
+ * collapse, so anything reaching this year is said to be standing still.
+ */
+export const BORDERS_END = 2024;

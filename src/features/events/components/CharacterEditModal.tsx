@@ -264,9 +264,6 @@ export function CharacterEditModal({
               }}
             />
           </View>
-          <Text style={styles.hint}>
-            Le personnage se tient là de sa naissance à sa mort.
-          </Text>
         </View>
 
         <InkField
