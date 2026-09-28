@@ -42,7 +42,7 @@ export function CharacterManager() {
             un arbre.
           </RosterEmpty>
         ) : (
-          characters.map((person) => {
+          characters.map((person, rank) => {
             const appears = events.filter((event) =>
               event.characters.includes(person.id),
             ).length;
@@ -68,6 +68,7 @@ export function CharacterManager() {
                 ]
                   .filter(Boolean)
                   .join(" · ")}
+                index={rank}
                 onEdit={() => setEditing(person)}
                 editLabel={`Modifier ${person.name}`}
               />

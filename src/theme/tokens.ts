@@ -1,3 +1,5 @@
+import { Platform } from "react-native";
+
 /**
  * The measurements the interface is built from.
  *
@@ -46,7 +48,30 @@ export const shadow = {
   },
 } as const;
 
+/**
+ * The face the chrome borrows from the plate.
+ *
+ * Every panel in this app is a sheet of the same atlas, and an atlas is set in
+ * a serif. It is used for titles only: a whole interface in Palatino would be
+ * a costume, while a serif heading over sans-serif text is how a printed plate
+ * has always been laid out.
+ *
+ * Built into both systems, so nothing is downloaded and nothing can fail to
+ * arrive — Palatino on iOS, the platform serif elsewhere.
+ */
+export const SERIF = Platform.select({
+  ios: "Palatino",
+  android: "serif",
+  default: "serif",
+});
+
 export const type = {
+  /** A panel's name, in the atlas's own voice. */
+  plate: {
+    fontFamily: SERIF,
+    fontSize: 25,
+    letterSpacing: 0.2,
+  },
   title: { fontSize: 21, letterSpacing: 0.2 },
   heading: { fontSize: 17, letterSpacing: 0.2 },
   body: { fontSize: 15, lineHeight: 22 },

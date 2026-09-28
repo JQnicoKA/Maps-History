@@ -8,13 +8,13 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Grain, JournalTitle } from "./Scrapbook";
 import { palette } from "../../theme/palette";
-import { BACKDROP, radius, shadow, space, type } from "../../theme/tokens";
+import { BACKDROP, radius, shadow, space } from "../../theme/tokens";
 
 const SCREEN = Dimensions.get("window").height;
 
@@ -191,12 +191,19 @@ export function Sheet({
           <Animated.View
             style={[styles.panel, { transform: [{ translateY }] }]}
           >
+            {/* Behind everything, including the header's rule. */}
+            <Grain />
+
             {/* The whole header is the handle — a 4pt bar is not a target. */}
             <View {...pan.panHandlers} style={styles.header}>
               <View style={styles.grabZone}>
                 <View style={styles.grab} />
               </View>
-              {title ? <Text style={styles.title}>{title}</Text> : null}
+              {title ? (
+                <View style={styles.titleBlock}>
+                  <JournalTitle title={title} />
+                </View>
+              ) : null}
             </View>
 
             {children}
@@ -226,6 +233,13 @@ const styles = StyleSheet.create({
     backgroundColor: palette.paperLight,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
+    // Clipped, so the grain stops where the rounded corners do rather than
+    // squaring them off.
+    overflow: "hidden",
+    // A hairline along the top edge: the sheet is a sheet of paper laid on
+    // the plate, and paper has an edge.
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.paperDeep,
     ...shadow.lifted,
   },
   header: { paddingBottom: space.xs },
@@ -236,14 +250,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: palette.line,
   },
-  title: {
-    ...type.title,
-    color: palette.ink,
-    textAlign: "center",
-    paddingHorizontal: space.xl,
-    paddingTop: space.sm,
-    paddingBottom: space.md,
-  },
+  titleBlock: { paddingHorizontal: space.xl, paddingBottom: space.lg },
   footer: {
     paddingHorizontal: space.xl,
     paddingTop: space.md,

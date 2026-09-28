@@ -40,7 +40,7 @@ export function FolderManager() {
             plusieurs, et compter plus dans l'un que dans l'autre.
           </RosterEmpty>
         ) : (
-          folders.map((folder) => {
+          folders.map((folder, rank) => {
             const filed = events.filter((event) =>
               event.folders.some((link) => link.folderId === folder.id),
             ).length;
@@ -63,6 +63,7 @@ export function FolderManager() {
                     ? "vide"
                     : `${filed} événement${filed > 1 ? "s" : ""}`
                 }
+                index={rank}
                 onEdit={() => setEditing(folder)}
                 editLabel={`Modifier ${folder.name}`}
               />

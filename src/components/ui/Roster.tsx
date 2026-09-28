@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { lean } from "./Scrapbook";
 import { palette } from "../../theme/palette";
-import { radius, space, TOUCH, type } from "../../theme/tokens";
+import { radius, shadow, space, TOUCH, type } from "../../theme/tokens";
 
 const PENCIL = require("../../../assets/icons/pencil.png");
 
@@ -67,6 +68,13 @@ export type RosterRowProps = {
   editLabel?: string;
   /** The whole row, when the row itself opens something. */
   onPress?: () => void;
+  /**
+   * Its place in the list, which decides which way it leans.
+   *
+   * Alternating and not random: a random tilt changes on every render, and a
+   * list that reshuffles itself while you read it is not charming.
+   */
+  index?: number;
 };
 
 export function RosterRow({
@@ -76,10 +84,15 @@ export function RosterRow({
   onEdit,
   editLabel,
   onPress,
+  index = 0,
 }: RosterRowProps) {
   const body = (
     <>
-      <View style={styles.thumb}>{thumb}</View>
+      {/* The picture leans the other way from its card, the way a photograph
+          stuck on a page never quite lines up with it. */}
+      <View style={[styles.thumb, { transform: [{ rotate: lean(index + 1) }] }]}>
+        {thumb}
+      </View>
       <View style={styles.text}>
         <Text style={styles.title} numberOfLines={1}>
           {title}
@@ -105,14 +118,15 @@ export function RosterRow({
     </>
   );
 
-  if (!onPress) return <View style={styles.row}>{body}</View>;
+  const tilt = { transform: [{ rotate: lean(index) }] };
+  if (!onPress) return <View style={[styles.row, tilt]}>{body}</View>;
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={title}
       onPress={onPress}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.row, tilt, pressed && styles.pressed]}
     >
       {body}
     </Pressable>
@@ -122,53 +136,81 @@ export function RosterRow({
 const EDIT = 36;
 
 const styles = StyleSheet.create({
-  list: { gap: space.sm },
-  count: { ...type.legend, color: palette.inkSoft },
-  empty: { ...type.body, color: palette.inkFaint, paddingVertical: space.sm },
+  list: { gap: space.md },
+  count: {
+    ...type.legend,
+    color: palette.inkSoft,
+    alignSelf: "center",
+    paddingBottom: space.xs,
+  },
+  empty: {
+    ...type.body,
+    color: palette.inkFaint,
+    textAlign: "center",
+    paddingVertical: space.lg,
+    paddingHorizontal: space.md,
+  },
 
-  /** Dashed, because it is a place for something rather than a thing. */
+  /**
+   * The empty space where the next one will be stuck.
+   *
+   * Dashed and unfilled, leaning the other way from the cards above it: it
+   * is a gap in the page rather than a thing on it, and the difference is
+   * what makes it read as an invitation.
+   */
   add: {
     flexDirection: "row",
     alignItems: "center",
     gap: space.md,
     padding: space.sm,
     borderRadius: radius.lg,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: palette.line,
+    borderColor: palette.paperDeep,
+    transform: [{ rotate: "0.7deg" }],
   },
   plus: {
     width: THUMB,
     height: THUMB,
-    borderRadius: THUMB / 2,
+    borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: palette.paperDeep,
   },
-  plusGlyph: { fontSize: 25, lineHeight: 29, color: palette.inkSoft },
+  plusGlyph: { fontSize: 25, lineHeight: 29, color: palette.paperLight },
   addLabel: { flex: 1, fontSize: 15, fontWeight: "600", color: palette.inkSoft },
 
+  /** A card stuck on the page: white paper, a soft shadow, square corners. */
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: space.md,
     minHeight: THUMB + 2 * space.sm,
     padding: space.sm,
-    borderRadius: radius.lg,
-    backgroundColor: palette.sunken,
-  },
-  thumb: {
-    width: THUMB,
-    height: THUMB,
-    borderRadius: THUMB / 2,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
+    borderRadius: radius.md,
     backgroundColor: palette.paperLight,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.line,
+    ...shadow.soft,
+  },
+  /**
+   * A photograph, not a badge: square with a white border, the way a print
+   * pasted in a notebook keeps its margin.
+   */
+  thumb: {
+    width: THUMB,
+    height: THUMB,
+    borderRadius: 4,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: palette.sunken,
+    borderWidth: 3,
+    borderColor: palette.paperLight,
+    ...shadow.soft,
   },
   text: { flex: 1, gap: 2 },
-  title: { fontSize: 15, fontWeight: "600", color: palette.ink },
+  title: { fontSize: 15.5, fontWeight: "700", color: palette.ink },
   detail: { ...type.caption, color: palette.inkFaint },
 
   edit: {
@@ -178,9 +220,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: palette.paperLight,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.line,
+    backgroundColor: palette.sunken,
   },
   editPressed: { backgroundColor: palette.paperDeep },
   pencil: { width: 16, height: 16, opacity: 0.75 },

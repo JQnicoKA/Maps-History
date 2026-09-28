@@ -6,6 +6,12 @@ export { InkButton, type InkButtonProps } from "./InkButton";
 export { InkField, type InkFieldProps } from "./InkField";
 export { Paper } from "./Paper";
 export {
+  Grain,
+  JournalTitle,
+  lean,
+  type JournalTitleProps,
+} from "./Scrapbook";
+export {
   Roster,
   RosterEmpty,
   RosterRow,

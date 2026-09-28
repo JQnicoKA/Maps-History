@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { InkButton } from "./InkButton";
+import { Grain } from "./Scrapbook";
 import { palette } from "../../theme/palette";
 import { BACKDROP, radius, shadow, space, type } from "../../theme/tokens";
 
@@ -65,10 +66,12 @@ export function Dialog({
           onPress={onClose}
         />
         <View style={styles.card}>
+          <Grain />
+
           <View style={styles.header}>
             <View style={styles.heading}>
               <Text style={styles.title}>{title}</Text>
-              {hint === undefined ? null : <Text style={styles.hint}>{hint}</Text>}
+              <View style={styles.underline} />
             </View>
             <Pressable
               accessibilityRole="button"
@@ -80,6 +83,8 @@ export function Dialog({
               <Text style={styles.closeGlyph}>×</Text>
             </Pressable>
           </View>
+
+          {hint === undefined ? null : <Text style={styles.hint}>{hint}</Text>}
 
           {/* Nothing here carries `grow`: that is `flex: 1`, meant to fill a
               row. In a column sized by its content it gives each child a basis
@@ -115,13 +120,27 @@ const styles = StyleSheet.create({
     padding: space.xl,
     borderRadius: radius.xl,
     backgroundColor: palette.paperLight,
+    // Clipped so the grain keeps to the rounded corners, and edged so the
+    // card reads as a sheet of paper rather than a floating rectangle.
+    overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.paperDeep,
     ...shadow.lifted,
   },
   /** The cross sits level with the title, whatever the title wraps to. */
   header: { flexDirection: "row", alignItems: "flex-start", gap: space.sm },
   heading: { flex: 1, gap: space.xs },
-  title: { ...type.heading, fontWeight: "700", color: palette.ink },
-  hint: { ...type.caption, color: palette.inkSoft },
+  title: { ...type.plate, fontSize: 22, color: palette.ink },
+  /** Hand-drawn under the words, not ruled across the card. */
+  underline: {
+    height: 3,
+    width: "58%",
+    minWidth: 56,
+    marginTop: 3,
+    borderRadius: radius.pill,
+    backgroundColor: palette.paperDeep,
+  },
+  hint: { ...type.caption, color: palette.inkSoft, marginTop: space.xs },
   close: {
     width: 32,
     height: 32,

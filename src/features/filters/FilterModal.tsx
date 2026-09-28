@@ -5,7 +5,7 @@ import { useEvents } from "../events/EventsProvider";
 import { FolderSelector } from "../events/components/FolderSelector";
 import { NO_FILTERS } from "../events/types";
 import { palette } from "../../theme/palette";
-import { space, type } from "../../theme/tokens";
+import { radius, shadow, space, type } from "../../theme/tokens";
 
 export type FilterModalProps = {
   visible: boolean;
@@ -13,7 +13,7 @@ export type FilterModalProps = {
 };
 
 export function FilterModal({ visible, onClose }: FilterModalProps) {
-  const { folders, filters, setFilters, visibleEvents } = useEvents();
+  const { events, folders, filters, setFilters, visibleEvents } = useEvents();
   const count = visibleEvents.length;
 
   return (
@@ -46,10 +46,19 @@ export function FilterModal({ visible, onClose }: FilterModalProps) {
           emptyLabel="Filtrer par classeur"
         />
 
+        {/* The answer to the question the sheet asks, pasted in like a
+            ticket stub: its own little card, leaning. */}
         <View style={styles.tally}>
-          <Text style={styles.tallyNumber}>{count}</Text>
-          <Text style={styles.tallyLabel}>
-            événement{count > 1 ? "s" : ""} affiché{count > 1 ? "s" : ""}
+          <View style={styles.tallyRow}>
+            <Text style={styles.tallyNumber}>{count}</Text>
+            <Text style={styles.tallyLabel}>
+              événement{count > 1 ? "s" : ""} affiché{count > 1 ? "s" : ""}
+            </Text>
+          </View>
+          <Text style={styles.tallyOf}>
+            {filters.folders.length === 0
+              ? "toute la collection"
+              : `sur ${events.length}`}
           </Text>
         </View>
       </ScrollView>
@@ -64,12 +73,25 @@ const styles = StyleSheet.create({
     gap: space.xl,
   },
   tally: {
+    alignSelf: "center",
+    alignItems: "center",
+    gap: space.xs,
+    paddingVertical: space.md,
+    paddingHorizontal: space.xxl,
+    borderRadius: radius.lg,
+    backgroundColor: palette.paperLight,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.line,
+    transform: [{ rotate: "-1deg" }],
+    ...shadow.soft,
+  },
+  tallyRow: {
     flexDirection: "row",
     alignItems: "baseline",
     justifyContent: "center",
     gap: space.sm,
-    paddingTop: space.sm,
   },
-  tallyNumber: { fontSize: 28, fontWeight: "700", color: palette.wax },
+  tallyNumber: { ...type.plate, fontSize: 34, color: palette.wax },
   tallyLabel: { ...type.body, color: palette.inkSoft },
+  tallyOf: { ...type.legend, color: palette.inkFaint, textAlign: "center" },
 });
