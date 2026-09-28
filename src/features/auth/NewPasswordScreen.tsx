@@ -76,7 +76,7 @@ export function NewPasswordScreen() {
               label="Nouveau mot de passe"
               value={password}
               onChangeText={setChosen}
-              placeholder="Choisissez-en un solide"
+              placeholder="Choisissez un mot de passe complexe"
               secureTextEntry={!shown}
               autoCapitalize="none"
               autoCorrect={false}

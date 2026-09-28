@@ -521,6 +521,8 @@ type CharacterRow = {
   death_month: number | null;
   death_day: number | null;
   death_approx: boolean;
+  longitude: number | null;
+  latitude: number | null;
   character_photos: {
     id: string;
     storage_path: string;
@@ -533,6 +535,7 @@ const CHARACTER_COLUMNS = `
   id, name, bio,
   birth_year, birth_month, birth_day, birth_approx,
   death_year, death_month, death_day, death_approx,
+  longitude, latitude,
   character_photos ( id, storage_path, position, source )
 `;
 
@@ -563,6 +566,8 @@ function toCharacter(row: CharacterRow): Character {
       row.death_day,
       row.death_approx,
     ),
+    longitude: row.longitude,
+    latitude: row.latitude,
     photos: [...row.character_photos]
       .sort((a, b) => a.position - b.position)
       .map((photo) => ({
@@ -593,6 +598,8 @@ function characterRow(draft: CharacterDraft) {
     death_month: draft.death?.month ?? null,
     death_day: draft.death?.day ?? null,
     death_approx: draft.death?.approximate === true,
+    longitude: draft.longitude,
+    latitude: draft.latitude,
   };
 }
 

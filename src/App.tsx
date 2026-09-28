@@ -10,6 +10,7 @@ import {
 } from "./features/auth";
 import { EventsProvider } from "./features/events/EventsProvider";
 import { HiddenProvider } from "./features/territories/HiddenProvider";
+import { PlacementProvider } from "./features/placement";
 import { MapScreen } from "./screens/MapScreen";
 import { palette } from "./theme/palette";
 
@@ -62,7 +63,11 @@ function Gate() {
   return (
     <EventsProvider key={account.id}>
       <HiddenProvider key={account.id}>
-        <MapScreen />
+        {/* Not keyed on the account: it holds a question in flight, not
+            anything belonging to a reader. */}
+        <PlacementProvider>
+          <MapScreen />
+        </PlacementProvider>
       </HiddenProvider>
     </EventsProvider>
   );

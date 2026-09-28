@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { effectiveImportance, matchesFilters } from "./filtering";
-import type { EventFilters, EventSummary, Importance } from "./types";
+import type { MapFilters, EventSummary, Importance } from "./types";
 
 const event = (folders: { folderId: string; importance: Importance }[]): EventSummary => ({
   id: "e",
@@ -18,7 +18,12 @@ const event = (folders: { folderId: string; importance: Importance }[]): EventSu
 
 const filters = (
   folders: { folderId: string; importance: Importance | null }[],
-): EventFilters => ({ folders });
+): MapFilters => ({
+  folders,
+  events: true,
+  characters: true,
+  territories: true,
+});
 
 describe("ce que le filtre laisse passer", () => {
   it("laisse tout passer quand rien n'est choisi", () => {

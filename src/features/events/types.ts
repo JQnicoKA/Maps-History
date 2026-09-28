@@ -166,6 +166,16 @@ export type Character = {
   bio: string | null;
   birth: HistoricalDate | null;
   death: HistoricalDate | null;
+  /**
+   * Where they stand on the plate, from their birth to their death.
+   *
+   * Null only for the people written down before the map knew about them: the
+   * form now asks for a point, and refuses to save a person without one. They
+   * are simply absent from the map until someone opens their card and says
+   * where they were.
+   */
+  longitude: number | null;
+  latitude: number | null;
   photos: StoredPhoto[];
 };
 
@@ -218,8 +228,12 @@ export type Tree = {
 export type CharacterDraft = {
   name: string;
   bio: string;
+  /** Required by the form: a person with no birth cannot appear anywhere. */
   birth: HistoricalDate | null;
+  /** Optional: an unknown death leaves them on the map from their birth on. */
   death: HistoricalDate | null;
+  longitude: number | null;
+  latitude: number | null;
   /** Pictures to upload. On an edit, only the newly added ones. */
   photos: PickedPhoto[];
 };
@@ -245,9 +259,28 @@ export type FolderFilter = {
   importance: Importance | null;
 };
 
-export type EventFilters = {
-  /** Empty means no filtering at all: every event is shown. */
+/**
+ * What the plate is carrying.
+ *
+ * Three kinds of thing are drawn on the map and each can be put away: the
+ * events of the collection, the people who lived through them, and the
+ * territories underneath. They were `EventFilters` while events were the only
+ * thing one could hide.
+ *
+ * The folders belong to the events and are ignored while events are hidden —
+ * a folder is a way of narrowing what is shown, not a fourth thing to show.
+ */
+export type MapFilters = {
+  events: boolean;
+  /** Empty means no narrowing at all: every event is shown. */
   folders: FolderFilter[];
+  characters: boolean;
+  territories: boolean;
 };
 
-export const NO_FILTERS: EventFilters = { folders: [] };
+export const NO_FILTERS: MapFilters = {
+  events: true,
+  folders: [],
+  characters: true,
+  territories: true,
+};

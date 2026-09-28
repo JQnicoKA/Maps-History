@@ -154,9 +154,7 @@ export function AccountButton({ view, onChange }: AccountButtonProps) {
                 : "Votre compte"
         }
         hint={
-          face === "changing"
-            ? "Le mot de passe actuel, puis celui qui le remplace."
-            : face === "leaving"
+          face === "leaving"
             ? "Il faudra vous reconnecter."
             : face === "erasing"
               ? "Événements, classeurs, personnages, arbres et photos seront effacés. C'est définitif."
@@ -186,7 +184,7 @@ export function AccountButton({ view, onChange }: AccountButtonProps) {
               label="Nouveau mot de passe"
               value={chosen}
               onChangeText={setChosen}
-              placeholder="Choisissez-en un solide"
+              placeholder="Choisissez un mot de passe complexe"
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}

@@ -165,7 +165,7 @@ export function AuthScreen() {
               label="Mot de passe"
               value={password}
               onChangeText={setPassword}
-              placeholder={mode === "up" ? "Choisissez-en un solide" : "Votre mot de passe"}
+              placeholder={mode === "up" ? "Choisissez un mot de passe complexe" : "Votre mot de passe"}
               secureTextEntry={!shown}
               autoCapitalize="none"
               autoCorrect={false}

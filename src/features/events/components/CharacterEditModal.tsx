@@ -18,6 +18,8 @@ import {
   useNotice,
 } from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
+import { usePlacement } from "../../placement";
+import type { Point } from "../../placement";
 import type {
   Character,
   HistoricalDate,
@@ -33,6 +35,11 @@ export type CharacterEditModalProps = {
   /** Someone to edit, `"new"` to invent one, `null` to stay shut. */
   target: Character | "new" | null;
   onClose: () => void;
+  /**
+   * Fired once the panel is off the screen — see `Sheet`. Whoever opened this
+   * card by closing another one uses it to bring that one back.
+   */
+  onClosed?: () => void;
 };
 
 /**
@@ -47,9 +54,11 @@ export type CharacterEditModalProps = {
 export function CharacterEditModal({
   target,
   onClose,
+  onClosed,
 }: CharacterEditModalProps) {
   const { characters, events, addCharacter, editCharacter, removeCharacter } =
     useEvents();
+  const { aiming, place } = usePlacement();
 
   const creating = target === "new";
   const person = creating ? null : target;
@@ -61,6 +70,11 @@ export function CharacterEditModal({
   );
   const [death, setDeath] = useState<HistoricalDate | null>(
     person?.death ?? null,
+  );
+  const [where, setWhere] = useState<Point | null>(
+    person?.longitude != null && person.latitude != null
+      ? { longitude: person.longitude, latitude: person.latitude }
+      : null,
   );
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
   const [keptPhotos, setKeptPhotos] = useState<StoredPhoto[]>(
@@ -117,7 +131,30 @@ export function CharacterEditModal({
       return;
     }
 
-    const draft = { name: trimmed, bio, birth, death, photos };
+    // A person is drawn on the map from their birth onward, at one point.
+    // Neither can be guessed, so neither is optional — a death can be: not
+    // having written one down is not the same as claiming immortality.
+    if (!birth) {
+      say(
+        "Naissance manquante",
+        "Un personnage apparaît sur la carte à partir de sa naissance : il lui faut au moins une année.",
+      );
+      return;
+    }
+    if (!where) {
+      say("Lieu manquant", "Placez le personnage sur la carte.");
+      return;
+    }
+
+    const draft = {
+      name: trimmed,
+      bio,
+      birth,
+      death,
+      longitude: where.longitude,
+      latitude: where.latitude,
+      photos,
+    };
 
     setSaving(true);
     try {
@@ -139,8 +176,14 @@ export function CharacterEditModal({
 
   return (
     <Sheet
-      visible
+      // Out of the way while the reader is aiming at the map, and back
+      // afterwards with everything they had typed still in its fields: the
+      // state lives here, not in the panel.
+      visible={!aiming}
       onClose={onClose}
+      // Only when the card is really finished, never when it merely stepped
+      // aside for the reticle.
+      onClosed={aiming ? undefined : onClosed}
       title={creating ? "Nouveau personnage" : "Modifier le personnage"}
       footer={
         <>
@@ -201,6 +244,31 @@ export function CharacterEditModal({
           }}
         />
 
+        <View style={styles.section}>
+          <Text style={styles.legend}>Où</Text>
+          <View style={styles.location}>
+            <Text style={styles.coordinates}>
+              {where
+                ? `${where.latitude.toFixed(4)}°, ${where.longitude.toFixed(4)}°`
+                : "Non défini"}
+            </Text>
+            <InkButton
+              label={where ? "Déplacer" : "Placer"}
+              variant={where ? "tonal" : "solid"}
+              onPress={() => {
+                void place().then((point) => {
+                  // Null means they backed out, which must not erase a point
+                  // they had already chosen.
+                  if (point) setWhere(point);
+                });
+              }}
+            />
+          </View>
+          <Text style={styles.hint}>
+            Le personnage se tient là de sa naissance à sa mort.
+          </Text>
+        </View>
+
         <InkField
           label="À son sujet"
           value={bio}
@@ -244,6 +312,17 @@ const styles = StyleSheet.create({
   },
   section: { gap: space.sm },
   legend: { ...type.legend, color: palette.inkSoft },
+  location: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: space.md,
+    padding: space.md,
+    borderRadius: radius.md,
+    backgroundColor: palette.sunken,
+  },
+  coordinates: { ...type.body, flexShrink: 1, color: palette.ink },
+  hint: { ...type.legend, color: palette.inkFaint },
   appears: { ...type.caption, color: palette.inkFaint },
   pressed: { opacity: 0.5 },
   trash: {

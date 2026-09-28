@@ -1,6 +1,6 @@
 import {
   IMPORTANCE_ORDER,
-  type EventFilters,
+  type MapFilters,
   type EventSummary,
   type Importance,
 } from "./types";
@@ -23,7 +23,7 @@ function highest(links: { importance: Importance }[]): Importance {
  */
 export function effectiveImportance(
   event: EventSummary,
-  filters: EventFilters,
+  filters: MapFilters,
 ): Importance {
   if (filters.folders.length === 0) return highest(event.folders);
 
@@ -39,7 +39,7 @@ export function effectiveImportance(
  */
 export function matchesFilters(
   event: EventSummary,
-  filters: EventFilters,
+  filters: MapFilters,
 ): boolean {
   if (filters.folders.length === 0) return true;
 

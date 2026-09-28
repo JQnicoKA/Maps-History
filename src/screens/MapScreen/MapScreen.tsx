@@ -11,7 +11,10 @@ import { ParchmentOverlay, WorldMap } from "../../components/WorldMap";
 import { env } from "../../config/env";
 import { MAP_FEATURES } from "../../config/map";
 import { useEvents } from "../../features/events/EventsProvider";
-import type { HistoricalEvent } from "../../features/events/types";
+import type {
+  Character,
+  HistoricalEvent,
+} from "../../features/events/types";
 import {
   AddEventButton,
   AddPersonButton,
@@ -19,10 +22,13 @@ import {
 import { EventDetailModal } from "../../features/events/components/EventDetailModal";
 import { EventFormModal } from "../../features/events/components/EventFormModal";
 import { EventListView } from "../../features/events/components/EventListView";
+import { CharacterEditModal } from "../../features/events/components/CharacterEditModal";
+import { CharacterMarkers } from "../../features/events/components/CharacterMarkers";
 import { EventMarkers } from "../../features/events/components/EventMarkers";
 import { EventSummaryCard } from "../../features/events/components/EventSummaryCard";
 import { LocationReticle } from "../../features/events/components/LocationReticle";
 import { FilterButton } from "../../features/filters/FilterButton";
+import { usePlacement } from "../../features/placement";
 import { PlaceLayers } from "../../features/places/PlaceLayers";
 import { TerritoryLayers } from "../../features/territories/TerritoryLayers";
 import {
@@ -44,8 +50,6 @@ import { FRIEZE_HEIGHT, Timeline } from "../../features/timeline/Timeline";
 import { palette } from "../../theme/palette";
 import { space } from "../../theme/tokens";
 
-type DraftLocation = { longitude: number; latitude: number };
-
 /**
  * The strip kept clear at the very bottom for the map credits.
  *
@@ -60,7 +64,8 @@ const CREDITS_STRIP = 22;
 export function MapScreen() {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapRef>(null);
-  const { selectedEvent, error, refresh } = useEvents();
+  const { selectedEvent, error, refresh, filters } = useEvents();
+  const { aiming, settle } = usePlacement();
   // The opening shot should not fly across the world; every later move should.
   const hasFramed = useRef(false);
 
@@ -69,15 +74,26 @@ export function MapScreen() {
   /** Which pair of tabs the sheet opens on. */
   const [family, setFamily] = useState<"event" | "people">("event");
   const [editing, setEditing] = useState<HistoricalEvent | null>(null);
-  const [placing, setPlacing] = useState(false);
-  const [draftLocation, setDraftLocation] = useState<DraftLocation | null>(
-    null,
-  );
   const [detailOpen, setDetailOpen] = useState(false);
   /** True from country zoom on, where the fiefs are worth drawing. */
   const [detailed, setDetailed] = useState(false);
   /** The territory the finger last landed on, if its card is open. */
   const [touched, setTouched] = useState<TouchedTerritory | null>(null);
+  /**
+   * Whose card is open — tapped on the plate, or asked for from the list.
+   *
+   * One card, at the top of the screen, and never inside another sheet: it
+   * hands the whole screen to the reticle when a person is placed, and a card
+   * nested in a panel would be torn down along with it.
+   */
+  const [reading, setReading] = useState<Character | "new" | null>(null);
+  /**
+   * The card asked for from the people sheet, waiting for that sheet to
+   * finish leaving. iOS refuses to present a panel from one still dismissing.
+   */
+  const [queued, setQueued] = useState<Character | "new" | null>(null);
+  /** Whether closing the card should bring the people sheet back. */
+  const [returning, setReturning] = useState(false);
 
   const { draw } = useHidden();
   /** Painting: the strokes laid down, the one under the finger, the state. */
@@ -144,13 +160,19 @@ export function MapScreen() {
     if (center) hasFramed.current = true;
   }, [center]);
 
+  /** Answers whoever asked with whatever the crosshair is over. */
   const confirmPlacement = useCallback(async () => {
     const centre = await mapRef.current?.getCenter();
-    if (centre) {
-      setDraftLocation({ longitude: centre[0], latitude: centre[1] });
-    }
-    setPlacing(false);
-  }, []);
+    settle(
+      centre ? { longitude: centre[0], latitude: centre[1] } : null,
+    );
+  }, [settle]);
+
+  // Aiming at a map one cannot see is not aiming. A placement asked for from
+  // the list view brings the plate up first.
+  useEffect(() => {
+    if (aiming) setView("map");
+  }, [aiming]);
 
   const missing = [
     ...(env.hasMapTilerApiKey ? [] : ["EXPO_PUBLIC_MAPTILER_API_KEY"]),
@@ -179,7 +201,7 @@ export function MapScreen() {
           mapRef={mapRef}
           center={center}
           centerAnimationDuration={hasFramed.current ? 650 : 0}
-          attributionOffset={placing || drawing ? 0 : insets.bottom + 4}
+          attributionOffset={aiming || drawing ? 0 : insets.bottom + 4}
           onDetailChange={setDetailed}
           // One finger paints, so it must not also drag the plate. Pinch is
           // untouched: the reader can still zoom to where they are working.
@@ -189,12 +211,12 @@ export function MapScreen() {
               from the topmost layer down, so the country name wins the room
               against the town names crowding around its anchor. */}
           {MAP_FEATURES.places ? <PlaceLayers /> : null}
-          {MAP_FEATURES.territories ? (
+          {MAP_FEATURES.territories && filters.territories ? (
             <TerritoryLayers
               detailed={detailed}
               // Not while an event is being placed: every touch belongs to
               // that, and the reticle is what the reader is aiming with.
-              onTouch={placing || drawing ? undefined : setTouched}
+              onTouch={aiming || drawing ? undefined : setTouched}
             />
           ) : null}
           {drawing ? (
@@ -204,6 +226,9 @@ export function MapScreen() {
               confondraient avec la peinture, et ce n'est pas d'eux qu'il
               s'agit à ce moment-là. */}
           {drawing ? null : <EventMarkers />}
+          {/* People last, so a cameo is never buried under a locket: the one
+              the finger can see is the one the finger should get. */}
+          {drawing ? null : <CharacterMarkers onOpen={setReading} />}
         </WorldMap>
       </View>
 
@@ -220,10 +245,10 @@ export function MapScreen() {
 
       {mapDialog}
 
-      {placing ? (
+      {aiming ? (
         <LocationReticle
           onConfirm={() => void confirmPlacement()}
-          onCancel={() => setPlacing(false)}
+          onCancel={() => settle(null)}
           bottomInset={insets.bottom}
         />
       ) : null}
@@ -259,7 +284,7 @@ export function MapScreen() {
         onClose={() => setNaming(false)}
       />
 
-      {placing || drawing ? null : (
+      {aiming || drawing ? null : (
         <>
           <View
             style={[styles.top, { top: insets.top + 8 }]}
@@ -273,7 +298,6 @@ export function MapScreen() {
               <AddEventButton
                 onPress={() => {
                   setEditing(null);
-                  setDraftLocation(null);
                   setFamily("event");
                   setComposing(true);
                 }}
@@ -281,7 +305,6 @@ export function MapScreen() {
               <AddPersonButton
                 onPress={() => {
                   setEditing(null);
-                  setDraftLocation(null);
                   setFamily("people");
                   setComposing(true);
                 }}
@@ -343,26 +366,51 @@ export function MapScreen() {
         // the family, whose first tab decides what the sheet opens on.
         key={editing?.id ?? `new-${family}`}
         family={family}
-        visible={composing && !placing}
+        visible={composing}
         event={editing}
-        location={draftLocation}
-        onRequestPlacement={() => {
-          setView("map");
-          setPlacing(true);
+        onOpenCharacter={(target) => {
+          // Down, then up: the card is opened by `onClosed` below, once this
+          // sheet has actually gone.
+          setQueued(target);
+          setReturning(true);
+          setComposing(false);
+        }}
+        onClosed={() => {
+          if (queued === null) return;
+          setReading(queued);
+          setQueued(null);
         }}
         onCancel={() => {
           setComposing(false);
           setEditing(null);
-          setDraftLocation(null);
         }}
         onSaved={() => {
           setComposing(false);
           setEditing(null);
-          setDraftLocation(null);
         }}
       />
 
       <TerritorySheet territory={touched} onClose={() => setTouched(null)} />
+
+      {/* One card for both ways in — a cameo tapped on the plate, and the
+          list in the people sheet — so a face on the map is a way into the
+          collection and not a dead end. Keyed on whoever it opens on, whose
+          details seed its fields. */}
+      <CharacterEditModal
+        key={
+          reading === null ? "nobody" : reading === "new" ? "new" : reading.id
+        }
+        target={reading}
+        onClose={() => setReading(null)}
+        onClosed={() => {
+          // Back where they came from, so adding three people in a row is
+          // three taps and not three journeys.
+          if (!returning) return;
+          setReturning(false);
+          setFamily("people");
+          setComposing(true);
+        }}
+      />
 
       {detailOpen ? (
         <EventDetailModal
@@ -372,10 +420,6 @@ export function MapScreen() {
           onEdit={(whole) => {
             setDetailOpen(false);
             setEditing(whole);
-            setDraftLocation({
-              longitude: whole.longitude,
-              latitude: whole.latitude,
-            });
             setComposing(true);
           }}
           onClose={() => setDetailOpen(false)}

@@ -11,6 +11,7 @@ import {
 import * as api from "./api";
 import { DEFAULT_YEAR } from "../../config/history";
 import { matchesFilters } from "./filtering";
+import { standsAt } from "./lifespan";
 import { toSortKey } from "./historicalDate";
 import { erasure, tidy } from "./rows";
 import {
@@ -19,7 +20,7 @@ import {
   type CharacterDraft,
   type EventDraft,
   type StoredPhoto,
-  type EventFilters,
+  type MapFilters,
   type Folder,
   type HistoricalEvent,
   type Move,
@@ -32,15 +33,30 @@ import {
 
 type EventsContextValue = {
   events: EventSummary[];
-  /** Chronological, after filters — the list the map and timeline both read. */
+  /**
+   * Chronological, after filters — the list the map and timeline both read.
+   * Empty when the reader has put the events away altogether.
+   */
   visibleEvents: EventSummary[];
   folders: Folder[];
   /** Everyone the collection knows about, by name. */
   characters: Character[];
+  /**
+   * The people standing on the plate right now: placed, born, not yet dead in
+   * the year being read — and only while the filter says to show them.
+   */
+  visibleCharacters: Character[];
   /** The genealogies, each a cast of characters and the lines between them. */
   trees: Tree[];
-  filters: EventFilters;
-  setFilters: (filters: EventFilters) => void;
+  filters: MapFilters;
+  /**
+   * Changes part of the filter and leaves the rest alone.
+   *
+   * A patch rather than a whole object: the popup has four independent
+   * answers on it, and a caller that replaced the lot would silently undo the
+   * other three every time it touched one.
+   */
+  setFilters: (patch: Partial<MapFilters>) => void;
   /**
    * The date the map is showing, as a position on the continuous axis. This —
    * and not the selected event — is what the borders and the settlements
@@ -155,7 +171,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [trees, setTrees] = useState<Tree[]>([]);
-  const [filters, setFilters] = useState<EventFilters>(NO_FILTERS);
+  const [filters, setAllFilters] = useState<MapFilters>(NO_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [year, setYear] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -187,9 +203,32 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
+  const setFilters = useCallback((patch: Partial<MapFilters>) => {
+    setAllFilters((current) => ({ ...current, ...patch }));
+  }, []);
+
   const visibleEvents = useMemo(
-    () => events.filter((event) => matchesFilters(event, filters)),
+    () =>
+      filters.events
+        ? events.filter((event) => matchesFilters(event, filters))
+        : [],
     [events, filters],
+  );
+
+  /**
+   * Who is on the plate, in the year the reader has come to rest on.
+   *
+   * Recomputed as the frieze is dragged, which is the point: the people come
+   * and go with the century the way the borders do. The list is short — a
+   * collection holds tens of names, not thousands — so a filter per year
+   * costs nothing worth saving.
+   */
+  const visibleCharacters = useMemo(
+    () =>
+      filters.characters && year !== null
+        ? characters.filter((person) => standsAt(person, year))
+        : [],
+    [characters, filters.characters, year],
   );
 
   const selectedEvent = useMemo(
@@ -283,7 +322,8 @@ export function EventsProvider({ children }: { children: ReactNode }) {
         folders: event.folders.filter((link) => link.folderId !== folder.id),
       })),
     );
-    setFilters((current) => ({
+    setAllFilters((current) => ({
+      ...current,
       folders: current.folders.filter((one) => one.folderId !== folder.id),
     }));
   }, []);
@@ -544,6 +584,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       visibleEvents,
       folders,
       characters,
+      visibleCharacters,
       trees,
       filters,
       setFilters,
@@ -577,7 +618,8 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       loadEvent,
     }),
     [
-      events, visibleEvents, folders, characters, trees, filters, year,
+      events, visibleEvents, folders, characters, visibleCharacters, trees,
+      filters, setFilters, year,
       selectedEvent, neighbours, selectEvent, scrubTo, loading, error, refresh,
       addFolder, renameFolder, removeFolder, addCharacter, editCharacter,
       removeCharacter, addTree, renameTree, removeTree, addToTree,

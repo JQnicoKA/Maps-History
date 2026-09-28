@@ -25,12 +25,34 @@ export function FilterButton() {
   const [open, setOpen] = useState(false);
 
   const selected = filters.folders;
-  const filtering = selected.length > 0;
-  const label = !filtering
-    ? "Tout"
-    : selected.length === 1
-      ? (folders.find((f) => f.id === selected[0]!.folderId)?.name ?? "Tout")
-      : `${selected.length} classeurs`;
+  /**
+   * What the pill says, in the fewest words that are still true.
+   *
+   * Two things can narrow the map now — whole layers put away, and folders
+   * chosen within the events — and they cannot both fit on a pill. The layers
+   * win when any is off, because a missing layer is the bigger surprise: a
+   * reader who cannot find their events needs to be told the events are off,
+   * not which classeur is selected. The popup tells the whole story.
+   */
+  const shown = [
+    filters.events ? "Événements" : null,
+    filters.characters ? "Personnages" : null,
+    filters.territories ? "Territoires" : null,
+  ].filter((name): name is string => name !== null);
+
+  const filtering = shown.length < 3 || selected.length > 0;
+  const label =
+    shown.length < 3
+      ? shown.length === 0
+        ? "Rien"
+        : shown.length === 1
+          ? shown[0]!
+          : `${shown.length} calques`
+      : selected.length === 0
+        ? "Tout"
+        : selected.length === 1
+          ? (folders.find((f) => f.id === selected[0]!.folderId)?.name ?? "Tout")
+          : `${selected.length} classeurs`;
 
   return (
     <>

@@ -18,8 +18,10 @@ import {
 } from "../../../components/ui";
 import { radius, space, type } from "../../../theme/tokens";
 import { useEvents } from "../EventsProvider";
+import { usePlacement, type Point } from "../../placement";
 
 import {
+  type Character,
   type EventDraft,
   type EventFolderLink,
   type StoredPhoto,
@@ -123,9 +125,15 @@ export type EventFormModalProps = {
   event?: HistoricalEvent | null;
   /** Which pair of tabs this sheet carries. Ignored when editing. */
   family?: keyof typeof FAMILIES;
-  location: { longitude: number; latitude: number } | null;
-  onRequestPlacement: () => void;
+  /**
+   * Asks for someone's card. The screen answers by closing this sheet and
+   * opening the card above it — see `CharacterManager` for why the card
+   * cannot live inside this one.
+   */
+  onOpenCharacter: (target: Character | "new") => void;
   onCancel: () => void;
+  /** Fired once the sheet is off the screen — see `Sheet`. */
+  onClosed?: () => void;
   onSaved: () => void;
 };
 
@@ -133,12 +141,13 @@ export function EventFormModal({
   visible,
   event,
   family = "event",
-  location,
-  onRequestPlacement,
+  onOpenCharacter,
   onCancel,
+  onClosed,
   onSaved,
 }: EventFormModalProps) {
   const { folders, characters, addEvent, editEvent } = useEvents();
+  const { aiming, place } = usePlacement();
 
   /**
    * Which tab of the sheet is showing.
@@ -169,6 +178,9 @@ export function EventFormModal({
     event?.start ?? null,
   );
   const [end, setEnd] = useState<HistoricalDate | null>(event?.end ?? null);
+  const [location, setLocation] = useState<Point | null>(
+    event ? { longitude: event.longitude, latitude: event.latitude } : null,
+  );
   const [links, setLinks] = useState<EventFolderLink[]>(event?.folders ?? []);
   const [cast, setCast] = useState<string[]>(event?.characters ?? []);
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
@@ -187,6 +199,7 @@ export function EventFormModal({
     setDescription("");
     setStart(null);
     setEnd(null);
+    setLocation(null);
     setLinks([]);
     setCast([]);
     setPhotos([]);
@@ -263,8 +276,12 @@ export function EventFormModal({
 
   return (
     <Sheet
-      visible={visible}
+      // Hidden, not unmounted, while the reader aims at the map: the answers
+      // to the other five questions are held here and must survive the trip.
+      visible={visible && !aiming}
       onClose={onCancel}
+      // Not while it is merely standing aside for the reticle.
+      onClosed={aiming ? undefined : onClosed}
       // Six steps and two lists live in here; a panel that resized itself for
       // each would never be still.
       tall
@@ -333,7 +350,9 @@ export function EventFormModal({
       {stepped && tab === "event" ? <Progress step={step} /> : null}
 
       {tab === "folder" && !event ? <FolderManager /> : null}
-      {tab === "character" && !event ? <CharacterManager /> : null}
+      {tab === "character" && !event ? (
+        <CharacterManager onOpen={onOpenCharacter} />
+      ) : null}
       {tab === "tree" && !event ? <TreeManager /> : null}
 
       <ScrollView
@@ -389,7 +408,12 @@ export function EventFormModal({
               <InkButton
                 label={location ? "Déplacer" : "Placer"}
                 variant={location ? "tonal" : "solid"}
-                onPress={onRequestPlacement}
+                onPress={() => {
+                  void place().then((point) => {
+                    // Backing out must not unplace what was already placed.
+                    if (point) setLocation(point);
+                  });
+                }}
               />
             </View>
           </Section>
