@@ -103,7 +103,7 @@ function Progress({ step }: { step: number }) {
 }
 
 /** The four things the sheet can show, in two families of two. */
-type Tab = "event" | "folder" | "character" | "tree";
+export type Tab = "event" | "folder" | "character" | "tree";
 
 const FAMILIES = {
   event: [
@@ -126,12 +126,21 @@ export type EventFormModalProps = {
   /** Which pair of tabs this sheet carries. Ignored when editing. */
   family?: keyof typeof FAMILIES;
   /**
+   * Which of the pair to open on, when it is not the first.
+   *
+   * For coming back: a reader who left this sheet from the Arbres tab should
+   * find the Arbres tab, not be handed the one next to it.
+   */
+  startOn?: Tab;
+  /**
    * Asks for someone's page, or the form on them. The screen answers by
    * closing this sheet and opening the panel above it — see
    * `CharacterManager` for why neither can live inside this one.
    */
   onReadCharacter: (person: Character) => void;
   onEditCharacter: (target: Character | "new") => void;
+  /** Asks for a tree to be drawn, full screen. */
+  onOpenTree: (id: string) => void;
   onCancel: () => void;
   /** Fired once the sheet is off the screen — see `Sheet`. */
   onClosed?: () => void;
@@ -142,8 +151,10 @@ export function EventFormModal({
   visible,
   event,
   family = "event",
+  startOn,
   onReadCharacter,
   onEditCharacter,
+  onOpenTree,
   onCancel,
   onClosed,
   onSaved,
@@ -160,7 +171,7 @@ export function EventFormModal({
    * in front of you.
    */
   const [tab, setTab] = useState<Tab>(
-    family === "people" ? "character" : "event",
+    startOn ?? (family === "people" ? "character" : "event"),
   );
   /**
    * Which of the five questions is on screen. Only when composing: correcting
@@ -355,7 +366,7 @@ export function EventFormModal({
       {tab === "character" && !event ? (
         <CharacterManager onRead={onReadCharacter} onEdit={onEditCharacter} />
       ) : null}
-      {tab === "tree" && !event ? <TreeManager /> : null}
+      {tab === "tree" && !event ? <TreeManager onOpen={onOpenTree} /> : null}
 
       <ScrollView
         style={tab !== "event" && !event ? styles.hidden : styles.fill}

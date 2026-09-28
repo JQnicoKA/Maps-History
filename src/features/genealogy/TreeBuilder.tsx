@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -20,8 +20,8 @@ import {
 import { LinkChoice, type LinkMode } from "./LinkChoice";
 import { PanZoom } from "./PanZoom";
 import { blocks, dropAt, lineBetween, spouses, tied } from "../events/rows";
-import { TreeMemberSheet } from "./TreeMemberSheet";
 import { TreeNode } from "./TreeNode";
+import { CharacterDetailModal } from "../events/components/CharacterDetailModal";
 import {
   Dialog,
   InkButton,
@@ -47,6 +47,19 @@ type Tracing = { mode: LinkMode; chosen: string[] };
 export type TreeBuilderProps = {
   tree: Tree | null;
   onClose: () => void;
+  /**
+   * The ways out of a tree and into the rest of the collection, taken from
+   * someone's card: an event they appear in, another tree they stand in, the
+   * form on them.
+   *
+   * They **leave** the tree rather than opening over it. A card inside this
+   * drawing is already a panel inside a full-screen one, and a third stacked
+   * on top is more than iOS will present. The screen closes the tree, opens
+   * the page, and brings the tree back when that page closes.
+   */
+  onOpenEvent: (id: string) => void;
+  onOpenTree: (id: string) => void;
+  onEditPerson: (id: string) => void;
 };
 
 /**
@@ -58,8 +71,11 @@ export type TreeBuilderProps = {
  * it — the bars' measured height is handed to `PanZoom`, which keeps the
  * drawing out from under them.
  *
- * Two modes, and only two. Normally a tap opens someone's card. **Tracer un
- * lien**, at the top right, starts the other: choose couple or descent, touch
+ * Two modes, and only two. Normally a tap opens someone's page — the same one
+ * the map opens, because "who is this" is the same question wherever it is
+ * asked. Holding a card instead opens the little menu that says what their
+ * place in *this* tree is worth, and moving while held rearranges the row.
+ * **Tracer un lien**, at the top right, starts the other: choose couple or descent, touch
  * one person, and then touch everyone to be joined to them — touching again
  * erases the line. On a descent the spouse of the first person may be touched
  * too, and the children then belong to the couple. Only the members that can
@@ -67,19 +83,59 @@ export type TreeBuilderProps = {
  * and there is no wrong move to refuse. No dragging, no hidden gesture; the bar
  * at the foot says where you are and how to leave.
  */
-export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
+export function TreeBuilder({
+  tree,
+  onClose,
+  onOpenEvent,
+  onOpenTree,
+  onEditPerson,
+}: TreeBuilderProps) {
   const insets = useSafeAreaInsets();
   const {
     characters,
     addToTree,
+    editTreeMember,
     eraseLink,
     linkInTree,
     orderRow,
+    removeFromTree,
     removeTree,
     renameTree,
   } = useEvents();
 
   const [openId, setOpenId] = useState<string | null>(null);
+  /**
+   * Whose placement menu is open, and at what scale it was opened.
+   *
+   * The zoom is captured rather than followed: the menu is drawn inside the
+   * scaled canvas, so it is counter-scaled to stay legible, and a value read
+   * once at the hold is steadier than one chasing a pinch nobody is making
+   * while a menu is up.
+   */
+  const [placing, setPlacing] = useState<{ id: string; scale: number } | null>(
+    null,
+  );
+  /**
+   * What to do once the person's card is off the screen.
+   *
+   * Every way out of a tree closes two panels at once — the card, and the
+   * drawing under it. Told to go at the same moment, iOS is asked to dismiss
+   * a controller while it is still presenting another, and the screen locks
+   * up: the map appears and nothing answers a touch. So the card leaves
+   * first, says when it has gone, and the tree follows.
+   */
+  const [leaving, setLeaving] = useState<(() => void) | null>(null);
+
+  /**
+   * Closes the card, then takes the way out it asked for.
+   *
+   * `setLeaving` is handed a function that *returns* the deed: React would
+   * otherwise take a function given to a setter as an updater.
+   */
+  const leaveFor = (deed: () => void) => {
+    setLeaving(() => deed);
+    setOpenId(null);
+  };
   /** Which face the ··· card is showing, if it is open at all. */
   const [menu, setMenu] = useState<"menu" | "rename" | "delete" | null>(null);
   /** The new name being typed on the card's second face. */
@@ -266,6 +322,8 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
 
   const tap = (member: TreeMember) => {
     if (!tracing) {
+      // A tap anywhere puts the placement menu away, wherever it was open.
+      setPlacing(null);
       setOpenId(member.id);
       return;
     }
@@ -307,7 +365,21 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
   };
 
   return (
-    <Modal visible animationType="slide" onRequestClose={onClose}>
+    /**
+     * A screen, not a dialogue — and that distinction is the whole of a bug
+     * worth remembering.
+     *
+     * This was a `Modal`. Every way out of it then asked iOS to dismiss one
+     * controller while another was being presented from it: the sheet the
+     * reader came from, a person's card, the page a card led to. The screen
+     * locked up and the app had to be restarted, and the callback meant to
+     * sequence the hand-overs could not be relied on to arrive.
+     *
+     * Laid over the map instead, it presents nothing and dismisses nothing.
+     * A card opened from here is a panel over the root, with nothing under it
+     * in the middle of leaving, and closing the drawing is one state change.
+     */
+    <View style={[StyleSheet.absoluteFill, styles.root]}>
       <View style={styles.root}>
         <PanZoom
           held={dragging}
@@ -345,6 +417,29 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
             }
             muted={tracing !== null && !reachable(node.member)}
             onPress={() => tap(node.member)}
+            menu={
+              placing?.id === node.member.id
+                ? {
+                    scale: placing.scale,
+                    // The top row has nothing above it but the chrome, so its
+                    // menu opens downwards instead of off the drawing.
+                    // `frame` keeps one spare row above the first member, so
+                    // the topmost occupied generation is `from + 1`.
+                    below: node.member.generation <= rows.from + 1,
+                    onImportance: (importance) => {
+                      setPlacing(null);
+                      if (importance === node.member.importance) return;
+                      run(
+                        editTreeMember(tree.id, node.member.id, { importance }),
+                      );
+                    },
+                    onRemove: () => {
+                      setPlacing(null);
+                      run(removeFromTree(tree.id, node.member.id));
+                    },
+                  }
+                : undefined
+            }
             // Not while a line is being traced: the canvas means something
             // else then, and every tap belongs to that.
             drag={
@@ -354,8 +449,17 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
                     magnification,
                     onStart: () => {
                       setOpenId(null);
+                      // The hold does both: the card comes loose *and* the
+                      // menu opens. Whichever the reader meant, the next
+                      // moment tells us — moving drops the menu, letting go
+                      // keeps it.
+                      setPlacing({
+                        id: node.member.id,
+                        scale: 1 / magnification.current,
+                      });
                       setLanding({ id: node.member.id, columns: 0 });
                     },
+                    onWander: () => setPlacing(null),
                     onMove: (columns) =>
                       setLanding({ id: node.member.id, columns }),
                     onDrop: (columns) => {
@@ -639,15 +743,29 @@ export function TreeBuilder({ tree, onClose }: TreeBuilderProps) {
           onClose={() => setChoosing(false)}
         />
 
-        <TreeMemberSheet
+        {/* The same page the map opens. What belongs to the *placement* —
+            the weight, and whether they stand here at all — is held down for
+            instead, which is why the sheet this replaced is gone. */}
+        <CharacterDetailModal
           key={open?.id ?? "none"}
-          tree={tree}
-          member={open}
-          person={open ? byId.get(open.characterId) : undefined}
+          person={open ? (byId.get(open.characterId) ?? null) : null}
+          // The tree being drawn is not offered as somewhere to go: the
+          // reader is already in it, and "open it" would mean closing this
+          // drawing to open the same one again.
+          exceptTree={tree.id}
+          onEdit={(person) => leaveFor(() => onEditPerson(person.id))}
+          onOpenEvent={(id) => leaveFor(() => onOpenEvent(id))}
+          onOpenTree={(id) => leaveFor(() => onOpenTree(id))}
           onClose={() => setOpenId(null)}
+          onClosed={() => {
+            if (leaving === null) return;
+            const deed = leaving;
+            setLeaving(null);
+            deed();
+          }}
         />
       </View>
-    </Modal>
+    </View>
   );
 }
 

@@ -12,6 +12,7 @@ import { env } from "../../config/env";
 import { MAP_FEATURES } from "../../config/map";
 import { useEvents } from "../../features/events/EventsProvider";
 import type { HistoricalEvent } from "../../features/events/types";
+import type { Tab } from "../../features/events/components/EventFormModal";
 import {
   AddEventButton,
   AddPersonButton,
@@ -96,6 +97,16 @@ export function MapScreen() {
   const [composing, setComposing] = useState(false);
   /** Which pair of tabs the sheet opens on. */
   const [family, setFamily] = useState<"event" | "people">("event");
+  /**
+   * And which of the pair, when the sheet is being brought back.
+   *
+   * Set at the moment of the return and never before. It feeds the sheet's
+   * key, and changing a key remounts: written while the sheet was on its way
+   * out, it tore the panel from the tree mid-slide, `onClosed` never fired,
+   * and the page it was meant to hand over to never came up — the reader was
+   * left on the map.
+   */
+  const [sheetTab, setSheetTab] = useState<Tab | undefined>(undefined);
   const [editing, setEditing] = useState<HistoricalEvent | null>(null);
   /** True from country zoom on, where the fiefs are worth drawing. */
   const [detailed, setDetailed] = useState(false);
@@ -118,8 +129,15 @@ export function MapScreen() {
    * raises the next. Guessing at a delay is what this replaces.
    */
   const [next, setNext] = useState<(() => void) | null>(null);
-  /** Whether the people sheet is owed a return once all this is over. */
-  const [returning, setReturning] = useState(false);
+  /**
+   * Where to go back to when the page now showing closes.
+   *
+   * A destination rather than a flag, because there are two of them: the add
+   * sheet a page was asked for from, and the tree a page was reached from.
+   * Set once at the start of a journey and honoured at its end, so reading
+   * three people in a row is three taps and not three journeys.
+   */
+  const [back, setBack] = useState<Page | { sheet: Tab } | null>(null);
   /**
    * How many pages have been raised, which is what keys them.
    *
@@ -148,9 +166,11 @@ export function MapScreen() {
   };
 
   /** The same, from the add sheet, which is what has to go down first. */
-  const afterSheet = (deed: () => void) => {
+  const afterSheet = (deed: () => void, tab: Tab = "character") => {
     setNext(() => deed);
-    setReturning(true);
+    // The tab travels inside the destination rather than being written now:
+    // see `sheetTab` for what writing it now used to cost.
+    setBack({ sheet: tab });
     setComposing(false);
   };
 
@@ -162,12 +182,29 @@ export function MapScreen() {
       deed();
       return;
     }
-    // Back where they came from, so reading three people in a row is three
-    // taps and not three journeys.
-    if (!returning) return;
-    setReturning(false);
-    setFamily("people");
-    setComposing(true);
+    if (back === null) return;
+    setBack(null);
+    if ("sheet" in back) {
+      setSheetTab(back.sheet);
+      setFamily("people");
+      setComposing(true);
+      return;
+    }
+    raise(back);
+  };
+
+  /**
+   * Takes the drawing off the screen and does this, told which one it was.
+   *
+   * No waiting: the tree is a plain view over the map, so it is gone as soon
+   * as the state says so. The card that asked for this has already finished
+   * leaving — that one *is* a panel, and `TreeBuilder` waits for it.
+   */
+  const leaveTree = (deed: (treeId: string) => void) => {
+    const treeId = page?.kind === "tree" ? page.id : null;
+    if (treeId === null) return;
+    setPage(null);
+    deed(treeId);
   };
 
   /** What each page is about, looked up fresh rather than held. */
@@ -400,6 +437,7 @@ export function MapScreen() {
                 onPress={() => {
                   setEditing(null);
                   setFamily("event");
+                  setSheetTab(undefined);
                   setComposing(true);
                 }}
               />
@@ -407,6 +445,7 @@ export function MapScreen() {
                 onPress={() => {
                   setEditing(null);
                   setFamily("people");
+                  setSheetTab(undefined);
                   setComposing(true);
                 }}
               />
@@ -467,8 +506,9 @@ export function MapScreen() {
       <EventFormModal
         // Remounting re-seeds every field — on the event being edited, and on
         // the family, whose first tab decides what the sheet opens on.
-        key={editing?.id ?? `new-${family}`}
+        key={editing?.id ?? `new-${family}-${sheetTab ?? "first"}`}
         family={family}
+        startOn={sheetTab}
         visible={composing}
         event={editing}
         // Down, then up: the panel is raised by `onClosed` below, once this
@@ -483,6 +523,9 @@ export function MapScreen() {
               id: target === "new" ? null : target.id,
             }),
           )
+        }
+        onOpenTree={(id) =>
+          afterSheet(() => raise({ kind: "tree", id }), "tree")
         }
         onClosed={afterPage}
         onCancel={() => {
@@ -515,14 +558,7 @@ export function MapScreen() {
             raise({ kind: "event", id });
           })
         }
-        onOpenTree={(id) =>
-          after(() => {
-            // The builder is full screen and ends the journey: there is no
-            // sheet behind it to come back to.
-            setReturning(false);
-            raise({ kind: "tree", id });
-          })
-        }
+        onOpenTree={(id) => after(() => raise({ kind: "tree", id }))}
         onClose={() => setPage(null)}
         onClosed={afterPage}
       />
@@ -552,10 +588,43 @@ export function MapScreen() {
         onClosed={afterPage}
       />
 
-      {/* A tree, reached from someone standing in it. The same builder the
-          people sheet opens, mounted here because a page cannot raise one
-          from inside a panel that is itself leaving. */}
-      <TreeBuilder tree={shownTree} onClose={() => setPage(null)} />
+      {/* The one drawing, wherever it was asked for: the tree list in the
+          people sheet, or someone's page saying they stand in it. Mounted
+          here because it carries pages of its own, which cannot be panels
+          inside a panel inside a panel. */}
+      <TreeBuilder
+        key={`tree-${raised}`}
+        tree={shownTree}
+        // A screen rather than a panel, so there is no dismissal to wait for:
+        // it is gone the moment the state says so, and whatever is owed —
+        // the sheet it was opened from, the page it was left for — may be
+        // raised in the same breath.
+        onClose={() => {
+          setPage(null);
+          afterPage();
+        }}
+        // Each of these leaves the tree. The tree is remembered as the way
+        // back, so closing the page it opens brings the drawing up again
+        // where the reader left it.
+        onOpenEvent={(id) =>
+          leaveTree((treeId) => {
+            selectEvent(id);
+            setBack({ kind: "tree", id: treeId });
+            raise({ kind: "event", id });
+          })
+        }
+        onOpenTree={(id) =>
+          // No way back here: the reader asked for another tree, not for a
+          // detour out of this one.
+          leaveTree(() => raise({ kind: "tree", id }))
+        }
+        onEditPerson={(id) =>
+          leaveTree((treeId) => {
+            setBack({ kind: "tree", id: treeId });
+            raise({ kind: "editPerson", id });
+          })
+        }
+      />
     </View>
   );
 }

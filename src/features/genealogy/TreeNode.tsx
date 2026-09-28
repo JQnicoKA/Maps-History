@@ -3,6 +3,7 @@ import {
   Animated,
   Image,
   PanResponder,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -10,10 +11,10 @@ import {
 
 import { CARD_TOP, FACE, FACE_BAND, GAP, NODE } from "./layout";
 import { lifespan } from "../events/lifespan";
-import type { Character, TreeMember } from "../events/types";
+import type { Character, Importance, TreeMember } from "../events/types";
 import { lifted as tapLifted, shifted } from "../../lib/touch";
 import { palette } from "../../theme/palette";
-import { radius, shadow, space } from "../../theme/tokens";
+import { radius, shadow, space, type } from "../../theme/tokens";
 
 export type TreeNodeProps = {
   member: TreeMember;
@@ -53,8 +54,40 @@ export type TreeNodeProps = {
      */
     onMove: (columns: number) => void;
     onDrop: (columns: number) => void;
+    /**
+     * The finger left the spot after the card came loose.
+     *
+     * Fired once, and only to say "this is a move, not a hold" — the placement
+     * menu opens on the hold and has to get out of the way the moment the
+     * reader turns out to be dragging. `onMove` cannot do it: that waits for a
+     * whole column of travel, by which time the menu has been in the way for
+     * half the gesture.
+     */
+    onWander: () => void;
+  };
+  /**
+   * The placement menu, open over this card.
+   *
+   * Opened by a hold that never travelled and closed by anything else, so the
+   * one gesture answers both questions: hold and move to rearrange the row,
+   * hold and let go to say how much this person matters here.
+   */
+  menu?: {
+    /** Scaled against the drawing's zoom, so it reads the same at any. */
+    scale: number;
+    /** Opens downwards instead, for the top row where there is no room above. */
+    below: boolean;
+    onImportance: (value: Importance) => void;
+    onRemove: () => void;
   };
 };
+
+/** What a place in a tree can be worth, in the order the menu offers it. */
+const PLACES: { value: Importance; label: string }[] = [
+  { value: "low", label: "Discret" },
+  { value: "medium", label: "Normal" },
+  { value: "high", label: "Majeur" },
+];
 
 /** How long a finger must rest before the card comes loose, in milliseconds. */
 const HOLD = 260;
@@ -95,6 +128,7 @@ export function TreeNode({
   muted = false,
   onPress,
   drag,
+  menu,
 }: TreeNodeProps) {
   const face = person?.photos[0];
   const [lifted, setLifted] = useState(false);
@@ -110,6 +144,8 @@ export function TreeNode({
 
   /** The last column reported, so the tree hears only about changes. */
   const announced = useRef(0);
+  /** Whether this gesture has already been called a move. */
+  const wandered = useRef(false);
 
   const hold = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stopHold = () => {
@@ -127,6 +163,7 @@ export function TreeNode({
       held.held.current = false;
     }
     announced.current = 0;
+    wandered.current = false;
     setLifted(false);
     setPressed(false);
     travel.setValue({ x: 0, y: 0 });
@@ -180,6 +217,13 @@ export function TreeNode({
          * Along the row only: a generation is changed from the card, never by
          * dropping into another row, where the meaning would be ambiguous.
          */
+        // Said once, before anything has travelled a whole column: the menu
+        // opened on the hold and must leave as soon as this is a drag.
+        if (!wandered.current && Math.hypot(gesture.dx, gesture.dy) > WANDER) {
+          wandered.current = true;
+          held.onWander();
+        }
+
         travel.setValue({ x: gesture.dx / held.magnification.current, y: 0 });
 
         const columns = columnsTravelled(gesture.dx, held.magnification.current);
@@ -209,8 +253,10 @@ export function TreeNode({
           left: x,
           top: y,
           transform: travel.getTranslateTransform(),
-          // Lifted off the page, and over its neighbours while it travels.
-          zIndex: lifted ? 2 : 0,
+          // Lifted off the page, and over its neighbours while it travels —
+          // or while its menu is open, which must not slide under the card
+          // standing next to it.
+          zIndex: lifted || menu ? 2 : 0,
         },
       ]}
       {...responder.panHandlers}
@@ -247,8 +293,6 @@ export function TreeNode({
               {person?.name.charAt(0).toUpperCase() ?? "?"}
             </Text>
           )}
-
-          {member.note ? <View style={styles.hasNote} /> : null}
         </View>
       </View>
 
@@ -261,11 +305,58 @@ export function TreeNode({
         </Text>
       )}
     </View>
+
+    {menu ? (
+      <View
+        style={[
+          styles.menu,
+          menu.below ? styles.menuBelow : styles.menuAbove,
+          {
+            transform: [{ scale: menu.scale }],
+            transformOrigin: menu.below ? "center top" : "center bottom",
+          },
+        ]}
+      >
+        <Text style={styles.menuTitle}>Place dans cet arbre</Text>
+        <View style={styles.choices}>
+          {PLACES.map((place) => {
+            const chosen = place.value === member.importance;
+            return (
+              <Pressable
+                key={place.value}
+                accessibilityRole="button"
+                accessibilityState={{ selected: chosen }}
+                accessibilityLabel={place.label}
+                onPress={() => menu.onImportance(place.value)}
+                style={({ pressed }) => [
+                  styles.choice,
+                  chosen && styles.choiceOn,
+                  pressed && styles.choicePressed,
+                ]}
+              >
+                <Text style={[styles.choiceLabel, chosen && styles.choiceLabelOn]}>
+                  {place.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Retirer de l'arbre"
+          onPress={menu.onRemove}
+          style={({ pressed }) => [styles.remove, pressed && styles.choicePressed]}
+        >
+          <Text style={styles.removeLabel}>Retirer de l'arbre</Text>
+        </Pressable>
+      </View>
+    ) : null}
     </Animated.View>
   );
 }
 
-const DOT = 10;
+/** Room for "Discret · Normal · Majeur" on one line, and no more. */
+const MENU_WIDTH = 186;
 
 /**
  * How present a face is, by the weight its member carries.
@@ -296,6 +387,43 @@ const styles = StyleSheet.create({
   },
   /** A card off the page: bigger, and casting further. */
   lifted: { transform: [{ scale: 1.06 }] },
+
+  /**
+   * The placement menu: a slip of paper over the drawing.
+   *
+   * Wider than the card it belongs to and centred on it, so three words fit
+   * on one line. Positioned against the card's own edge rather than laid out
+   * in the flow, because it must not push the portrait about when it opens.
+   */
+  menu: {
+    position: "absolute",
+    left: (NODE.width - MENU_WIDTH) / 2,
+    width: MENU_WIDTH,
+    gap: space.sm,
+    padding: space.md,
+    borderRadius: radius.lg,
+    backgroundColor: palette.paperLight,
+    borderWidth: 1.5,
+    borderColor: palette.paperDeep,
+    ...shadow.lifted,
+  },
+  menuAbove: { bottom: NODE.height - CARD_TOP + space.sm },
+  menuBelow: { top: NODE.height + space.sm },
+  menuTitle: { ...type.legend, color: palette.inkSoft, textAlign: "center" },
+  choices: { flexDirection: "row", gap: 4 },
+  choice: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: radius.sm,
+    alignItems: "center",
+    backgroundColor: palette.sunken,
+  },
+  choiceOn: { backgroundColor: palette.wax },
+  choicePressed: { opacity: 0.6 },
+  choiceLabel: { fontSize: 12, fontWeight: "700", color: palette.inkSoft },
+  choiceLabelOn: { color: palette.paperLight },
+  remove: { alignItems: "center", paddingVertical: 5 },
+  removeLabel: { fontSize: 12, fontWeight: "600", color: palette.danger },
   card: {
     position: "absolute",
     left: 0,
@@ -334,18 +462,6 @@ const styles = StyleSheet.create({
   // is a child of the frame rather than the frame itself.
   image: { width: "100%", height: "100%", borderRadius: 999 },
   initial: { fontSize: FACE * 0.36, fontWeight: "700", color: palette.inkFaint },
-  /** A dot of cream: there is something written about this one. */
-  hasNote: {
-    position: "absolute",
-    bottom: 0,
-    left: -2,
-    width: DOT,
-    height: DOT,
-    borderRadius: radius.pill,
-    backgroundColor: palette.paperLight,
-    borderWidth: 1.5,
-    borderColor: palette.wax,
-  },
   /**
    * Sized to the room the card actually has.
    *

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { generationCount } from "./layout";
-import { TreeBuilder } from "./TreeBuilder";
 import {
   InkButton,
   InkField,
@@ -24,22 +23,23 @@ import { space } from "../../theme/tokens";
  * of the list opens a sheet, the sheet asks for the one thing a tree needs — a
  * name — and the list below is the index. A tree is made in a word and built
  * afterwards, full screen, where there is room to arrange it.
+ *
+ * The drawing is not opened here but asked for. It is full screen and it now
+ * carries pages of its own — a person's card, and the ways out of it — so it
+ * belongs at the top of the screen, where nothing it opens has to be a panel
+ * inside a panel inside a panel.
  */
-export function TreeManager() {
+export type TreeManagerProps = {
+  /** Asks for a tree to be drawn. */
+  onOpen: (id: string) => void;
+};
+
+export function TreeManager({ onOpen }: TreeManagerProps) {
   const { trees, characters, addTree } = useEvents();
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
   const { say, dialog } = useNotice();
-  const [open, setOpen] = useState<string | null>(null);
-  /**
-   * A tree made but not yet shown.
-   *
-   * The builder is a modal and the naming sheet is another; iOS refuses to
-   * present one while dismissing the other, so the new tree waits here until
-   * the sheet has finished leaving.
-   */
-  const [pending, setPending] = useState<string | null>(null);
 
   const create = async () => {
     const trimmed = name.trim();
@@ -48,8 +48,10 @@ export function TreeManager() {
     try {
       const tree = await addTree(trimmed);
       setName("");
-      setPending(tree.id);
       setNaming(false);
+      // Straight to the drawing: a tree made and left in a list is a tree
+      // nobody builds. The screen lowers both sheets before raising it.
+      onOpen(tree.id);
     } catch (cause) {
       say(
         "Arbre non créé",
@@ -59,8 +61,6 @@ export function TreeManager() {
       setCreating(false);
     }
   };
-
-  const shown = trees.find((tree) => tree.id === open) ?? null;
 
   return (
     <ScrollView
@@ -96,7 +96,7 @@ export function TreeManager() {
               title={tree.name}
               detail={summarise(tree)}
               index={rank}
-              onPress={() => setOpen(tree.id)}
+              onPress={() => onOpen(tree.id)}
             />
           ))
         )}
@@ -105,11 +105,6 @@ export function TreeManager() {
       <Sheet
         visible={naming}
         onClose={() => setNaming(false)}
-        onClosed={() => {
-          if (pending === null) return;
-          setOpen(pending);
-          setPending(null);
-        }}
         title="Nouvel arbre"
         footer={
           <>
@@ -141,8 +136,6 @@ export function TreeManager() {
           />
         </View>
       </Sheet>
-
-      <TreeBuilder tree={shown} onClose={() => setOpen(null)} />
     </ScrollView>
   );
 }

@@ -32,6 +32,13 @@ export type CharacterDetailModalProps = {
   onOpenEvent: (id: string) => void;
   /** Opens one of the trees they stand in. */
   onOpenTree: (id: string) => void;
+  /**
+   * A tree to leave out of the list — the one this card was opened from.
+   *
+   * Offering the drawing the reader is standing in as somewhere to go would
+   * mean closing it to open it again.
+   */
+  exceptTree?: string;
   onClose: () => void;
   /** Fired once the panel is off the screen — see `Sheet`. */
   onClosed?: () => void;
@@ -55,6 +62,7 @@ export function CharacterDetailModal({
   onEdit,
   onOpenEvent,
   onOpenTree,
+  exceptTree,
   onClose,
   onClosed,
 }: CharacterDetailModalProps) {
@@ -77,16 +85,32 @@ export function CharacterDetailModal({
   const appears = events.filter((event) =>
     event.characters.includes(person.id),
   );
-  const standsIn = trees.filter((tree) =>
+  /** Every tree they stand in — what a deletion would take them out of. */
+  const rooted = trees.filter((tree) =>
     tree.members.some((member) => member.characterId === person.id),
   );
+  /** And the ones worth offering as somewhere to go from here. */
+  const standsIn = rooted.filter((tree) => tree.id !== exceptTree);
 
-  /** What the reader stands to lose, said plainly before they decide. */
-  const stake =
+  /**
+   * What the reader stands to lose, said plainly before they decide.
+   *
+   * The trees are named as well as the events, because this card is reached
+   * from inside a tree: there, "Supprimer" means the person and everything
+   * they hold, while taking them out of that one drawing is what the hold
+   * menu offers.
+   */
+  const stake = [
     appears.length === 0
       ? "Aucun événement ne le mentionne."
-      : `${appears.length} événement${appears.length > 1 ? "s" : ""} le mentionne${appears.length > 1 ? "nt" : ""}. ` +
-        `${appears.length > 1 ? "Ils ne seront pas supprimés" : "Il ne sera pas supprimé"}, seulement délié${appears.length > 1 ? "s" : ""}.`;
+      : `${appears.length} événement${appears.length > 1 ? "s" : ""} le mentionne${appears.length > 1 ? "nt" : ""}, ` +
+        `et ${appears.length > 1 ? "ils resteront" : "il restera"} — seulement délié${appears.length > 1 ? "s" : ""}.`,
+    rooted.length === 0
+      ? null
+      : `Il quittera ${rooted.length === 1 ? "l'arbre" : `les ${rooted.length} arbres`} où il se tient.`,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const erase = async () => {
     setAsking(false);
