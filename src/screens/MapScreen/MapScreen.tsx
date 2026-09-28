@@ -22,6 +22,7 @@ import {
 import { EventDetailModal } from "../../features/events/components/EventDetailModal";
 import { EventFormModal } from "../../features/events/components/EventFormModal";
 import { EventListView } from "../../features/events/components/EventListView";
+import { CharacterDetailModal } from "../../features/events/components/CharacterDetailModal";
 import { CharacterEditModal } from "../../features/events/components/CharacterEditModal";
 import { CharacterMarkers } from "../../features/events/components/CharacterMarkers";
 import { EventMarkers } from "../../features/events/components/EventMarkers";
@@ -61,6 +62,17 @@ import { space } from "../../theme/tokens";
  */
 const CREDITS_STRIP = 22;
 
+/**
+ * What a person can have open: their page, or the form on them.
+ *
+ * One state rather than two, because only one of them is ever up — and two
+ * independent flags would have allowed the pair that iOS refuses to present
+ * at once.
+ */
+type PersonPanel =
+  | { kind: "read"; person: Character }
+  | { kind: "edit"; target: Character | "new" };
+
 export function MapScreen() {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapRef>(null);
@@ -80,20 +92,63 @@ export function MapScreen() {
   /** The territory the finger last landed on, if its card is open. */
   const [touched, setTouched] = useState<TouchedTerritory | null>(null);
   /**
-   * Whose card is open — tapped on the plate, or asked for from the list.
+   * Which panel a person has open, if any — their page or the form on them.
    *
-   * One card, at the top of the screen, and never inside another sheet: it
-   * hands the whole screen to the reticle when a person is placed, and a card
-   * nested in a panel would be torn down along with it.
+   * Both live here, at the top of the screen and never inside another sheet:
+   * the form hands the whole screen to the reticle when someone is placed,
+   * and a panel nested in another would be torn down along with it.
    */
-  const [reading, setReading] = useState<Character | "new" | null>(null);
+  const [panel, setPanel] = useState<PersonPanel | null>(null);
   /**
-   * The card asked for from the people sheet, waiting for that sheet to
-   * finish leaving. iOS refuses to present a panel from one still dismissing.
+   * The panel to raise once the one now leaving has gone. iOS refuses to
+   * present from a controller that is still dismissing, so every hand-over —
+   * sheet to page, page to form — waits for `onClosed` rather than guessing
+   * at a delay.
    */
-  const [queued, setQueued] = useState<Character | "new" | null>(null);
-  /** Whether closing the card should bring the people sheet back. */
+  const [queued, setQueued] = useState<PersonPanel | null>(null);
+  /** Whether the people sheet is owed a return once all this is over. */
   const [returning, setReturning] = useState(false);
+  /**
+   * How many panels have been raised, which is what keys the form.
+   *
+   * Not the person's id: that changes the moment the panel is dismissed, and
+   * a remount there would tear the sheet out mid-slide — the very thing
+   * `useLingering` is holding it together for. Counting the raisings keys it
+   * on the event that should re-seed the fields, and on nothing else.
+   */
+  const [raised, setRaised] = useState(0);
+
+  /** Puts a panel up, and remembers that it is a new one. */
+  const raise = (next: PersonPanel) => {
+    setPanel(next);
+    setRaised((count) => count + 1);
+  };
+
+  /** Raises a panel by lowering whatever is up, page or sheet. */
+  const openPanel = (next: PersonPanel, fromSheet: boolean) => {
+    setQueued(next);
+    if (fromSheet) {
+      setReturning(true);
+      setComposing(false);
+    } else {
+      setPanel(null);
+    }
+  };
+
+  /** Called by each person panel once it is off the screen. */
+  const afterPanel = () => {
+    if (queued) {
+      raise(queued);
+      setQueued(null);
+      return;
+    }
+    // Back where they came from, so reading three people in a row is three
+    // taps and not three journeys.
+    if (!returning) return;
+    setReturning(false);
+    setFamily("people");
+    setComposing(true);
+  };
 
   const { draw } = useHidden();
   /** Painting: the strokes laid down, the one under the finger, the state. */
@@ -228,7 +283,11 @@ export function MapScreen() {
           {drawing ? null : <EventMarkers />}
           {/* People last, so a cameo is never buried under a locket: the one
               the finger can see is the one the finger should get. */}
-          {drawing ? null : <CharacterMarkers onOpen={setReading} />}
+          {drawing ? null : (
+            <CharacterMarkers
+              onOpen={(person) => raise({ kind: "read", person })}
+            />
+          )}
         </WorldMap>
       </View>
 
@@ -368,18 +427,13 @@ export function MapScreen() {
         family={family}
         visible={composing}
         event={editing}
-        onOpenCharacter={(target) => {
-          // Down, then up: the card is opened by `onClosed` below, once this
-          // sheet has actually gone.
-          setQueued(target);
-          setReturning(true);
-          setComposing(false);
-        }}
-        onClosed={() => {
-          if (queued === null) return;
-          setReading(queued);
-          setQueued(null);
-        }}
+        // Down, then up: the panel is raised by `onClosed` below, once this
+        // sheet has actually gone.
+        onReadCharacter={(person) =>
+          openPanel({ kind: "read", person }, true)
+        }
+        onEditCharacter={(target) => openPanel({ kind: "edit", target }, true)}
+        onClosed={afterPanel}
         onCancel={() => {
           setComposing(false);
           setEditing(null);
@@ -392,24 +446,23 @@ export function MapScreen() {
 
       <TerritorySheet territory={touched} onClose={() => setTouched(null)} />
 
-      {/* One card for both ways in — a cameo tapped on the plate, and the
-          list in the people sheet — so a face on the map is a way into the
-          collection and not a dead end. Keyed on whoever it opens on, whose
-          details seed its fields. */}
+      {/* Someone's page: what a tap asks for, on the plate and on a row. Both
+          ways in lead here, so a face on the map is a way into the collection
+          and not a dead end. */}
+      <CharacterDetailModal
+        person={panel?.kind === "read" ? panel.person : null}
+        onEdit={(person) => openPanel({ kind: "edit", target: person }, false)}
+        onClose={() => setPanel(null)}
+        onClosed={afterPanel}
+      />
+
+      {/* The form, reached by the pencil in the list or "Modifier" on the
+          page. Keyed on whoever it opens on, whose details seed its fields. */}
       <CharacterEditModal
-        key={
-          reading === null ? "nobody" : reading === "new" ? "new" : reading.id
-        }
-        target={reading}
-        onClose={() => setReading(null)}
-        onClosed={() => {
-          // Back where they came from, so adding three people in a row is
-          // three taps and not three journeys.
-          if (!returning) return;
-          setReturning(false);
-          setFamily("people");
-          setComposing(true);
-        }}
+        key={`person-${raised}`}
+        target={panel?.kind === "edit" ? panel.target : null}
+        onClose={() => setPanel(null)}
+        onClosed={afterPanel}
       />
 
       {detailOpen ? (

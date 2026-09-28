@@ -6,8 +6,10 @@ import { lifespan, placeOfPerson } from "../lifespan";
 import type { Character } from "../types";
 
 export type CharacterManagerProps = {
-  /** Asks for someone's card — or a blank one. */
-  onOpen: (target: Character | "new") => void;
+  /** Asks for someone's page, to be read. */
+  onRead: (person: Character) => void;
+  /** Asks for the form — on someone, or blank. */
+  onEdit: (target: Character | "new") => void;
 };
 import { palette } from "../../../theme/palette";
 import { space } from "../../../theme/tokens";
@@ -26,7 +28,7 @@ import { space } from "../../../theme/tokens";
  * nested inside it. Opened from the top of the screen instead, the card
  * outlives the trip to the map.
  */
-export function CharacterManager({ onOpen }: CharacterManagerProps) {
+export function CharacterManager({ onRead, onEdit }: CharacterManagerProps) {
   const { characters, events } = useEvents();
 
   return (
@@ -42,7 +44,7 @@ export function CharacterManager({ onOpen }: CharacterManagerProps) {
             : `${characters.length} personnage${characters.length > 1 ? "s" : ""}`
         }
         addLabel="Nouveau personnage"
-        onAdd={() => onOpen("new")}
+        onAdd={() => onEdit("new")}
       >
         {characters.length === 0 ? (
           <RosterEmpty>
@@ -84,7 +86,10 @@ export function CharacterManager({ onOpen }: CharacterManagerProps) {
                   .filter(Boolean)
                   .join(" · ")}
                 index={rank}
-                onEdit={() => onOpen(person)}
+                // The row reads, the pencil corrects — the same division the
+                // map makes between a tap on an event and its "Modifier".
+                onPress={() => onRead(person)}
+                onEdit={() => onEdit(person)}
                 editLabel={`Modifier ${person.name}`}
               />
             );

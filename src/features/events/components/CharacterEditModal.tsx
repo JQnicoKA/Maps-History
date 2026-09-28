@@ -15,6 +15,7 @@ import {
   InkButton,
   InkField,
   Sheet,
+  useLingering,
   useNotice,
 } from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
@@ -52,13 +53,18 @@ export type CharacterEditModalProps = {
  * Only the wording changes.
  */
 export function CharacterEditModal({
-  target,
+  target: subject,
   onClose,
   onClosed,
 }: CharacterEditModalProps) {
   const { characters, events, addCharacter, editCharacter, removeCharacter } =
     useEvents();
   const { aiming, place } = usePlacement();
+
+  // Kept while the panel leaves, so it does not vanish mid-slide and so the
+  // screen is told when it has gone. Fields are re-seeded by the remount the
+  // caller's key forces on the way *in*, never by this.
+  const target = useLingering(subject);
 
   const creating = target === "new";
   const person = creating ? null : target;
@@ -179,7 +185,7 @@ export function CharacterEditModal({
       // Out of the way while the reader is aiming at the map, and back
       // afterwards with everything they had typed still in its fields: the
       // state lives here, not in the panel.
-      visible={!aiming}
+      visible={subject !== null && !aiming}
       onClose={onClose}
       // Only when the card is really finished, never when it merely stepped
       // aside for the reticle.

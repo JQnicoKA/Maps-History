@@ -126,11 +126,12 @@ export type EventFormModalProps = {
   /** Which pair of tabs this sheet carries. Ignored when editing. */
   family?: keyof typeof FAMILIES;
   /**
-   * Asks for someone's card. The screen answers by closing this sheet and
-   * opening the card above it — see `CharacterManager` for why the card
-   * cannot live inside this one.
+   * Asks for someone's page, or the form on them. The screen answers by
+   * closing this sheet and opening the panel above it — see
+   * `CharacterManager` for why neither can live inside this one.
    */
-  onOpenCharacter: (target: Character | "new") => void;
+  onReadCharacter: (person: Character) => void;
+  onEditCharacter: (target: Character | "new") => void;
   onCancel: () => void;
   /** Fired once the sheet is off the screen — see `Sheet`. */
   onClosed?: () => void;
@@ -141,7 +142,8 @@ export function EventFormModal({
   visible,
   event,
   family = "event",
-  onOpenCharacter,
+  onReadCharacter,
+  onEditCharacter,
   onCancel,
   onClosed,
   onSaved,
@@ -351,7 +353,7 @@ export function EventFormModal({
 
       {tab === "folder" && !event ? <FolderManager /> : null}
       {tab === "character" && !event ? (
-        <CharacterManager onOpen={onOpenCharacter} />
+        <CharacterManager onRead={onReadCharacter} onEdit={onEditCharacter} />
       ) : null}
       {tab === "tree" && !event ? <TreeManager /> : null}
 
