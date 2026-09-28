@@ -23,6 +23,7 @@ export function CharacterManager() {
 
   return (
     <ScrollView
+      style={styles.fill}
       contentContainerStyle={styles.body}
       keyboardShouldPersistTaps="handled"
     >
@@ -89,6 +90,7 @@ export function CharacterManager() {
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   body: {
     paddingHorizontal: space.xl,
     paddingBottom: space.lg,

@@ -46,6 +46,15 @@ export type SheetProps = {
   title?: string;
   /** Pinned below the scrolling content — where the actions live. */
   footer?: ReactNode;
+  /**
+   * Opens at full height instead of hugging its contents.
+   *
+   * For a sheet whose contents come and go — a list that grows, a form that
+   * walks through six steps — a panel sized to what it happens to hold jumps
+   * about as the reader works. Given a height, it stays put and the contents
+   * move inside it.
+   */
+  tall?: boolean;
   children: ReactNode;
 };
 
@@ -68,6 +77,7 @@ export function Sheet({
   onClosed,
   title,
   footer,
+  tall = false,
   children,
 }: SheetProps) {
   const insets = useSafeAreaInsets();
@@ -189,7 +199,11 @@ export function Sheet({
           pointerEvents="box-none"
         >
           <Animated.View
-            style={[styles.panel, { transform: [{ translateY }] }]}
+            style={[
+              styles.panel,
+              tall && styles.tall,
+              { transform: [{ translateY }] },
+            ]}
           >
             {/* Behind everything, including the header's rule. */}
             <Grain />
@@ -242,6 +256,8 @@ const styles = StyleSheet.create({
     borderColor: palette.paperDeep,
     ...shadow.lifted,
   },
+  /** Both, so the panel neither shrinks below nor grows past the same mark. */
+  tall: { height: "92%" },
   header: { paddingBottom: space.xs },
   grabZone: { alignItems: "center", paddingTop: space.md, paddingBottom: space.sm },
   grab: {

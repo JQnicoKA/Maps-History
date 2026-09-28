@@ -265,6 +265,9 @@ export function EventFormModal({
     <Sheet
       visible={visible}
       onClose={onCancel}
+      // Six steps and two lists live in here; a panel that resized itself for
+      // each would never be still.
+      tall
       title={
         event
           ? "Modifier l'événement"
@@ -334,7 +337,7 @@ export function EventFormModal({
       {tab === "tree" && !event ? <TreeManager /> : null}
 
       <ScrollView
-        style={tab !== "event" && !event ? styles.hidden : null}
+        style={tab !== "event" && !event ? styles.hidden : styles.fill}
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
       >
@@ -484,6 +487,8 @@ const styles = StyleSheet.create({
   progressStep: { ...type.caption, color: palette.inkSoft, fontWeight: "600" },
   progressLeft: { ...type.caption, color: palette.inkFaint },
   hidden: { display: "none" },
+  /** The panel has a height of its own now; its contents must take it up. */
+  fill: { flex: 1 },
   body: {
     paddingHorizontal: space.xl,
     paddingBottom: space.lg,

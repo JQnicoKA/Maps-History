@@ -363,7 +363,6 @@ export function EventDateField({
               <Text style={styles.aboutHint}>
                 Elle s'écrira « {ABOUT}
                 {formatHistoricalDate({ ...draft, approximate: false })} »
-                partout dans l'application.
               </Text>
             </View>
             <Switch

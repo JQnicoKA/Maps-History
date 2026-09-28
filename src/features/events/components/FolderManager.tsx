@@ -22,6 +22,7 @@ export function FolderManager() {
 
   return (
     <ScrollView
+      style={styles.fill}
       contentContainerStyle={styles.body}
       keyboardShouldPersistTaps="handled"
     >
@@ -84,6 +85,7 @@ export function FolderManager() {
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   body: {
     paddingHorizontal: space.xl,
     paddingBottom: space.lg,
