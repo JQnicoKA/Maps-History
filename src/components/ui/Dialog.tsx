@@ -1,5 +1,13 @@
 import type { ReactNode } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { InkButton } from "./InkButton";
 import { Grain } from "./Scrapbook";
@@ -57,8 +65,15 @@ export function Dialog({
       onRequestClose={onClose}
     >
       {/* The backdrop is a sibling of the card, never its parent: a Pressable
-          wrapped round the card swallows the touches meant for the buttons. */}
-      <View style={styles.root}>
+          wrapped round the card swallows the touches meant for the buttons.
+
+          Keyboard-aware, because some of these cards ask for a password: the
+          padding grows from the bottom and lifts the centred card clear of the
+          keyboard instead of leaving its buttons underneath. */}
+      <KeyboardAvoidingView
+        style={styles.root}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Fermer"
@@ -100,7 +115,7 @@ export function Dialog({
             />
           )}
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

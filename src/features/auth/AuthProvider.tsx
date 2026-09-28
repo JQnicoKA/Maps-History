@@ -32,6 +32,14 @@ type AuthContextValue = {
    * tap away from the map, and a borrowed phone should not be enough.
    */
   deleteAccount: (password: string) => Promise<void>;
+  /**
+   * Replaces the password of the account already signed in.
+   *
+   * The current one is asked for and checked: a session on this phone is not
+   * proof of who is holding it, and a password that can be changed without
+   * knowing the old one is a password anybody who borrows the phone owns.
+   */
+  changePassword: (current: string, next: string) => Promise<void>;
 
   /** Sends the link that lets a forgotten password be replaced. */
   sendReset: (email: string) => Promise<void>;
@@ -201,6 +209,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await client.auth.signOut({ scope: "local" });
   }, []);
 
+  const changePassword = useCallback(async (current: string, next: string) => {
+    const client = supabase();
+    const { data } = await client.auth.getSession();
+    const email = data.session?.user.email;
+    if (!email) throw new Error("Session expirée — reconnectez-vous.");
+
+    // The same proof the deletion asks for, and for the same reason. It also
+    // hands back a fresh session, which is what `updateUser` then writes to.
+    const { error: refused } = await client.auth.signInWithPassword({
+      email,
+      password: current,
+    });
+    if (refused) {
+      // `translate` would say "adresse ou mot de passe incorrect", and the
+      // address is not in question here — the reader typed only one thing.
+      throw new Error(
+        refused.message.toLowerCase().includes("invalid login credentials")
+          ? "Mot de passe actuel incorrect."
+          : translate(refused.message),
+      );
+    }
+
+    const { error } = await client.auth.updateUser({ password: next });
+    if (error) throw new Error(translate(error.message));
+  }, []);
+
   const sendReset = useCallback(async (email: string) => {
     const { error } = await supabase().auth.resetPasswordForEmail(email.trim(), {
       redirectTo: RETURN_TO,
@@ -221,11 +255,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUp,
       signOut,
       deleteAccount,
+      changePassword,
       sendReset,
       recovering,
       setPassword,
     }),
-    [account, signIn, signUp, signOut, deleteAccount, sendReset, recovering, setPassword],
+    [
+      account,
+      signIn,
+      signUp,
+      signOut,
+      deleteAccount,
+      changePassword,
+      sendReset,
+      recovering,
+      setPassword,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

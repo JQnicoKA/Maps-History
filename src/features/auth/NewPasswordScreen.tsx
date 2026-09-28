@@ -11,7 +11,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "./AuthProvider";
-import { failures, isStrong, strength } from "./password";
+import { isStrong } from "./password";
+import { PasswordMeter } from "./PasswordMeter";
 import { InkButton, InkField } from "../../components/ui";
 import { palette } from "../../theme/palette";
 import { radius, shadow, space, type } from "../../theme/tokens";
@@ -35,8 +36,6 @@ export function NewPasswordScreen() {
   const [shown, setShown] = useState(false);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-
-  const missing = failures(password);
 
   const save = async () => {
     setBusy(true);
@@ -102,27 +101,7 @@ export function NewPasswordScreen() {
             </Pressable>
           </View>
 
-          <View style={styles.rules}>
-            <View style={styles.gauge}>
-              <View
-                style={[
-                  styles.gaugeFill,
-                  {
-                    width: `${Math.round(strength(password) * 100)}%`,
-                    backgroundColor:
-                      missing.length === 0 ? palette.forest : palette.wax,
-                  },
-                ]}
-              />
-            </View>
-            <Text style={styles.rulesText}>
-              {password === ""
-                ? "Il faut 8 caractères ou plus, une minuscule, une majuscule et un chiffre."
-                : missing.length === 0
-                  ? "Bon mot de passe."
-                  : `Il manque : ${missing.map((rule) => rule.label).join(", ")}.`}
-            </Text>
-          </View>
+          <PasswordMeter password={password} />
 
           {problem === null ? null : <Text style={styles.problem}>{problem}</Text>}
 
@@ -166,14 +145,5 @@ const styles = StyleSheet.create({
   strong: { color: palette.ink, fontWeight: "700" },
   reveal: { position: "absolute", right: 0, top: 0, paddingHorizontal: space.xs },
   revealLabel: { ...type.legend, color: palette.inkFaint },
-  rules: { gap: space.sm },
-  gauge: {
-    height: 4,
-    borderRadius: radius.pill,
-    backgroundColor: palette.sunken,
-    overflow: "hidden",
-  },
-  gaugeFill: { height: "100%", borderRadius: radius.pill },
-  rulesText: { ...type.caption, color: palette.inkSoft },
   problem: { ...type.caption, color: palette.danger },
 });
