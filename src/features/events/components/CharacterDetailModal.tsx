@@ -28,6 +28,10 @@ const TRASH = require("../../../../assets/icons/trash.png");
 export type CharacterDetailModalProps = {
   person: Character | null;
   onEdit: (person: Character) => void;
+  /** Opens one of the events this person appears in. */
+  onOpenEvent: (id: string) => void;
+  /** Opens one of the trees they stand in. */
+  onOpenTree: (id: string) => void;
   onClose: () => void;
   /** Fired once the panel is off the screen — see `Sheet`. */
   onClosed?: () => void;
@@ -49,6 +53,8 @@ export type CharacterDetailModalProps = {
 export function CharacterDetailModal({
   person: subject,
   onEdit,
+  onOpenEvent,
+  onOpenTree,
   onClose,
   onClosed,
 }: CharacterDetailModalProps) {
@@ -190,12 +196,19 @@ export function CharacterDetailModal({
             <Text style={styles.none}>Aucun événement ne le mentionne.</Text>
           ) : (
             appears.map((event) => (
-              <View key={event.id} style={styles.row}>
+              <Pressable
+                key={event.id}
+                accessibilityRole="button"
+                accessibilityLabel={event.title}
+                onPress={() => onOpenEvent(event.id)}
+                style={({ pressed }) => [styles.row, pressed && styles.dim]}
+              >
                 <Text style={styles.rowTitle} numberOfLines={1}>
                   {event.title}
                 </Text>
                 <Text style={styles.rowDetail}>{formatEventPeriod(event)}</Text>
-              </View>
+                <Text style={styles.chevron}>›</Text>
+              </Pressable>
             ))
           )}
         </View>
@@ -206,11 +219,18 @@ export function CharacterDetailModal({
           <View style={styles.section}>
             <Text style={styles.legend}>Arbres</Text>
             {standsIn.map((tree) => (
-              <View key={tree.id} style={styles.row}>
+              <Pressable
+                key={tree.id}
+                accessibilityRole="button"
+                accessibilityLabel={tree.name}
+                onPress={() => onOpenTree(tree.id)}
+                style={({ pressed }) => [styles.row, pressed && styles.dim]}
+              >
                 <Text style={styles.rowTitle} numberOfLines={1}>
                   {tree.name}
                 </Text>
-              </View>
+                <Text style={styles.chevron}>›</Text>
+              </Pressable>
             ))}
           </View>
         )}
@@ -269,6 +289,7 @@ const styles = StyleSheet.create({
   },
   rowTitle: { flex: 1, fontSize: 15, color: palette.ink },
   rowDetail: { fontSize: 13, color: palette.inkSoft },
+  chevron: { fontSize: 20, lineHeight: 22, color: palette.inkFaint },
 
   photos: { flexDirection: "row", gap: space.md },
   photo: { width: 120, height: 150, borderRadius: radius.md },

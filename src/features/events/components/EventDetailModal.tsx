@@ -14,6 +14,7 @@ import {
   ConfirmDialog,
   InkButton,
   Sheet,
+  useLingering,
   useNotice,
 } from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
@@ -42,14 +43,24 @@ export type EventDetailModalProps = {
   event: EventSummary | null;
   /** Handed the whole event, which is the only thing the form may be given. */
   onEdit: (whole: HistoricalEvent) => void;
+  /** Opens someone from the cast — see `CharacterDetailModal`. */
+  onOpenCharacter: (id: string) => void;
   onClose: () => void;
+  /** Fired once the panel is off the screen — see `Sheet`. */
+  onClosed?: () => void;
 };
 
 export function EventDetailModal({
-  event,
+  event: subject,
   onEdit,
+  onOpenCharacter,
   onClose,
+  onClosed,
 }: EventDetailModalProps) {
+  // Kept while the sheet leaves, so it still has something to draw on its way
+  // out — and so the screen is told when it has gone and may raise the next
+  // page. Re-seeding happens on the way *in*, by the caller's key.
+  const event = useLingering(subject);
   const { folders, characters, removeEvent, loadEvent } = useEvents();
   /**
    * The text and the pictures, which the list does not carry.
@@ -107,8 +118,9 @@ export function EventDetailModal({
 
   return (
     <Sheet
-      visible
+      visible={subject !== null}
       onClose={onClose}
+      onClosed={onClosed}
       footer={
         <>
           <Pressable
@@ -193,7 +205,20 @@ export function EventDetailModal({
                 const person = characters.find((one) => one.id === id);
                 const face = person?.photos[0];
                 return (
-                  <View key={id} style={styles.castMember}>
+                  // A name on an event is a way to that person's own page:
+                  // the collection reads as one thing rather than three lists
+                  // that happen to mention each other.
+                  <Pressable
+                    key={id}
+                    accessibilityRole="button"
+                    accessibilityLabel={person?.name ?? "Personnage supprimé"}
+                    disabled={person === undefined}
+                    onPress={() => onOpenCharacter(id)}
+                    style={({ pressed }) => [
+                      styles.castMember,
+                      pressed && styles.dim,
+                    ]}
+                  >
                     <View style={styles.face}>
                       {face ? (
                         <Image source={{ uri: face.url }} style={styles.faceImage} />
@@ -211,7 +236,7 @@ export function EventDetailModal({
                         {lifespan(person)}
                       </Text>
                     ) : null}
-                  </View>
+                  </Pressable>
                 );
               })}
             </View>
