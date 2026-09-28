@@ -164,11 +164,35 @@ describe("ce que le dessin ne fait jamais", () => {
         { kind: "descent", from: "f", to: "a" },
       ],
     );
-    for (const segment of drawn(subject).segments) {
-      expect(Object.keys(segment).sort()).toEqual(["height", "left", "top", "width"]);
-      expect(segment.width).toBeGreaterThanOrEqual(0);
-      expect(segment.height).toBeGreaterThanOrEqual(0);
+    for (const { cut, ...box } of drawn(subject).segments) {
+      // `cut` says what the piece means and never reaches a style; what is
+      // left has to be a plain rectangle, with no stray key to hand React
+      // Native.
+      expect(Object.keys(box).sort()).toEqual(["height", "left", "top", "width"]);
+      expect(box.width).toBeGreaterThanOrEqual(0);
+      expect(box.height).toBeGreaterThanOrEqual(0);
     }
+  });
+
+  it("n'attache un lien qu'aux tronçons qui n'appartiennent qu'à lui", () => {
+    // Two children of the same couple: the stub leaving the marriage bar is
+    // common to both, so nothing may hang on it.
+    const subject = tree(
+      [at("f", 0, 0), at("m", 0, 1), at("a", 1, 0), at("b", 1, 1)],
+      [
+        { kind: "couple", from: "f", to: "m" },
+        { kind: "descent", from: "f", to: "a" },
+        { kind: "descent", from: "f", to: "b" },
+      ],
+    );
+    const cuts = drawn(subject)
+      .segments.flatMap((segment) => (segment.cut ? [segment.cut] : []));
+
+    expect(cuts).toContainEqual({ from: "f", to: "m" });
+    expect(cuts).toContainEqual({ from: "f", to: "a" });
+    expect(cuts).toContainEqual({ from: "f", to: "b" });
+    // One bar and two drops, and nothing else: three pieces out of seven.
+    expect(cuts).toHaveLength(3);
   });
 
   it("ignore un lien vers quelqu'un qui n'est plus là", () => {

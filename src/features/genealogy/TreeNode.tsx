@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 
-import { CARD_TOP, FACE, FACE_BAND, GAP, NODE } from "./layout";
+import { CARD_TOP, FACE, FACE_AXIS, FACE_BAND, GAP, NODE } from "./layout";
 import { lifespan } from "../events/lifespan";
 import type { Character, Importance, TreeMember } from "../events/types";
 import { lifted as tapLifted, shifted } from "../../lib/touch";
@@ -79,6 +79,19 @@ export type TreeNodeProps = {
     below: boolean;
     onImportance: (value: Importance) => void;
     onRemove: () => void;
+    /**
+     * The two lines this person can take, offered where they would be drawn:
+     * a spouse to the right, a child below.
+     *
+     * Always both, and `ready` says whether there is anybody to answer with.
+     * They were hidden when there was nobody, which read as a feature that
+     * had not been built: on a finished genealogy that is almost every card,
+     * and nothing told the difference between "nothing to offer" and
+     * "nothing here". Faded, they are still an answer, and the picker says
+     * why in a sentence.
+     */
+    couple: { ready: boolean; onPress: () => void };
+    descent: { ready: boolean; onPress: () => void };
   };
 };
 
@@ -351,12 +364,66 @@ export function TreeNode({
         </Pressable>
       </View>
     ) : null}
+
+    {/* Where the line would go, not in a list of commands: a spouse stands
+        beside you and a child below you, so that is where the two crosses
+        sit. Drawn at the menu's scale, since they belong to it. */}
+    {menu ? (
+      <>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Marier"
+          onPress={menu.couple.onPress}
+          style={({ pressed }) => [
+            styles.join,
+            styles.joinRight,
+            !menu.couple.ready && styles.joinEmpty,
+            { transform: [{ scale: menu.scale }] },
+            pressed && styles.choicePressed,
+          ]}
+        >
+          <Text
+            style={[
+              styles.joinGlyph,
+              !menu.couple.ready && styles.joinGlyphEmpty,
+            ]}
+          >
+            +
+          </Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Donner un enfant"
+          onPress={menu.descent.onPress}
+          style={({ pressed }) => [
+            styles.join,
+            styles.joinBelow,
+            !menu.descent.ready && styles.joinEmpty,
+            { transform: [{ scale: menu.scale }] },
+            pressed && styles.choicePressed,
+          ]}
+        >
+          <Text
+            style={[
+              styles.joinGlyph,
+              !menu.descent.ready && styles.joinGlyphEmpty,
+            ]}
+          >
+            +
+          </Text>
+        </Pressable>
+      </>
+    ) : null}
     </Animated.View>
   );
 }
 
 /** Room for "Discret · Normal · Majeur" on one line, and no more. */
 const MENU_WIDTH = 186;
+
+/** The two crosses, sized to be hit without covering the face. */
+const JOIN = 28;
 
 /**
  * How present a face is, by the weight its member carries.
@@ -424,6 +491,38 @@ const styles = StyleSheet.create({
   choiceLabelOn: { color: palette.paperLight },
   remove: { alignItems: "center", paddingVertical: 5 },
   removeLabel: { fontSize: 12, fontWeight: "600", color: palette.danger },
+
+  /** A wax button on the gap between the cards. */
+  join: {
+    position: "absolute",
+    width: JOIN,
+    height: JOIN,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: palette.wax,
+    borderWidth: 2,
+    borderColor: palette.paperLight,
+    ...shadow.soft,
+  },
+  /** On the axis the faces hang from, which is where a marriage bar runs. */
+  joinRight: {
+    right: -JOIN / 2,
+    top: FACE_AXIS - JOIN / 2,
+  },
+  joinBelow: {
+    left: NODE.width / 2 - JOIN / 2,
+    top: NODE.height - JOIN / 2,
+  },
+  joinGlyph: {
+    fontSize: 20,
+    lineHeight: 23,
+    fontWeight: "700",
+    color: palette.paperLight,
+  },
+  /** Nothing to offer yet — still there, still pressable, and it says why. */
+  joinEmpty: { backgroundColor: palette.sunken, borderColor: palette.paperDeep },
+  joinGlyphEmpty: { color: palette.inkFaint },
   card: {
     position: "absolute",
     left: 0,

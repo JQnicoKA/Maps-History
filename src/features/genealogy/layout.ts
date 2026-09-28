@@ -69,6 +69,15 @@ export type Segment = {
   top: number;
   width: number;
   height: number;
+  /**
+   * The line this piece stands for, when touching it should mean something.
+   *
+   * Only the pieces that belong to **one** line carry it: the bar between two
+   * spouses, and the drop that enters a child. A descent's first stub is
+   * shared by every sibling — they leave the same point — so a finger on it
+   * could not say which child was meant, and it is left as drawing.
+   */
+  cut?: { from: string; to: string };
 };
 
 export const STROKE = 2;
@@ -205,6 +214,7 @@ export function connectors(tree: Tree, placed: Placed[]): Segment[] {
         top: bar.y - STROKE / 2,
         width: Math.max(bar.to - bar.from, STROKE),
         height: STROKE,
+        cut: { from: link.from, to: link.to },
       });
     }
   }
@@ -255,6 +265,8 @@ export function connectors(tree: Tree, placed: Placed[]): Segment[] {
         top: mid,
         width: STROKE,
         height: Math.max(to.y - mid, 0),
+        // The one piece of a descent that belongs to this child alone.
+        cut: { from: parentId, to: childId },
       });
     }
   }

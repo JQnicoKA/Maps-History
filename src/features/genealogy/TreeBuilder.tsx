@@ -17,12 +17,12 @@ import {
   rowY,
   span,
 } from "./layout";
-import { LinkChoice, type LinkMode } from "./LinkChoice";
 import { PanZoom } from "./PanZoom";
-import { blocks, dropAt, lineBetween, spouses, tied } from "../events/rows";
+import { blocks, dropAt, erasure, spouses } from "../events/rows";
 import { TreeNode } from "./TreeNode";
 import { CharacterDetailModal } from "../events/components/CharacterDetailModal";
 import {
+  ConfirmDialog,
   Dialog,
   InkButton,
   InkField,
@@ -32,17 +32,9 @@ import {
 import { useEvents } from "../events/EventsProvider";
 import { lifespan } from "../events/lifespan";
 import type { Tree, TreeMember } from "../events/types";
+import { lifted as tapLifted } from "../../lib/touch";
 import { palette } from "../../theme/palette";
-import { radius, shadow, space, TOUCH, type } from "../../theme/tokens";
-
-/**
- * What the canvas is being used for, and who is held while it happens.
- *
- * `chosen` is a list because a descent may be claimed by two parents at once —
- * the first touched, and their spouse if they are touched next. The other two
- * modes never hold more than one person.
- */
-type Tracing = { mode: LinkMode; chosen: string[] };
+import { radius, space, TOUCH, type } from "../../theme/tokens";
 
 export type TreeBuilderProps = {
   tree: Tree | null;
@@ -83,6 +75,16 @@ export type TreeBuilderProps = {
  * and there is no wrong move to refuse. No dragging, no hidden gesture; the bar
  * at the foot says where you are and how to leave.
  */
+/**
+ * How long a finger must rest on a line before it offers to go — the same
+ * pause a card asks for before it comes loose, so the drawing answers to one
+ * gesture throughout.
+ */
+const HOLD = 260;
+
+/** How far either side of a stroke a finger still counts as on it. */
+const GRASP = 11;
+
 export function TreeBuilder({
   tree,
   onClose,
@@ -141,21 +143,33 @@ export function TreeBuilder({
   /** The new name being typed on the card's second face. */
   const [name, setName] = useState("");
   const { say, dialog } = useNotice();
-  /** The dialogue asking what the next taps will do. */
-  const [choosing, setChoosing] = useState(false);
-  /** What they are doing, once it has been answered. */
-  const [tracing, setTracing] = useState<Tracing | null>(null);
+  /**
+   * Who is being joined to whom, while the picker is open.
+   *
+   * The two crosses on a held card start this: one asks for a spouse on the
+   * same row, the other for a child on the row below. It replaced a mode —
+   * a button at the top that put the whole tree into a state and a banner at
+   * the foot explaining it — with an offer made where the line would go.
+   */
+  const [joining, setJoining] = useState<{
+    id: string;
+    kind: "couple" | "descent";
+  } | null>(null);
+  /** The line a finger has rested on, waiting for a yes. */
+  const [cutting, setCutting] = useState<{ from: string; to: string } | null>(
+    null,
+  );
   /** Which generation the picker is adding to. */
   const [adding, setAdding] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   /**
-   * How much room the two floating bars take.
+   * How much room the floating header takes.
    *
-   * Measured rather than computed: their height depends on the safe area, on
-   * whether the linking banner has wrapped to two lines, and on the font the
-   * reader has chosen. A number written here would be wrong on some phone.
+   * Measured rather than computed: it depends on the safe area and on the
+   * font the reader has chosen. A number written here would be wrong on some
+   * phone.
    */
-  const [chrome, setChrome] = useState({ top: 0, bottom: 0 });
+  const [chrome, setChrome] = useState(0);
 
   /**
    * Shared with the window behind and with every card: one says "a card is
@@ -187,82 +201,32 @@ export function TreeBuilder({
   const columns = span(tree);
   const byId = new Map(characters.map((person) => [person.id, person]));
   const open = tree.members.find((member) => member.id === openId) ?? null;
-  const mode = tracing?.mode ?? null;
-  const held = (tracing?.chosen ?? []).flatMap((id) => {
-    const member = tree.members.find((one) => one.id === id);
-    return member ? [member] : [];
-  });
-  const anchor = held[0] ?? null;
 
   /**
-   * Who the held members are already joined to — ringed in wax.
+   * Who this person may still be joined to, on each of the two lines.
    *
-   * In the two drawing modes this marks what is done and needs no second
-   * thought; while erasing it marks what can be taken away.
+   * Computed rather than explained: the picker offers only the legal answers,
+   * where the old mode lit the tree up and dimmed everyone out of reach. The
+   * rules are the same ones — two to a couple, neither already married; a
+   * child stands on the row below and is claimed once.
    */
-  const attached = new Set<string>();
-  if (anchor && mode) {
-    for (const link of tree.links) {
-      // A couple has no direction, so the row may have been written either way
-      // round; a descent read backwards would put a child above its parent.
-      const facing =
-        link.from === anchor.id
-          ? link.to
-          : link.to === anchor.id && link.kind === "couple"
-            ? link.from
-            : null;
+  const spousesFor = (member: TreeMember): TreeMember[] =>
+    spouses(tree, member.id).length > 0
+      ? []
+      : tree.members.filter(
+          (other) =>
+            other.id !== member.id &&
+            other.generation === member.generation &&
+            other.characterId !== member.characterId &&
+            spouses(tree, other.id).length === 0,
+        );
 
-      if (mode === "erase") {
-        if (link.from === anchor.id) attached.add(link.to);
-        else if (link.to === anchor.id) attached.add(link.from);
-      } else if (link.kind !== mode) continue;
-      // A child counts as attached only once every chosen parent claims it;
-      // touching it otherwise finishes the family rather than undoing it.
-      else if (mode === "descent") {
-        if (held.every((one) => hasLine(tree, one.id, link.to))) attached.add(link.to);
-      } else if (facing) attached.add(facing);
-    }
-  }
-
-  /**
-   * Whether this member may take the line being drawn.
-   *
-   * The whole rule of the feature: a couple runs along a row and joins two
-   * people and no more; a descent runs into the row below, and may be claimed
-   * by the first person's spouse as well; an erasure reaches only where a line
-   * already runs. Everyone else is dimmed, which is why nothing here ever has
-   * to refuse a tap with an alert.
-   */
-  const reachable = (member: TreeMember): boolean => {
-    if (!mode) return false;
-
-    if (mode === "erase") {
-      // Only those holding something to give up, then only the other end of
-      // one of their lines.
-      if (!anchor) return tied(tree, member.id);
-      return (
-        member.id === anchor.id ||
-        lineBetween(tree, anchor.id, member.id) !== undefined
-      );
-    }
-
-    if (!anchor || member.id === anchor.id) return true;
-
-    if (mode === "descent") {
-      if (member.generation === anchor.generation + 1) return true;
-      // The spouse, to give the children two parents. Only the anchor's, so
-      // the second parent is never someone else's husband.
-      return spouses(tree, anchor.id).includes(member.id);
-    }
-
-    if (member.generation !== anchor.generation) return false;
-    if (spouses(tree, anchor.id).includes(member.id)) return true;
-    // Two to a couple: neither may already be married, or the bar would run
-    // through a row that can no longer be kept in order.
-    return (
-      spouses(tree, anchor.id).length === 0 && spouses(tree, member.id).length === 0
+  const childrenFor = (member: TreeMember): TreeMember[] =>
+    tree.members.filter(
+      (other) =>
+        other.generation === member.generation + 1 &&
+        !hasLine(tree, member.id, other.id),
     );
-  };
 
   /**
    * The outline that shows where a card in the air would come to rest.
@@ -278,7 +242,7 @@ export function TreeBuilder({
     // Guarded rather than cleared: were a drag ever cut short by the canvas
     // changing meaning, a hollow left behind would have no way to explain
     // itself. Derived state cannot get stuck.
-    if (landing === null || tracing !== null) return null;
+    if (landing === null) return null;
     const dragged = tree.members.find((one) => one.id === landing.id);
     if (!dragged) return null;
 
@@ -321,44 +285,32 @@ export function TreeBuilder({
   };
 
   const tap = (member: TreeMember) => {
-    if (!tracing) {
-      // A tap anywhere puts the placement menu away, wherever it was open.
-      setPlacing(null);
-      setOpenId(member.id);
-      return;
-    }
-    if (!mode || !reachable(member)) return;
-    if (!anchor) {
-      setTracing({ mode, chosen: [member.id] });
-      return;
-    }
-    // Touching someone already held lets go of them, so a mis-tap costs one
-    // tap rather than a trip out of the mode and back in.
-    if (held.some((one) => one.id === member.id)) {
-      setTracing({ mode, chosen: tracing.chosen.filter((id) => id !== member.id) });
-      return;
-    }
+    // A tap anywhere puts the placement menu away, wherever it was open.
+    setPlacing(null);
+    setOpenId(member.id);
+  };
 
-    if (mode === "erase") {
-      run(eraseLink(tree.id, anchor.id, member.id));
-      return;
-    }
-    // The spouse joins the parents rather than becoming a child: same row.
-    if (mode === "descent" && member.generation === anchor.generation) {
-      setTracing({ mode, chosen: [...tracing.chosen, member.id] });
-      return;
-    }
-    // Already joined, and nothing here undoes that any more — erasing is its
-    // own mode, and one that says out loud what else it takes with it.
-    if (attached.has(member.id)) return;
+  /**
+   * Joins the held member to the one just chosen.
+   *
+   * A child of someone married belongs to **both** of them: the line is then
+   * drawn from the middle of the marriage bar rather than from either spouse,
+   * which is how a genealogist says "these two had this child" — and the only
+   * reading that stays true if the pair is later read from the other side.
+   */
+  const join = (anchor: TreeMember, kind: "couple" | "descent", toId: string) => {
+    const parents =
+      kind === "descent"
+        ? [anchor.id, ...spouses(tree, anchor.id)]
+        : [anchor.id];
 
     run(
       (async () => {
-        for (const parent of mode === "descent" ? held : [anchor]) {
-          // A parent that already claims this child is left alone, so adding a
-          // second parent does not undo the first one's line.
-          if (hasLine(tree, parent.id, member.id)) continue;
-          await linkInTree(tree.id, mode, parent.id, member.id, true);
+        for (const from of kind === "couple" ? [anchor.id] : parents) {
+          // A parent that already claims this child is left alone, so giving
+          // the couple a child does not undo one of the two lines.
+          if (hasLine(tree, from, toId)) continue;
+          await linkInTree(tree.id, kind, from, toId, true);
         }
       })(),
     );
@@ -390,7 +342,7 @@ export function TreeBuilder({
           content={size}
           // The foot of the screen is only occupied while a line is being
           // drawn; the rest of the time the canvas may use it.
-          inset={{ top: chrome.top, bottom: tracing === null ? 0 : chrome.bottom }}
+          inset={{ top: chrome, bottom: insets.bottom + space.md }}
           subject={tree.id}
         >
         {/* Under the lines and the cards: a hollow, not an object. */}
@@ -398,13 +350,41 @@ export function TreeBuilder({
           <View style={[styles.landing, target]} pointerEvents="none" />
         ) : null}
 
-        {lines.map((segment, index) => (
-          <View
-            key={index}
-            style={[styles.line, segment]}
-            pointerEvents="none"
-          />
+        {lines.map(({ cut: _cut, ...box }, index) => (
+          <View key={index} style={[styles.line, box]} pointerEvents="none" />
         ))}
+
+        {/* What a finger can take hold of, over the lines that stand for one
+            link and nothing else — see `Segment.cut`.
+
+            Invisible and far wider than the stroke: two points of ink cannot
+            be hit. Claiming the touch is safe because the window steals it
+            back the moment the finger travels, which is what lets the drawing
+            still be dragged from anywhere. */}
+        {lines.flatMap(({ cut, ...box }, index) => {
+          if (!cut) return [];
+          const thin = box.width < box.height;
+          return [
+            <Pressable
+              key={`cut-${index}`}
+              accessibilityRole="button"
+              accessibilityLabel="Supprimer ce lien"
+              delayLongPress={HOLD}
+              onPressIn={() => setPlacing(null)}
+              onLongPress={() => {
+                tapLifted();
+                setCutting(cut);
+              }}
+              style={{
+                position: "absolute",
+                left: box.left - (thin ? GRASP : 0),
+                top: box.top - (thin ? 0 : GRASP),
+                width: box.width + (thin ? GRASP * 2 : 0),
+                height: box.height + (thin ? 0 : GRASP * 2),
+              }}
+            />,
+          ];
+        })}
 
         {placed.map((node) => (
           <TreeNode
@@ -413,12 +393,6 @@ export function TreeBuilder({
             person={byId.get(node.member.characterId)}
             x={node.x}
             y={node.y}
-            active={
-              tracing !== null &&
-              (held.some((one) => one.id === node.member.id) ||
-                attached.has(node.member.id))
-            }
-            muted={tracing !== null && !reachable(node.member)}
             onPress={() => tap(node.member)}
             menu={
               placing?.id === node.member.id
@@ -440,15 +414,28 @@ export function TreeBuilder({
                       setPlacing(null);
                       run(removeFromTree(tree.id, node.member.id));
                     },
+                    // Both, always. `ready` only decides how they look —
+                    // the picker is what explains an empty one.
+                    couple: {
+                      ready: spousesFor(node.member).length > 0,
+                      onPress: () => {
+                        setPlacing(null);
+                        setJoining({ id: node.member.id, kind: "couple" });
+                      },
+                    },
+                    descent: {
+                      ready: childrenFor(node.member).length > 0,
+                      onPress: () => {
+                        setPlacing(null);
+                        setJoining({ id: node.member.id, kind: "descent" });
+                      },
+                    },
                   }
                 : undefined
             }
-            // Not while a line is being traced: the canvas means something
-            // else then, and every tap belongs to that.
             drag={
-              tracing === null
-                ? {
-                    held: dragging,
+              {
+                held: dragging,
                     magnification,
                     onStart: () => {
                       setOpenId(null);
@@ -475,8 +462,7 @@ export function TreeBuilder({
                       );
                       if (moves.length > 0) run(orderRow(tree.id, moves));
                     },
-                  }
-                : undefined
+              }
             }
           />
         ))}
@@ -496,14 +482,13 @@ export function TreeBuilder({
                 ? "Ajouter une génération"
                 : "Ajouter à cette génération"
             }
-            disabled={busy || tracing !== null}
+            disabled={busy}
             onPress={() => {
               setPlacing(null);
               setAdding(generation);
             }}
             style={({ pressed }) => [
               styles.slot,
-              tracing !== null && styles.away,
               pressed && styles.pressed,
               {
                 left: columnX(nextColumn(tree, generation), columns),
@@ -523,10 +508,7 @@ export function TreeBuilder({
           // Read before the updater runs: a functional setState is called on
           // the next render, by which time React Native has recycled the
           // synthetic event and nulled its `nativeEvent`.
-          onLayout={(event) => {
-            const { height } = event.nativeEvent.layout;
-            setChrome((current) => ({ ...current, top: height }));
-          }}
+          onLayout={(event) => setChrome(event.nativeEvent.layout.height)}
         >
           <View style={[styles.bar, { paddingTop: insets.top + space.sm }]}>
             <Pressable
@@ -554,76 +536,7 @@ export function TreeBuilder({
             </Pressable>
           </View>
 
-          {tracing === null ? (
-            <View style={styles.underBar}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  setPlacing(null);
-                  setChoosing(true);
-                }}
-                style={({ pressed }) => [styles.trace, pressed && styles.pressed]}
-              >
-                <Text style={styles.traceLabel}>Modifier les liens</Text>
-              </Pressable>
-            </View>
-          ) : null}
         </View>
-
-        {/* Only while a line is being drawn. The rest of the time the tree
-            has the whole screen, and what used to live down here — renaming,
-            deleting — is behind the ··· in the header. */}
-        {tracing !== null && mode !== null ? (
-          <View
-            style={[styles.bottom, { paddingBottom: insets.bottom + space.md }]}
-            onLayout={(event) => {
-              const { height } = event.nativeEvent.layout;
-              setChrome((current) => ({ ...current, bottom: height }));
-            }}
-          >
-            <View style={styles.banner}>
-              <Text style={styles.bannerText} numberOfLines={3}>
-                {anchor === null ? (
-                  mode === "couple" ? (
-                    "Touchez l'un des deux conjoints."
-                  ) : mode === "descent" ? (
-                    "Touchez le parent."
-                  ) : (
-                    "Touchez le personnage dont un lien doit disparaître."
-                  )
-                ) : (
-                  <>
-                    {mode === "couple"
-                      ? "Touchez qui est uni à "
-                      : mode === "descent"
-                        ? "Touchez les enfants de "
-                        : "Touchez qui détacher de "}
-                    <Text style={styles.bannerName}>
-                      {held
-                        .map(
-                          (one) =>
-                            byId.get(one.characterId)?.name ?? "ce personnage",
-                        )
-                        .join(" et ")}
-                    </Text>
-                    {mode === "couple"
-                      ? ", sur la même ligne."
-                      : mode === "erase"
-                        ? ". Ce qui dépendait de ce lien s'efface avec lui."
-                        : held.length > 1
-                          ? ", sur la ligne du dessous."
-                          : ", sur la ligne du dessous — ou son conjoint, pour une descendance commune."}
-                  </>
-                )}
-              </Text>
-              <InkButton
-                label="Terminé"
-                variant="solid"
-                onPress={() => setTracing(null)}
-              />
-            </View>
-          </View>
-        ) : null}
 
         {/* The picker for "add someone to generation N". Its own field is never
             shown — the slot on the canvas is the trigger. */}
@@ -669,6 +582,79 @@ export function TreeBuilder({
           trigger={(openPicker) => (
             <Opener open={openPicker} when={adding !== null} />
           )}
+        />
+
+        {/* The picker the two crosses open: who to marry, or whose parent to
+            become. Only members of this tree — putting someone *into* the
+            tree is the slot at the end of a row, and one door per job. */}
+        <SelectField
+          title={
+            joining?.kind === "couple" ? "Marier à" : "Donner pour enfant"
+          }
+          placeholder=""
+          options={(() => {
+            const anchor = joining
+              ? (tree.members.find((one) => one.id === joining.id) ?? null)
+              : null;
+            if (!anchor || !joining) return [];
+            const candidates =
+              joining.kind === "couple"
+                ? spousesFor(anchor)
+                : childrenFor(anchor);
+            return candidates.map((one) => {
+              const person = byId.get(one.characterId);
+              const dates = person ? lifespan(person) : "";
+              const said = person?.name ?? "Personnage supprimé";
+              return {
+                value: one.id,
+                label: dates === "" ? said : `${said} · ${dates}`,
+              };
+            });
+          })()}
+          selected={[]}
+          single={joining?.kind === "couple"}
+          onToggle={(memberId) => {
+            const anchor = joining
+              ? (tree.members.find((one) => one.id === joining.id) ?? null)
+              : null;
+            if (!anchor || !joining) return;
+            join(anchor, joining.kind, memberId);
+            // A marriage is between two and the picker is done; children come
+            // in families, so that one stays open for the next.
+            if (joining.kind === "couple") setJoining(null);
+          }}
+          emptyMessage={
+            joining?.kind === "couple"
+              ? "Personne d'autre n'est libre sur cette ligne. Ajoutez quelqu'un au bout du rang, ou défaites un mariage."
+              : "Personne à prendre pour enfant sur la ligne du dessous. Ajoutez-y d'abord quelqu'un, au bout du rang."
+          }
+          onClose={() => setJoining(null)}
+          trigger={(openPicker) => (
+            <Opener open={openPicker} when={joining !== null} />
+          )}
+        />
+
+        {/* Held down on a line, and answered here. What goes with it is said
+            before the yes, never after: erasing a marriage takes the children
+            of that marriage with it — see `erasure`. */}
+        <ConfirmDialog
+          visible={cutting !== null}
+          title="Supprimer ce lien ?"
+          message={(() => {
+            if (!cutting) return undefined;
+            const going = erasure(tree, cutting.from, cutting.to);
+            const also = going.length - 1;
+            return also <= 0
+              ? "Les personnages restent en place ; seul le trait disparaît."
+              : `Les personnages restent en place, mais ${also} autre${also > 1 ? "s" : ""} trait${also > 1 ? "s" : ""} en dépend${also > 1 ? "ent" : ""} et s'effacera${also > 1 ? "ont" : ""} avec lui.`;
+          })()}
+          confirmLabel="Supprimer"
+          onConfirm={() => {
+            const line = cutting;
+            setCutting(null);
+            if (line) run(eraseLink(tree.id, line.from, line.to));
+          }}
+          onClose={() => setCutting(null)}
         />
 
         {/* One card, three faces — the menu, the new name, the confirmation.
@@ -742,15 +728,6 @@ export function TreeBuilder({
         </Dialog>
 
         {dialog}
-
-        <LinkChoice
-          visible={choosing}
-          onChoose={(mode) => {
-            setChoosing(false);
-            setTracing({ mode, chosen: [] });
-          }}
-          onClose={() => setChoosing(false)}
-        />
 
         {/* The same page the map opens. What belongs to the *placement* —
             the weight, and whether they stand here at all — is held down for
@@ -850,33 +827,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: palette.line,
   },
-  /** Loose on the canvas under the header, not part of it. */
-  underBar: {
-    alignItems: "flex-end",
-    paddingHorizontal: space.lg,
-    paddingTop: space.sm,
-  },
   title: {
     flex: 1,
     ...type.heading,
     fontWeight: "700",
     color: palette.ink,
     textAlign: "center",
-  },
-  // In wax, like the year in the frieze: the colour this app keeps for the
-  // thing you are about to act on.
-  trace: {
-    minHeight: 36,
-    justifyContent: "center",
-    paddingHorizontal: space.lg,
-    borderRadius: radius.pill,
-    backgroundColor: palette.wax,
-    ...shadow.soft,
-  },
-  traceLabel: {
-    ...type.caption,
-    fontWeight: "700",
-    color: palette.paperLight,
   },
   icon: {
     width: TOUCH,
@@ -888,21 +844,4 @@ const styles = StyleSheet.create({
   backGlyph: { fontSize: 34, lineHeight: 38, color: palette.ink, marginTop: -4 },
   moreGlyph: { fontSize: 22, lineHeight: 26, color: palette.ink, marginTop: -6 },
 
-  bottom: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: space.lg,
-    paddingTop: space.md,
-    backgroundColor: palette.paperLight,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: palette.line,
-    ...shadow.lifted,
-  },
-  /** Dimmed as a node is, so "not now" looks the same everywhere. */
-  away: { opacity: 0.25 },
-  banner: { flexDirection: "row", alignItems: "center", gap: space.md },
-  bannerText: { flex: 1, ...type.caption, color: palette.inkSoft },
-  bannerName: { color: palette.ink, fontWeight: "700" },
 });
