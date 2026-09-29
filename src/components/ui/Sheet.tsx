@@ -55,6 +55,17 @@ export type SheetProps = {
    * move inside it.
    */
   tall?: boolean;
+  /**
+   * Whether the whole panel rides up when the keyboard opens.
+   *
+   * On by default, and right for a short sheet asking one thing: its only
+   * field would otherwise be under the keys. A long form is the other case —
+   * the panel is already as tall as the screen, so lifting it only shoves the
+   * buttons up against the keyboard, which looks like a mistake and hides
+   * more of the form than it saves. Those pass `false` and let the scrolling
+   * content bring the focused field into view instead.
+   */
+  liftsForKeyboard?: boolean;
   children: ReactNode;
 };
 
@@ -78,6 +89,7 @@ export function Sheet({
   title,
   footer,
   tall = false,
+  liftsForKeyboard = true,
   children,
 }: SheetProps) {
   const insets = useSafeAreaInsets();
@@ -194,7 +206,9 @@ export function Sheet({
         </Animated.View>
 
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={
+            liftsForKeyboard && Platform.OS === "ios" ? "padding" : undefined
+          }
           style={styles.dock}
           pointerEvents="box-none"
         >

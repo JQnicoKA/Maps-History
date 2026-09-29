@@ -186,6 +186,9 @@ export function CharacterEditModal({
       // afterwards with everything they had typed still in its fields: the
       // state lives here, not in the panel.
       visible={subject !== null && !aiming}
+      // The foot of the panel stays where it is; the list below makes room
+      // for the keys instead — see `Sheet`.
+      liftsForKeyboard={false}
       onClose={onClose}
       // Only when the card is really finished, never when it merely stepped
       // aside for the reticle.
@@ -232,6 +235,7 @@ export function CharacterEditModal({
       <ScrollView
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
       >
         <InkField
           label="Nom"

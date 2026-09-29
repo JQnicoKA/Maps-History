@@ -298,6 +298,10 @@ export function EventFormModal({
       // Six steps and two lists live in here; a panel that resized itself for
       // each would never be still.
       tall
+      // And a panel already the height of the screen has nowhere to rise to:
+      // the keyboard simply covers its foot, and the scrolling content below
+      // brings whatever is being typed into view.
+      liftsForKeyboard={false}
       title={
         event
           ? "Modifier l'événement"
@@ -372,6 +376,9 @@ export function EventFormModal({
         style={tab !== "event" && !event ? styles.hidden : styles.fill}
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
+        // What replaces lifting the panel: the list makes room underneath
+        // itself for the keys, so a focused field is never behind them.
+        automaticallyAdjustKeyboardInsets
       >
         {show(0) ? (
           <Section title="Ce qui s'est passé" answer={typeName(type)}>
