@@ -238,7 +238,7 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
             <Text style={styles.legend}>Photo de couverture</Text>
             <Text style={styles.hint}>
               Elle sert de marqueur aux événements de ce classeur qui n'ont pas
-              de photo à eux.
+              de photo.
             </Text>
             {preview ? (
               <Pressable accessibilityRole="button" onPress={clear} hitSlop={6}>

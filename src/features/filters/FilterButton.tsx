@@ -1,12 +1,28 @@
 import { useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { FilterModal } from "./FilterModal";
 import { useEvents } from "../events/EventsProvider";
 import { palette } from "../../theme/palette";
 import { radius, space, TOUCH } from "../../theme/tokens";
 
-const FUNNEL = require("../../../assets/icons/filter.png");
+/**
+ * The funnel, drawn rather than loaded.
+ *
+ * It was a PNG, tinted cream to match the words beside it, and the tint did
+ * not take — the glyph stayed the dark brown it was exported in. Three bars
+ * of decreasing width *are* a funnel, they cost nothing, and they are the
+ * colour they are told to be at any size.
+ */
+function Funnel() {
+  return (
+    <View style={styles.funnel}>
+      <View style={[styles.bar, styles.barWide]} />
+      <View style={[styles.bar, styles.barMid]} />
+      <View style={[styles.bar, styles.barNarrow]} />
+    </View>
+  );
+}
 
 /**
  * What is on show, and the way to change it.
@@ -62,21 +78,10 @@ export function FilterButton() {
           filtering ? `Filtres — ${label}` : "Filtres — tout est affiché"
         }
         onPress={() => setOpen(true)}
-        style={({ pressed }) => [
-          styles.button,
-          filtering && styles.filtering,
-          pressed && styles.pressed,
-        ]}
+        style={({ pressed }) => [styles.button, pressed && styles.pressed]}
       >
-        <Image
-          source={FUNNEL}
-          style={[styles.funnel, filtering && styles.funnelOn]}
-          resizeMode="contain"
-        />
-        <Text
-          style={[styles.label, filtering && styles.labelOn]}
-          numberOfLines={1}
-        >
+        <Funnel />
+        <Text style={styles.label} numberOfLines={1}>
           {label}
         </Text>
         {filtering ? <View style={styles.dot} /> : null}
@@ -96,41 +101,46 @@ const styles = StyleSheet.create({
     minHeight: TOUCH,
     paddingLeft: space.lg,
     paddingRight: space.lg,
-    backgroundColor: palette.paperLight,
+    // Wax, always. It is the one control on the plate that is not a door:
+    // the discs open panels and say nothing, this one carries the answer to
+    // "what am I looking at". Colouring it only while filtering made it a
+    // different object depending on the answer.
+    backgroundColor: palette.wax,
     borderRadius: radius.pill,
     // The same cut edge and the same lift as the discs — see `GlyphButton`.
     borderWidth: 1.5,
-    borderColor: palette.paperDeep,
+    borderColor: palette.waxDeep,
     shadowColor: "#2A1F12",
     shadowOpacity: 0.26,
     shadowRadius: 9,
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
   },
-  /**
-   * Filtering is a state the reader must be able to see without reading.
-   *
-   * The pill itself takes the wax, faintly — enough to separate it from the
-   * plain discs, not so much that it competes with the map behind it.
-   */
-  filtering: {
-    backgroundColor: palette.wax,
-    // Its own deeper tone, so the edge stays an edge once the pill is wax.
-    borderColor: palette.waxDeep,
-  },
   pressed: { opacity: 0.7 },
 
-  funnel: { width: 16, height: 16, opacity: 0.7 },
-  funnelOn: { tintColor: palette.paperLight, opacity: 0.85 },
+  /** Cream, like the words beside it — one ink on the wax, not two. */
+  funnel: { alignItems: "center", gap: 2.5, paddingVertical: 1 },
+  bar: {
+    height: 2.5,
+    borderRadius: radius.pill,
+    backgroundColor: palette.paperLight,
+  },
+  barWide: { width: 15 },
+  barMid: { width: 10 },
+  barNarrow: { width: 5 },
   label: {
     flexShrink: 1,
     fontSize: 15,
     fontWeight: "600",
     letterSpacing: 0.2,
-    color: palette.ink,
+    color: palette.paperLight,
   },
-  labelOn: { color: palette.paperLight },
-  /** A bead of wax on cream, cream on wax: visible either way round. */
+  /**
+   * The one mark left saying something is filtered.
+   *
+   * The pill no longer changes colour for it, so this bead carries the whole
+   * of that news — with the words, which say "Tout" when nothing is hidden.
+   */
   dot: {
     width: 7,
     height: 7,

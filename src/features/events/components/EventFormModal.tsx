@@ -107,7 +107,7 @@ export type Tab = "event" | "folder" | "character" | "tree";
 
 const FAMILIES = {
   event: [
-    { value: "event" as const, label: "Événement" },
+    { value: "event" as const, label: "Nouvel Événement" },
     { value: "folder" as const, label: "Classeurs" },
   ],
   people: [
