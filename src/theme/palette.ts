@@ -74,6 +74,15 @@ export const palette = {
    */
   danger: "#B3261E",
 
+  /**
+   * The same red laid on the paper rather than printed in it.
+   *
+   * For the ground of a warning panel, where a solid red would shout and a
+   * plain grey would say nothing. Opaque rather than translucent, so it sits
+   * the same whatever is behind it — the grain included.
+   */
+  dangerWash: "#F3DFD4",
+
   /** Sealing wax — marks the event currently under the reader's eye. */
   wax: "#8C3A2B",
   waxDeep: "#6E2C21",
