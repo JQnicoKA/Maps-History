@@ -29,6 +29,11 @@ import { EventSummaryCard } from "../../features/events/components/EventSummaryC
 import { LocationReticle } from "../../features/events/components/LocationReticle";
 import { FilterButton } from "../../features/filters/FilterButton";
 import { usePlacement } from "../../features/placement";
+import { Catalogue } from "../../features/community/Catalogue";
+import {
+  CHARACTER_LOOK,
+  EVENT_LOOK,
+} from "../../features/community/looks";
 import { PlaceLayers } from "../../features/places/PlaceLayers";
 import { TerritoryLayers } from "../../features/territories/TerritoryLayers";
 import {
@@ -74,7 +79,10 @@ type Page =
   | { kind: "person"; id: string }
   /** `null` invents one. */
   | { kind: "editPerson"; id: string | null }
-  | { kind: "tree"; id: string };
+  | { kind: "tree"; id: string }
+  /** The community catalogue, which is about no one row in particular. */
+  | { kind: "searchEvents" }
+  | { kind: "searchCharacters" };
 
 export function MapScreen() {
   const insets = useSafeAreaInsets();
@@ -89,7 +97,7 @@ export function MapScreen() {
     trees,
     selectEvent,
   } = useEvents();
-  const { aiming, settle } = usePlacement();
+  const { aiming, settle, looking } = usePlacement();
   // The opening shot should not fly across the world; every later move should.
   const hasFramed = useRef(false);
 
@@ -186,7 +194,13 @@ export function MapScreen() {
     setBack(null);
     if ("sheet" in back) {
       setSheetTab(back.sheet);
-      setFamily("people");
+      // The tab says which pair it belongs to; the sheet must come back
+      // showing the half the reader left from, not the other one.
+      setFamily(
+        back.sheet === "character" || back.sheet === "tree"
+          ? "people"
+          : "event",
+      );
       setComposing(true);
       return;
     }
@@ -335,6 +349,9 @@ export function MapScreen() {
           centerAnimationDuration={hasFramed.current ? 650 : 0}
           attributionOffset={aiming || drawing ? 0 : insets.bottom + 4}
           onDetailChange={setDetailed}
+          onLook={(centre) => {
+            looking.current = centre;
+          }}
           // One finger paints, so it must not also drag the plate. Pinch is
           // untouched: the reader can still zoom to where they are working.
           frozen={drawing && painting}
@@ -527,6 +544,12 @@ export function MapScreen() {
         onOpenTree={(id) =>
           afterSheet(() => raise({ kind: "tree", id }), "tree")
         }
+        onSearch={() =>
+          afterSheet(() => raise({ kind: "searchEvents" }), "event")
+        }
+        onSearchPeople={() =>
+          afterSheet(() => raise({ kind: "searchCharacters" }), "character")
+        }
         onClosed={afterPage}
         onCancel={() => {
           setComposing(false);
@@ -584,6 +607,26 @@ export function MapScreen() {
           })
         }
         onOpenCharacter={(id) => after(() => raise({ kind: "person", id }))}
+        onClose={() => setPage(null)}
+        onClosed={afterPage}
+      />
+
+      {/* Everybody else's work. A page like the others, at the top of the
+          screen, so what it opens is never a panel inside a panel. */}
+      <Catalogue
+        key={`commons-events-${raised}`}
+        kind="event"
+        look={EVENT_LOOK}
+        visible={page?.kind === "searchEvents"}
+        onClose={() => setPage(null)}
+        onClosed={afterPage}
+      />
+
+      <Catalogue
+        key={`commons-people-${raised}`}
+        kind="character"
+        look={CHARACTER_LOOK}
+        visible={page?.kind === "searchCharacters"}
         onClose={() => setPage(null)}
         onClosed={afterPage}
       />

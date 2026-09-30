@@ -1,7 +1,9 @@
 import { useState, type ReactNode } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { CharacterManager } from "./CharacterManager";
+import { LikelyDuplicates } from "../../community/LikelyDuplicates";
+import { EVENT_LOOK } from "../../community/looks";
 import { CharacterSelector } from "./CharacterSelector";
 import { FolderManager } from "./FolderManager";
 import { TreeManager } from "../../genealogy/TreeManager";
@@ -16,7 +18,7 @@ import {
   Sheet,
   useNotice,
 } from "../../../components/ui";
-import { radius, space, type } from "../../../theme/tokens";
+import { radius, shadow, space, type } from "../../../theme/tokens";
 import { useEvents } from "../EventsProvider";
 import { usePlacement, type Point } from "../../placement";
 
@@ -59,11 +61,23 @@ function Section({
   );
 }
 
-/** The five questions, in the order they are asked. */
+/**
+ * The questions, in the order they are asked.
+ *
+ * The name comes first and the date second **so that the duplicate card can
+ * speak before anybody writes a description**. It is the one thing in this
+ * form whose position is load-bearing: a title alone cannot tell "Mort de
+ * Clotaire" from "Mort de Clotaire II", and by the time a paragraph has been
+ * typed it is too late to be told somebody already wrote it.
+ *
+ * What is required comes first — a name, a date, a place — and everything
+ * that elaborates follows.
+ */
 const STEPS = [
   "Ce qui s'est passé",
   "Quand",
   "Où",
+  "Le détail",
   "Qui",
   "Classement",
   "Images",
@@ -141,6 +155,9 @@ export type EventFormModalProps = {
   onEditCharacter: (target: Character | "new") => void;
   /** Asks for a tree to be drawn, full screen. */
   onOpenTree: (id: string) => void;
+  /** Asks for the community catalogue — of events, or of people. */
+  onSearch: () => void;
+  onSearchPeople: () => void;
   onCancel: () => void;
   /** Fired once the sheet is off the screen — see `Sheet`. */
   onClosed?: () => void;
@@ -155,11 +172,14 @@ export function EventFormModal({
   onReadCharacter,
   onEditCharacter,
   onOpenTree,
+  onSearch,
+  onSearchPeople,
   onCancel,
   onClosed,
   onSaved,
 }: EventFormModalProps) {
-  const { folders, characters, addEvent, editEvent } = useEvents();
+  const { folders, characters, addEvent, editEvent, refresh, selectEvent } =
+    useEvents();
   const { aiming, place } = usePlacement();
 
   /**
@@ -180,8 +200,18 @@ export function EventFormModal({
    */
   const [step, setStep] = useState(0);
 
-  /** Composing walks the five questions; correcting shows them all at once. */
+  /** Composing walks the questions; correcting shows them all at once. */
   const stepped = !event;
+  /**
+   * Whether the reader has said which way they are adding an event.
+   *
+   * There are two, and they were on one screen: a title field to fill in and
+   * a link to the chronicle, side by side, which asked the reader to notice
+   * the second while already answering the first. Asked plainly instead, and
+   * only when composing — correcting an event is not a fork.
+   */
+  const [writing, setWriting] = useState(false);
+  const forking = stepped && tab === "event" && !writing;
   const show = (index: number) => !stepped || index === step;
 
   const [title, setTitle] = useState(event?.title ?? "");
@@ -206,6 +236,7 @@ export function EventFormModal({
 
   const reset = () => {
     setTab("event");
+    setWriting(false);
     setStep(0);
     setTitle("");
     setType("other");
@@ -312,7 +343,11 @@ export function EventFormModal({
       footer={
         // A folder is written the moment it is named, so that half of the
         // sheet has nothing to save and nothing to cancel.
-        tab !== "event" ? (
+        // Nothing at the foot of the fork: it asks a question with two
+        // answers on the screen, and a third at the bottom saying "neither"
+        // is furniture. The panel already closes by the handle and by the
+        // paper around it.
+        forking ? undefined : tab !== "event" ? (
           <InkButton
             label="Fermer"
             variant="tonal"
@@ -325,12 +360,18 @@ export function EventFormModal({
         ) : (
           <>
             <InkButton
-              label={stepped && step > 0 ? "Retour" : "Annuler"}
+              label={stepped ? "Retour" : "Annuler"}
               variant="tonal"
               grow
               onPress={() => {
                 if (stepped && step > 0) {
                   setStep((current) => current - 1);
+                  return;
+                }
+                // Back out of the first question to the fork, not off the
+                // screen: the reader may have meant the other way in.
+                if (stepped) {
+                  setWriting(false);
                   return;
                 }
                 reset();
@@ -364,16 +405,72 @@ export function EventFormModal({
         </View>
       )}
 
-      {stepped && tab === "event" ? <Progress step={step} /> : null}
+      {forking ? (
+        <View style={styles.fork}>
+          <Text style={styles.forkAsk}>Comment voulez-vous l'ajouter ?</Text>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Écrire un événement"
+            onPress={() => setWriting(true)}
+            style={({ pressed }) => [styles.way, pressed && styles.wayDown]}
+          >
+            <View style={styles.quill}>
+              <Text style={styles.quillGlyph}>✎</Text>
+            </View>
+            <View style={styles.wayText}>
+              <Text style={styles.wayTitle}>Écrire un événement</Text>
+              <Text style={styles.wayDetail}>
+                Le vôtre, de la première ligne à la dernière.
+              </Text>
+            </View>
+            <Text style={styles.wayMore}>›</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Chercher dans la chronique commune"
+            onPress={onSearch}
+            style={({ pressed }) => [
+              styles.way,
+              styles.waySeek,
+              pressed && styles.wayDown,
+            ]}
+          >
+            {/* A lens, drawn — the same one the people's list wears. */}
+            <View style={styles.quill}>
+              <View style={styles.lensGlass} />
+              <View style={styles.lensHandle} />
+            </View>
+            <View style={styles.wayText}>
+              <Text style={[styles.wayTitle, styles.waxed]}>
+                Chercher dans la chronique commune
+              </Text>
+              <Text style={styles.wayDetail}>
+                Ce que les autres ont déjà écrit, à prendre chez vous.
+              </Text>
+            </View>
+            <Text style={[styles.wayMore, styles.waxed]}>›</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {stepped && tab === "event" && writing ? <Progress step={step} /> : null}
 
       {tab === "folder" && !event ? <FolderManager /> : null}
       {tab === "character" && !event ? (
-        <CharacterManager onRead={onReadCharacter} onEdit={onEditCharacter} />
+        <CharacterManager
+          onRead={onReadCharacter}
+          onEdit={onEditCharacter}
+          onSeek={onSearchPeople}
+        />
       ) : null}
       {tab === "tree" && !event ? <TreeManager onOpen={onOpenTree} /> : null}
 
       <ScrollView
-        style={tab !== "event" && !event ? styles.hidden : styles.fill}
+        style={
+          (tab !== "event" && !event) || forking ? styles.hidden : styles.fill
+        }
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
         // What replaces lifting the panel: the list makes room underneath
@@ -381,21 +478,17 @@ export function EventFormModal({
         automaticallyAdjustKeyboardInsets
       >
         {show(0) ? (
-          <Section title="Ce qui s'est passé" answer={typeName(type)}>
+          <Section title="Ce qui s'est passé">
             <InkField
               label="Titre"
               value={title}
               onChangeText={setTitle}
               placeholder="Prise de Constantinople"
             />
-            <TypePicker value={type} onChange={setType} />
-            <InkField
-              label="Description"
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              placeholder="Ce que l'on en retient…"
-            />
+            <Text style={styles.hint}>
+              Le nom d'abord, la date ensuite : si quelqu'un l'a déjà écrit,
+              autant le savoir avant d'en écrire le récit.
+            </Text>
           </Section>
         ) : null}
 
@@ -411,6 +504,32 @@ export function EventFormModal({
                 setEnd(nextEnd);
               }}
             />
+
+            {/* Here rather than under the title, and the reason is measured:
+                see `LikelyDuplicates`. Only while composing — correcting an
+                event that already exists is not the moment to be told that
+                it resembles itself. */}
+            {stepped ? (
+              <LikelyDuplicates
+                kind="event"
+                look={EVENT_LOOK}
+                noun="événement"
+                title={title}
+                year={start?.year ?? null}
+                approximate={start?.approximate === true}
+                onTaken={(made) => {
+                  // The collection first, then the map: selecting an event
+                  // it does not hold yet would find nothing. And no notice —
+                  // one rendered inside this sheet would leave with it. The
+                  // event flying under the reader's eye says it better.
+                  void refresh().then(() => {
+                    selectEvent(made);
+                    reset();
+                    onSaved();
+                  });
+                }}
+              />
+            ) : null}
           </Section>
         ) : null}
 
@@ -440,6 +559,19 @@ export function EventFormModal({
         ) : null}
 
         {show(3) ? (
+          <Section title="Le détail" answer={typeName(type)}>
+            <TypePicker value={type} onChange={setType} />
+            <InkField
+              label="Description"
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              placeholder="Ce que l'on en retient…"
+            />
+          </Section>
+        ) : null}
+
+        {show(4) ? (
           <Section
             title="Qui"
             answer={
@@ -456,7 +588,7 @@ export function EventFormModal({
           </Section>
         ) : null}
 
-        {show(4) ? (
+        {show(5) ? (
           <Section
             title="Classement"
             answer={
@@ -483,7 +615,7 @@ export function EventFormModal({
           </Section>
         ) : null}
 
-        {show(5) ? (
+        {show(6) ? (
           <Section title="Images">
             <PhotoPicker
               photos={photos}
@@ -505,6 +637,61 @@ export function EventFormModal({
 }
 
 const styles = StyleSheet.create({
+  hint: { ...type.legend, color: palette.inkFaint },
+
+  /**
+   * The two ways in, asked before either is taken.
+   *
+   * They were one screen — a title to type and a link to the chronicle
+   * beside it — which is a fork drawn as a form: it asked the reader to
+   * notice the second option while already answering the first. Two cards
+   * ask the question instead, and the answer decides what comes next.
+   */
+  fork: { paddingHorizontal: space.xl, paddingTop: space.md, gap: space.md },
+  forkAsk: { ...type.caption, color: palette.inkSoft, textAlign: "center" },
+  way: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    padding: space.md,
+    borderRadius: radius.lg,
+    backgroundColor: palette.paperLight,
+    borderWidth: 1.5,
+    borderColor: palette.paperDeep,
+    ...shadow.soft,
+  },
+  /** The second leans, and is edged in wax: it leads somewhere else. */
+  waySeek: { borderColor: palette.wax, transform: [{ rotate: "-0.6deg" }] },
+  wayDown: { opacity: 0.6 },
+  quill: {
+    width: 38,
+    height: 38,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quillGlyph: { fontSize: 22, color: palette.inkSoft },
+  lensGlass: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2.5,
+    borderColor: palette.wax,
+  },
+  lensHandle: {
+    position: "absolute",
+    right: 5,
+    bottom: 5,
+    width: 9,
+    height: 2.5,
+    borderRadius: radius.pill,
+    backgroundColor: palette.wax,
+    transform: [{ rotate: "45deg" }],
+  },
+  wayText: { flex: 1, gap: 2 },
+  wayTitle: { fontSize: 15.5, fontWeight: "700", color: palette.ink },
+  wayDetail: { ...type.legend, color: palette.inkSoft },
+  wayMore: { fontSize: 20, lineHeight: 22, color: palette.inkFaint },
+  waxed: { color: palette.wax },
   switcher: {
     paddingHorizontal: space.xl,
     paddingBottom: space.lg,

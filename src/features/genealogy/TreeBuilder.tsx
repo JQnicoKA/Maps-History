@@ -21,6 +21,7 @@ import { PanZoom } from "./PanZoom";
 import { blocks, dropAt, erasure, spouses } from "../events/rows";
 import { TreeNode } from "./TreeNode";
 import { CharacterDetailModal } from "../events/components/CharacterDetailModal";
+import { ShareRow } from "../community/ShareRow";
 import {
   ConfirmDialog,
   Dialog,
@@ -145,6 +146,7 @@ export function TreeBuilder({
     removeFromTree,
     removeTree,
     renameTree,
+    share,
   } = useEvents();
 
   const [openId, setOpenId] = useState<string | null>(null);
@@ -791,6 +793,11 @@ export function TreeBuilder({
             />
           ) : (
             <>
+              <ShareRow
+                what="cet arbre"
+                shared={tree.shared}
+                onChange={(next) => share("tree", tree.id, next)}
+              />
               <InkButton
                 label="Renommer"
                 variant="tonal"

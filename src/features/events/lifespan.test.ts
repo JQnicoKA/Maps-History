@@ -16,6 +16,7 @@ const person = (
   death: death === null ? null : { year: death },
   longitude: placed ? 2.35 : null,
   latitude: placed ? 48.85 : null,
+  shared: true,
   photos: [],
 });
 

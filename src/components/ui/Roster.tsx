@@ -22,6 +22,15 @@ export type RosterProps = {
   count: string;
   addLabel: string;
   onAdd: () => void;
+  /**
+   * A second slot, under the first: what the community has already made.
+   *
+   * Beside "make one" rather than in a corner, because the two answer the
+   * same wish — a list that is missing something — and the second is very
+   * often the better answer.
+   */
+  seekLabel?: string;
+  onSeek?: () => void;
   children: ReactNode;
 };
 
@@ -37,6 +46,8 @@ export function Roster({
   count,
   addLabel,
   onAdd,
+  seekLabel,
+  onSeek,
   children,
 }: RosterProps) {
   return (
@@ -54,6 +65,22 @@ export function Roster({
         </View>
         <Text style={styles.addLabel}>{addLabel}</Text>
       </Pressable>
+
+      {onSeek === undefined ? null : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={seekLabel ?? "Rechercher"}
+          onPress={onSeek}
+          style={({ pressed }) => [styles.seek, pressed && styles.pressed]}
+        >
+          <View style={styles.lens}>
+            <View style={styles.lensGlass} />
+            <View style={styles.lensHandle} />
+          </View>
+          <Text style={styles.seekLabel}>{seekLabel ?? "Rechercher"}</Text>
+          <Text style={styles.seekMore}>›</Text>
+        </Pressable>
+      )}
 
       {children}
     </View>
@@ -195,6 +222,50 @@ const styles = StyleSheet.create({
   },
   plusGlyph: { fontSize: 25, lineHeight: 29, color: palette.paperLight },
   addLabel: { flex: 1, fontSize: 15, fontWeight: "600", color: palette.inkSoft },
+
+  /**
+   * The other way to fill a list, and it leans the other way from the first.
+   *
+   * In wax rather than dashed: the slot above is an empty space waiting to be
+   * filled, this is a door to somewhere that is already full.
+   */
+  seek: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    padding: space.sm,
+    paddingRight: space.md,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: palette.wax,
+    transform: [{ rotate: "-0.6deg" }],
+  },
+  /** A lens, drawn: a ring and a handle. */
+  lens: {
+    width: THUMB,
+    height: THUMB,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  lensGlass: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2.5,
+    borderColor: palette.wax,
+  },
+  lensHandle: {
+    position: "absolute",
+    right: 11,
+    bottom: 11,
+    width: 9,
+    height: 2.5,
+    borderRadius: radius.pill,
+    backgroundColor: palette.wax,
+    transform: [{ rotate: "45deg" }],
+  },
+  seekLabel: { flex: 1, fontSize: 15, fontWeight: "700", color: palette.wax },
+  seekMore: { fontSize: 18, lineHeight: 20, color: palette.wax },
 
   /** A card stuck on the page: white paper, a soft shadow, square corners. */
   row: {

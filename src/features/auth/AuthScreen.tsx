@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Image,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -14,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "./AuthProvider";
 import { failures, isStrong, looksLikeEmail, strength } from "./password";
 import { InkButton, InkField, SegmentedControl } from "../../components/ui";
+import { PRIVACY_URL, TERMS_URL } from "../../config/contact";
 import { palette } from "../../theme/palette";
 import { radius, shadow, space, type } from "../../theme/tokens";
 
@@ -48,6 +50,15 @@ export function AuthScreen() {
   const [shown, setShown] = useState(false);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  /**
+   * The box, ticked or not.
+   *
+   * Unticked to begin with and required to sign up: an agreement that ticks
+   * itself is not one. It is also what the App Store asks of an application
+   * whose readers can see what other readers wrote — a promise, made before
+   * the first line is written, that this is not the place for it.
+   */
+  const [agreed, setAgreed] = useState(false);
   /** Set when a sign-up, or a reset, ends with a message rather than a session. */
   const [sent, setSent] = useState(false);
 
@@ -58,7 +69,7 @@ export function AuthScreen() {
       ? true
       : mode === "in"
         ? password !== ""
-        : isStrong(password));
+        : isStrong(password) && agreed);
 
   const submit = async () => {
     setBusy(true);
@@ -211,6 +222,38 @@ export function AuthScreen() {
             </View>
           ) : null}
 
+          {mode === "up" ? (
+            <View style={styles.pact}>
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: agreed }}
+                accessibilityLabel="J'accepte les conditions d'utilisation"
+                onPress={() => setAgreed((was) => !was)}
+                style={({ pressed }) => [styles.box, agreed && styles.boxOn, pressed && styles.dim]}
+              >
+                {agreed ? <Text style={styles.tick}>✓</Text> : null}
+              </Pressable>
+              <Text style={styles.pactText}>
+                J'accepte les{" "}
+                <Text
+                  style={styles.link}
+                  onPress={() => void Linking.openURL(TERMS_URL)}
+                >
+                  conditions d'utilisation
+                </Text>{" "}
+                et la{" "}
+                <Text
+                  style={styles.link}
+                  onPress={() => void Linking.openURL(PRIVACY_URL)}
+                >
+                  politique de confidentialité
+                </Text>
+                . Ce que j'écris rejoint la chronique commune, où les autres
+                peuvent le lire et le copier — sauf si je l'en retire.
+              </Text>
+            </View>
+          ) : null}
+
           {problem === null ? null : <Text style={styles.problem}>{problem}</Text>}
 
           <InkButton
@@ -313,6 +356,24 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   gaugeFill: { height: "100%", borderRadius: radius.pill },
+  /** The one promise made before anything is written. */
+  pact: { flexDirection: "row", alignItems: "flex-start", gap: space.md },
+  box: {
+    width: 24,
+    height: 24,
+    marginTop: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.sm,
+    borderWidth: 1.5,
+    borderColor: palette.paperDeep,
+    backgroundColor: palette.paperLight,
+  },
+  boxOn: { backgroundColor: palette.wax, borderColor: palette.waxDeep },
+  tick: { fontSize: 14, lineHeight: 16, fontWeight: "900", color: palette.paperLight },
+  dim: { opacity: 0.6 },
+  pactText: { ...type.caption, flex: 1, color: palette.inkSoft },
+  link: { color: palette.wax, fontWeight: "700", textDecorationLine: "underline" },
   rulesText: { ...type.caption, color: palette.inkSoft },
   problem: { ...type.caption, color: palette.danger },
   footnote: { ...type.caption, color: palette.inkFaint, textAlign: "center" },

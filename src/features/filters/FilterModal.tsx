@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { Dialog } from "../../components/ui";
+import { Dialog, TICK, TickRow } from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import { FolderSelector } from "../events/components/FolderSelector";
 import { formatYear } from "../events/historicalDate";
@@ -31,21 +31,7 @@ type LayerProps = {
 function Layer({ title, detail, on, onToggle, children }: LayerProps) {
   return (
     <View style={[styles.layer, on ? null : styles.layerOff]}>
-      <Pressable
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: on }}
-        accessibilityLabel={title}
-        onPress={onToggle}
-        style={({ pressed }) => [styles.head, pressed && styles.pressed]}
-      >
-        <View style={[styles.box, on && styles.boxOn]}>
-          {on ? <Text style={styles.tick}>✓</Text> : null}
-        </View>
-        <View style={styles.headText}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.detail}>{detail}</Text>
-        </View>
-      </Pressable>
+      <TickRow title={title} detail={detail} on={on} onToggle={onToggle} />
 
       {on && children ? <View style={styles.inside}>{children}</View> : null}
     </View>
@@ -167,27 +153,7 @@ const styles = StyleSheet.create({
   /** Put away, and it says so without going grey enough to look broken. */
   layerOff: { opacity: 0.6, backgroundColor: palette.sunken },
 
-  head: { flexDirection: "row", alignItems: "center", gap: space.md },
-  pressed: { opacity: 0.6 },
-  /** Drawn square and thick-edged: a box someone ticks, not a switch. */
-  box: {
-    width: 24,
-    height: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.sm,
-    borderWidth: 1.5,
-    borderColor: palette.paperDeep,
-    backgroundColor: palette.paperLight,
-  },
-  boxOn: { backgroundColor: palette.wax, borderColor: palette.waxDeep },
-  tick: { fontSize: 14, lineHeight: 16, fontWeight: "900", color: palette.paperLight },
-
-  headText: { flex: 1, gap: 1 },
-  title: { fontSize: 16, fontWeight: "700", color: palette.ink },
-  detail: { ...type.legend, color: palette.inkSoft },
-
   /** Indented under the tick, so what it governs is unmistakable. */
-  inside: { paddingLeft: 24 + space.md, gap: space.sm },
+  inside: { paddingLeft: TICK + space.md, gap: space.sm },
   note: { ...type.legend, color: palette.inkFaint },
 });

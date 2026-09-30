@@ -11,6 +11,7 @@ import { AppState, Linking } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 
 import { env } from "../../config/env";
+import { TERMS_VERSION } from "../../config/contact";
 import { watchAccount } from "../../lib/monitoring";
 import { supabase } from "../../lib/supabase";
 
@@ -40,6 +41,16 @@ type AuthContextValue = {
    * knowing the old one is a password anybody who borrows the phone owns.
    */
   changePassword: (current: string, next: string) => Promise<void>;
+
+  /**
+   * The name this account wears in front of the others.
+   *
+   * `undefined` while it is being read, and `null` only if the read failed —
+   * the database hands one out at sign-up, so every account has one.
+   */
+  handle: string | null | undefined;
+  /** Chooses another. Throws when it is already taken or badly shaped. */
+  rename: (handle: string) => Promise<void>;
 
   /** Sends the link that lets a forgotten password be replaced. */
   sendReset: (email: string) => Promise<void>;
@@ -81,6 +92,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<Account | null | undefined>(undefined);
+  const [handle, setHandle] = useState<string | null | undefined>(undefined);
   const [recovering, setRecovering] = useState(false);
 
   useEffect(() => {
@@ -119,6 +131,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data.subscription.unsubscribe();
       watching.remove();
     };
+  }, []);
+
+  /**
+   * The pseudonym, read once per account.
+   *
+   * Not part of the session: it lives in `profiles`, which is the one table
+   * every signed-in reader may read — that is what lets a name stand beside a
+   * contribution. Read here rather than where it is shown, so the account
+   * card and, later, everything the community puts on screen all get it from
+   * the same place.
+   */
+  useEffect(() => {
+    const id = account?.id;
+    if (id === undefined) {
+      setHandle(undefined);
+      return;
+    }
+    let alive = true;
+    void supabase()
+      .from("profiles")
+      .select("handle")
+      .eq("user_id", id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!alive) return;
+        if (error) {
+          console.warn("Pseudonyme illisible :", error.message);
+          setHandle(null);
+          return;
+        }
+        setHandle((data as { handle: string } | null)?.handle ?? null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [account?.id]);
+
+  const rename = useCallback(async (next: string) => {
+    const client = supabase();
+    const { data } = await client.auth.getSession();
+    const id = data.session?.user.id;
+    if (!id) throw new Error("Session expirée — reconnectez-vous.");
+
+    const { data: saved, error } = await client
+      .from("profiles")
+      .update({ handle: next.trim() })
+      .eq("user_id", id)
+      .select("handle")
+      .single();
+    if (error) throw new Error(translate(error.message));
+
+    setHandle((saved as { handle: string }).handle);
   }, []);
 
   /**
@@ -174,6 +238,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       });
       if (error) throw new Error(translate(error.message));
+
+      // Written now rather than trusted to the screen: the box is a fact
+      // about a form, this is a fact about an account, and it is the one
+      // that outlives a rewritten screen. Best effort — a sign-up must not
+      // fail because a second write did.
+      const id = data.user?.id;
+      if (id) {
+        await supabase()
+          .from("profiles")
+          .update({
+            terms_at: new Date().toISOString(),
+            terms_version: TERMS_VERSION,
+          })
+          .eq("user_id", id);
+      }
+
       // No session means the project asks for the address to be confirmed
       // first. The screen says so rather than pretending to have signed in.
       return data.session ? "signed-in" : "confirm-email";
@@ -256,6 +336,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       deleteAccount,
       changePassword,
+      handle,
+      rename,
       sendReset,
       recovering,
       setPassword,
@@ -267,6 +349,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       deleteAccount,
       changePassword,
+      handle,
+      rename,
       sendReset,
       recovering,
       setPassword,
@@ -307,6 +391,12 @@ function translate(message: string): string {
   }
   if (said.includes("is invalid")) {
     return "Cette adresse est refusée. Vérifiez-la, ou essayez-en une autre.";
+  }
+  if (said.includes("profiles_handle_unique") || said.includes("duplicate key")) {
+    return "Ce pseudonyme est déjà pris.";
+  }
+  if (said.includes("profiles_handle_shape")) {
+    return "Ce pseudonyme n'a pas une forme acceptée.";
   }
   if (said.includes("new password should be different")) {
     return "Choisissez un mot de passe différent de l'ancien.";

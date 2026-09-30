@@ -27,6 +27,14 @@ type PlacementContextValue = {
   place: () => Promise<Point | null>;
   /** Answered by whoever owns the reticle. Not for the forms to call. */
   settle: (point: Point | null) => void;
+  /**
+   * Where the plate is centred, kept up to date by the screen that draws it.
+   *
+   * A ref and not state: it changes on every settled gesture, and nothing
+   * should re-render because somebody panned. Panels that want to ask "what
+   * is there, near here" read it at the moment they ask.
+   */
+  looking: { current: Point | null };
 };
 
 const PlacementContext = createContext<PlacementContextValue | null>(null);
@@ -49,6 +57,7 @@ export function PlacementProvider({ children }: { children: ReactNode }) {
   const [aiming, setAiming] = useState(false);
   /** Whoever is waiting for an answer, if anyone. */
   const asking = useRef<((point: Point | null) => void) | null>(null);
+  const looking = useRef<Point | null>(null);
 
   const place = useCallback(() => {
     // A second question while the first is unanswered should not leave the
@@ -68,7 +77,7 @@ export function PlacementProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ aiming, place, settle }),
+    () => ({ aiming, place, settle, looking }),
     [aiming, place, settle],
   );
 

@@ -37,6 +37,7 @@ const tree = (members: TreeMember[], links: TreeLink[]): Tree => ({
   note: null,
   members,
   links,
+  shared: true,
 });
 
 const drawn = (subject: Tree) => {

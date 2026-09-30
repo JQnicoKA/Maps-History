@@ -52,6 +52,7 @@ describe("écrire une période", () => {
     folders: [],
     characters: [],
     cover: null,
+    shared: true,
     ...over,
   });
 

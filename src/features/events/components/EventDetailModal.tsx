@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import { PhotoViewer } from "./PhotoViewer";
+import { ShareRow } from "../../community/ShareRow";
 import {
   ConfirmDialog,
   InkButton,
@@ -61,7 +62,7 @@ export function EventDetailModal({
   // out — and so the screen is told when it has gone and may raise the next
   // page. Re-seeding happens on the way *in*, by the caller's key.
   const event = useLingering(subject);
-  const { folders, characters, removeEvent, loadEvent } = useEvents();
+  const { folders, characters, removeEvent, loadEvent, share } = useEvents();
   /**
    * The text and the pictures, which the list does not carry.
    *
@@ -259,6 +260,11 @@ export function EventDetailModal({
             ))}
           </View>
         ) : null}
+        <ShareRow
+          what="cet événement"
+          shared={event.shared}
+          onChange={(next) => share("event", event.id, next)}
+        />
       </ScrollView>
 
       <PhotoViewer photo={viewing} onClose={() => setViewing(null)} />

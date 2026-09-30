@@ -9,6 +9,7 @@ import {
 } from "react-native";
 
 import { PhotoViewer } from "./PhotoViewer";
+import { ShareRow } from "../../community/ShareRow";
 import {
   ConfirmDialog,
   InkButton,
@@ -69,7 +70,7 @@ export function CharacterDetailModal({
   // Drawn from whoever was last really here, so the panel still has a face on
   // it while it slides away — and so `onClosed` gets a chance to fire.
   const person = useLingering(subject);
-  const { events, trees, removeCharacter } = useEvents();
+  const { events, trees, removeCharacter, share } = useEvents();
   const [deleting, setDeleting] = useState(false);
   /** The confirmation standing between the trash button and the deed. */
   const [asking, setAsking] = useState(false);
@@ -258,6 +259,11 @@ export function CharacterDetailModal({
             ))}
           </View>
         )}
+        <ShareRow
+          what="ce personnage"
+          shared={person.shared}
+          onChange={(next) => share("character", person.id, next)}
+        />
       </ScrollView>
 
       <PhotoViewer photo={viewing} onClose={() => setViewing(null)} />

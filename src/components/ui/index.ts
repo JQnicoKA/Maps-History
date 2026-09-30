@@ -30,5 +30,6 @@ export {
   type SelectOption,
 } from "./SelectField";
 export { Sheet, type SheetProps } from "./Sheet";
+export { TICK, TickRow, type TickRowProps } from "./TickRow";
 export { useLingering } from "./useLingering";
 export { useNotice, type NoticeHandle } from "./useNotice";

@@ -9,7 +9,14 @@ import {
 } from "react";
 
 import { fetchHiddenPolities, hidePolity, showPolity } from "./hidden";
-import { drawPolity, eraseDrawn, fetchDrawn, type DrawnPolity, type Stroke } from "./drawn";
+import {
+  drawPolity,
+  eraseDrawn,
+  fetchDrawn,
+  shareDrawn,
+  type DrawnPolity,
+  type Stroke,
+} from "./drawn";
 
 type HiddenContextValue = {
   /** Names this account has taken off its map, most recent first. */
@@ -37,6 +44,8 @@ type HiddenContextValue = {
     to: number;
   }) => Promise<void>;
   erase: (id: string) => Promise<void>;
+  /** Puts one into the common chronicle, or takes it out. */
+  share: (id: string, shared: boolean) => Promise<void>;
 };
 
 const HiddenContext = createContext<HiddenContextValue | null>(null);
@@ -100,6 +109,14 @@ export function HiddenProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const share = useCallback(async (id: string, shared: boolean) => {
+    await shareDrawn(id, shared);
+    // One boolean is the whole of what changed.
+    setDrawn((current) =>
+      current.map((one) => (one.id === id ? { ...one, shared } : one)),
+    );
+  }, []);
+
   const erase = useCallback(async (id: string) => {
     await eraseDrawn(id);
     setDrawn((current) => current.filter((one) => one.id !== id));
@@ -107,8 +124,8 @@ export function HiddenProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ hidden, hide, show, mask, drawn, draw, erase }),
-    [hidden, hide, show, mask, drawn, draw, erase],
+    () => ({ hidden, hide, show, mask, drawn, draw, erase, share }),
+    [hidden, hide, show, mask, drawn, draw, erase, share],
   );
 
   return (

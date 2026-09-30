@@ -10,6 +10,8 @@ export type CharacterManagerProps = {
   onRead: (person: Character) => void;
   /** Asks for the form — on someone, or blank. */
   onEdit: (target: Character | "new") => void;
+  /** Asks for the community's people. */
+  onSeek: () => void;
 };
 import { palette } from "../../../theme/palette";
 import { space } from "../../../theme/tokens";
@@ -28,7 +30,11 @@ import { space } from "../../../theme/tokens";
  * nested inside it. Opened from the top of the screen instead, the card
  * outlives the trip to the map.
  */
-export function CharacterManager({ onRead, onEdit }: CharacterManagerProps) {
+export function CharacterManager({
+  onRead,
+  onEdit,
+  onSeek,
+}: CharacterManagerProps) {
   const { characters, events } = useEvents();
 
   return (
@@ -45,6 +51,8 @@ export function CharacterManager({ onRead, onEdit }: CharacterManagerProps) {
         }
         addLabel="Nouveau personnage"
         onAdd={() => onEdit("new")}
+        seekLabel="Chercher dans la chronique"
+        onSeek={onSeek}
       >
         {characters.length === 0 ? (
           <RosterEmpty>

@@ -3,6 +3,7 @@ import { StyleSheet, Text } from "react-native";
 
 import { useHidden } from "./HiddenProvider";
 import { Dialog, InkButton, useNotice } from "../../components/ui";
+import { ShareRow } from "../community/ShareRow";
 import { BORDERS_END } from "../../config/history";
 import { formatYear } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
@@ -63,11 +64,15 @@ export type TerritorySheetProps = {
  *   so the card says so rather than promising otherwise.
  */
 export function TerritorySheet({ territory, onClose }: TerritorySheetProps) {
-  const { hide, erase } = useHidden();
+  const { hide, erase, drawn, share } = useHidden();
   const [busy, setBusy] = useState(false);
   const { say, dialog } = useNotice();
 
   const mine = territory?.drawn === true;
+  /** The reader's own row for it, which carries whether it is shared. */
+  const ours = mine
+    ? (drawn.find((one) => one.id === territory?.id) ?? null)
+    : null;
 
   return (
     <Dialog
@@ -92,6 +97,16 @@ export function TerritorySheet({ territory, onClose }: TerritorySheetProps) {
           ? "Le supprimer est définitif : il n'existe que sur votre carte."
           : "Le retirer ne l'efface pas : il disparaît de votre carte, à toutes les époques, et vous pourrez le rétablir depuis le bouton territoires."}
       </Text>
+
+      {/* Only what the reader drew: the reference set belongs to everybody
+          already, and nothing about it is theirs to share or withhold. */}
+      {mine && ours ? (
+        <ShareRow
+          what="ce territoire"
+          shared={ours.shared}
+          onChange={(next) => share(ours.id, next)}
+        />
+      ) : null}
 
       <InkButton
         label={

@@ -20,6 +20,8 @@ import {
 } from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
 import { usePlacement } from "../../placement";
+import { LikelyDuplicates } from "../../community/LikelyDuplicates";
+import { CHARACTER_LOOK } from "../../community/looks";
 import type { Point } from "../../placement";
 import type {
   Character,
@@ -57,8 +59,14 @@ export function CharacterEditModal({
   onClose,
   onClosed,
 }: CharacterEditModalProps) {
-  const { characters, events, addCharacter, editCharacter, removeCharacter } =
-    useEvents();
+  const {
+    characters,
+    events,
+    addCharacter,
+    editCharacter,
+    removeCharacter,
+    refresh,
+  } = useEvents();
   const { aiming, place } = usePlacement();
 
   // Kept while the panel leaves, so it does not vanish mid-slide and so the
@@ -253,6 +261,26 @@ export function CharacterEditModal({
             setDeath(nextDeath);
           }}
         />
+
+        {/* After the dates and before the rest, for the reason measured in
+            `characters_like`: a name alone cannot tell two Merovingian kings
+            apart, and a birth year can. */}
+        {creating ? (
+          <LikelyDuplicates
+            kind="character"
+            look={CHARACTER_LOOK}
+            noun="personnage"
+            title={name}
+            year={birth?.year ?? null}
+            approximate={birth?.approximate === true}
+            onTaken={() => {
+              // The collection reloads itself inside `addCharacter`'s
+              // sibling; here the card simply closes on a person who is now
+              // in the list behind it.
+              void refresh().then(onClose);
+            }}
+          />
+        ) : null}
 
         <View style={styles.section}>
           <Text style={styles.legend}>Où</Text>

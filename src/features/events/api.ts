@@ -34,6 +34,7 @@ type EventRow = {
   end_approx: boolean;
   longitude: number;
   latitude: number;
+  shared: boolean;
   event_folders: { folder_id: string; importance: Importance }[];
   event_characters: { character_id: string }[];
   event_photos: {
@@ -49,7 +50,7 @@ const EVENT_COLUMNS = `
   id, title, type, description,
   start_year, start_month, start_day, start_approx,
   end_year, end_month, end_day, end_approx,
-  longitude, latitude,
+  longitude, latitude, shared,
   event_folders ( folder_id, importance ),
   event_characters ( character_id ),
   event_photos ( id, storage_path, position, source )
@@ -60,7 +61,7 @@ const SUMMARY_COLUMNS = `
   id, title, type,
   start_year, start_month, start_day, start_approx,
   end_year, end_month, end_day, end_approx,
-  longitude, latitude,
+  longitude, latitude, shared,
   event_folders ( folder_id, importance ),
   event_characters ( character_id ),
   event_photos ( id, storage_path, position, source )
@@ -91,6 +92,7 @@ function toSummary(row: EventRow): EventSummary {
     id: row.id,
     title: row.title,
     type: row.type,
+    shared: row.shared,
     cover: photos[0] ?? null,
     start: toDate(
       row.start_year,
@@ -131,12 +133,18 @@ const storedPhotos = (row: EventRow): StoredPhoto[] =>
       source: photo.source,
     }));
 
-type FolderRow = { id: string; name: string; photo_path: string | null };
+type FolderRow = {
+  id: string;
+  name: string;
+  photo_path: string | null;
+  shared: boolean;
+};
 
 function toFolder(row: FolderRow): Folder {
   return {
     id: row.id,
     name: row.name,
+    shared: row.shared,
     photo:
       row.photo_path === null
         ? null
@@ -144,7 +152,26 @@ function toFolder(row: FolderRow): Folder {
   };
 }
 
-const FOLDER_COLUMNS = "id, name, photo_path";
+const FOLDER_COLUMNS = "id, name, photo_path, shared";
+
+/**
+ * Puts something into the common chronicle, or takes it out.
+ *
+ * One function for the four tables because it is one idea, and because the
+ * row-level security is what makes it safe: the update reaches only rows the
+ * caller owns, whatever is passed here.
+ */
+export async function setShared(
+  table: "events" | "folders" | "characters" | "trees",
+  id: string,
+  shared: boolean,
+): Promise<void> {
+  const { error } = await supabase()
+    .from(table)
+    .update({ shared })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
 
 export async function fetchFolders(): Promise<Folder[]> {
   const { data, error } = await supabase()
@@ -257,7 +284,11 @@ export async function fetchEvents(): Promise<EventSummary[]> {
     .order("position", { referencedTable: "event_photos" })
     .limit(1, { referencedTable: "event_photos" });
   if (error) throw new Error(error.message);
-  return ((data ?? []) as EventRow[]).map(toSummary);
+  // The summary read leaves the description behind, which is the one field of
+  // a row `toSummary` never looks at.
+  return ((data ?? []) as Omit<EventRow, "description">[]).map((row) =>
+    toSummary({ ...row, description: null }),
+  );
 }
 
 /**
@@ -523,6 +554,7 @@ type CharacterRow = {
   death_approx: boolean;
   longitude: number | null;
   latitude: number | null;
+  shared: boolean;
   character_photos: {
     id: string;
     storage_path: string;
@@ -535,7 +567,7 @@ const CHARACTER_COLUMNS = `
   id, name, bio,
   birth_year, birth_month, birth_day, birth_approx,
   death_year, death_month, death_day, death_approx,
-  longitude, latitude,
+  longitude, latitude, shared,
   character_photos ( id, storage_path, position, source )
 `;
 
@@ -568,6 +600,7 @@ function toCharacter(row: CharacterRow): Character {
     ),
     longitude: row.longitude,
     latitude: row.latitude,
+    shared: row.shared,
     photos: [...row.character_photos]
       .sort((a, b) => a.position - b.position)
       .map((photo) => ({
@@ -679,6 +712,7 @@ type TreeRow = {
   id: string;
   name: string;
   note: string | null;
+  shared: boolean;
   tree_members: {
     id: string;
     character_id: string;
@@ -691,7 +725,7 @@ type TreeRow = {
 };
 
 const TREE_COLUMNS = `
-  id, name, note,
+  id, name, note, shared,
   tree_members ( id, character_id, generation, position, importance, note ),
   tree_links ( parent_id, child_id, kind )
 `;
@@ -701,6 +735,7 @@ function toTree(row: TreeRow): Tree {
     id: row.id,
     name: row.name,
     note: row.note,
+    shared: row.shared,
     members: [...row.tree_members]
       .sort((a, b) => a.generation - b.generation || a.position - b.position)
       .map((member) => ({

@@ -16,6 +16,7 @@ import {
   useNotice,
 } from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
+import { ShareRow } from "../../community/ShareRow";
 import { pickPhotos } from "../pickPhotos";
 import type { Folder, PickedPhoto } from "../types";
 import { palette } from "../../../theme/palette";
@@ -42,8 +43,15 @@ export type FolderEditModalProps = {
  * lie — it would undo the name and keep the photograph.
  */
 export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
-  const { folders, events, addFolder, renameFolder, removeFolder, setFolderPhoto } =
-    useEvents();
+  const {
+    folders,
+    events,
+    addFolder,
+    renameFolder,
+    removeFolder,
+    setFolderPhoto,
+    share,
+  } = useEvents();
 
   const creating = target === "new";
   const folder = creating ? null : target;
@@ -256,6 +264,16 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
           returnKeyType="done"
           onSubmitEditing={() => void save()}
         />
+
+        {/* Only once it exists: there is nothing to share until there is
+            something to share. A new folder arrives in the chronicle. */}
+        {folder ? (
+          <ShareRow
+            what="ce classeur"
+            shared={folder.shared}
+            onChange={(next) => share("folder", folder.id, next)}
+          />
+        ) : null}
       </View>
     </Sheet>
   );

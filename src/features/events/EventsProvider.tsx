@@ -90,6 +90,17 @@ type EventsContextValue = {
   refresh: () => Promise<void>;
   addFolder: (name: string) => Promise<Folder>;
   renameFolder: (id: string, name: string) => Promise<void>;
+  /**
+   * Puts something into the common chronicle, or takes it out.
+   *
+   * One call for the four kinds: it is one idea, and the row-level security
+   * is what makes it safe — the write reaches only the caller's own rows.
+   */
+  share: (
+    kind: "event" | "folder" | "character" | "tree",
+    id: string,
+    shared: boolean,
+  ) => Promise<void>;
   /** Drops a folder; the events it held survive, unfiled. */
   removeFolder: (folder: Folder) => Promise<void>;
   addCharacter: (draft: CharacterDraft) => Promise<Character>;
@@ -327,6 +338,34 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       folders: current.folders.filter((one) => one.folderId !== folder.id),
     }));
   }, []);
+
+  const share = useCallback(
+    async (
+      kind: "event" | "folder" | "character" | "tree",
+      id: string,
+      shared: boolean,
+    ) => {
+      const table = {
+        event: "events",
+        folder: "folders",
+        character: "characters",
+        tree: "trees",
+      }[kind] as "events" | "folders" | "characters" | "trees";
+
+      await api.setShared(table, id, shared);
+
+      // One boolean is the whole of what changed; re-reading the collection
+      // to learn it would be four queries for one bit.
+      const patch = <T extends { id: string; shared: boolean }>(list: T[]) =>
+        list.map((one) => (one.id === id ? { ...one, shared } : one));
+
+      if (kind === "event") setEvents(patch);
+      if (kind === "folder") setFolders(patch);
+      if (kind === "character") setCharacters(patch);
+      if (kind === "tree") setTrees(patch);
+    },
+    [],
+  );
 
   const setFolderPhoto = useCallback(
     async (folder: Folder, picked: PickedPhoto | null) => {
@@ -599,6 +638,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       addFolder,
       renameFolder,
       removeFolder,
+      share,
       addCharacter,
       editCharacter,
       removeCharacter,
@@ -621,7 +661,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       events, visibleEvents, folders, characters, visibleCharacters, trees,
       filters, setFilters, year,
       selectedEvent, neighbours, selectEvent, scrubTo, loading, error, refresh,
-      addFolder, renameFolder, removeFolder, addCharacter, editCharacter,
+      addFolder, renameFolder, removeFolder, share, addCharacter, editCharacter,
       removeCharacter, addTree, renameTree, removeTree, addToTree,
       editTreeMember, removeFromTree, orderRow, eraseLink, linkInTree, setFolderPhoto,
       addEvent,

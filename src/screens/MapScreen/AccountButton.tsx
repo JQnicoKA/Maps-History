@@ -9,6 +9,8 @@ import {
   SegmentedControl,
 } from "../../components/ui";
 import { isStrong, PasswordMeter, useAuth } from "../../features/auth";
+import { handleProblem, HANDLE_MAX } from "../../features/community/profile";
+import { CONTACT } from "../../config/contact";
 import { deleteOwnPhotos } from "../../features/events/api";
 import { palette } from "../../theme/palette";
 import { radius, space, TOUCH, type } from "../../theme/tokens";
@@ -41,17 +43,26 @@ export type AccountButtonProps = {
  * déconnecter" did nothing at all. So the card changes what it holds instead of
  * putting a second card on top of itself.
  */
-/** Which of the card's five faces is showing. */
-type Face = "account" | "changing" | "leaving" | "erasing" | "proving";
+/** Which of the card's six faces is showing. */
+type Face =
+  | "account"
+  | "naming"
+  | "changing"
+  | "leaving"
+  | "erasing"
+  | "proving";
 
 export function AccountButton({ view, onChange }: AccountButtonProps) {
-  const { account, signOut, deleteAccount, changePassword } = useAuth();
+  const { account, signOut, deleteAccount, changePassword, handle, rename } =
+    useAuth();
   const [open, setOpen] = useState(false);
   const [face, setFace] = useState<Face>("account");
   /** The password being proved: the current one on both asking faces. */
   const [password, setPassword] = useState("");
   /** And the one being chosen, on the face that chooses one. */
   const [chosen, setChosen] = useState("");
+  /** The pseudonym being typed, on the face that renames. */
+  const [called, setCalled] = useState("");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   /** What just worked, said once on the first face and then forgotten. */
@@ -70,6 +81,7 @@ export function AccountButton({ view, onChange }: AccountButtonProps) {
     setFace("account");
     setPassword("");
     setChosen("");
+    setCalled("");
     setProblem(null);
     setDone(null);
   };
@@ -78,6 +90,7 @@ export function AccountButton({ view, onChange }: AccountButtonProps) {
     setFace("account");
     setPassword("");
     setChosen("");
+    setCalled("");
     setProblem(null);
   };
 
@@ -86,6 +99,7 @@ export function AccountButton({ view, onChange }: AccountButtonProps) {
     setFace(next);
     setPassword("");
     setChosen("");
+    setCalled("");
     setProblem(null);
     setDone(null);
   };
@@ -112,6 +126,17 @@ export function AccountButton({ view, onChange }: AccountButtonProps) {
 
   /** Both fields answered, and the new one worth having. */
   const ready = password !== "" && isStrong(chosen);
+
+  /** What is wrong with the pseudonym being typed, while it is being typed. */
+  const naming = handleProblem(called);
+
+  const callMe = () =>
+    attempt(async () => {
+      await rename(called);
+      setFace("account");
+      setCalled("");
+      setDone("Pseudonyme modifié.");
+    });
 
   const change = () =>
     attempt(async () => {
@@ -147,24 +172,73 @@ export function AccountButton({ view, onChange }: AccountButtonProps) {
             ? "Changer le mot de passe"
             : face === "leaving"
             ? "Se déconnecter ?"
-            : face === "erasing"
-              ? "Supprimer le compte ?"
-              : face === "proving"
-                ? "Votre mot de passe"
-                : "Votre compte"
+            : face === "naming"
+              ? "Votre pseudonyme"
+              : face === "erasing"
+                ? "Supprimer le compte ?"
+                : face === "proving"
+                  ? "Votre mot de passe"
+                  : "Votre compte"
         }
         hint={
           face === "leaving"
             ? "Il faudra vous reconnecter."
-            : face === "erasing"
-              ? "Événements, classeurs, personnages, arbres et photos seront effacés. C'est définitif."
-              : face === "proving"
-                ? "Dernière étape : tapez-le pour confirmer la suppression."
-                : undefined
+            : face === "naming"
+              ? "C'est le nom qui accompagne ce que vous partagez. Il ne dit rien de votre adresse."
+              : face === "erasing"
+                ? "Événements, classeurs, personnages, arbres et photos seront effacés. C'est définitif."
+                : face === "proving"
+                  ? "Dernière étape : tapez-le pour confirmer la suppression."
+                  : undefined
         }
         dismissLabel={null}
       >
-        {face === "changing" ? (
+        {face === "naming" ? (
+          <>
+            <InkField
+              label="Pseudonyme"
+              value={called}
+              onChangeText={setCalled}
+              placeholder={handle ?? "Cartographe-1487"}
+              autoCapitalize="words"
+              autoCorrect={false}
+              maxLength={HANDLE_MAX}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                if (naming === null && !busy) void callMe();
+              }}
+            />
+
+            {/* The rule, said while it is being broken rather than after. */}
+            <Text style={styles.rule}>
+              {called === ""
+                ? "Lettres, chiffres, espaces, tirets et apostrophes."
+                : (naming ?? "Ce pseudonyme convient.")}
+            </Text>
+
+            {problem === null ? null : (
+              <Text style={styles.problem}>{problem}</Text>
+            )}
+
+            <View style={styles.answers}>
+              <InkButton
+                label="Annuler"
+                variant="tonal"
+                grow
+                disabled={busy}
+                onPress={back}
+              />
+              <InkButton
+                label={busy ? "…" : "Enregistrer"}
+                variant="solid"
+                grow
+                disabled={busy || naming !== null}
+                onPress={() => void callMe()}
+              />
+            </View>
+          </>
+        ) : face === "changing" ? (
           <>
             {/* Proof before choice, in that order: it is the question the
                 reader can answer straight away, and the one that decides
@@ -330,6 +404,34 @@ export function AccountButton({ view, onChange }: AccountButtonProps) {
               </Pressable>
             </View>
 
+            {/* The other half of who you are here. The address is between
+                you and the app; this is what everybody else sees, and the
+                two belong on facing lines rather than in separate corners. */}
+            <View style={styles.identity}>
+              <View style={styles.named}>
+                <Text style={styles.handle} numberOfLines={1}>
+                  {handle ?? "…"}
+                </Text>
+                <Text style={styles.namedLegend}>
+                  Votre nom dans la communauté
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Changer de pseudonyme"
+                hitSlop={10}
+                disabled={handle === undefined}
+                onPress={() => {
+                  ask("naming");
+                  setCalled(handle ?? "");
+                }}
+                style={({ pressed }) => [styles.link, pressed && styles.down]}
+              >
+                <Text style={styles.linkLabel}>Renommer ›</Text>
+                <View style={styles.linkRule} />
+              </Pressable>
+            </View>
+
             <View style={styles.section}>
               <Text style={styles.legend}>Vue</Text>
               <SegmentedControl
@@ -369,6 +471,13 @@ export function AccountButton({ view, onChange }: AccountButtonProps) {
                 <Image source={TRASH} style={styles.binGlyph} resizeMode="contain" />
               </Pressable>
             </View>
+
+            {/* Published, and findable without having to report something
+                first: an app carrying what its readers write owes them a way
+                to reach whoever keeps it. */}
+            <Text style={styles.contact}>
+              Un problème, une réclamation ? {CONTACT}
+            </Text>
 
             {/* Only in a development build, and deliberately kept rather than
                 deleted after the first check: a reporting pipeline nobody can
@@ -412,6 +521,12 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   down: { opacity: 0.55 },
+  named: { flex: 1, gap: 1 },
+  handle: { fontSize: 15, fontWeight: "700", color: palette.ink },
+  namedLegend: { ...type.legend, color: palette.inkFaint },
+  /** What the field says about itself while it is being typed. */
+  rule: { ...type.legend, color: palette.inkSoft },
+  contact: { ...type.legend, color: palette.inkFaint, textAlign: "center" },
 
   /** Square, so it takes only the width the sign-out button gives up. */
   bin: {

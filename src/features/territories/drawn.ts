@@ -12,6 +12,8 @@ export type DrawnPolity = {
   from: number;
   to: number;
   area: number | null;
+  /** In the common chronicle, where anybody may read and copy it. */
+  shared: boolean;
 };
 
 /**
@@ -87,7 +89,7 @@ export async function fetchDrawnAt(
 export async function fetchDrawn(): Promise<DrawnPolity[]> {
   const { data, error } = await supabase()
     .from("drawn_polities")
-    .select("id, name, start_year, end_year, area")
+    .select("id, name, start_year, end_year, area, shared")
     .order("start_year");
   if (error) throw new Error(error.message);
   return (
@@ -97,6 +99,7 @@ export async function fetchDrawn(): Promise<DrawnPolity[]> {
       start_year: number;
       end_year: number;
       area: number | null;
+      shared: boolean;
     }[]
   ).map((row) => ({
     id: row.id,
@@ -104,7 +107,17 @@ export async function fetchDrawn(): Promise<DrawnPolity[]> {
     from: row.start_year,
     to: row.end_year,
     area: row.area,
+    shared: row.shared,
   }));
+}
+
+/** Puts a drawn territory into the common chronicle, or takes it out. */
+export async function shareDrawn(id: string, shared: boolean): Promise<void> {
+  const { error } = await supabase()
+    .from("drawn_polities")
+    .update({ shared })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
 }
 
 export async function eraseDrawn(id: string): Promise<void> {

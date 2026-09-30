@@ -35,6 +35,13 @@ export type WorldMapProps = {
    */
   onDetailChange?: (detailed: boolean) => void;
   /**
+   * Where the plate came to rest, after every settled gesture.
+   *
+   * For the panels that ask the collection "what is there, near here": they
+   * have no other way to know what the reader is looking at.
+   */
+  onLook?: (centre: { longitude: number; latitude: number }) => void;
+  /**
    * Frees the single finger for something other than panning.
    *
    * While drawing, one finger paints and must not drag the plate. Pinch is
@@ -52,6 +59,7 @@ export function WorldMap({
   centerAnimationDuration = 650,
   attributionOffset,
   onDetailChange,
+  onLook,
   frozen = false,
 }: WorldMapProps) {
   const mapStyle = useMemo(
@@ -67,12 +75,18 @@ export function WorldMap({
     NonNullable<MapProps["onRegionDidChange"]>
   >(
     (event) => {
+      const [longitude, latitude] = event.nativeEvent.center as [
+        number,
+        number,
+      ];
+      onLook?.({ longitude, latitude });
+
       const next = event.nativeEvent.zoom >= ZOOM.country;
       if (next === detailed.current) return;
       detailed.current = next;
       onDetailChange?.(next);
     },
-    [onDetailChange],
+    [onDetailChange, onLook],
   );
 
   return (
@@ -82,7 +96,9 @@ export function WorldMap({
         style={styles.map}
         mapStyle={mapStyle}
         onPress={onPress}
-        onRegionDidChange={onDetailChange ? handleRegionDidChange : undefined}
+        onRegionDidChange={
+          onDetailChange || onLook ? handleRegionDidChange : undefined
+        }
         // An atlas plate is read flat and square to the page: pan and zoom only.
         touchRotate={false}
         touchPitch={false}

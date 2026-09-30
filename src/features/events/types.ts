@@ -78,6 +78,15 @@ export type Folder = {
   id: string;
   name: string;
   /**
+   * In the common chronicle, where anybody may read and copy it.
+   *
+   * True unless the reader said otherwise: what is written here is history,
+   * and a chronicle nobody publishes is a chronicle nobody reads. The way out
+   * exists for the reader writing their own family rather than the world's.
+   */
+  shared: boolean;
+
+  /**
    * Cover picture. Its one use is the map marker: an event with no photograph
    * of its own borrows its folder's before falling back to the type's emoji.
    */
@@ -133,6 +142,14 @@ export type EventSummary = {
   longitude: number;
   latitude: number;
   folders: EventFolderLink[];
+  /**
+   * In the common chronicle, where anybody may read and copy it.
+   *
+   * True unless the reader said otherwise: what is written here is history,
+   * and a chronicle nobody publishes is a chronicle nobody reads. The way out
+   * exists for the reader writing their own family rather than the world's.
+   */
+  shared: boolean;
   /** Identifiers of the people this event is about. */
   characters: string[];
   /** The first picture, which is all the marker and the card ever show. */
@@ -176,6 +193,14 @@ export type Character = {
    */
   longitude: number | null;
   latitude: number | null;
+  /**
+   * In the common chronicle, where anybody may read and copy it.
+   *
+   * True unless the reader said otherwise: what is written here is history,
+   * and a chronicle nobody publishes is a chronicle nobody reads. The way out
+   * exists for the reader writing their own family rather than the world's.
+   */
+  shared: boolean;
   photos: StoredPhoto[];
 };
 
@@ -221,6 +246,15 @@ export type Tree = {
   id: string;
   name: string;
   note: string | null;
+  /**
+   * In the common chronicle, where anybody may read and copy it.
+   *
+   * True unless the reader said otherwise: what is written here is history,
+   * and a chronicle nobody publishes is a chronicle nobody reads. The way out
+   * exists for the reader writing their own family rather than the world's.
+   */
+  shared: boolean;
+
   members: TreeMember[];
   links: TreeLink[];
 };
