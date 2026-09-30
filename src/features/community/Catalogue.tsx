@@ -18,6 +18,7 @@ import {
   type Blocked,
   type Cursor,
   type Kind,
+  type Ordering,
   type Reason,
   type Search,
   type SharedThing,
@@ -26,26 +27,21 @@ import {
   Chip,
   InkButton,
   InkField,
-  SegmentedControl,
   Sheet,
   useNotice,
 } from "../../components/ui";
+import { DateWheels } from "../events/components/EventDateField";
 import { useEvents } from "../events/EventsProvider";
-import { formatYear } from "../events/historicalDate";
+import { formatHistoricalDate } from "../events/historicalDate";
+import { widthsFor } from "./period";
 import { usePlacement } from "../placement";
 import { ANSWER_WITHIN, CONTACT } from "../../config/contact";
 import { palette } from "../../theme/palette";
-import { radius, shadow, space, type } from "../../theme/tokens";
+import { BACKDROP, radius, shadow, space, type } from "../../theme/tokens";
 
-/** How wide "cette région" is, in metres — a long day's ride either way. */
-const NEARBY = 500_000;
-/** And how deep "cette époque" reaches, in years either side. */
-const ERA = 50;
-
-const SORTS = [
-  { value: "stars" as const, label: "Étoiles" },
-  { value: "recent" as const, label: "Récents" },
-  { value: "near" as const, label: "Proches" },
+const SORTS: { value: Ordering; label: string; said: string }[] = [
+  { value: "stars", label: "Les plus copiés", said: "étoiles" },
+  { value: "recent", label: "Les plus récents", said: "récents" },
 ];
 
 /** What a kind looks like, which is all that differs between the five. */
@@ -98,7 +94,7 @@ export function Catalogue({
   onClosed,
 }: CatalogueProps) {
   const { year, refresh } = useEvents();
-  const { looking } = usePlacement();
+  const { aiming, placeRegion, looking } = usePlacement();
   const { say, dialog } = useNotice();
 
   const [search, setSearch] = useState<Search>(ANYTHING);
@@ -114,6 +110,19 @@ export function Catalogue({
    * over is what the rest of the app does with the same problem.
    */
   const [face, setFace] = useState<"list" | "report" | "blocked">("list");
+  /**
+   * Which setting is open over the panel, if either.
+   *
+   * A card laid on the sheet rather than a face of it: two choices and a pair
+   * of wheels do not deserve the whole screen, and the list underneath is
+   * what the settings are about — seeing it behind them is the point.
+   *
+   * Drawn **inside** the sheet and not as a modal of its own, which is the
+   * whole reason it can exist: the region filter sends the reader to the map,
+   * and a modal presented over this panel would be dismissed along with it —
+   * that is the freeze the tree cost us.
+   */
+  const [sifting, setSifting] = useState<"sort" | "filters" | null>(null);
   const [why, setWhy] = useState<Reason>("offensive");
   const [said, setSaid] = useState("");
   const [blocked, setBlocked] = useState<Blocked[]>([]);
@@ -169,6 +178,25 @@ export function Catalogue({
     if (visible) listBlocked();
   }, [visible]);
 
+  /**
+   * The two filters open on what the reader is already looking at.
+   *
+   * Seeded rather than fixed: the field shows the year of the frieze and the
+   * point the plate is centred over, and both can then be moved. Nothing is
+   * narrowed until a width is chosen, so seeding changes no results.
+   */
+  useEffect(() => {
+    if (!visible) return;
+    setSearch((was) => ({
+      ...was,
+      at: was.at ?? (year === null ? null : { year: Math.trunc(year) }),
+      near: was.near ?? looking.current,
+    }));
+    // Once, on opening: following the frieze would move the filter under the
+    // reader while they were setting it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
   const report = () => {
     const one = reading;
     if (!one) return;
@@ -222,8 +250,10 @@ export function Catalogue({
       .finally(() => setTaking(null));
   };
 
-  const era = search.from !== null;
+  /** How many of the two filters are doing something, for the button. */
+  const era = search.span !== null && search.at !== null;
   const region = search.near !== null;
+  const narrowed = (era ? 1 : 0) + (region ? 1 : 0);
 
   const takeIt = (one: SharedThing) => {
     setTaking(one.id);
@@ -257,9 +287,12 @@ export function Catalogue({
 
   return (
     <Sheet
-      visible={visible}
+      // Out of the way while the reader aims at the map — the region filter
+      // asks for a point the same way everything else in this app does — and
+      // back afterwards with the sieve exactly as they left it.
+      visible={visible && !aiming}
       onClose={onClose}
-      onClosed={onClosed}
+      onClosed={aiming ? undefined : onClosed}
       tall
       liftsForKeyboard={false}
       title={
@@ -419,61 +452,43 @@ export function Catalogue({
               returnKeyType="search"
             />
 
-            <SegmentedControl
-              segments={SORTS}
-              value={search.sort}
-              onChange={(sort) =>
-                setSearch((was) => ({
-                  ...was,
-                  sort,
-                  // Sorting by nearness needs somewhere to be near.
-                  near:
-                    sort === "near" ? (looking.current ?? was.near) : was.near,
-                  withinMetres:
-                    sort === "near" && was.withinMetres === null
-                      ? null
-                      : was.withinMetres,
-                }))
-              }
-            />
+            {/* Two buttons rather than every control at once: the sieve is
+                three questions deep and only the name is asked often. */}
+            <View style={styles.tools}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Trier"
+                onPress={() => setSifting("sort")}
+                style={({ pressed }) => [styles.tool, pressed && styles.dim]}
+              >
+                <Text style={styles.toolLabel}>
+                  Tri · {SORTS.find((one) => one.value === search.sort)?.said}
+                </Text>
+                <Text style={styles.toolMore}>⌄</Text>
+              </Pressable>
 
-            {/* Both lean on what the reader is already looking at, which is
-                why they are two taps and not two date pickers. */}
-            <View style={styles.chips}>
-              <Chip
-                label={
-                  year === null
-                    ? "Cette époque"
-                    : `Vers ${formatYear(Math.trunc(year))}`
-                }
-                selected={era}
-                onPress={() =>
-                  setSearch((was) =>
-                    era || year === null
-                      ? { ...was, from: null, to: null }
-                      : {
-                          ...was,
-                          from: Math.trunc(year) - ERA,
-                          to: Math.trunc(year) + ERA,
-                        },
-                  )
-                }
-              />
-              <Chip
-                label="Cette région"
-                selected={region}
-                onPress={() =>
-                  setSearch((was) =>
-                    region
-                      ? { ...was, near: null, withinMetres: null }
-                      : {
-                          ...was,
-                          near: looking.current,
-                          withinMetres: NEARBY,
-                        },
-                  )
-                }
-              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Filtrer"
+                onPress={() => setSifting("filters")}
+                style={({ pressed }) => [
+                  styles.tool,
+                  narrowed > 0 && styles.toolOn,
+                  pressed && styles.dim,
+                ]}
+              >
+                <Text
+                  style={[styles.toolLabel, narrowed > 0 && styles.toolLabelOn]}
+                >
+                  {narrowed === 0 ? "Filtres" : `Filtres · ${narrowed}`}
+                </Text>
+                <Text
+                  style={[styles.toolMore, narrowed > 0 && styles.toolLabelOn]}
+                >
+                  ⌄
+                </Text>
+              </Pressable>
+
               {blocked.length > 0 ? (
                 <Chip
                   label={`Bloqués · ${blocked.length}`}
@@ -502,7 +517,10 @@ export function Catalogue({
             }
             ListFooterComponent={
               loading ? (
-                <ActivityIndicator color={palette.inkFaint} style={styles.wait} />
+                <ActivityIndicator
+                  color={palette.inkFaint}
+                  style={styles.wait}
+                />
               ) : null
             }
             renderItem={({ item }) => (
@@ -515,6 +533,149 @@ export function Catalogue({
               />
             )}
           />
+
+          {/* A card laid on the panel, never a modal over it. See `sifting`. */}
+          {sifting === null ? null : (
+            <View style={styles.over}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Fermer"
+                style={StyleSheet.absoluteFill}
+                onPress={() => setSifting(null)}
+              />
+              <View style={styles.card}>
+                <View style={styles.cardHead}>
+                  <Text style={styles.cardTitle}>
+                    {sifting === "sort" ? "Trier" : "Filtres"}
+                  </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Fermer"
+                    hitSlop={8}
+                    onPress={() => setSifting(null)}
+                    style={({ pressed }) => [pressed && styles.dim]}
+                  >
+                    <Text style={styles.cardClose}>×</Text>
+                  </Pressable>
+                </View>
+
+                {sifting === "sort" ? (
+                  <View style={styles.cardBody}>
+                    {SORTS.map((one) => (
+                      <InkButton
+                        key={one.value}
+                        label={one.label}
+                        variant={search.sort === one.value ? "solid" : "tonal"}
+                        onPress={() => {
+                          setSearch((was) => ({ ...was, sort: one.value }));
+                          setSifting(null);
+                        }}
+                      />
+                    ))}
+                  </View>
+                ) : (
+                  // No scrolling container here: the wheels below are a
+                  // virtualized list, and React Native refuses to window one
+                  // nested in a scroll view of the same direction. The card is
+                  // sized to hold them instead.
+                  <View style={styles.cardBody}>
+                    <View style={styles.sift}>
+                      <Text style={styles.siftLegend}>Époque</Text>
+                      <DateWheels
+                        value={search.at ?? { year: new Date().getFullYear() }}
+                        onChange={(at) =>
+                          setSearch((was) => {
+                            // A width the new precision no longer offers would be a
+                            // week around a date known only to the year.
+                            const kept = widthsFor(at).some(
+                              (one) => one.years === was.span,
+                            );
+                            return { ...was, at, span: kept ? was.span : null };
+                          })
+                        }
+                      />
+                      <Text style={styles.siftAt}>
+                        {formatHistoricalDate(
+                          search.at ?? { year: new Date().getFullYear() },
+                        )}
+                      </Text>
+
+                      <View style={styles.siftRow}>
+                        <Chip
+                          label="Toute l'histoire"
+                          selected={search.span === null}
+                          onPress={() =>
+                            setSearch((was) => ({ ...was, span: null }))
+                          }
+                        />
+                        {/* Which three, and why those three, is decided in `period.ts`:
+                  a reader who named a day is asking about a day. */}
+                        {widthsFor(
+                          search.at ?? { year: new Date().getFullYear() },
+                        ).map((one) => (
+                          <Chip
+                            key={one.label}
+                            label={one.label}
+                            selected={search.span === one.years}
+                            onPress={() =>
+                              setSearch((was) => ({ ...was, span: one.years }))
+                            }
+                          />
+                        ))}
+                      </View>
+                    </View>
+
+                    <View style={styles.sift}>
+                      <Text style={styles.siftLegend}>Région</Text>
+                      <Text style={styles.spot}>
+                        {region && search.withinMetres !== null
+                          ? `${Math.round(search.withinMetres / 1000)} km autour de ${search.near?.latitude.toFixed(2)}°, ${search.near?.longitude.toFixed(2)}°`
+                          : "Partout"}
+                      </Text>
+                      {/* The point and the radius are chosen together, on the map,
+                where the circle can be seen against the coastlines. Chips
+                here could only name a distance nobody can picture. */}
+                      <InkButton
+                        label={region ? "Changer la zone" : "Choisir une zone"}
+                        variant="tonal"
+                        onPress={() => {
+                          void placeRegion(
+                            search.near,
+                            search.withinMetres ?? 500_000,
+                          ).then((zone) => {
+                            if (zone === null) return;
+                            setSearch((was) => ({
+                              ...was,
+                              near: {
+                                longitude: zone.longitude,
+                                latitude: zone.latitude,
+                              },
+                              withinMetres: zone.metres,
+                            }));
+                          });
+                        }}
+                      />
+                      {region ? (
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={() =>
+                            setSearch((was) => ({
+                              ...was,
+                              near: null,
+                              withinMetres: null,
+                            }))
+                          }
+                          style={({ pressed }) => [pressed && styles.dim]}
+                        >
+                          <Text style={styles.clear}>Chercher partout</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
         </>
       ) : (
         <SharedCard
@@ -593,8 +754,107 @@ const THUMB = 54;
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  sieve: { paddingHorizontal: space.xl, paddingBottom: space.md, gap: space.md },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+  sieve: {
+    paddingHorizontal: space.xl,
+    paddingBottom: space.md,
+    gap: space.md,
+  },
+  tools: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+  /** A drawn button, like the discs on the plate: edged and lifted. */
+  tool: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.xs,
+    minHeight: 34,
+    paddingHorizontal: space.md,
+    borderRadius: radius.pill,
+    backgroundColor: palette.paperLight,
+    borderWidth: 1.5,
+    borderColor: palette.paperDeep,
+  },
+  /** Wax once it is doing something, so a narrowed list says so. */
+  toolOn: { backgroundColor: palette.wax, borderColor: palette.waxDeep },
+  toolLabel: { ...type.legend, fontWeight: "700", color: palette.ink },
+  toolLabelOn: { color: palette.paperLight },
+  toolMore: { ...type.legend, color: palette.inkFaint },
+
+  /**
+   * The settings, laid over the panel.
+   *
+   * Absolute inside the sheet, which clips it: the card reads as centred on
+   * the sheet and the list stays faintly visible behind — it is what the
+   * settings are about. And being no modal at all is what lets the region
+   * filter hand the screen to the reticle without anything being dismissed
+   * from underneath it.
+   */
+  over: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    /**
+     * Above every sibling, and the footer is one of them.
+     *
+     * Drawing order alone is not enough: a fragment creates no view, so this
+     * card, the list, the header and the sheet's own footer are all children
+     * of the same panel — and the footer is written after them. Being last
+     * among its own siblings puts the card over the list; the layer puts it
+     * over the footer as well, which it must cover, or a tap meant for the
+     * card's backdrop would close the whole sheet.
+     */
+    zIndex: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: space.lg,
+    backgroundColor: BACKDROP,
+  },
+  card: {
+    width: "100%",
+    maxWidth: 380,
+    maxHeight: "94%",
+    gap: space.md,
+    padding: space.lg,
+    borderRadius: radius.xl,
+    backgroundColor: palette.paperLight,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.paperDeep,
+    ...shadow.lifted,
+  },
+  cardHead: { flexDirection: "row", alignItems: "flex-start", gap: space.sm },
+  cardTitle: { ...type.plate, flex: 1, fontSize: 20, color: palette.ink },
+  cardClose: {
+    fontSize: 24,
+    lineHeight: 26,
+    color: palette.inkFaint,
+    marginTop: -2,
+  },
+  cardBody: { gap: space.md },
+
+  sift: { gap: space.sm },
+  siftLegend: { ...type.legend, fontWeight: "700", color: palette.inkSoft },
+  siftRow: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+  siftAside: { ...type.legend, color: palette.inkFaint },
+  siftAt: {
+    ...type.body,
+    fontWeight: "700",
+    color: palette.wax,
+    textAlign: "center",
+  },
+  clear: {
+    ...type.legend,
+    color: palette.inkFaint,
+    textDecorationLine: "underline",
+    alignSelf: "flex-start",
+  },
+  /** The thing the width is measured from: a year, or a point. */
+  centre: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: space.md,
+  },
+  yearField: { minWidth: 96 },
+  spot: { ...type.body, flex: 1, color: palette.ink },
   list: { paddingHorizontal: space.xl, paddingBottom: space.lg, gap: space.sm },
   nothing: {
     ...type.body,
@@ -676,7 +936,6 @@ const styles = StyleSheet.create({
   blockedName: { flex: 1, fontSize: 15, fontWeight: "600", color: palette.ink },
   unblock: { paddingHorizontal: space.sm, paddingVertical: 4 },
   unblockLabel: { ...type.caption, fontWeight: "700", color: palette.wax },
-
 
   aside: { ...type.legend, color: palette.inkFaint },
 });

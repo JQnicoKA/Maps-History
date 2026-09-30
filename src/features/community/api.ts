@@ -7,6 +7,7 @@ import type {
   SharedThing,
   SharedThingDetail,
 } from "./types";
+import { bounds } from "./period";
 import { supabase } from "../../lib/supabase";
 
 const BUCKET = "event-photos";
@@ -139,8 +140,9 @@ export async function search(
 ): Promise<SharedThing[]> {
   const { data, error } = await supabase().rpc(DOORS[kind].search, {
     words: wanted.words.trim() === "" ? null : wanted.words.trim(),
-    from_year: wanted.from,
-    to_year: wanted.to,
+    // A date and a width become the two bounds the door expects, on the same
+    // continuous axis the database indexes.
+    ...bounds(wanted.at, wanted.span),
     near_lon: wanted.near?.longitude ?? null,
     near_lat: wanted.near?.latitude ?? null,
     within_m: wanted.near ? wanted.withinMetres : null,

@@ -28,7 +28,7 @@ import { TreeBuilder } from "../../features/genealogy/TreeBuilder";
 import { EventSummaryCard } from "../../features/events/components/EventSummaryCard";
 import { LocationReticle } from "../../features/events/components/LocationReticle";
 import { FilterButton } from "../../features/filters/FilterButton";
-import { usePlacement } from "../../features/placement";
+import { RegionReticle, usePlacement } from "../../features/placement";
 import { Catalogue } from "../../features/community/Catalogue";
 import {
   CHARACTER_LOOK,
@@ -97,7 +97,17 @@ export function MapScreen() {
     trees,
     selectEvent,
   } = useEvents();
-  const { aiming, settle, looking } = usePlacement();
+  const { aiming, asking, settle, looking } = usePlacement();
+  /**
+   * How much of a metre a screen point is worth, where the plate is looking.
+   *
+   * Web Mercator: 156 543 metres to a pixel at the equator at zoom zero,
+   * halved at every zoom and narrowed by the cosine of the latitude. The
+   * region reticle needs it to draw a radius in metres as a circle in points.
+   */
+  const [pointsPerMetre, setPointsPerMetre] = useState<number | null>(null);
+  /** The reach being set, while the region reticle is up. */
+  const [reach, setReach] = useState(500_000);
   // The opening shot should not fly across the world; every later move should.
   const hasFramed = useRef(false);
 
@@ -294,13 +304,16 @@ export function MapScreen() {
 
   // Selecting an event recentres the plate; the zoom the reader chose is left
   // alone on purpose.
-  const center = useMemo<LngLat | undefined>(
-    () =>
-      selectedEvent
-        ? [selectedEvent.longitude, selectedEvent.latitude]
-        : undefined,
-    [selectedEvent],
-  );
+  const center = useMemo<LngLat | undefined>(() => {
+    // A zone being changed opens where it already is: asking somebody to pan
+    // back to the circle they set last week is asking them to set it again.
+    if (asking?.kind === "zone" && asking.from) {
+      return [asking.from.longitude, asking.from.latitude];
+    }
+    return selectedEvent
+      ? [selectedEvent.longitude, selectedEvent.latitude]
+      : undefined;
+  }, [asking, selectedEvent]);
 
   useEffect(() => {
     if (center) hasFramed.current = true;
@@ -314,11 +327,27 @@ export function MapScreen() {
     );
   }, [settle]);
 
+  /** Answers the region question with the crosshair and the reach set here. */
+  const confirmRegion = useCallback(async () => {
+    const centre = await mapRef.current?.getCenter();
+    settle(
+      centre
+        ? { longitude: centre[0], latitude: centre[1], metres: reach }
+        : null,
+    );
+  }, [settle, reach]);
+
   // Aiming at a map one cannot see is not aiming. A placement asked for from
   // the list view brings the plate up first.
   useEffect(() => {
     if (aiming) setView("map");
   }, [aiming]);
+
+  // The reticle opens on the reach the filter already had, and on the plate
+  // the reader is looking at when it has none.
+  useEffect(() => {
+    if (asking?.kind === "zone") setReach(asking.metres);
+  }, [asking]);
 
   const missing = [
     ...(env.hasMapTilerApiKey ? [] : ["EXPO_PUBLIC_MAPTILER_API_KEY"]),
@@ -349,8 +378,12 @@ export function MapScreen() {
           centerAnimationDuration={hasFramed.current ? 650 : 0}
           attributionOffset={aiming || drawing ? 0 : insets.bottom + 4}
           onDetailChange={setDetailed}
-          onLook={(centre) => {
+          onLook={(centre, zoom) => {
             looking.current = centre;
+            const metresPerPoint =
+              (156543.03392 * Math.cos((centre.latitude * Math.PI) / 180)) /
+              2 ** zoom;
+            setPointsPerMetre(metresPerPoint === 0 ? null : 1 / metresPerPoint);
           }}
           // One finger paints, so it must not also drag the plate. Pinch is
           // untouched: the reader can still zoom to where they are working.
@@ -400,9 +433,20 @@ export function MapScreen() {
 
       {mapDialog}
 
-      {aiming ? (
+      {asking?.kind === "point" ? (
         <LocationReticle
           onConfirm={() => void confirmPlacement()}
+          onCancel={() => settle(null)}
+          bottomInset={insets.bottom}
+        />
+      ) : null}
+
+      {asking?.kind === "zone" ? (
+        <RegionReticle
+          metres={reach}
+          onMetresChange={setReach}
+          pointsPerMetre={pointsPerMetre}
+          onConfirm={() => void confirmRegion()}
           onCancel={() => settle(null)}
           bottomInset={insets.bottom}
         />

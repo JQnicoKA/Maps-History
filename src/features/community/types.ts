@@ -64,15 +64,35 @@ export type SharedThingDetail = SharedThing & {
   folders: string[];
 };
 
-/** How the catalogue is ordered. */
-export type Ordering = "stars" | "recent" | "near";
+/**
+ * How the catalogue is ordered.
+ *
+ * Two, and the database knows a third — by nearness — which the panel does
+ * not offer. Ordering by distance and *filtering* by region answer the same
+ * wish, and the filter answers it better: "what is there, around here" is a
+ * question about what to show, not about what to show first.
+ */
+export type Ordering = "stars" | "recent";
 
 export type Search = {
   words: string;
-  /** A span to overlap with, or null for every century. */
-  from: number | null;
-  to: number | null;
-  /** Where to look, and how far — both or neither. */
+  /**
+   * The era, as the reader states it: a date, and how far either side of it.
+   *
+   * A centre and a width rather than two bounds, because that is the shape of
+   * the question — "around the 14th of July 1789, give or take a week" — and
+   * because it lets the two be changed one at a time. The bounds the database
+   * wants are worked out when the question is asked; see `period.ts`, which
+   * also decides which widths a date of that precision deserves.
+   *
+   * A null width means every century, whatever date is in the wheels.
+   */
+  at: HistoricalDate | null;
+  span: number | null;
+  /**
+   * Where to look, and how far — both or neither, and both chosen on the map
+   * itself, where the circle can be seen.
+   */
   near: { longitude: number; latitude: number } | null;
   withinMetres: number | null;
   sort: Ordering;
@@ -80,8 +100,8 @@ export type Search = {
 
 export const ANYTHING: Search = {
   words: "",
-  from: null,
-  to: null,
+  at: null,
+  span: null,
   near: null,
   withinMetres: null,
   sort: "stars",

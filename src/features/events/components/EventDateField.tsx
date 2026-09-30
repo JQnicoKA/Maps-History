@@ -91,6 +91,77 @@ function Wheel({
 }
 
 /**
+ * Three wheels and the band that says which row is chosen.
+ *
+ * Lifted out of the field below so the catalogue's period filter can ask the
+ * same question with the same control. Three wheels rather than the system
+ * date picker, which cannot express what this app stores: a year on its own
+ * ("1299"), a month without a day, or a year before Christ. The dash at the
+ * top of the day and month wheels is what keeps an imprecise date imprecise
+ * instead of inventing a 1st of January.
+ */
+export function DateWheels({
+  value,
+  onChange,
+}: {
+  value: HistoricalDate;
+  onChange: (date: HistoricalDate) => void;
+}) {
+  const years = useMemo(
+    () =>
+      Array.from({ length: LAST_YEAR - FIRST_YEAR + 1 }, (_, i) =>
+        formatYear(FIRST_YEAR + i),
+      ),
+    [],
+  );
+  const days = useMemo(
+    () => ["—", ...Array.from({ length: 31 }, (_, i) => String(i + 1))],
+    [],
+  );
+  const months = useMemo(() => ["—", ...MONTHS], []);
+
+  const yearIndex = Math.min(
+    Math.max(value.year - FIRST_YEAR, 0),
+    years.length - 1,
+  );
+
+  return (
+    <View style={styles.wheels}>
+      {/* The centre band shows which row is selected. */}
+      <View pointerEvents="none" style={styles.band} />
+
+      <Wheel
+        flex={1}
+        data={days}
+        index={value.day ?? 0}
+        onIndexChange={(index) =>
+          onChange(
+            index === 0 || value.month === undefined
+              ? withoutDay(value)
+              : { ...value, day: index },
+          )
+        }
+      />
+      <Wheel
+        flex={1.6}
+        data={months}
+        index={value.month ?? 0}
+        onIndexChange={(index) =>
+          // A day cannot outlive its month.
+          onChange(index === 0 ? withoutMonth(value) : { ...value, month: index })
+        }
+      />
+      <Wheel
+        flex={1.6}
+        data={years}
+        index={yearIndex}
+        onIndexChange={(index) => onChange({ ...value, year: FIRST_YEAR + index })}
+      />
+    </View>
+  );
+}
+
+/**
  * Clearing the day, or the month and the day with it.
  *
  * Written out rather than rebuilt inline, because rebuilding `{ year }` from
@@ -195,19 +266,6 @@ export function EventDateField({
   const [open, setOpen] = useState(false);
   const { say, dialog } = useNotice();
 
-  const years = useMemo(
-    () =>
-      Array.from({ length: LAST_YEAR - FIRST_YEAR + 1 }, (_, i) =>
-        formatYear(FIRST_YEAR + i),
-      ),
-    [],
-  );
-  const days = useMemo(
-    () => ["—", ...Array.from({ length: 31 }, (_, i) => String(i + 1))],
-    [],
-  );
-  const months = useMemo(() => ["—", ...MONTHS], []);
-
   const [draftStart, setDraftStart] = useState<HistoricalDate>(
     start ?? { year: new Date().getFullYear() },
   );
@@ -221,11 +279,6 @@ export function EventDateField({
     if (editing === "end" && draftEnd) setDraftEnd(update(draftEnd));
     else setDraftStart(update(draftStart));
   };
-
-  const yearIndex = Math.min(
-    Math.max(draft.year - FIRST_YEAR, 0),
-    years.length - 1,
-  );
 
   const reopen = () => {
     setDraftStart(start ?? { year: new Date().getFullYear() });
@@ -312,42 +365,10 @@ export function EventDateField({
             />
           ) : null}
 
-          <View style={styles.wheels}>
-            {/* The centre band shows which row is selected. */}
-            <View pointerEvents="none" style={styles.band} />
-
-            <Wheel
-              flex={1}
-              data={days}
-              index={draft.day ?? 0}
-              onIndexChange={(index) =>
-                setDraft((state) =>
-                  index === 0 || state.month === undefined
-                    ? withoutDay(state)
-                    : { ...state, day: index },
-                )
-              }
-            />
-            <Wheel
-              flex={1.6}
-              data={months}
-              index={draft.month ?? 0}
-              onIndexChange={(index) =>
-                setDraft((state) =>
-                  // A day cannot outlive its month.
-                  index === 0 ? withoutMonth(state) : { ...state, month: index },
-                )
-              }
-            />
-            <Wheel
-              flex={1.6}
-              data={years}
-              index={yearIndex}
-              onIndexChange={(index) =>
-                setDraft((state) => ({ ...state, year: FIRST_YEAR + index }))
-              }
-            />
-          </View>
+          <DateWheels
+            value={draft}
+            onChange={(next) => setDraft(() => next)}
+          />
 
           <Text style={styles.preview}>
             {draftEnd

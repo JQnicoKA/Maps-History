@@ -11,6 +11,9 @@ import {
 /** A point on the plate. The same pair everything placed on it carries. */
 export type Point = { longitude: number; latitude: number };
 
+/** A point and how far around it — what the catalogue's region filter is. */
+export type Zone = Point & { metres: number };
+
 type PlacementContextValue = {
   /**
    * True while the reader is aiming at the map.
@@ -25,8 +28,18 @@ type PlacementContextValue = {
    * reader confirmed — or null if they backed out.
    */
   place: () => Promise<Point | null>;
+  /**
+   * The same, with a radius to set alongside the point.
+   *
+   * Asked for on the map rather than in a list of distances, because a radius
+   * is the one thing nobody can picture from a number: "five hundred
+   * kilometres" means something once it is drawn over the coastlines.
+   */
+  placeRegion: (from: Point | null, metres: number) => Promise<Zone | null>;
+  /** What the reticle is being asked for, while it is up. */
+  asking: { kind: "point" } | { kind: "zone"; from: Point | null; metres: number } | null;
   /** Answered by whoever owns the reticle. Not for the forms to call. */
-  settle: (point: Point | null) => void;
+  settle: (answer: Point | Zone | null) => void;
   /**
    * Where the plate is centred, kept up to date by the screen that draws it.
    *
@@ -54,31 +67,48 @@ const PlacementContext = createContext<PlacementContextValue | null>(null);
  * in between has to carry it.
  */
 export function PlacementProvider({ children }: { children: ReactNode }) {
-  const [aiming, setAiming] = useState(false);
+  const [asking, setAsking] = useState<
+    { kind: "point" } | { kind: "zone"; from: Point | null; metres: number } | null
+  >(null);
   /** Whoever is waiting for an answer, if anyone. */
-  const asking = useRef<((point: Point | null) => void) | null>(null);
+  const waiting = useRef<((answer: Point | Zone | null) => void) | null>(null);
   const looking = useRef<Point | null>(null);
 
   const place = useCallback(() => {
     // A second question while the first is unanswered should not leave the
     // first one waiting for ever: it is told nothing came of it.
-    asking.current?.(null);
-    setAiming(true);
+    waiting.current?.(null);
+    setAsking({ kind: "point" });
     return new Promise<Point | null>((resolve) => {
-      asking.current = resolve;
+      waiting.current = resolve as (answer: Point | Zone | null) => void;
     });
   }, []);
 
-  const settle = useCallback((point: Point | null) => {
-    setAiming(false);
-    const answer = asking.current;
-    asking.current = null;
-    answer?.(point);
+  const placeRegion = useCallback((from: Point | null, metres: number) => {
+    waiting.current?.(null);
+    setAsking({ kind: "zone", from, metres });
+    return new Promise<Zone | null>((resolve) => {
+      waiting.current = resolve as (answer: Point | Zone | null) => void;
+    });
+  }, []);
+
+  const settle = useCallback((answer: Point | Zone | null) => {
+    setAsking(null);
+    const told = waiting.current;
+    waiting.current = null;
+    told?.(answer);
   }, []);
 
   const value = useMemo(
-    () => ({ aiming, place, settle, looking }),
-    [aiming, place, settle],
+    () => ({
+      aiming: asking !== null,
+      asking,
+      place,
+      placeRegion,
+      settle,
+      looking,
+    }),
+    [asking, place, placeRegion, settle],
   );
 
   return (

@@ -40,7 +40,10 @@ export type WorldMapProps = {
    * For the panels that ask the collection "what is there, near here": they
    * have no other way to know what the reader is looking at.
    */
-  onLook?: (centre: { longitude: number; latitude: number }) => void;
+  onLook?: (
+    centre: { longitude: number; latitude: number },
+    zoom: number,
+  ) => void;
   /**
    * Frees the single finger for something other than panning.
    *
@@ -79,7 +82,7 @@ export function WorldMap({
         number,
         number,
       ];
-      onLook?.({ longitude, latitude });
+      onLook?.({ longitude, latitude }, event.nativeEvent.zoom);
 
       const next = event.nativeEvent.zoom >= ZOOM.country;
       if (next === detailed.current) return;
