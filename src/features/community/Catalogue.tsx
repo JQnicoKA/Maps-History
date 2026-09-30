@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Dimensions,
   FlatList,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,13 +12,16 @@ import {
 } from "react-native";
 
 import * as api from "./api";
+import { LOOKS } from "./looks";
 import { SharedCard } from "./SharedCard";
+import { ThingRow } from "./ThingRow";
 import {
   ANYTHING,
   REASONS,
   type Blocked,
   type Cursor,
   type Kind,
+  type Look,
   type Ordering,
   type Reason,
   type Search,
@@ -39,27 +43,33 @@ import { ANSWER_WITHIN, CONTACT } from "../../config/contact";
 import { palette } from "../../theme/palette";
 import { BACKDROP, radius, shadow, space, type } from "../../theme/tokens";
 
-const SORTS: { value: Ordering; label: string; said: string }[] = [
-  { value: "stars", label: "Les plus copiés", said: "étoiles" },
-  { value: "recent", label: "Les plus récents", said: "récents" },
-];
+/** Where a rising card starts from: below the panel, whatever its height. */
+const OFFSCREEN = Dimensions.get("window").height;
 
-/** What a kind looks like, which is all that differs between the five. */
-export type Look = {
-  /** "Chronique commune", and what one of them is called on its own. */
-  many: string;
-  one: string;
-  /** Stands in for a missing picture — an emoji, an initial. */
-  glyph: (thing: SharedThing) => string;
-  /** The line under the title: a period, a lifespan, a reign. */
-  under: (thing: SharedThing) => string;
-  /** What the two name lists mean for this kind. */
-  castLegend: string;
-  castAside: string;
-  filedLegend: string;
-  filedAside: string;
-  nothing: string;
-};
+const SORTS: {
+  value: Ordering;
+  label: string;
+  /** Said on the button, where there is room for one word. */
+  said: string;
+  /** And why one would want it, on the card where there is room to say. */
+  why: string;
+  mark: string;
+}[] = [
+  {
+    value: "stars",
+    label: "Les plus copiés",
+    said: "étoiles",
+    why: "Ce que d'autres lecteurs ont trouvé bon à garder.",
+    mark: "★",
+  },
+  {
+    value: "recent",
+    label: "Les plus récents",
+    said: "récents",
+    why: "Ce qui vient d'être écrit, copié ou non.",
+    mark: "◷",
+  },
+];
 
 export type CatalogueProps = {
   kind: Kind;
@@ -101,7 +111,86 @@ export function Catalogue({
   const [rows, setRows] = useState<SharedThing[]>([]);
   const [loading, setLoading] = useState(false);
   const [drained, setDrained] = useState(false);
-  const [reading, setReading] = useState<SharedThing | null>(null);
+  /**
+   * What is being read, and what it was reached from.
+   *
+   * A stack rather than one thing, because a classeur's card lists its
+   * events and those have to be openable — nobody takes twenty-seven events
+   * on the strength of their titles. "Retour" then means one step back to
+   * the classeur, not all the way out to the list.
+   */
+  const [trail, setTrail] = useState<{ kind: Kind; thing: SharedThing }[]>([]);
+  const reading = trail[trail.length - 1] ?? null;
+  /** Drawn as the thing it is, not as the thing that held it. */
+  const readingLook = reading === null ? look : LOOKS[reading.kind];
+
+  /**
+   * How far off the bottom the card being read is.
+   *
+   * It rises on every step deeper — the list to a classeur, the classeur to
+   * one of its events — because that is what the gesture said: something has
+   * come forward. Going back sends it down and only then pops the trail, so
+   * the card is seen leaving rather than blinking out.
+   */
+  const rise = useRef(new Animated.Value(OFFSCREEN)).current;
+  /**
+   * True while a card is on its way down.
+   *
+   * The buttons at the foot belong to whatever the reader is arriving at,
+   * not to what is still leaving: waiting for the slide to end made them
+   * change once the card had already gone. Told at the moment "Retour" is
+   * pressed, they change with the gesture and the card finishes travelling
+   * under them.
+   */
+  const [descending, setDescending] = useState(false);
+
+  /**
+   * Whether the buttons at the foot belong to a card.
+   *
+   * On the way down it looks at where the step lands: back out of an event
+   * opened inside a classeur returns to the classeur, so they stay the
+   * card's; back out of the last one returns to the list, so "Fermer" comes
+   * back — with the gesture, not after the slide.
+   */
+  const atCard = descending ? trail.length > 1 : trail.length > 0;
+
+  const rose = useRef(0);
+  useEffect(() => {
+    if (trail.length === 0) {
+      rose.current = 0;
+      return;
+    }
+    // Only a step deeper travels. Coming back to a classeur from one of its
+    // events, the classeur is already there and should not be thrown down
+    // and hauled up again.
+    const deeper = trail.length > rose.current;
+    rose.current = trail.length;
+    if (!deeper) {
+      rise.setValue(0);
+      return;
+    }
+    rise.setValue(OFFSCREEN);
+    Animated.spring(rise, {
+      toValue: 0,
+      damping: 26,
+      stiffness: 240,
+      mass: 0.9,
+      useNativeDriver: true,
+    }).start();
+  }, [trail.length, rise]);
+
+  const back = () => {
+    if (descending) return;
+    setDescending(true);
+    Animated.timing(rise, {
+      toValue: OFFSCREEN,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      setDescending(false);
+      if (finished) setTrail((was) => was.slice(0, -1));
+    });
+  };
   const [taking, setTaking] = useState<string | null>(null);
   /**
    * Which of the four faces is up.
@@ -123,6 +212,14 @@ export function Catalogue({
    * that is the freeze the tree cost us.
    */
   const [sifting, setSifting] = useState<"sort" | "filters" | null>(null);
+  /**
+   * Whether the era's wheels are out.
+   *
+   * Closed, the row says one thing: "Toute l'histoire", or the period that
+   * was set. A date and the words "toute l'histoire" on screen at once
+   * contradict each other, which is what this replaced.
+   */
+  const [tuning, setTuning] = useState(false);
   const [why, setWhy] = useState<Reason>("offensive");
   const [said, setSaid] = useState("");
   const [blocked, setBlocked] = useState<Blocked[]>([]);
@@ -198,18 +295,24 @@ export function Catalogue({
   }, [visible]);
 
   const report = () => {
-    const one = reading;
+    const one = reading?.thing;
     if (!one) return;
     setTaking(one.id);
     void api
-      .report(kind, one.id, why, said)
+      .report(reading.kind, one.id, why, said)
       .then(() => {
         setRows((current) =>
           current.map((row) =>
             row.id === one.id ? { ...row, reported: true } : row,
           ),
         );
-        setReading({ ...one, reported: true });
+        setTrail((was) =>
+          was.map((step) =>
+            step.thing.id === one.id
+              ? { ...step, thing: { ...step.thing, reported: true } }
+              : step,
+          ),
+        );
         setFace("list");
         setSaid("");
         say(
@@ -227,13 +330,13 @@ export function Catalogue({
   };
 
   const block = () => {
-    const one = reading;
+    const one = reading?.thing;
     if (!one) return;
     setTaking(one.id);
     void api
-      .blockAuthorOf(kind, one.id)
+      .blockAuthorOf(reading.kind, one.id)
       .then(() => {
-        setReading(null);
+        setTrail([]);
         listBlocked();
         void fetchPage(null);
         say(
@@ -254,11 +357,22 @@ export function Catalogue({
   const era = search.span !== null && search.at !== null;
   const region = search.near !== null;
   const narrowed = (era ? 1 : 0) + (region ? 1 : 0);
+  /** The date in the wheels, which stand on today when nothing was said. */
+  const when = search.at ?? { year: new Date().getFullYear() };
+  /** And the width, named — "± 1 semaine" — for the closed row. */
+  const spanSaid =
+    widthsFor(when).find((one) => one.years === search.span)?.label ?? "";
 
-  const takeIt = (one: SharedThing) => {
+  /** Puts the two settings away, wheels included. */
+  const close = () => {
+    setSifting(null);
+    setTuning(false);
+  };
+
+  const takeIt = (one: SharedThing, its: Kind = kind) => {
     setTaking(one.id);
     void api
-      .copy(kind, one.id)
+      .copy(its, one.id)
       .then(async () => {
         // The collection has a row it does not know about, and the map draws
         // from what it holds.
@@ -270,10 +384,19 @@ export function Catalogue({
               : row,
           ),
         );
-        setReading((current) =>
-          current && current.id === one.id
-            ? { ...current, copied: true, stars: current.stars + 1 }
-            : current,
+        setTrail((was) =>
+          was.map((step) =>
+            step.thing.id === one.id
+              ? {
+                  ...step,
+                  thing: {
+                    ...step.thing,
+                    copied: true,
+                    stars: step.thing.stars + 1,
+                  },
+                }
+              : step,
+          ),
         );
       })
       .catch((cause: unknown) =>
@@ -295,14 +418,23 @@ export function Catalogue({
       onClosed={aiming ? undefined : onClosed}
       tall
       liftsForKeyboard={false}
+      /**
+       * The heading never changes while a card is read, and that is the
+       * point.
+       *
+       * It used to name the thing — "Un classeur" over a classeur — which
+       * said nothing the card does not say better with its own name three
+       * lines down. Taking it away instead made the opening two events: the
+       * title vanished, then the card rose into the gap. Left alone, it is
+       * simply the name of the catalogue one is in, the card slides up
+       * beneath it, and nothing flickers.
+       */
       title={
         face === "report"
           ? "Signaler"
           : face === "blocked"
             ? "Personnes bloquées"
-            : reading === null
-              ? look.many
-              : look.one
+            : look.many
       }
       footer={
         face === "report" ? (
@@ -329,30 +461,31 @@ export function Catalogue({
             grow
             onPress={() => setFace("list")}
           />
-        ) : reading === null ? (
+        ) : !atCard || reading === null ? (
           <InkButton label="Fermer" variant="tonal" grow onPress={onClose} />
         ) : (
+          /* The card slides; the chrome around it does not. Putting these
+             inside the sliding panel made them travel with it, which was
+             prettier — and left the sheet's own footer showing underneath,
+             two rows of buttons at once. */
           <>
-            <InkButton
-              label="Retour"
-              variant="tonal"
-              grow
-              onPress={() => setReading(null)}
-            />
+            <InkButton label="Retour" variant="tonal" grow onPress={back} />
             <InkButton
               label={
-                reading.mine
+                reading.thing.mine
                   ? "Le vôtre"
-                  : reading.copied
+                  : reading.thing.copied
                     ? "Déjà copié"
-                    : taking === reading.id
+                    : taking === reading.thing.id
                       ? "Copie…"
                       : "Copier"
               }
               variant="solid"
               grow
-              disabled={reading.mine || reading.copied || taking !== null}
-              onPress={() => takeIt(reading)}
+              disabled={
+                reading.thing.mine || reading.thing.copied || taking !== null
+              }
+              onPress={() => takeIt(reading.thing, reading.kind)}
             />
           </>
         )
@@ -363,7 +496,8 @@ export function Catalogue({
       {face === "report" ? (
         <ScrollView contentContainerStyle={styles.reading}>
           <Text style={styles.lead}>
-            Dites-nous ce qui ne va pas avec « {reading?.title} ». Son auteur
+            Dites-nous ce qui ne va pas avec « {reading?.thing.title} ». Son
+            auteur
             n'en saura rien. Assez de signalements et la chose quitte la
             chronique en attendant d'être relue.
           </Text>
@@ -440,8 +574,8 @@ export function Catalogue({
             ))
           )}
         </ScrollView>
-      ) : reading === null ? (
-        <>
+      ) : (
+        <View style={styles.stack}>
           <View style={styles.sieve}>
             <InkField
               label="Nom"
@@ -524,35 +658,42 @@ export function Catalogue({
               ) : null
             }
             renderItem={({ item }) => (
-              <Entry
+              <ThingRow
                 one={item}
                 look={look}
                 busy={taking === item.id}
-                onOpen={() => setReading(item)}
+                onOpen={() => setTrail([{ kind, thing: item }])}
                 onTake={() => takeIt(item)}
               />
             )}
           />
 
-          {/* A card laid on the panel, never a modal over it. See `sifting`. */}
+          {/* A card laid on the panel, never a modal over it. See `sifting`.
+              Last among its siblings and layered above them, because a
+              fragment creates no view: the sheet's own footer is a sibling
+              too, and it is written after this. */}
           {sifting === null ? null : (
             <View style={styles.over}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Fermer"
                 style={StyleSheet.absoluteFill}
-                onPress={() => setSifting(null)}
+                onPress={close}
               />
+
               <View style={styles.card}>
                 <View style={styles.cardHead}>
-                  <Text style={styles.cardTitle}>
-                    {sifting === "sort" ? "Trier" : "Filtres"}
-                  </Text>
+                  <View style={styles.cardHeading}>
+                    <Text style={styles.cardTitle}>
+                      {sifting === "sort" ? "Trier" : "Filtres"}
+                    </Text>
+                    <View style={styles.cardRule} />
+                  </View>
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Fermer"
-                    hitSlop={8}
-                    onPress={() => setSifting(null)}
+                    hitSlop={10}
+                    onPress={close}
                     style={({ pressed }) => [pressed && styles.dim]}
                   >
                     <Text style={styles.cardClose}>×</Text>
@@ -561,199 +702,250 @@ export function Catalogue({
 
                 {sifting === "sort" ? (
                   <View style={styles.cardBody}>
-                    {SORTS.map((one) => (
-                      <InkButton
-                        key={one.value}
-                        label={one.label}
-                        variant={search.sort === one.value ? "solid" : "tonal"}
-                        onPress={() => {
-                          setSearch((was) => ({ ...was, sort: one.value }));
-                          setSifting(null);
-                        }}
-                      />
-                    ))}
+                    {SORTS.map((one) => {
+                      const chosen = search.sort === one.value;
+                      return (
+                        <Pressable
+                          key={one.value}
+                          accessibilityRole="radio"
+                          accessibilityState={{ selected: chosen }}
+                          onPress={() => {
+                            setSearch((was) => ({ ...was, sort: one.value }));
+                            close();
+                          }}
+                          style={({ pressed }) => [
+                            styles.choice,
+                            chosen && styles.choiceOn,
+                            pressed && styles.dim,
+                          ]}
+                        >
+                          <Text
+                            style={[styles.choiceMark, chosen && styles.onWax]}
+                          >
+                            {one.mark}
+                          </Text>
+                          <View style={styles.choiceText}>
+                            <Text
+                              style={[
+                                styles.choiceTitle,
+                                chosen && styles.onWax,
+                              ]}
+                            >
+                              {one.label}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.choiceWhy,
+                                chosen && styles.onWaxSoft,
+                              ]}
+                            >
+                              {one.why}
+                            </Text>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
                   </View>
                 ) : (
-                  // No scrolling container here: the wheels below are a
-                  // virtualized list, and React Native refuses to window one
-                  // nested in a scroll view of the same direction. The card is
-                  // sized to hold them instead.
+                  /* No scrolling container: the wheels are a virtualized
+                     list, and React Native refuses to window one inside a
+                     scroll view of the same direction. */
                   <View style={styles.cardBody}>
-                    <View style={styles.sift}>
-                      <Text style={styles.siftLegend}>Époque</Text>
-                      <DateWheels
-                        value={search.at ?? { year: new Date().getFullYear() }}
-                        onChange={(at) =>
-                          setSearch((was) => {
-                            // A width the new precision no longer offers would be a
-                            // week around a date known only to the year.
-                            const kept = widthsFor(at).some(
-                              (one) => one.years === was.span,
-                            );
-                            return { ...was, at, span: kept ? was.span : null };
-                          })
-                        }
-                      />
-                      <Text style={styles.siftAt}>
-                        {formatHistoricalDate(
-                          search.at ?? { year: new Date().getFullYear() },
-                        )}
-                      </Text>
+                    <Text style={styles.siftLegend}>Époque</Text>
 
-                      <View style={styles.siftRow}>
-                        <Chip
-                          label="Toute l'histoire"
-                          selected={search.span === null}
-                          onPress={() =>
-                            setSearch((was) => ({ ...was, span: null }))
+                    {tuning ? (
+                      <>
+                        <DateWheels
+                          value={when}
+                          onChange={(at) =>
+                            setSearch((was) => {
+                              // A width the new precision no longer offers
+                              // would be a week around a date known only to
+                              // the year.
+                              const kept = widthsFor(at).some(
+                                (one) => one.years === was.span,
+                              );
+                              return {
+                                ...was,
+                                at,
+                                span: kept ? was.span : widthsFor(at)[0]!.years,
+                              };
+                            })
                           }
                         />
-                        {/* Which three, and why those three, is decided in `period.ts`:
-                  a reader who named a day is asking about a day. */}
-                        {widthsFor(
-                          search.at ?? { year: new Date().getFullYear() },
-                        ).map((one) => (
-                          <Chip
-                            key={one.label}
-                            label={one.label}
-                            selected={search.span === one.years}
-                            onPress={() =>
-                              setSearch((was) => ({ ...was, span: one.years }))
-                            }
-                          />
-                        ))}
-                      </View>
-                    </View>
-
-                    <View style={styles.sift}>
-                      <Text style={styles.siftLegend}>Région</Text>
-                      <Text style={styles.spot}>
-                        {region && search.withinMetres !== null
-                          ? `${Math.round(search.withinMetres / 1000)} km autour de ${search.near?.latitude.toFixed(2)}°, ${search.near?.longitude.toFixed(2)}°`
-                          : "Partout"}
-                      </Text>
-                      {/* The point and the radius are chosen together, on the map,
-                where the circle can be seen against the coastlines. Chips
-                here could only name a distance nobody can picture. */}
-                      <InkButton
-                        label={region ? "Changer la zone" : "Choisir une zone"}
-                        variant="tonal"
-                        onPress={() => {
-                          void placeRegion(
-                            search.near,
-                            search.withinMetres ?? 500_000,
-                          ).then((zone) => {
-                            if (zone === null) return;
-                            setSearch((was) => ({
-                              ...was,
-                              near: {
-                                longitude: zone.longitude,
-                                latitude: zone.latitude,
-                              },
-                              withinMetres: zone.metres,
-                            }));
-                          });
-                        }}
-                      />
-                      {region ? (
+                        <Text style={styles.siftAt}>
+                          {formatHistoricalDate(when)}
+                        </Text>
+                        <View style={styles.siftRow}>
+                          {widthsFor(when).map((one) => (
+                            <Chip
+                              key={one.label}
+                              label={one.label}
+                              selected={search.span === one.years}
+                              onPress={() =>
+                                setSearch((was) => ({
+                                  ...was,
+                                  span: one.years,
+                                }))
+                              }
+                            />
+                          ))}
+                        </View>
                         <Pressable
                           accessibilityRole="button"
-                          onPress={() =>
-                            setSearch((was) => ({
-                              ...was,
-                              near: null,
-                              withinMetres: null,
-                            }))
-                          }
+                          onPress={() => {
+                            setSearch((was) => ({ ...was, span: null }));
+                            setTuning(false);
+                          }}
                           style={({ pressed }) => [pressed && styles.dim]}
                         >
-                          <Text style={styles.clear}>Chercher partout</Text>
+                          <Text style={styles.clear}>
+                            Revenir à toute l'histoire
+                          </Text>
                         </Pressable>
-                      ) : null}
-                    </View>
+                      </>
+                    ) : (
+                      /* Closed, it says one thing. A date and the words
+                         "toute l'histoire" on screen together contradict
+                         each other, which is what this replaced. */
+                      <Row
+                        said={
+                          era
+                            ? `${formatHistoricalDate(when)} · ${spanSaid}`
+                            : "Toute l'histoire"
+                        }
+                        lit={era}
+                        onPress={() => {
+                          setSearch((was) => ({
+                            ...was,
+                            span: was.span ?? widthsFor(when)[0]!.years,
+                          }));
+                          setTuning(true);
+                        }}
+                      />
+                    )}
+
+                    <View style={styles.siftRule} />
+
+                    <Text style={styles.siftLegend}>Région</Text>
+                    <Row
+                      said={
+                        region && search.withinMetres !== null
+                          ? `${Math.round(search.withinMetres / 1000)} km autour de ${search.near?.latitude.toFixed(1)}°, ${search.near?.longitude.toFixed(1)}°`
+                          : "Partout"
+                      }
+                      lit={region}
+                      onPress={() => {
+                        // The point and the reach are set on the map, where
+                        // the circle can be seen against the coastlines.
+                        void placeRegion(
+                          search.near,
+                          search.withinMetres ?? 500_000,
+                        ).then((zone) => {
+                          if (zone === null) return;
+                          setSearch((was) => ({
+                            ...was,
+                            near: {
+                              longitude: zone.longitude,
+                              latitude: zone.latitude,
+                            },
+                            withinMetres: zone.metres,
+                          }));
+                        });
+                      }}
+                    />
+                    {region ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() =>
+                          setSearch((was) => ({
+                            ...was,
+                            near: null,
+                            withinMetres: null,
+                          }))
+                        }
+                        style={({ pressed }) => [pressed && styles.dim]}
+                      >
+                        <Text style={styles.clear}>Chercher partout</Text>
+                      </Pressable>
+                    ) : null}
                   </View>
                 )}
               </View>
             </View>
           )}
-        </>
-      ) : (
-        <SharedCard
-          one={reading}
-          kind={kind}
-          look={look}
-          onReport={() => setFace("report")}
-          onBlock={block}
-        />
+
+          {/* A card rises over the list rather than replacing it, and that
+              buys two things at once: it can be animated, and the list keeps
+              its scroll — coming back from the fortieth row used to land at
+              the first. Its own buttons travel with it, so the whole card
+              arrives as one thing. */}
+          {reading === null ? null : (
+            <Animated.View
+              style={[styles.risen, { transform: [{ translateY: rise }] }]}
+            >
+              <SharedCard
+                one={reading.thing}
+                kind={reading.kind}
+                look={readingLook}
+                // What a classeur holds is openable: nobody takes
+                // twenty-seven events on the strength of their titles.
+                onOpenHeld={(one) =>
+                  setTrail((was) => [...was, { kind: "event", thing: one }])
+                }
+                onReport={() => setFace("report")}
+                onBlock={block}
+              />
+            </Animated.View>
+          )}
+        </View>
       )}
     </Sheet>
   );
 }
 
-/** One line of the catalogue: what it is, who wrote it, how many took it. */
-function Entry({
-  one,
-  look,
-  busy,
-  onOpen,
-  onTake,
+/**
+ * A setting at rest: what it is now, and a way to change it.
+ *
+ * Wax once it is narrowing something, so a card opened at a glance says
+ * whether anything is being held back.
+ */
+function Row({
+  said,
+  lit,
+  onPress,
 }: {
-  one: SharedThing;
-  look: Look;
-  busy: boolean;
-  onOpen: () => void;
-  onTake: () => void;
+  said: string;
+  lit: boolean;
+  onPress: () => void;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={one.title}
-      onPress={onOpen}
-      style={({ pressed }) => [styles.entry, pressed && styles.dim]}
+      accessibilityLabel={said}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.row,
+        lit && styles.rowOn,
+        pressed && styles.dim,
+      ]}
     >
-      <View style={styles.thumb}>
-        {one.cover === null ? (
-          <Text style={styles.emoji}>{look.glyph(one)}</Text>
-        ) : (
-          <Image source={{ uri: one.cover }} style={styles.thumbImage} />
-        )}
-      </View>
-
-      <View style={styles.entryText}>
-        <Text style={styles.entryTitle} numberOfLines={2}>
-          {one.title}
-        </Text>
-        <Text style={styles.entryWhen}>{look.under(one)}</Text>
-        <Text style={styles.entryWho} numberOfLines={1}>
-          {one.mine ? "vous" : one.author}
-          {one.stars > 0 ? ` · ★ ${one.stars}` : ""}
-        </Text>
-      </View>
-
-      {/* The one thing to do with somebody else's work, on the line itself:
-          reading it first is a choice, not a toll. */}
-      {one.mine ? null : one.copied ? (
-        <Text style={styles.taken}>✓</Text>
-      ) : (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Copier ${one.title}`}
-          hitSlop={8}
-          disabled={busy}
-          onPress={onTake}
-          style={({ pressed }) => [styles.take, pressed && styles.dim]}
-        >
-          <Text style={styles.takeGlyph}>{busy ? "…" : "+"}</Text>
-        </Pressable>
-      )}
+      <Text style={[styles.rowSaid, lit && styles.onWax]} numberOfLines={2}>
+        {said}
+      </Text>
+      <Text style={[styles.rowMore, lit && styles.onWax]}>›</Text>
     </Pressable>
   );
 }
 
-const THUMB = 54;
-
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  /** The padding a face's own scrolling body takes. */
+  reading: {
+    paddingHorizontal: space.xl,
+    paddingBottom: space.lg,
+    gap: space.md,
+  },
   sieve: {
     paddingHorizontal: space.xl,
     paddingBottom: space.md,
@@ -787,6 +979,25 @@ const styles = StyleSheet.create({
    * filter hand the screen to the reticle without anything being dismissed
    * from underneath it.
    */
+  /**
+   * The room the list and the card being read share.
+   *
+   * The card is absolute inside *this* rather than inside the panel, so it
+   * covers the list and the sieve and leaves the sheet's header alone — laid
+   * over the panel itself, it hid the very title that says what is being
+   * read, and the first line of the card sat flush against the top edge.
+   */
+  stack: { flex: 1 },
+  risen: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 5,
+    backgroundColor: palette.paperLight,
+  },
+
   over: {
     position: "absolute",
     top: 0,
@@ -822,19 +1033,81 @@ const styles = StyleSheet.create({
     ...shadow.lifted,
   },
   cardHead: { flexDirection: "row", alignItems: "flex-start", gap: space.sm },
-  cardTitle: { ...type.plate, flex: 1, fontSize: 20, color: palette.ink },
+  cardHeading: { flex: 1, gap: space.xs },
+  cardTitle: { ...type.plate, fontSize: 21, color: palette.ink },
+  /** Drawn under the word, the way every heading in this app is. */
+  cardRule: {
+    height: 3,
+    width: "42%",
+    minWidth: 48,
+    borderRadius: radius.pill,
+    backgroundColor: palette.paperDeep,
+  },
   cardClose: {
-    fontSize: 24,
-    lineHeight: 26,
+    fontSize: 26,
+    lineHeight: 28,
     color: palette.inkFaint,
-    marginTop: -2,
+    marginTop: -4,
   },
   cardBody: { gap: space.md },
 
+  /**
+   * One of two ways to order the list: a mark, a name, and why.
+   *
+   * Written out rather than left to a segmented control, because the two are
+   * not two settings of one thing — they are two different questions about
+   * what matters, and one line each is what says so.
+   */
+  choice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    padding: space.md,
+    borderRadius: radius.lg,
+    backgroundColor: palette.sunken,
+  },
+  choiceOn: { backgroundColor: palette.wax },
+  choiceMark: {
+    fontSize: 18,
+    width: 22,
+    textAlign: "center",
+    color: palette.wax,
+  },
+  choiceText: { flex: 1, gap: 2 },
+  choiceTitle: { fontSize: 15.5, fontWeight: "700", color: palette.ink },
+  choiceWhy: { ...type.legend, color: palette.inkSoft },
+  onWax: { color: palette.paperLight },
+  onWaxSoft: { color: palette.paperLight, opacity: 0.78 },
+
+  /** A rule between the two questions, drawn rather than ruled across. */
+  siftRule: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: palette.line,
+    marginVertical: space.xs,
+  },
+  /** A closed setting: what it is now, and a way in. */
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    minHeight: 46,
+    paddingHorizontal: space.md,
+    borderRadius: radius.md,
+    backgroundColor: palette.sunken,
+  },
+  rowOn: { backgroundColor: palette.wax },
+  rowSaid: { flex: 1, fontSize: 15, fontWeight: "600", color: palette.ink },
+  rowMore: { fontSize: 20, lineHeight: 22, color: palette.inkFaint },
+
   sift: { gap: space.sm },
-  siftLegend: { ...type.legend, fontWeight: "700", color: palette.inkSoft },
+  siftLegend: {
+    ...type.legend,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    color: palette.inkFaint,
+  },
   siftRow: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
-  siftAside: { ...type.legend, color: palette.inkFaint },
   siftAt: {
     ...type.body,
     fontWeight: "700",
@@ -847,14 +1120,6 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
     alignSelf: "flex-start",
   },
-  /** The thing the width is measured from: a year, or a point. */
-  centre: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: space.md,
-  },
-  yearField: { minWidth: 96 },
-  spot: { ...type.body, flex: 1, color: palette.ink },
   list: { paddingHorizontal: space.xl, paddingBottom: space.lg, gap: space.sm },
   nothing: {
     ...type.body,
@@ -865,54 +1130,7 @@ const styles = StyleSheet.create({
   },
   wait: { paddingVertical: space.lg },
 
-  entry: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.md,
-    padding: space.sm,
-    borderRadius: radius.md,
-    backgroundColor: palette.paperLight,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.line,
-    ...shadow.soft,
-  },
   dim: { opacity: 0.6 },
-  thumb: {
-    width: THUMB,
-    height: THUMB,
-    borderRadius: 4,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: palette.sunken,
-  },
-  thumbImage: { width: "100%", height: "100%" },
-  emoji: { fontSize: 22 },
-  entryText: { flex: 1, gap: 1 },
-  entryTitle: { fontSize: 15, fontWeight: "700", color: palette.ink },
-  entryWhen: { ...type.legend, color: palette.wax, fontWeight: "600" },
-  entryWho: { ...type.legend, color: palette.inkFaint },
-  take: {
-    width: 34,
-    height: 34,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.pill,
-    backgroundColor: palette.wax,
-  },
-  takeGlyph: {
-    fontSize: 20,
-    lineHeight: 23,
-    fontWeight: "700",
-    color: palette.paperLight,
-  },
-  taken: { fontSize: 18, color: palette.forest, paddingHorizontal: space.sm },
-
-  reading: {
-    paddingHorizontal: space.xl,
-    paddingBottom: space.lg,
-    gap: space.md,
-  },
   lead: { ...type.body, color: palette.inkSoft },
   reason: {
     paddingVertical: space.md,

@@ -29,7 +29,7 @@ export const PAGE = 24;
  */
 const DOORS: Record<
   Kind,
-  { search: string; whole: string; copy: string; alike: string }
+  { search: string; whole: string; copy: string; alike: string | null }
 > = {
   event: {
     search: "search_events",
@@ -47,13 +47,16 @@ const DOORS: Record<
     search: "search_folders",
     whole: "shared_folder",
     copy: "copy_folder",
-    alike: "folders_like",
+    // None: a classeur has no date of its own, and the year is what makes a
+    // duplicate warning worth showing — see `events_like`. Prevention for
+    // classeurs is the search slot in the list, not a warning while typing.
+    alike: null,
   },
   tree: {
     search: "search_trees",
     whole: "shared_tree",
     copy: "copy_tree",
-    alike: "trees_like",
+    alike: null,
   },
   territory: {
     search: "search_territories",
@@ -68,6 +71,7 @@ type Row = {
   id: string;
   title: string;
   kind: string;
+  note: string | null;
   start_year: number | null;
   start_month: number | null;
   start_day: number | null;
@@ -107,6 +111,7 @@ function toThing(row: Row): SharedThing {
     id: row.id,
     title: row.title,
     badge: row.kind,
+    note: row.note,
     start: toDate(
       row.start_year,
       row.start_month,
@@ -172,6 +177,7 @@ export async function fetchWhole(
     photos: { path: string; source: string | null }[];
     cast: string[];
     folders: string[];
+    held?: Row[];
   };
   return {
     ...toThing({ ...whole, kind: whole.type, cover_path: null, rank: 0 }),
@@ -183,6 +189,7 @@ export async function fetchWhole(
     })),
     cast: whole.cast,
     folders: whole.folders,
+    held: (whole.held ?? []).map(toThing),
   };
 }
 
@@ -207,6 +214,29 @@ export async function copy(kind: Kind, id: string): Promise<string> {
   const { data: session } = await client.auth.getSession();
   const me = session.session?.user.id;
   if (!me) return made;
+
+  if (kind === "folder") {
+    // A classeur's cover is one path on its own row, and its events' pictures
+    // were walked over by the copies made underneath it.
+    const { data: made_folder } = await client
+      .from("folders")
+      .select("photo_path")
+      .eq("id", made)
+      .maybeSingle();
+    const path = (made_folder as { photo_path: string | null } | null)
+      ?.photo_path;
+    if (path && !path.startsWith(`${me}/`)) {
+      const extension = path.split(".").pop() ?? "jpg";
+      const mine = `${me}/folders/${made}/cover-${Date.now()}.${extension}`;
+      const { error: refused } = await client.storage
+        .from(BUCKET)
+        .copy(path, mine);
+      if (!refused) {
+        await client.from("folders").update({ photo_path: mine }).eq("id", made);
+      }
+    }
+    return made;
+  }
 
   const table = kind === "character" ? "character_photos" : "event_photos";
   const column = kind === "character" ? "character_id" : "event_id";
@@ -251,7 +281,9 @@ export async function alike(
   year: number,
   approximate: boolean,
 ): Promise<SharedThing[]> {
-  const { data, error } = await supabase().rpc(DOORS[kind].alike, {
+  const door = DOORS[kind].alike;
+  if (door === null) return [];
+  const { data, error } = await supabase().rpc(door, {
     said: title.trim(),
     at_year: year,
     fuzzy: approximate,

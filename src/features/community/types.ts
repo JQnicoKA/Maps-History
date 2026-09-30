@@ -27,6 +27,14 @@ export type SharedThing = {
    * rest. The panel hands it to whoever knows how to read it.
    */
   badge: string;
+  /**
+   * The one extra fact a kind has to offer, or null.
+   *
+   * A classeur says how many events come with it, which is what a reader
+   * needs before taking a whole subject; a tree will say how many people
+   * across how many generations. Events and people have nothing to add.
+   */
+  note: string | null;
   /** Birth and death for a person, start and end for an event: one span. */
   start: HistoricalDate | null;
   end: HistoricalDate | null;
@@ -62,6 +70,14 @@ export type SharedThingDetail = SharedThing & {
    */
   cast: string[];
   folders: string[];
+  /**
+   * What this one holds, in the catalogue's own row shape.
+   *
+   * A classeur's events, drawn with the very line the search draws — a list
+   * of titles said nothing a reader could judge a box by. Empty for the
+   * kinds that hold nothing.
+   */
+  held: SharedThing[];
 };
 
 /**
@@ -123,3 +139,21 @@ export type Reason = (typeof REASONS)[number]["value"];
 
 /** Somebody this reader no longer wishes to see. */
 export type Blocked = { id: string; handle: string };
+
+/** What a kind looks like, which is all that differs between the five. */
+export type Look = {
+  /** "Chronique commune", and what one of them is called on its own. */
+  many: string;
+  one: string;
+  /** Stands in for a missing picture — an emoji, an initial. */
+  glyph: (thing: SharedThing) => string;
+  /** The line under the title: a period, a lifespan, a reign. */
+  under: (thing: SharedThing) => string;
+  /** What the two name lists mean for this kind. */
+  castLegend: string;
+  castAside: string;
+  filedLegend: string;
+  filedAside: string;
+  nothing: string;
+};
+

@@ -23,13 +23,16 @@ export type RosterProps = {
   addLabel: string;
   onAdd: () => void;
   /**
-   * A second slot, under the first: what the community has already made.
+   * The other way to fill a list: what the community has already made.
    *
-   * Beside "make one" rather than in a corner, because the two answer the
-   * same wish — a list that is missing something — and the second is very
-   * often the better answer.
+   * **Above** "make one", and the order is the argument: a list that is
+   * missing something is answered better by what already exists than by
+   * writing it again. Offering the blank slot first invites the duplicate
+   * this whole feature is meant to prevent.
    */
   seekLabel?: string;
+  /** A line under it, saying what is there. */
+  seekDetail?: string;
   onSeek?: () => void;
   children: ReactNode;
 };
@@ -47,24 +50,13 @@ export function Roster({
   addLabel,
   onAdd,
   seekLabel,
+  seekDetail,
   onSeek,
   children,
 }: RosterProps) {
   return (
     <View style={styles.list}>
       <Text style={styles.count}>{count}</Text>
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={addLabel}
-        onPress={onAdd}
-        style={({ pressed }) => [styles.add, pressed && styles.pressed]}
-      >
-        <View style={styles.plus}>
-          <Text style={styles.plusGlyph}>+</Text>
-        </View>
-        <Text style={styles.addLabel}>{addLabel}</Text>
-      </Pressable>
 
       {onSeek === undefined ? null : (
         <Pressable
@@ -77,10 +69,27 @@ export function Roster({
             <View style={styles.lensGlass} />
             <View style={styles.lensHandle} />
           </View>
-          <Text style={styles.seekLabel}>{seekLabel ?? "Rechercher"}</Text>
+          <View style={styles.seekText}>
+            <Text style={styles.seekLabel}>{seekLabel ?? "Rechercher"}</Text>
+            {seekDetail === undefined ? null : (
+              <Text style={styles.seekDetail}>{seekDetail}</Text>
+            )}
+          </View>
           <Text style={styles.seekMore}>›</Text>
         </Pressable>
       )}
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={addLabel}
+        onPress={onAdd}
+        style={({ pressed }) => [styles.add, pressed && styles.pressed]}
+      >
+        <View style={styles.plus}>
+          <Text style={styles.plusGlyph}>+</Text>
+        </View>
+        <Text style={styles.addLabel}>{addLabel}</Text>
+      </Pressable>
 
       {children}
     </View>
@@ -264,7 +273,9 @@ const styles = StyleSheet.create({
     backgroundColor: palette.wax,
     transform: [{ rotate: "45deg" }],
   },
-  seekLabel: { flex: 1, fontSize: 15, fontWeight: "700", color: palette.wax },
+  seekText: { flex: 1, gap: 2 },
+  seekLabel: { fontSize: 15, fontWeight: "700", color: palette.wax },
+  seekDetail: { ...type.legend, color: palette.inkSoft },
   seekMore: { fontSize: 18, lineHeight: 20, color: palette.wax },
 
   /** A card stuck on the page: white paper, a soft shadow, square corners. */

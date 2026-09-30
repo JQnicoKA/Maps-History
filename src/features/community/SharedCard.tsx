@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import * as api from "./api";
-import type { Look } from "./Catalogue";
-import type { Kind, SharedThing } from "./types";
+
+import { EVENT_LOOK } from "./looks";
+import { ThingRow } from "./ThingRow";
+import type { Kind, Look, SharedThing } from "./types";
 import { palette } from "../../theme/palette";
 import { radius, space, type } from "../../theme/tokens";
 
@@ -21,6 +23,14 @@ export type SharedCardProps = {
    */
   onReport?: () => void;
   onBlock?: () => void;
+  /**
+   * Opens one of the things this one holds — a classeur's events.
+   *
+   * Absent where nothing is held, and absent on purpose where it would be a
+   * dead end. Being told a box has twenty-seven events in it is no help if
+   * none of them can be looked at.
+   */
+  onOpenHeld?: (one: SharedThing) => void;
 };
 
 /**
@@ -40,6 +50,7 @@ export function SharedCard({
   look,
   onReport,
   onBlock,
+  onOpenHeld,
 }: SharedCardProps) {
   const [whole, setWhole] = useState<
     Awaited<ReturnType<typeof api.fetchWhole>> | null
@@ -63,10 +74,8 @@ export function SharedCard({
 
   return (
     <ScrollView contentContainerStyle={styles.reading}>
-      <View style={styles.badge}>
-        <Text style={styles.badgeEmoji}>{look.glyph(one)}</Text>
-        <Text style={styles.badgeLabel}>{look.one}</Text>
-      </View>
+      {/* No badge naming the kind: the sheet's own title already says
+          "Un classeur", and saying it twice on one card is furniture. */}
       <Text style={styles.when}>{look.under(one)}</Text>
       <Text style={styles.title}>{one.title}</Text>
       <Text style={styles.by}>
@@ -92,6 +101,30 @@ export function SharedCard({
             ))}
           </View>
         </ScrollView>
+      ) : null}
+
+      {/* What is in the box, drawn with the catalogue's own line: a picture,
+          a title and a period say what a list of names could not. Inert —
+          the reader is taking the classeur, not choosing among these. */}
+      {(whole?.held ?? []).length > 0 ? (
+        <View style={styles.section}>
+          <Text style={styles.legend}>{look.castLegend}</Text>
+          <View style={styles.held}>
+            {(whole?.held ?? []).map((one) => (
+              <ThingRow
+                key={one.id}
+                one={one}
+                look={EVENT_LOOK}
+                {...(onOpenHeld ? { onOpen: () => onOpenHeld(one) } : {})}
+              />
+            ))}
+          </View>
+          <Text style={styles.aside}>
+            {onOpenHeld
+              ? `Touchez-en un pour le lire. ${look.castAside}`
+              : look.castAside}
+          </Text>
+        </View>
       ) : null}
 
       {(whole?.cast ?? []).length > 0 ? (
@@ -143,21 +176,13 @@ export function SharedCard({
 const styles = StyleSheet.create({
   reading: {
     paddingHorizontal: space.xl,
+    // Air above the first line: the card sits under the sheet's handle, with
+    // no heading between them, and text against the edge of the paper looks
+    // like text that fell off.
+    paddingTop: space.md,
     paddingBottom: space.lg,
     gap: space.md,
   },
-  badge: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: space.xs,
-    paddingHorizontal: space.md,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-    backgroundColor: palette.sunken,
-  },
-  badgeEmoji: { fontSize: 14 },
-  badgeLabel: { fontSize: 13, color: palette.inkSoft, fontWeight: "500" },
   when: { fontSize: 14, color: palette.wax, fontWeight: "600" },
   title: { fontSize: 24, lineHeight: 30, color: palette.ink, fontWeight: "700" },
   by: { ...type.legend, color: palette.inkFaint },
@@ -165,6 +190,8 @@ const styles = StyleSheet.create({
   photos: { flexDirection: "row", gap: space.md },
   photo: { width: 168, height: 120, borderRadius: radius.md },
   section: { gap: 2 },
+  /** Room between the rows, which carry their own edge and shadow. */
+  held: { gap: space.sm, paddingTop: space.xs },
   legend: { ...type.legend, color: palette.inkFaint },
   names: { ...type.body, color: palette.ink },
   aside: { ...type.legend, color: palette.inkFaint },

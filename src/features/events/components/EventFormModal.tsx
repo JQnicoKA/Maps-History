@@ -155,9 +155,10 @@ export type EventFormModalProps = {
   onEditCharacter: (target: Character | "new") => void;
   /** Asks for a tree to be drawn, full screen. */
   onOpenTree: (id: string) => void;
-  /** Asks for the community catalogue — of events, or of people. */
+  /** Asks for the community catalogue — of events, of people, of classeurs. */
   onSearch: () => void;
   onSearchPeople: () => void;
+  onSearchFolders: () => void;
   onCancel: () => void;
   /** Fired once the sheet is off the screen — see `Sheet`. */
   onClosed?: () => void;
@@ -174,6 +175,7 @@ export function EventFormModal({
   onOpenTree,
   onSearch,
   onSearchPeople,
+  onSearchFolders,
   onCancel,
   onClosed,
   onSaved,
@@ -457,7 +459,9 @@ export function EventFormModal({
 
       {stepped && tab === "event" && writing ? <Progress step={step} /> : null}
 
-      {tab === "folder" && !event ? <FolderManager /> : null}
+      {tab === "folder" && !event ? (
+        <FolderManager onSeek={onSearchFolders} />
+      ) : null}
       {tab === "character" && !event ? (
         <CharacterManager
           onRead={onReadCharacter}

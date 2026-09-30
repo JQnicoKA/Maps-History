@@ -15,7 +15,12 @@ import { space } from "../../../theme/tokens";
  * carries a different importance in each. The cover shown here is the one the
  * map falls back to for an event that has no photograph of its own.
  */
-export function FolderManager() {
+export type FolderManagerProps = {
+  /** Asks for the community's classeurs. */
+  onSeek: () => void;
+};
+
+export function FolderManager({ onSeek }: FolderManagerProps) {
   const { folders, events } = useEvents();
   /** The folder whose sheet is open, `"new"` for the empty one. */
   const [editing, setEditing] = useState<Folder | "new" | null>(null);
@@ -33,6 +38,9 @@ export function FolderManager() {
             : `${folders.length} classeur${folders.length > 1 ? "s" : ""}`
         }
         addLabel="Nouveau classeur"
+        seekLabel="Chercher dans la chronique"
+        seekDetail="Des sujets entiers que d'autres ont rassemblés, à prendre chez vous."
+        onSeek={onSeek}
         onAdd={() => setEditing("new")}
       >
         {folders.length === 0 ? (

@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import * as api from "./api";
-import type { Kind, SharedThing } from "./types";
+import type { Kind, Look, SharedThing } from "./types";
 import { InkButton, Sheet, useLingering, useNotice } from "../../components/ui";
 import { SharedCard } from "./SharedCard";
-import type { Look } from "./Catalogue";
+
 import { formatEventPeriod } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
 import { radius, space, type } from "../../theme/tokens";

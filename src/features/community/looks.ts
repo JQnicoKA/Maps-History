@@ -1,5 +1,9 @@
-import type { Look } from "./Catalogue";
-import { formatEventPeriod, formatDateYear } from "../events/historicalDate";
+import type { Kind, Look } from "./types";
+import {
+  formatDateYear,
+  formatEventPeriod,
+  formatYear,
+} from "../events/historicalDate";
 import { describeType, type EventType } from "../events/types";
 
 /**
@@ -30,6 +34,37 @@ export const EVENT_LOOK: Look = {
     "Rien de tel dans la chronique. Essayez d'élargir l'époque ou la région — ou écrivez-le vous-même.",
 };
 
+/** What a classeur's span reads like: two years, or one, or none at all. */
+const span = (one: { start: { year: number } | null; end: { year: number } | null }) => {
+  const from = one.start?.year;
+  const to = one.end?.year;
+  if (from === undefined) return "";
+  if (to === undefined || to === from) return formatYear(from);
+  return `${formatYear(from)} – ${formatYear(to)}`;
+};
+
+export const FOLDER_LOOK: Look = {
+  many: "Classeurs de la chronique",
+  one: "Un classeur",
+  /** No picture and no type: the initial of the subject it gathers. */
+  glyph: (one) => one.title.charAt(0).toUpperCase(),
+  /**
+   * How many events, and the reach of them.
+   *
+   * The count comes first because it is what decides whether a reader wants
+   * the whole box: "27 événements · 481 – 687" says more about a classeur
+   * than any description of it would.
+   */
+  under: (one) => [one.note, span(one)].filter(Boolean).join(" · "),
+  castLegend: "Ce qu'il contient",
+  castAside:
+    "Tous ces événements viendront avec le classeur, et les personnages qu'ils citent avec eux.",
+  filedLegend: "",
+  filedAside: "",
+  nothing:
+    "Aucun classeur de ce genre dans la chronique. Essayez d'élargir l'époque ou la région — ou faites le vôtre.",
+};
+
 export const CHARACTER_LOOK: Look = {
   many: "Personnages de la chronique",
   one: "Un personnage",
@@ -49,4 +84,20 @@ export const CHARACTER_LOOK: Look = {
   filedAside: "Les arbres de leur auteur ; les vôtres sont les vôtres.",
   nothing:
     "Personne de tel dans la chronique. Essayez d'élargir l'époque ou la région — ou écrivez la fiche vous-même.",
+};
+
+/**
+ * Every kind's look, by kind.
+ *
+ * The panel is given one look for the list it shows, but a card opened from
+ * inside another — an event inside a classeur — must be drawn as the thing it
+ * is, not as the thing that held it.
+ */
+export const LOOKS: Record<Kind, Look> = {
+  event: EVENT_LOOK,
+  character: CHARACTER_LOOK,
+  folder: FOLDER_LOOK,
+  // Not built yet; the catalogue never asks for them.
+  tree: EVENT_LOOK,
+  territory: EVENT_LOOK,
 };
