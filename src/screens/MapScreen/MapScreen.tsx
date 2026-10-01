@@ -468,6 +468,7 @@ export function MapScreen() {
         <ShapeBar
           name={asking.name}
           said={asking.said}
+          take={asking.take}
           takeable={asking.takeable}
           busy={false}
           onTake={() => settle(true)}

@@ -58,6 +58,14 @@ export function ShapeOnShow({ shape }: ShapeOnShowProps) {
 export type ShapeBarProps = {
   name: string;
   said: string;
+  /**
+   * What the taking button says — "Copier le territoire".
+   *
+   * Named rather than just "Copier", because this bar can be reached three
+   * panels deep into the catalogue and the map behind it gives no clue which
+   * kind of thing is being offered.
+   */
+  take: string;
   takeable: boolean;
   busy: boolean;
   onTake: () => void;
@@ -69,6 +77,7 @@ export type ShapeBarProps = {
 export function ShapeBar({
   name,
   said,
+  take,
   takeable,
   busy,
   onTake,
@@ -86,7 +95,7 @@ export function ShapeBar({
           <InkButton label="Fermer" variant="quiet" onPress={onClose} />
           {takeable ? (
             <InkButton
-              label={busy ? "…" : "Copier"}
+              label={busy ? "…" : take}
               variant="solid"
               disabled={busy}
               onPress={onTake}

@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import * as api from "./api";
 
@@ -38,6 +46,14 @@ export type SharedCardProps = {
    * A territory is its outline and nothing else; a card cannot show that.
    */
   onShowShape?: (shape: unknown) => void;
+  /**
+   * Opens one of the classeurs its author filed this in.
+   *
+   * Absent where it would be a dead end, like `onOpenHeld`: the card that
+   * warns of a duplicate while an event is being written has no panel behind
+   * it to show a classeur in.
+   */
+  onOpenFiled?: (one: SharedThing) => void;
 };
 
 /**
@@ -59,6 +75,7 @@ export function SharedCard({
   onBlock,
   onOpenHeld,
   onShowShape,
+  onOpenFiled,
 }: SharedCardProps) {
   const [whole, setWhole] = useState<
     Awaited<ReturnType<typeof api.fetchWhole>> | null
@@ -80,6 +97,25 @@ export function SharedCard({
     };
   }, [kind, one.id]);
 
+  /**
+   * What it is filed under, split by whether there is anywhere to go.
+   *
+   * Sorted out here rather than in the JSX because the test is a narrowing
+   * one — a `thing` that is null, a kind with no word for the button, a
+   * caller that cannot show one — and three conditions inside a `map` end as
+   * a non-null assertion. Both halves can be non-empty at once, and the
+   * card draws rows for the first and a line of names for the second.
+   */
+  const doors: { name: string; thing: SharedThing }[] = [];
+  const names: string[] = [];
+  for (const filed of whole?.folders ?? []) {
+    if (filed.thing !== null && onOpenFiled && look.filedDoor !== "") {
+      doors.push({ name: filed.name, thing: filed.thing });
+    } else {
+      names.push(filed.name);
+    }
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.reading}>
       {/* No badge naming the kind: the sheet's own title already says
@@ -92,6 +128,15 @@ export function SharedCard({
           ? ` · copié ${one.stars} fois`
           : " · personne ne l'a encore copié"}
       </Text>
+
+      {/* A card now mounts fresh at every step — see the key in `Catalogue`
+          — so it arrives with its head and nothing under it for as long as
+          the read takes. One turning mark says "arriving"; without it the
+          card reads as finished and empty, which is the same jolt the stale
+          body used to cause, only emptier. */}
+      {whole === null ? (
+        <ActivityIndicator color={palette.inkFaint} style={styles.waiting} />
+      ) : null}
 
       {whole?.shape && onShowShape ? (
         <>
@@ -157,6 +202,34 @@ export function SharedCard({
         </View>
       ) : null}
 
+      {doors.length + names.length > 0 ? (
+        <View style={styles.section}>
+          <Text style={styles.legend}>{look.filedLegend}</Text>
+
+          {/* A name was a dead end: being told an event belongs to a classeur
+              is no use without a way to reach it — and the classeur is often
+              the better thing to take than the one event the reader landed
+              on. The button says so plainly rather than making the whole row
+              a target, which would read like a list to choose from. */}
+          {doors.map((filed) => (
+            <View key={filed.thing.id} style={styles.filedRow}>
+              <Text style={styles.filedName} numberOfLines={2}>
+                {filed.name}
+              </Text>
+              <InkButton
+                label={look.filedDoor}
+                variant="tonal"
+                onPress={() => onOpenFiled?.(filed.thing)}
+              />
+            </View>
+          ))}
+
+          {names.length > 0 ? (
+            <Text style={styles.names}>{names.join(" · ")}</Text>
+          ) : null}
+        </View>
+      ) : null}
+
       {/* Quiet, and at the foot: most readers never need either, and a card
           that leads with "signaler" reads as a warning about its own
           contents. Absent on one's own work, which one can simply take out
@@ -184,13 +257,6 @@ export function SharedCard({
         </View>
       )}
 
-      {(whole?.folders ?? []).length > 0 ? (
-        <View style={styles.section}>
-          <Text style={styles.legend}>{look.filedLegend}</Text>
-          <Text style={styles.names}>{(whole?.folders ?? []).join(" · ")}</Text>
-          <Text style={styles.aside}>{look.filedAside}</Text>
-        </View>
-      ) : null}
     </ScrollView>
   );
 }
@@ -208,6 +274,8 @@ const styles = StyleSheet.create({
   when: { fontSize: 14, color: palette.wax, fontWeight: "600" },
   title: { fontSize: 24, lineHeight: 30, color: palette.ink, fontWeight: "700" },
   by: { ...type.legend, color: palette.inkFaint },
+  /** Where the body will be, so the card does not jump when it lands. */
+  waiting: { alignSelf: "flex-start", paddingVertical: space.sm },
   body: { ...type.body, color: palette.inkSoft },
   photos: { flexDirection: "row", gap: space.md },
   photo: { width: 168, height: 120, borderRadius: radius.md },
@@ -216,6 +284,14 @@ const styles = StyleSheet.create({
   held: { gap: space.sm, paddingTop: space.xs },
   legend: { ...type.legend, color: palette.inkFaint },
   names: { ...type.body, color: palette.ink },
+  /** The name, and the way in, on one line — the name yields the space. */
+  filedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    paddingTop: space.xs,
+  },
+  filedName: { ...type.body, flex: 1, color: palette.ink },
   aside: { ...type.legend, color: palette.inkFaint },
   dim: { opacity: 0.6 },
 

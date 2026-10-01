@@ -512,10 +512,6 @@ export function EventFormModal({
               onChangeText={setTitle}
               placeholder="Prise de Constantinople"
             />
-            <Text style={styles.hint}>
-              Le nom d'abord, la date ensuite : si quelqu'un l'a déjà écrit,
-              autant le savoir avant d'en écrire le récit.
-            </Text>
           </Section>
         ) : null}
 

@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -163,7 +169,19 @@ export function Catalogue({
   const atCard = descending ? trail.length > 1 : trail.length > 0;
 
   const rose = useRef(0);
-  useEffect(() => {
+  /**
+   * Laid out before the frame is drawn, not after it.
+   *
+   * As a passive effect this ran *after* the new card had been committed, so
+   * one frame showed it sitting at its final position before it jumped
+   * offscreen and sprang back up. That flash was always there and was always
+   * invisible: the card used to carry the previous thing's body, so the
+   * flashed frame looked exactly like the card already on screen. Mounting a
+   * fresh card per step made it flash an empty one instead, which is the
+   * stutter a reader notices. A layout effect puts the starting position in
+   * the same commit as the card.
+   */
+  useLayoutEffect(() => {
     if (trail.length === 0) {
       rose.current = 0;
       return;
@@ -450,12 +468,12 @@ export function Catalogue({
       return;
     }
     if (one.shape === undefined) return;
-    void showShape(
-      one.shape,
-      one.title,
-      look.under(one),
-      !one.mine && !one.copied,
-    ).then((taken) => {
+    void showShape(one.shape, {
+      name: one.title,
+      said: look.under(one),
+      take: look.take,
+      takeable: !one.mine && !one.copied,
+    }).then((taken) => {
       if (taken) takeIt(one);
     });
   };
@@ -565,7 +583,12 @@ export function Catalogue({
              prettier — and left the sheet's own footer showing underneath,
              two rows of buttons at once. */
           <>
-            <InkButton label="Retour" variant="tonal" grow onPress={back} />
+            {/* Not `grow`: six letters claiming half the footer left the
+                other button 121pt of room, and "Copier le personnage" needs
+                156. "Retour" takes what it needs and the copy button, whose
+                label is the long one and the one that matters, takes the
+                rest. */}
+            <InkButton label="Retour" variant="tonal" onPress={back} />
             <InkButton
               label={
                 reading.thing.mine
@@ -574,7 +597,10 @@ export function Catalogue({
                     ? "Déjà copié"
                     : taking === reading.thing.id
                       ? "Copie…"
-                      : "Copier"
+                      : // `readingLook`, not `look`: the foot belongs to the
+                        // card in front of it, which may be two kinds away
+                        // from the list that was searched.
+                        readingLook.take
               }
               variant="solid"
               grow
@@ -786,6 +812,23 @@ export function Catalogue({
                 style={[styles.risen, { transform: [{ translateY: rise }] }]}
               >
                 <SharedCard
+                  // One card per step, and the key is what makes it one.
+                  //
+                  // Without it React reuses the instance, so a step deeper
+                  // kept two things it had no business keeping. Its `whole`
+                  // — the new head drawn over the previous thing's
+                  // description, photos and filing until the read lands. And
+                  // its scroll offset: "Rangé par son auteur dans" is the
+                  // last section of the card, so a reader pressing "Voir le
+                  // classeur" is necessarily scrolled to the bottom, and the
+                  // classeur rose already scrolled past its own contents.
+                  //
+                  // It was always wrong and never showed: the only way
+                  // deeper used to be a classeur to one of its events, and
+                  // `held` sits near the top, so the offset inherited was a
+                  // few pixels. Filing is at the foot, which is the whole
+                  // distance.
+                  key={`${trail.length}:${reading.thing.id}`}
                   one={reading.thing}
                   kind={reading.kind}
                   look={readingLook}
@@ -794,17 +837,25 @@ export function Catalogue({
                   onOpenHeld={(one) =>
                     setTrail((was) => [...was, { kind: "event", thing: one }])
                   }
+                  // And the other way up: from an event to the classeur it
+                  // was filed in. The trail already runs both ways, so
+                  // "Retour" comes back to the event rather than out to the
+                  // list — a reader can look at the box and decide against
+                  // it without losing their place.
+                  onOpenFiled={(one) =>
+                    setTrail((was) => [...was, { kind: "folder", thing: one }])
+                  }
                   // A territory is its outline: the card cannot show one, so
                   // it hands the reader to the map. Taking it from there
                   // avoids the trip back for a second decision.
                   onShowShape={(shape) => {
                     const one = reading.thing;
-                    void showShape(
-                      shape,
-                      one.title,
-                      readingLook.under(one),
-                      !one.mine && !one.copied,
-                    ).then((taken) => {
+                    void showShape(shape, {
+                      name: one.title,
+                      said: readingLook.under(one),
+                      take: readingLook.take,
+                      takeable: !one.mine && !one.copied,
+                    }).then((taken) => {
                       if (taken) takeIt(one, reading.kind);
                     });
                   }}

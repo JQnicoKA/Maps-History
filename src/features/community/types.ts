@@ -71,13 +71,24 @@ export type SharedThingDetail = SharedThing & {
   description: string | null;
   photos: { url: string; source: string | null }[];
   /**
-   * Two lists of names, whose meaning depends on the kind: for an event, its
-   * cast and the folders its author filed it under; for a person, the events
-   * that mention them and the trees they stand in. Names only — the reader
-   * will never hold these rows.
+   * Who or what it names, whose meaning depends on the kind: for an event,
+   * its cast; for a person, the events that mention them. Names only — the
+   * reader will never hold these rows.
    */
   cast: string[];
-  folders: string[];
+  /**
+   * What its author filed it under, and whichever of those can be opened.
+   *
+   * For an event these are classeurs, and `thing` carries each one whole, so
+   * the card can offer a way in: a reader who arrived at one event may well
+   * want the whole box, and a list of names was a dead end. For a person
+   * these are the author's trees, and `thing` is null — a tree is read on a
+   * canvas, not in a card.
+   *
+   * Private filing is absent rather than named: withdrawing a classeur from
+   * the chronicle promises it belongs to its author alone.
+   */
+  folders: { name: string; thing: SharedThing | null }[];
   /**
    * What this one holds, in the catalogue's own row shape.
    *
@@ -201,6 +212,26 @@ export type Look = {
   castAside: string;
   filedLegend: string;
   filedAside: string;
+  /**
+   * The button beside each thing it is filed under — "Voir le classeur".
+   *
+   * Empty for the kinds whose filing leads nowhere: a person's trees are the
+   * author's, read on a canvas rather than in a card. Blank here and a null
+   * `thing` in the payload say the same thing from the two ends, and the card
+   * needs both to agree before it draws a way in.
+   */
+  filedDoor: string;
+  /**
+   * The button that takes it — "Copier l'événement", not "Copier".
+   *
+   * The catalogue is a place one wanders: a list, a classeur, one of its
+   * events, the classeur that event was also filed in. Four panels deep, a
+   * button saying only "Copier" leaves the reader to remember which of the
+   * four they are standing in, and a wrong guess costs them a copy they did
+   * not want. Naming the thing is the cheapest possible map. Written out per
+   * kind rather than built from `one`, because the elision differs.
+   */
+  take: string;
   nothing: string;
 };
 

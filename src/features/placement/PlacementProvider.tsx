@@ -25,16 +25,33 @@ export type Zone = Point & { metres: number };
 export type Asked =
   | { kind: "point" }
   | { kind: "zone"; from: Point | null; metres: number }
-  | {
+  | ({
       kind: "shape";
       /** A GeoJSON geometry, as the database handed it over. */
       shape: unknown;
-      name: string;
-      /** The line under the name: its years, its extent. */
-      said: string;
-      /** False when it is the reader's own, or already taken. */
-      takeable: boolean;
-    };
+    } & Shown);
+
+/**
+ * How a shape laid on the plate presents itself.
+ *
+ * One argument rather than four trailing ones: three of them are strings,
+ * and three strings in a row is a line nobody can read back without counting
+ * — "was `said` before `take`, or after?".
+ */
+export type Shown = {
+  name: string;
+  /** The line under the name: its years, its extent. */
+  said: string;
+  /**
+   * What the button that takes it says — "Copier le territoire".
+   *
+   * Handed over with the shape rather than decided here: this desk knows
+   * about points and outlines, not about what kind of thing drew them.
+   */
+  take: string;
+  /** False when it is the reader's own, or already taken. */
+  takeable: boolean;
+};
 
 type PlacementContextValue = {
   /**
@@ -65,12 +82,7 @@ type PlacementContextValue = {
    * territory is nothing but its outline, and no card can show that — only
    * the map can, against the coastlines it was painted over.
    */
-  showShape: (
-    shape: unknown,
-    name: string,
-    said: string,
-    takeable: boolean,
-  ) => Promise<boolean>;
+  showShape: (shape: unknown, as: Shown) => Promise<boolean>;
   /** What the map is being asked for, while it is being asked. */
   asking: Asked | null;
   /** Answered by whoever owns the map. Not for the panels to call. */
@@ -141,9 +153,9 @@ export function PlacementProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const showShape = useCallback(
-    (shape: unknown, name: string, said: string, takeable: boolean) => {
+    (shape: unknown, as: Shown) => {
       waiting.current?.(null);
-      setAsking({ kind: "shape", shape, name, said, takeable });
+      setAsking({ kind: "shape", shape, ...as });
       return new Promise<boolean>((resolve) => {
         waiting.current = (answer) => resolve(answer === true);
       });

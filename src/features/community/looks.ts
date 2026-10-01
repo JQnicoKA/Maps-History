@@ -18,6 +18,7 @@ import { describeType, type EventType } from "../events/types";
 export const EVENT_LOOK: Look = {
   many: "Chronique commune",
   one: "Un événement",
+  take: "Copier l'événement",
   glyph: (one) => describeType(one.badge as EventType).emoji,
   under: (one) =>
     one.start === null
@@ -29,7 +30,12 @@ export const EVENT_LOOK: Look = {
   castLegend: "Personnages",
   castAside: "Ils viendront avec l'événement si vous le copiez.",
   filedLegend: "Rangé par son auteur dans",
-  filedAside: "Vos classeurs sont les vôtres : la copie n'en apporte aucun.",
+  // Nothing kind-neutral to add: whether a classeur can be opened depends on
+  // where the card is standing, so that half of the sentence belongs to the
+  // card — see `SharedCard`. The duplicate warning shows the same card with
+  // no panel behind it, and promising a way in there would be a lie.
+  filedAside: "",
+  filedDoor: "Voir le classeur",
   nothing:
     "Rien de tel dans la chronique. Essayez d'élargir l'époque ou la région — ou écrivez-le vous-même.",
 };
@@ -46,6 +52,7 @@ const span = (one: { start: { year: number } | null; end: { year: number } | nul
 export const FOLDER_LOOK: Look = {
   many: "Classeurs de la chronique",
   one: "Un classeur",
+  take: "Copier le classeur",
   /** No picture and no type: the initial of the subject it gathers. */
   glyph: (one) => one.title.charAt(0).toUpperCase(),
   /**
@@ -61,6 +68,7 @@ export const FOLDER_LOOK: Look = {
     "Tous ces événements viendront avec le classeur, et les personnages qu'ils citent avec eux.",
   filedLegend: "",
   filedAside: "",
+  filedDoor: "",
   nothing:
     "Aucun classeur de ce genre dans la chronique. Essayez d'élargir l'époque ou la région — ou faites le vôtre.",
 };
@@ -68,6 +76,7 @@ export const FOLDER_LOOK: Look = {
 export const CHARACTER_LOOK: Look = {
   many: "Personnages de la chronique",
   one: "Un personnage",
+  take: "Copier le personnage",
   /** No sub-kind for a person: their initial stands in for a missing face. */
   glyph: (one) => one.title.charAt(0).toUpperCase(),
   /** A life said the way the collection says it everywhere else. */
@@ -82,6 +91,7 @@ export const CHARACTER_LOOK: Look = {
   castAside: "Ces événements restent à leur auteur : la copie n'apporte que la personne.",
   filedLegend: "Se tient dans",
   filedAside: "Les arbres de leur auteur ; les vôtres sont les vôtres.",
+  filedDoor: "",
   nothing:
     "Personne de tel dans la chronique. Essayez d'élargir l'époque ou la région — ou écrivez la fiche vous-même.",
 };
@@ -96,6 +106,7 @@ export const CHARACTER_LOOK: Look = {
 export const TERRITORY_LOOK: Look = {
   many: "Territoires de la chronique",
   one: "Un territoire",
+  take: "Copier le territoire",
   /** No picture and no type: the initial of the polity it draws. */
   glyph: (one) => one.title.charAt(0).toUpperCase(),
   /**
@@ -117,6 +128,7 @@ export const TERRITORY_LOOK: Look = {
   castAside: "",
   filedLegend: "",
   filedAside: "",
+  filedDoor: "",
   nothing:
     "Aucun territoire de ce genre dans la chronique. Essayez d'élargir l'époque ou la région — ou peignez le vôtre.",
 };
@@ -124,6 +136,7 @@ export const TERRITORY_LOOK: Look = {
 export const TREE_LOOK: Look = {
   many: "Arbres de la chronique",
   one: "Un arbre",
+  take: "Copier l'arbre",
   glyph: (one) => one.title.charAt(0).toUpperCase(),
   /**
    * How many people across how many generations, and the span of their
@@ -143,6 +156,7 @@ export const TREE_LOOK: Look = {
   castAside: "",
   filedLegend: "",
   filedAside: "",
+  filedDoor: "",
   nothing:
     "Aucun arbre de ce genre dans la chronique. Essayez d'élargir l'époque ou la région — ou bâtissez le vôtre.",
 };
