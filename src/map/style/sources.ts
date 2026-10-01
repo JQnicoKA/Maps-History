@@ -1,7 +1,7 @@
 import type { SourceSpecification } from "@maplibre/maplibre-react-native";
 
 import { createGraticule } from "./graticule";
-import { ATTRIBUTION, TILE_MAX_ZOOM } from "../../config/map";
+import { ATTRIBUTION, RELIEF_MAX_ZOOM, TILE_MAX_ZOOM } from "../../config/map";
 
 export const MAPTILER_HOST = "https://api.maptiler.com";
 
@@ -41,7 +41,19 @@ export function createSources({
   if (relief) {
     sources[SOURCE.terrain] = {
       type: "raster-dem",
-      url: `${MAPTILER_HOST}/tiles/terrain-rgb-v2/tiles.json?key=${apiKey}`,
+      // Declared tile by tile rather than through tiles.json, for exactly the
+      // reason given above: a `url` hands the zoom range to the server, and
+      // the elevation tileset's own range runs to z14. It was the one source
+      // left uncapped, so it quietly cost more requests at high zoom than the
+      // base map it was shading — see `RELIEF_MAX_ZOOM`.
+      tiles: [
+        `${MAPTILER_HOST}/tiles/terrain-rgb-v2/{z}/{x}/{y}.webp?key=${apiKey}`,
+      ],
+      minzoom: 0,
+      maxzoom: RELIEF_MAX_ZOOM,
+      // Named here because tiles.json no longer arrives to carry it. The app
+      // draws its own credits either way — see `ATTRIBUTION`.
+      attribution: ATTRIBUTION,
     };
   }
 

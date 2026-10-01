@@ -20,13 +20,37 @@ export const ZOOM = {
  */
 export const TILE_MAX_ZOOM = 10;
 
+/**
+ * Highest zoom level fetched from the elevation tileset, which runs to z14.
+ *
+ * Lower than the base on purpose, and it is the cheapest saving on the map.
+ * Above this the DEM tile covering the view is stretched instead of replaced:
+ * one z7 tile covers the ground of four z8 tiles, sixty-four z10, two hundred
+ * and fifty-six z11. So reading a region closely — panning at z9 to z11,
+ * which is what a reader does most — costs new base tiles and almost no new
+ * relief ones, where it used to cost both in equal measure.
+ *
+ * The price is a smoother hillshade past z7: the relief is interpolated
+ * rather than resolved. On a sepia engraving that is no loss — an engraved
+ * plate has no thirty-metre grain — but it is a judgement to be made with
+ * the eye. Raise it to 8 if the ridges read as mush.
+ */
+export const RELIEF_MAX_ZOOM = 7;
+
 export const INITIAL_VIEW = {
   center: [8, 20] as LngLat,
   zoom: 1.4,
 } as const;
 
 export const MAP_FEATURES = {
-  /** Sepia hillshading, evoking engraved relief. Costs one extra tile request per tile. */
+  /**
+   * Sepia hillshading, evoking engraved relief.
+   *
+   * It reads its own tile pyramid, so it is the second cheapest thing to turn
+   * off if requests ever become the binding constraint — capped at
+   * `RELIEF_MAX_ZOOM`, it now costs a handful of tiles at low zoom and
+   * practically nothing above it.
+   */
   relief: true,
   /** 15° latitude/longitude grid, as printed on atlas plates. */
   graticule: true,
