@@ -63,7 +63,8 @@ export function TreePreview({
     <View style={[StyleSheet.absoluteFill, styles.root]}>
       <PanZoom
         content={size}
-        inset={{ top: inset.top + 56, bottom: inset.bottom + 96 }}
+        // What the two bars cover, so the drawing never hides behind them.
+        inset={{ top: inset.top + 92, bottom: inset.bottom + 108 }}
         subject={tree.id}
       >
         {lines.map(({ cut: _cut, ...box }, index) => (
@@ -84,17 +85,22 @@ export function TreePreview({
         ))}
       </PanZoom>
 
-      <View style={[styles.bar, { paddingTop: inset.top + space.sm }]}>
-        <Text style={styles.name} numberOfLines={1}>
+      {/* The heading of a page, not a label on a strip: a genealogy's name
+          and what it holds are the two things a reader weighs before taking
+          it, and they were being read off a band barely taller than the
+          words. */}
+      <View style={[styles.bar, { paddingTop: inset.top + space.lg }]}>
+        <Text style={styles.name} numberOfLines={2}>
           {tree.name}
         </Text>
-        <Text style={styles.said} numberOfLines={1}>
+        <View style={styles.rule} />
+        <Text style={styles.said} numberOfLines={2}>
           {said} · {by}
         </Text>
       </View>
 
       <View
-        style={[styles.foot, { paddingBottom: inset.bottom + space.md }]}
+        style={[styles.foot, { paddingBottom: inset.bottom + space.lg }]}
       >
         <InkButton label="Fermer" variant="tonal" grow onPress={onClose} />
         {takeable ? (
@@ -121,15 +127,23 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    paddingHorizontal: space.lg,
-    paddingBottom: space.sm,
-    gap: 2,
+    paddingHorizontal: space.xl,
+    paddingBottom: space.lg,
+    gap: space.xs,
     backgroundColor: palette.paperLight,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: palette.line,
   },
-  name: { ...type.heading, fontWeight: "700", color: palette.ink },
-  said: { ...type.legend, color: palette.inkSoft },
+  name: { ...type.plate, fontSize: 21, color: palette.ink },
+  /** Drawn under the name, the way every heading in this app is. */
+  rule: {
+    height: 3,
+    width: "38%",
+    minWidth: 48,
+    borderRadius: radius.pill,
+    backgroundColor: palette.paperDeep,
+  },
+  said: { ...type.caption, color: palette.inkSoft, marginTop: 2 },
 
   foot: {
     position: "absolute",
@@ -138,8 +152,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     flexDirection: "row",
     gap: space.sm,
-    paddingHorizontal: space.lg,
-    paddingTop: space.md,
+    paddingHorizontal: space.xl,
+    paddingTop: space.lg,
     backgroundColor: palette.paperLight,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: palette.line,

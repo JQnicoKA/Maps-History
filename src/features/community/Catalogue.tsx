@@ -38,6 +38,8 @@ import { DateWheels } from "../events/components/EventDateField";
 import { TreePreview } from "../genealogy/TreePreview";
 import type { Face } from "../genealogy/TreeFace";
 import type { Tree } from "../events/types";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { useEvents } from "../events/EventsProvider";
 import { useHidden } from "../territories/HiddenProvider";
 import { formatHistoricalDate } from "../events/historicalDate";
@@ -110,6 +112,7 @@ export function Catalogue({
   const { year, refresh } = useEvents();
   const { reload: reloadDrawn } = useHidden();
   const { aiming, placeRegion, showShape, looking } = usePlacement();
+  const insets = useSafeAreaInsets();
   const { say, dialog } = useNotice();
 
   const [search, setSearch] = useState<Search>(ANYTHING);
@@ -827,6 +830,10 @@ export function Catalogue({
                 busy={taking === drawn.thing.id}
                 onTake={() => takeIt(drawn.thing)}
                 onClose={() => setDrawn(null)}
+                // The panel reaches the foot of the screen, so the buttons
+                // must clear the home indicator themselves — the sheet's own
+                // footer, which usually does it, is behind this.
+                inset={{ top: 0, bottom: insets.bottom }}
               />
             </View>
           )}
