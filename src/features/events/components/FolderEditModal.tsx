@@ -101,10 +101,17 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
           event.folders.some((link) => link.folderId === folder.id),
         ).length
       : 0;
-    return filed === 0
-      ? "Ce classeur est vide."
-      : `${filed} événement${filed > 1 ? "s" : ""} y ${filed > 1 ? "sont rangés" : "est rangé"}. ` +
-        `${filed > 1 ? "Ils ne seront pas supprimés" : "Il ne sera pas supprimé"}, seulement retiré${filed > 1 ? "s" : ""} de ce classeur.`;
+    const said =
+      filed === 0
+        ? "Ce classeur est vide."
+        : `${filed} événement${filed > 1 ? "s" : ""} y ${filed > 1 ? "sont rangés" : "est rangé"}. ` +
+          `${filed > 1 ? "Ils ne seront pas supprimés" : "Il ne sera pas supprimé"}, seulement retiré${filed > 1 ? "s" : ""} de ce classeur.`;
+
+    // A copy's disappearance costs nothing: its author's classeur still
+    // stands in the chronicle, with everything in it.
+    return folder?.origin === null || !folder
+      ? said
+      : `${said} Et vous n'effacez que votre copie : celui de son auteur n'est pas touché.`;
   };
 
   const erase = () => {

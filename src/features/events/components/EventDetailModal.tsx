@@ -11,6 +11,7 @@ import {
 
 import { PhotoViewer } from "./PhotoViewer";
 import { ShareRow } from "../../community/ShareRow";
+import { stake } from "../../community/stakes";
 import {
   ConfirmDialog,
   InkButton,
@@ -156,7 +157,7 @@ export function EventDetailModal({
       <ConfirmDialog
         visible={asking}
         title="Supprimer cet événement ?"
-        message="Cette action est définitive."
+        message={stake(event.origin, "Cette action est définitive.")}
         confirmLabel="Supprimer"
         onConfirm={() => void erase()}
         onClose={() => setAsking(false)}

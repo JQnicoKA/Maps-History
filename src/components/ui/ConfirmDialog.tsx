@@ -35,7 +35,18 @@ export function ConfirmDialog({
   onClose,
 }: ConfirmDialogProps) {
   return (
-    <Dialog visible={visible} onClose={onClose} title={title} hint={message}>
+    <Dialog
+      visible={visible}
+      onClose={onClose}
+      title={title}
+      hint={message}
+      /* The cross in the corner is the way out, and it is the same way out:
+         unlike the cards that turn over — where "Annuler" steps back one
+         face and the cross closes the lot — here the two would do exactly
+         the same thing, and one of them would be furniture in front of a
+         decision that deserves an uncluttered screen. */
+      dismissLabel={null}
+    >
       <InkButton
         label={confirmLabel}
         variant="solid"

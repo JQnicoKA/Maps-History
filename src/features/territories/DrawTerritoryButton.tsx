@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useHidden } from "./HiddenProvider";
+import { Silhouette } from "./Silhouette";
+import { stake } from "../community/stakes";
 import {
   ConfirmDialog,
   GlyphButton,
@@ -10,6 +12,7 @@ import {
   RosterEmpty,
   RosterRow,
   Sheet,
+  THUMB,
   useNotice,
 } from "../../components/ui";
 import { formatYear } from "../events/historicalDate";
@@ -24,6 +27,8 @@ const BACK_ON_MAP = require("../../../assets/icons/view-map.png");
 export type DrawTerritoryButtonProps = {
   /** Hands the map over to the brush. */
   onDraw: () => void;
+  /** Asks for the community's territories. */
+  onSeek: () => void;
 };
 
 /**
@@ -39,15 +44,25 @@ export type DrawTerritoryButtonProps = {
  * event to the collection, the other changes the map the collection is read
  * on. Two different kinds of making.
  */
-export function DrawTerritoryButton({ onDraw }: DrawTerritoryButtonProps) {
+export function DrawTerritoryButton({
+  onDraw,
+  onSeek,
+}: DrawTerritoryButtonProps) {
   const { hidden, show, drawn, erase } = useHidden();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   /** The drawn territory awaiting a "yes" before it is rubbed out. */
-  const [asking, setAsking] = useState<{ id: string; name: string } | null>(
-    null,
-  );
+  const [asking, setAsking] = useState<{
+    id: string;
+    name: string;
+    origin: string | null;
+  } | null>(null);
   const { say, dialog } = useNotice();
+  /**
+   * True from the moment the catalogue is asked for until this sheet has
+   * gone, because iOS will not present a panel from one still dismissing.
+   */
+  const [seeking, setSeeking] = useState(false);
 
   const work = (key: string, deed: Promise<void>, failed: string) => {
     setBusy(key);
@@ -70,6 +85,11 @@ export function DrawTerritoryButton({ onDraw }: DrawTerritoryButtonProps) {
       <Sheet
         visible={open}
         onClose={() => setOpen(false)}
+        onClosed={() => {
+          if (!seeking) return;
+          setSeeking(false);
+          onSeek();
+        }}
         title="Territoires"
         // Two lists that grow as the reader works; a panel resizing itself
         // around them would never be still.
@@ -88,7 +108,10 @@ export function DrawTerritoryButton({ onDraw }: DrawTerritoryButtonProps) {
         <ConfirmDialog
           visible={asking !== null}
           title={`Effacer « ${asking?.name ?? ""} » ?`}
-          message="Il n'existe que sur votre carte : l'effacer est définitif."
+          message={stake(
+            asking?.origin ?? null,
+            "Il n'existe que sur votre carte : l'effacer est définitif.",
+          )}
           confirmLabel="Effacer"
           onConfirm={() => {
             const target = asking;
@@ -112,6 +135,13 @@ export function DrawTerritoryButton({ onDraw }: DrawTerritoryButtonProps) {
                 : `${drawn.length} territoire${drawn.length > 1 ? "s" : ""} dessiné${drawn.length > 1 ? "s" : ""}`
             }
             addLabel="Dessiner un territoire"
+            seekLabel="Chercher dans la chronique"
+            seekDetail="Des territoires que d'autres ont peints, à prendre chez vous."
+            onSeek={() => {
+              // Down, then up: the catalogue is raised by `onClosed` above.
+              setSeeking(true);
+              setOpen(false);
+            }}
             onAdd={() => {
               setOpen(false);
               onDraw();
@@ -127,9 +157,16 @@ export function DrawTerritoryButton({ onDraw }: DrawTerritoryButtonProps) {
                 <RosterRow
                   key={one.id}
                   thumb={
-                    <Text style={styles.initial}>
-                      {one.name.charAt(0).toUpperCase()}
-                    </Text>
+                    // Its own outline, the only likeness a territory has.
+                    // The initial stands in for a shape with no area, which
+                    // ought not to exist but costs one line to survive.
+                    one.shape ? (
+                      <Silhouette shape={one.shape} size={THUMB - 6} />
+                    ) : (
+                      <Text style={styles.initial}>
+                        {one.name.charAt(0).toUpperCase()}
+                      </Text>
+                    )
                   }
                   title={one.name}
                   detail={
@@ -138,7 +175,13 @@ export function DrawTerritoryButton({ onDraw }: DrawTerritoryButtonProps) {
                       : `${formatYear(one.from)} – ${formatYear(one.to)}`
                   }
                   index={rank}
-                  onEdit={() => setAsking({ id: one.id, name: one.name })}
+                  onEdit={() =>
+                    setAsking({
+                      id: one.id,
+                      name: one.name,
+                      origin: one.origin,
+                    })
+                  }
                   editLabel={`Effacer ${one.name}`}
                   editIcon={TRASH}
                 />

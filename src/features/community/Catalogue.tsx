@@ -36,6 +36,7 @@ import {
 } from "../../components/ui";
 import { DateWheels } from "../events/components/EventDateField";
 import { useEvents } from "../events/EventsProvider";
+import { useHidden } from "../territories/HiddenProvider";
 import { formatHistoricalDate } from "../events/historicalDate";
 import { widthsFor } from "./period";
 import { usePlacement } from "../placement";
@@ -104,7 +105,8 @@ export function Catalogue({
   onClosed,
 }: CatalogueProps) {
   const { year, refresh } = useEvents();
-  const { aiming, placeRegion, looking } = usePlacement();
+  const { reload: reloadDrawn } = useHidden();
+  const { aiming, placeRegion, showShape, looking } = usePlacement();
   const { say, dialog } = useNotice();
 
   const [search, setSearch] = useState<Search>(ANYTHING);
@@ -369,14 +371,36 @@ export function Catalogue({
     setTuning(false);
   };
 
+  /**
+   * Lays a row's shape on the plate, and takes it if the reader says so.
+   *
+   * For the kinds whose whole substance is a shape: the card is skipped
+   * because it has nothing to add, and copying from the map saves the trip
+   * back for a second decision.
+   */
+  const onTheMap = (one: SharedThing) => {
+    if (one.shape === undefined) return;
+    void showShape(
+      one.shape,
+      one.title,
+      look.under(one),
+      !one.mine && !one.copied,
+    ).then((taken) => {
+      if (taken) takeIt(one);
+    });
+  };
+
   const takeIt = (one: SharedThing, its: Kind = kind) => {
     setTaking(one.id);
     void api
       .copy(its, one.id)
       .then(async () => {
-        // The collection has a row it does not know about, and the map draws
-        // from what it holds.
-        await refresh();
+        // Two stores hold what this account owns, and a copy arrives by a
+        // route neither knows about: the collection for events, people and
+        // classeurs, the painted territories for the rest. The map redraws
+        // itself from the database and needed no telling; these lists are
+        // held in memory and did.
+        await (its === "territory" ? reloadDrawn() : refresh());
         setRows((current) =>
           current.map((row) =>
             row.id === one.id
@@ -497,8 +521,7 @@ export function Catalogue({
         <ScrollView contentContainerStyle={styles.reading}>
           <Text style={styles.lead}>
             Dites-nous ce qui ne va pas avec « {reading?.thing.title} ». Son
-            auteur
-            n'en saura rien. Assez de signalements et la chose quitte la
+            auteur n'en saura rien. Assez de signalements et la chose quitte la
             chronique en attendant d'être relue.
           </Text>
 
@@ -575,98 +598,150 @@ export function Catalogue({
           )}
         </ScrollView>
       ) : (
-        <View style={styles.stack}>
-          <View style={styles.sieve}>
-            <InkField
-              label="Nom"
-              value={search.words}
-              onChangeText={(words) => setSearch((was) => ({ ...was, words }))}
-              placeholder="Marignan, sacre, traité…"
-              autoCorrect={false}
-              returnKeyType="search"
+        <>
+          <View style={styles.stack}>
+            <View style={styles.sieve}>
+              <InkField
+                label="Nom"
+                value={search.words}
+                onChangeText={(words) =>
+                  setSearch((was) => ({ ...was, words }))
+                }
+                placeholder="Marignan, sacre, traité…"
+                autoCorrect={false}
+                returnKeyType="search"
+              />
+
+              {/* Two buttons rather than every control at once: the sieve is
+                three questions deep and only the name is asked often. */}
+              <View style={styles.tools}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Trier"
+                  onPress={() => setSifting("sort")}
+                  style={({ pressed }) => [styles.tool, pressed && styles.dim]}
+                >
+                  <Text style={styles.toolLabel}>
+                    Tri · {SORTS.find((one) => one.value === search.sort)?.said}
+                  </Text>
+                  <Text style={styles.toolMore}>⌄</Text>
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Filtrer"
+                  onPress={() => setSifting("filters")}
+                  style={({ pressed }) => [
+                    styles.tool,
+                    narrowed > 0 && styles.toolOn,
+                    pressed && styles.dim,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.toolLabel,
+                      narrowed > 0 && styles.toolLabelOn,
+                    ]}
+                  >
+                    {narrowed === 0 ? "Filtres" : `Filtres · ${narrowed}`}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.toolMore,
+                      narrowed > 0 && styles.toolLabelOn,
+                    ]}
+                  >
+                    ⌄
+                  </Text>
+                </Pressable>
+
+                {blocked.length > 0 ? (
+                  <Chip
+                    label={`Bloqués · ${blocked.length}`}
+                    onPress={() => setFace("blocked")}
+                  />
+                ) : null}
+              </View>
+            </View>
+
+            <FlatList
+              style={styles.fill}
+              data={rows}
+              keyExtractor={(one) => one.id}
+              contentContainerStyle={styles.list}
+              keyboardShouldPersistTaps="handled"
+              onEndReachedThreshold={0.4}
+              onEndReached={() => {
+                if (loading || drained || rows.length === 0) return;
+                const last = rows[rows.length - 1];
+                if (last) void fetchPage({ rank: last.rank, id: last.id });
+              }}
+              ListEmptyComponent={
+                loading ? null : (
+                  <Text style={styles.nothing}>{look.nothing}</Text>
+                )
+              }
+              ListFooterComponent={
+                loading ? (
+                  <ActivityIndicator
+                    color={palette.inkFaint}
+                    style={styles.wait}
+                  />
+                ) : null
+              }
+              renderItem={({ item }) => (
+                <ThingRow
+                  one={item}
+                  look={look}
+                  busy={taking === item.id}
+                  onOpen={() =>
+                    look.onTheMap === true
+                      ? onTheMap(item)
+                      : setTrail([{ kind, thing: item }])
+                  }
+                  onTake={() => takeIt(item)}
+                />
+              )}
             />
 
-            {/* Two buttons rather than every control at once: the sieve is
-                three questions deep and only the name is asked often. */}
-            <View style={styles.tools}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Trier"
-                onPress={() => setSifting("sort")}
-                style={({ pressed }) => [styles.tool, pressed && styles.dim]}
+            {/* A card rises over the list rather than replacing it, and that
+              buys two things at once: it can be animated, and the list keeps
+              its scroll — coming back from the fortieth row used to land at
+              the first. Its own buttons travel with it, so the whole card
+              arrives as one thing. */}
+            {reading === null ? null : (
+              <Animated.View
+                style={[styles.risen, { transform: [{ translateY: rise }] }]}
               >
-                <Text style={styles.toolLabel}>
-                  Tri · {SORTS.find((one) => one.value === search.sort)?.said}
-                </Text>
-                <Text style={styles.toolMore}>⌄</Text>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Filtrer"
-                onPress={() => setSifting("filters")}
-                style={({ pressed }) => [
-                  styles.tool,
-                  narrowed > 0 && styles.toolOn,
-                  pressed && styles.dim,
-                ]}
-              >
-                <Text
-                  style={[styles.toolLabel, narrowed > 0 && styles.toolLabelOn]}
-                >
-                  {narrowed === 0 ? "Filtres" : `Filtres · ${narrowed}`}
-                </Text>
-                <Text
-                  style={[styles.toolMore, narrowed > 0 && styles.toolLabelOn]}
-                >
-                  ⌄
-                </Text>
-              </Pressable>
-
-              {blocked.length > 0 ? (
-                <Chip
-                  label={`Bloqués · ${blocked.length}`}
-                  onPress={() => setFace("blocked")}
+                <SharedCard
+                  one={reading.thing}
+                  kind={reading.kind}
+                  look={readingLook}
+                  // What a classeur holds is openable: nobody takes
+                  // twenty-seven events on the strength of their titles.
+                  onOpenHeld={(one) =>
+                    setTrail((was) => [...was, { kind: "event", thing: one }])
+                  }
+                  // A territory is its outline: the card cannot show one, so
+                  // it hands the reader to the map. Taking it from there
+                  // avoids the trip back for a second decision.
+                  onShowShape={(shape) => {
+                    const one = reading.thing;
+                    void showShape(
+                      shape,
+                      one.title,
+                      readingLook.under(one),
+                      !one.mine && !one.copied,
+                    ).then((taken) => {
+                      if (taken) takeIt(one, reading.kind);
+                    });
+                  }}
+                  onReport={() => setFace("report")}
+                  onBlock={block}
                 />
-              ) : null}
-            </View>
-          </View>
-
-          <FlatList
-            style={styles.fill}
-            data={rows}
-            keyExtractor={(one) => one.id}
-            contentContainerStyle={styles.list}
-            keyboardShouldPersistTaps="handled"
-            onEndReachedThreshold={0.4}
-            onEndReached={() => {
-              if (loading || drained || rows.length === 0) return;
-              const last = rows[rows.length - 1];
-              if (last) void fetchPage({ rank: last.rank, id: last.id });
-            }}
-            ListEmptyComponent={
-              loading ? null : (
-                <Text style={styles.nothing}>{look.nothing}</Text>
-              )
-            }
-            ListFooterComponent={
-              loading ? (
-                <ActivityIndicator
-                  color={palette.inkFaint}
-                  style={styles.wait}
-                />
-              ) : null
-            }
-            renderItem={({ item }) => (
-              <ThingRow
-                one={item}
-                look={look}
-                busy={taking === item.id}
-                onOpen={() => setTrail([{ kind, thing: item }])}
-                onTake={() => takeIt(item)}
-              />
+              </Animated.View>
             )}
-          />
+          </View>
 
           {/* A card laid on the panel, never a modal over it. See `sifting`.
               Last among its siblings and layered above them, because a
@@ -874,31 +949,7 @@ export function Catalogue({
               </View>
             </View>
           )}
-
-          {/* A card rises over the list rather than replacing it, and that
-              buys two things at once: it can be animated, and the list keeps
-              its scroll — coming back from the fortieth row used to land at
-              the first. Its own buttons travel with it, so the whole card
-              arrives as one thing. */}
-          {reading === null ? null : (
-            <Animated.View
-              style={[styles.risen, { transform: [{ translateY: rise }] }]}
-            >
-              <SharedCard
-                one={reading.thing}
-                kind={reading.kind}
-                look={readingLook}
-                // What a classeur holds is openable: nobody takes
-                // twenty-seven events on the strength of their titles.
-                onOpenHeld={(one) =>
-                  setTrail((was) => [...was, { kind: "event", thing: one }])
-                }
-                onReport={() => setFace("report")}
-                onBlock={block}
-              />
-            </Animated.View>
-          )}
-        </View>
+        </>
       )}
     </Sheet>
   );
@@ -973,19 +1024,27 @@ const styles = StyleSheet.create({
   /**
    * The settings, laid over the panel.
    *
-   * Absolute inside the sheet, which clips it: the card reads as centred on
-   * the sheet and the list stays faintly visible behind — it is what the
-   * settings are about. And being no modal at all is what lets the region
-   * filter hand the screen to the reticle without anything being dismissed
-   * from underneath it.
+   * Absolute against the **panel** and not against the list's own room, so
+   * the dim reaches the heading above and the button below: a card that
+   * darkened the middle of a sheet and left its two ends lit read as a
+   * mistake rather than as a card.
+   *
+   * It clips to the sheet, so it looks centred on it, and the list stays
+   * faintly visible behind — it is what the settings are about. And being no
+   * modal at all is what lets the region filter hand the screen to the
+   * reticle without anything being dismissed from underneath it.
    */
   /**
    * The room the list and the card being read share.
    *
-   * The card is absolute inside *this* rather than inside the panel, so it
-   * covers the list and the sieve and leaves the sheet's header alone — laid
-   * over the panel itself, it hid the very title that says what is being
-   * read, and the first line of the card sat flush against the top edge.
+   * The card is absolute inside *this* rather than inside the panel, and it
+   * has to stay so for two reasons that were each learnt the hard way: laid
+   * over the panel it hid the very heading that says what is being read, and
+   * it covered the sheet's own footer — the buttons that take a copy and go
+   * back were still there, behind it.
+   *
+   * The settings card is the opposite case and sits outside: it dims, and a
+   * dim that stops short of the heading reads as a mistake.
    */
   stack: { flex: 1 },
   risen: {

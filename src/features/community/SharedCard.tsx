@@ -3,6 +3,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 
 import * as api from "./api";
 
+import { InkButton } from "../../components/ui";
 import { EVENT_LOOK } from "./looks";
 import { ThingRow } from "./ThingRow";
 import type { Kind, Look, SharedThing } from "./types";
@@ -31,6 +32,12 @@ export type SharedCardProps = {
    * none of them can be looked at.
    */
   onOpenHeld?: (one: SharedThing) => void;
+  /**
+   * Lays this one's shape on the plate, for the kinds that have one.
+   *
+   * A territory is its outline and nothing else; a card cannot show that.
+   */
+  onShowShape?: (shape: unknown) => void;
 };
 
 /**
@@ -51,6 +58,7 @@ export function SharedCard({
   onReport,
   onBlock,
   onOpenHeld,
+  onShowShape,
 }: SharedCardProps) {
   const [whole, setWhole] = useState<
     Awaited<ReturnType<typeof api.fetchWhole>> | null
@@ -84,6 +92,20 @@ export function SharedCard({
           ? ` · copié ${one.stars} fois`
           : " · personne ne l'a encore copié"}
       </Text>
+
+      {whole?.shape && onShowShape ? (
+        <>
+          <InkButton
+            label="Voir sur la carte"
+            variant="solid"
+            onPress={() => onShowShape(whole.shape)}
+          />
+          <Text style={styles.aside}>
+            Un territoire n'est que son tracé : il faut le voir sur la carte
+            pour savoir ce qu'il couvre.
+          </Text>
+        </>
+      ) : null}
 
       {whole?.description ? (
         <Text style={styles.body}>{whole.description}</Text>

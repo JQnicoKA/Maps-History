@@ -14,6 +14,20 @@ export type DrawnPolity = {
   area: number | null;
   /** In the common chronicle, where anybody may read and copy it. */
   shared: boolean;
+  /**
+   * A coarse outline, for the list to draw.
+   *
+   * A territory has no photograph and never will; its shape is the only
+   * likeness it has. Null only if the geometry could not be simplified to
+   * anything, which would be a shape with no area.
+   */
+  shape: unknown | null;
+  /**
+   * The row this was taken from, in another account — null for an original.
+   *
+   * What it decides today is what the deletion warning may honestly say.
+   */
+  origin: string | null;
 };
 
 /**
@@ -86,11 +100,16 @@ export async function fetchDrawnAt(
 }
 
 /** Everything this account has drawn, for the list that manages them. */
+/**
+ * Everything this account has painted, for the list that manages them.
+ *
+ * Through a function rather than a plain read, because the outline has to
+ * come with it and PostgREST cannot ask for `ST_AsGeoJSON` in a select — see
+ * `my_territories`, which is `security invoker` and so still bounded by
+ * row-level security.
+ */
 export async function fetchDrawn(): Promise<DrawnPolity[]> {
-  const { data, error } = await supabase()
-    .from("drawn_polities")
-    .select("id, name, start_year, end_year, area, shared")
-    .order("start_year");
+  const { data, error } = await supabase().rpc("my_territories");
   if (error) throw new Error(error.message);
   return (
     (data ?? []) as {
@@ -100,6 +119,8 @@ export async function fetchDrawn(): Promise<DrawnPolity[]> {
       end_year: number;
       area: number | null;
       shared: boolean;
+      shape: unknown | null;
+      origin: string | null;
     }[]
   ).map((row) => ({
     id: row.id,
@@ -108,6 +129,8 @@ export async function fetchDrawn(): Promise<DrawnPolity[]> {
     to: row.end_year,
     area: row.area,
     shared: row.shared,
+    shape: row.shape,
+    origin: row.origin,
   }));
 }
 

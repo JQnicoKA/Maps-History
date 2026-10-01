@@ -93,11 +93,39 @@ export const CHARACTER_LOOK: Look = {
  * inside another — an event inside a classeur — must be drawn as the thing it
  * is, not as the thing that held it.
  */
+export const TERRITORY_LOOK: Look = {
+  many: "Territoires de la chronique",
+  one: "Un territoire",
+  /** No picture and no type: the initial of the polity it draws. */
+  glyph: (one) => one.title.charAt(0).toUpperCase(),
+  /**
+   * Its extent and the years it was painted for.
+   *
+   * The size comes first because it is what places a shape: "24 319 km² ·
+   * 1000 – 1477" says duchy, where the years alone say nothing.
+   */
+  under: (one) => [one.note, span(one)].filter(Boolean).join(" · "),
+  /**
+   * Straight to the map, with no card in between.
+   *
+   * A card could name a territory and measure it, and say nothing about the
+   * one thing that decides whether the reader wants it: what it covers.
+   * Since the outline rides along in the row, the plate can show it at once.
+   */
+  onTheMap: true,
+  castLegend: "",
+  castAside: "",
+  filedLegend: "",
+  filedAside: "",
+  nothing:
+    "Aucun territoire de ce genre dans la chronique. Essayez d'élargir l'époque ou la région — ou peignez le vôtre.",
+};
+
 export const LOOKS: Record<Kind, Look> = {
   event: EVENT_LOOK,
   character: CHARACTER_LOOK,
   folder: FOLDER_LOOK,
-  // Not built yet; the catalogue never asks for them.
+  territory: TERRITORY_LOOK,
+  // Not built yet; the catalogue never asks for it.
   tree: EVENT_LOOK,
-  territory: EVENT_LOOK,
 };

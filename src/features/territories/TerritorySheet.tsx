@@ -4,6 +4,7 @@ import { StyleSheet, Text } from "react-native";
 import { useHidden } from "./HiddenProvider";
 import { Dialog, InkButton, useNotice } from "../../components/ui";
 import { ShareRow } from "../community/ShareRow";
+import { stake } from "../community/stakes";
 import { BORDERS_END } from "../../config/history";
 import { formatYear } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
@@ -94,7 +95,10 @@ export function TerritorySheet({ territory, onClose }: TerritorySheetProps) {
 
       <Text style={styles.line}>
         {mine
-          ? "Le supprimer est définitif : il n'existe que sur votre carte."
+          ? stake(
+              ours?.origin ?? null,
+              "Le supprimer est définitif : il n'existe que sur votre carte.",
+            )
           : "Le retirer ne l'efface pas : il disparaît de votre carte, à toutes les époques, et vous pourrez le rétablir depuis le bouton territoires."}
       </Text>
 

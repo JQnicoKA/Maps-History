@@ -53,6 +53,7 @@ describe("écrire une période", () => {
     characters: [],
     cover: null,
     shared: true,
+    origin: null,
     ...over,
   });
 

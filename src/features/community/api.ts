@@ -89,6 +89,7 @@ type Row = {
   copied: boolean;
   reported: boolean;
   rank: number;
+  shape?: unknown;
 };
 
 const toDate = (
@@ -128,6 +129,9 @@ function toThing(row: Row): SharedThing {
     copied: row.copied,
     reported: row.reported,
     rank: row.rank,
+    ...(row.shape === undefined || row.shape === null
+      ? {}
+      : { shape: row.shape }),
   };
 }
 
@@ -178,6 +182,7 @@ export async function fetchWhole(
     cast: string[];
     folders: string[];
     held?: Row[];
+    shape?: unknown;
   };
   return {
     ...toThing({ ...whole, kind: whole.type, cover_path: null, rank: 0 }),
@@ -190,6 +195,7 @@ export async function fetchWhole(
     cast: whole.cast,
     folders: whole.folders,
     held: (whole.held ?? []).map(toThing),
+    shape: whole.shape ?? null,
   };
 }
 

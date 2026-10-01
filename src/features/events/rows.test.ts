@@ -34,6 +34,7 @@ const tree = (members: TreeMember[], links: TreeLink[]): Tree => ({
   members,
   links,
   shared: true,
+  origin: null,
 });
 
 const wed = (from: string, to: string): TreeLink => ({ kind: "couple", from, to });

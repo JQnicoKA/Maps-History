@@ -744,7 +744,9 @@ export function TreeBuilder({
           }
           hint={
             menu === "delete"
-              ? "Les personnages restent dans la collection ; seul l'arbre disparaît."
+              ? tree.origin === null
+                ? "Les personnages restent dans la collection ; seul l'arbre disparaît."
+                : "Les personnages restent dans la collection, et vous n'effacez que votre copie : celui de son auteur n'est pas touché."
               : menu === "help"
                 ? "Tout part de la personne : on la touche, ou on reste appuyé dessus."
                 : undefined

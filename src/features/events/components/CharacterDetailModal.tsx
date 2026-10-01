@@ -109,6 +109,9 @@ export function CharacterDetailModal({
     rooted.length === 0
       ? null
       : `Il quittera ${rooted.length === 1 ? "l'arbre" : `les ${rooted.length} arbres`} où il se tient.`,
+    person.origin === null
+      ? null
+      : "Vous effacez votre copie ; celle de son auteur, dans la chronique, n'est pas touchée.",
   ]
     .filter(Boolean)
     .join(" ");

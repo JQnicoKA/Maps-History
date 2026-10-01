@@ -107,11 +107,18 @@ export function CharacterEditModal({
     : 0;
 
   /** What the reader stands to lose, said plainly before they decide. */
+  const kept =
+    person?.origin === null || person === null
+      ? ""
+      : " Et vous n'effacez que votre copie : celle de son auteur, dans la chronique, n'est pas touchée.";
+
   const stake =
     appears === 0
       ? "Aucun événement ne le mentionne."
       : `${appears} événement${appears > 1 ? "s" : ""} le mentionne${appears > 1 ? "nt" : ""}. ` +
         `${appears > 1 ? "Ils ne seront pas supprimés" : "Il ne sera pas supprimé"}, seulement délié${appears > 1 ? "s" : ""}.`;
+
+  const warning = stake + kept;
 
   const erase = () => {
     if (!person) return;
@@ -234,7 +241,7 @@ export function CharacterEditModal({
       <ConfirmDialog
         visible={asking}
         title={`Supprimer « ${person?.name ?? ""} » ?`}
-        message={stake}
+        message={warning}
         confirmLabel="Supprimer"
         onConfirm={erase}
         onClose={() => setAsking(false)}

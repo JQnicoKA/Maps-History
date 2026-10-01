@@ -56,6 +56,14 @@ export type SharedThing = {
    * ask for the next page — see `search_events`.
    */
   rank: number;
+  /**
+   * A coarse outline, for the kinds that are one — a painted territory.
+   *
+   * It rides along in the list because it is that kind's only picture, and
+   * because a tap on it goes straight to the map: without the shape in hand
+   * that would cost a second query before anything could be shown.
+   */
+  shape?: unknown;
 };
 
 /** What the card shows before anybody decides to copy it. */
@@ -78,6 +86,14 @@ export type SharedThingDetail = SharedThing & {
    * kinds that hold nothing.
    */
   held: SharedThing[];
+  /**
+   * A GeoJSON geometry, for the kinds that are one — a painted territory.
+   *
+   * Null for the rest. It is never drawn on the card: an outline means
+   * nothing away from the coastlines it was painted over, so the card sends
+   * the reader to the map instead.
+   */
+  shape: unknown | null;
 };
 
 /**
@@ -150,6 +166,14 @@ export type Look = {
   /** The line under the title: a period, a lifespan, a reign. */
   under: (thing: SharedThing) => string;
   /** What the two name lists mean for this kind. */
+  /**
+   * True when a tap belongs on the map rather than on a card.
+   *
+   * A territory is its outline: a card can name it and measure it, and say
+   * nothing about the one thing the reader wants to know. So the row skips
+   * the card and lays the shape on the plate.
+   */
+  onTheMap?: boolean;
   castLegend: string;
   castAside: string;
   filedLegend: string;

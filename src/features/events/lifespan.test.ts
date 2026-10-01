@@ -17,6 +17,7 @@ const person = (
   longitude: placed ? 2.35 : null,
   latitude: placed ? 48.85 : null,
   shared: true,
+  origin: null,
   photos: [],
 });
 

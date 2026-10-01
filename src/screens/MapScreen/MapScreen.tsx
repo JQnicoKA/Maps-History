@@ -28,12 +28,18 @@ import { TreeBuilder } from "../../features/genealogy/TreeBuilder";
 import { EventSummaryCard } from "../../features/events/components/EventSummaryCard";
 import { LocationReticle } from "../../features/events/components/LocationReticle";
 import { FilterButton } from "../../features/filters/FilterButton";
-import { RegionReticle, usePlacement } from "../../features/placement";
+import {
+  RegionReticle,
+  ShapeBar,
+  ShapeOnShow,
+  usePlacement,
+} from "../../features/placement";
 import { Catalogue } from "../../features/community/Catalogue";
 import {
   CHARACTER_LOOK,
   EVENT_LOOK,
   FOLDER_LOOK,
+  TERRITORY_LOOK,
 } from "../../features/community/looks";
 import { PlaceLayers } from "../../features/places/PlaceLayers";
 import { TerritoryLayers } from "../../features/territories/TerritoryLayers";
@@ -84,7 +90,8 @@ type Page =
   /** The community catalogue, which is about no one row in particular. */
   | { kind: "searchEvents" }
   | { kind: "searchCharacters" }
-  | { kind: "searchFolders" };
+  | { kind: "searchFolders" }
+  | { kind: "searchTerritories" };
 
 export function MapScreen() {
   const insets = useSafeAreaInsets();
@@ -406,6 +413,12 @@ export function MapScreen() {
           {drawing ? (
             <BrushLayers strokes={strokes} trail={trail} width={BRUSH_POINTS} />
           ) : null}
+          {/* Somebody else's territory, offered for a look. Above the washes
+              of the map itself, since it is a proposal and not yet part of
+              the world. */}
+          {asking?.kind === "shape" ? (
+            <ShapeOnShow shape={asking.shape} />
+          ) : null}
           {/* Rien de la collection pendant qu'on peint : les marqueurs se
               confondraient avec la peinture, et ce n'est pas d'eux qu'il
               s'agit à ce moment-là. */}
@@ -439,6 +452,18 @@ export function MapScreen() {
         <LocationReticle
           onConfirm={() => void confirmPlacement()}
           onCancel={() => settle(null)}
+          bottomInset={insets.bottom}
+        />
+      ) : null}
+
+      {asking?.kind === "shape" ? (
+        <ShapeBar
+          name={asking.name}
+          said={asking.said}
+          takeable={asking.takeable}
+          busy={false}
+          onTake={() => settle(true)}
+          onClose={() => settle(false)}
           bottomInset={insets.bottom}
         />
       ) : null}
@@ -515,7 +540,10 @@ export function MapScreen() {
               {/* Under the `+`, and apart from it: one adds to the collection,
                   the other changes the map it is read on. */}
               {MAP_FEATURES.territories ? (
-                <DrawTerritoryButton onDraw={() => setDrawing(true)} />
+                <DrawTerritoryButton
+                  onDraw={() => setDrawing(true)}
+                  onSeek={() => raise({ kind: "searchTerritories" })}
+                />
               ) : null}
             </View>
           </View>
@@ -676,6 +704,15 @@ export function MapScreen() {
         kind="character"
         look={CHARACTER_LOOK}
         visible={page?.kind === "searchCharacters"}
+        onClose={() => setPage(null)}
+        onClosed={afterPage}
+      />
+
+      <Catalogue
+        key={`commons-territories-${raised}`}
+        kind="territory"
+        look={TERRITORY_LOOK}
+        visible={page?.kind === "searchTerritories"}
         onClose={() => setPage(null)}
         onClosed={afterPage}
       />

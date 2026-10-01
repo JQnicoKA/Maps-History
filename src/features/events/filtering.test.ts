@@ -15,6 +15,7 @@ const event = (folders: { folderId: string; importance: Importance }[]): EventSu
   characters: [],
   cover: null,
   shared: true,
+  origin: null,
 });
 
 const filters = (

@@ -46,6 +46,15 @@ type HiddenContextValue = {
   erase: (id: string) => Promise<void>;
   /** Puts one into the common chronicle, or takes it out. */
   share: (id: string, shared: boolean) => Promise<void>;
+  /**
+   * Re-reads what this account has painted.
+   *
+   * For the rows that arrive by a route this provider knows nothing about —
+   * a territory copied from the chronicle. The map did not need telling: it
+   * asks the database for the year it is showing and so saw the copy at
+   * once. The list is held in memory, and did not.
+   */
+  reload: () => Promise<void>;
 };
 
 const HiddenContext = createContext<HiddenContextValue | null>(null);
@@ -109,6 +118,10 @@ export function HiddenProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const reload = useCallback(async () => {
+    setDrawn(await fetchDrawn());
+  }, []);
+
   const share = useCallback(async (id: string, shared: boolean) => {
     await shareDrawn(id, shared);
     // One boolean is the whole of what changed.
@@ -124,8 +137,8 @@ export function HiddenProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ hidden, hide, show, mask, drawn, draw, erase, share }),
-    [hidden, hide, show, mask, drawn, draw, erase, share],
+    () => ({ hidden, hide, show, mask, drawn, draw, erase, share, reload }),
+    [hidden, hide, show, mask, drawn, draw, erase, share, reload],
   );
 
   return (

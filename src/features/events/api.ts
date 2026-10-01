@@ -35,6 +35,7 @@ type EventRow = {
   longitude: number;
   latitude: number;
   shared: boolean;
+  origin_id: string | null;
   event_folders: { folder_id: string; importance: Importance }[];
   event_characters: { character_id: string }[];
   event_photos: {
@@ -50,7 +51,7 @@ const EVENT_COLUMNS = `
   id, title, type, description,
   start_year, start_month, start_day, start_approx,
   end_year, end_month, end_day, end_approx,
-  longitude, latitude, shared,
+  longitude, latitude, shared, origin_id,
   event_folders ( folder_id, importance ),
   event_characters ( character_id ),
   event_photos ( id, storage_path, position, source )
@@ -61,7 +62,7 @@ const SUMMARY_COLUMNS = `
   id, title, type,
   start_year, start_month, start_day, start_approx,
   end_year, end_month, end_day, end_approx,
-  longitude, latitude, shared,
+  longitude, latitude, shared, origin_id,
   event_folders ( folder_id, importance ),
   event_characters ( character_id ),
   event_photos ( id, storage_path, position, source )
@@ -93,6 +94,7 @@ function toSummary(row: EventRow): EventSummary {
     title: row.title,
     type: row.type,
     shared: row.shared,
+    origin: row.origin_id,
     cover: photos[0] ?? null,
     start: toDate(
       row.start_year,
@@ -138,6 +140,7 @@ type FolderRow = {
   name: string;
   photo_path: string | null;
   shared: boolean;
+  origin_id: string | null;
 };
 
 function toFolder(row: FolderRow): Folder {
@@ -145,6 +148,7 @@ function toFolder(row: FolderRow): Folder {
     id: row.id,
     name: row.name,
     shared: row.shared,
+    origin: row.origin_id,
     photo:
       row.photo_path === null
         ? null
@@ -152,7 +156,7 @@ function toFolder(row: FolderRow): Folder {
   };
 }
 
-const FOLDER_COLUMNS = "id, name, photo_path, shared";
+const FOLDER_COLUMNS = "id, name, photo_path, shared, origin_id";
 
 /**
  * Puts something into the common chronicle, or takes it out.
@@ -555,6 +559,7 @@ type CharacterRow = {
   longitude: number | null;
   latitude: number | null;
   shared: boolean;
+  origin_id: string | null;
   character_photos: {
     id: string;
     storage_path: string;
@@ -567,7 +572,7 @@ const CHARACTER_COLUMNS = `
   id, name, bio,
   birth_year, birth_month, birth_day, birth_approx,
   death_year, death_month, death_day, death_approx,
-  longitude, latitude, shared,
+  longitude, latitude, shared, origin_id,
   character_photos ( id, storage_path, position, source )
 `;
 
@@ -601,6 +606,7 @@ function toCharacter(row: CharacterRow): Character {
     longitude: row.longitude,
     latitude: row.latitude,
     shared: row.shared,
+    origin: row.origin_id,
     photos: [...row.character_photos]
       .sort((a, b) => a.position - b.position)
       .map((photo) => ({
@@ -713,6 +719,7 @@ type TreeRow = {
   name: string;
   note: string | null;
   shared: boolean;
+  origin_id: string | null;
   tree_members: {
     id: string;
     character_id: string;
@@ -725,7 +732,7 @@ type TreeRow = {
 };
 
 const TREE_COLUMNS = `
-  id, name, note, shared,
+  id, name, note, shared, origin_id,
   tree_members ( id, character_id, generation, position, importance, note ),
   tree_links ( parent_id, child_id, kind )
 `;
@@ -736,6 +743,7 @@ function toTree(row: TreeRow): Tree {
     name: row.name,
     note: row.note,
     shared: row.shared,
+    origin: row.origin_id,
     members: [...row.tree_members]
       .sort((a, b) => a.generation - b.generation || a.position - b.position)
       .map((member) => ({

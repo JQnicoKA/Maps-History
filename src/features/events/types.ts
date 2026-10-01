@@ -78,6 +78,14 @@ export type Folder = {
   id: string;
   name: string;
   /**
+   * The row this was taken from, in another account — null for an original.
+   *
+   * What it is for today is telling the truth when something is deleted: a
+   * copy's disappearance costs nothing, since its author's still stands in
+   * the chronicle, and saying "c'est définitif" over a copy is a lie.
+   */
+  origin: string | null;
+  /**
    * In the common chronicle, where anybody may read and copy it.
    *
    * True unless the reader said otherwise: what is written here is history,
@@ -150,6 +158,14 @@ export type EventSummary = {
    * exists for the reader writing their own family rather than the world's.
    */
   shared: boolean;
+  /**
+   * The row this was taken from, in another account — null for an original.
+   *
+   * What it is for today is telling the truth when something is deleted: a
+   * copy's disappearance costs nothing, since its author's still stands in
+   * the chronicle, and saying "c'est définitif" over a copy is a lie.
+   */
+  origin: string | null;
   /** Identifiers of the people this event is about. */
   characters: string[];
   /** The first picture, which is all the marker and the card ever show. */
@@ -201,6 +217,14 @@ export type Character = {
    * exists for the reader writing their own family rather than the world's.
    */
   shared: boolean;
+  /**
+   * The row this was taken from, in another account — null for an original.
+   *
+   * What it is for today is telling the truth when something is deleted: a
+   * copy's disappearance costs nothing, since its author's still stands in
+   * the chronicle, and saying "c'est définitif" over a copy is a lie.
+   */
+  origin: string | null;
   photos: StoredPhoto[];
 };
 
@@ -246,6 +270,14 @@ export type Tree = {
   id: string;
   name: string;
   note: string | null;
+  /**
+   * The row this was taken from, in another account — null for an original.
+   *
+   * What it is for today is telling the truth when something is deleted: a
+   * copy's disappearance costs nothing, since its author's still stands in
+   * the chronicle, and saying "c'est définitif" over a copy is a lie.
+   */
+  origin: string | null;
   /**
    * In the common chronicle, where anybody may read and copy it.
    *

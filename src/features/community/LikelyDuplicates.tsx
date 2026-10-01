@@ -25,6 +25,14 @@ export type LikelyDuplicatesProps = {
    * and show it. The form is done.
    */
   onTaken: (id: string) => void;
+  /**
+   * Whether taking one is offered at all.
+   *
+   * False where the reader has already done the work — naming a shape they
+   * just painted — and taking somebody else's instead would throw theirs
+   * away. The warning is then only a warning, which is the point.
+   */
+  taking?: boolean;
 };
 
 /**
@@ -52,6 +60,7 @@ export function LikelyDuplicates({
   year,
   approximate,
   onTaken,
+  taking: offered = true,
 }: LikelyDuplicatesProps) {
   const [alike, setAlike] = useState<SharedThing[]>([]);
   const [taking, setTaking] = useState<string | null>(null);
@@ -91,6 +100,16 @@ export function LikelyDuplicates({
 
   if (alike.length === 0) return null;
 
+  /**
+   * How many to draw.
+   *
+   * Five where this sits in a scrolling form; three where it sits in a
+   * dialogue that cannot scroll — five rows plus the rest of the card runs
+   * off a small screen, and a warning nobody can reach the bottom of is not
+   * a warning.
+   */
+  const shownAlike = offered ? alike : alike.slice(0, 3);
+
   const take = (one: SharedThing) => {
     setTaking(one.id);
     void api
@@ -114,7 +133,7 @@ export function LikelyDuplicates({
           : `${alike.length} ${noun}s ressemblent à celui-ci`}
       </Text>
 
-      {alike.map((one) => (
+      {shownAlike.map((one) => (
         <Pressable
           key={one.id}
           accessibilityRole="button"
@@ -139,7 +158,7 @@ export function LikelyDuplicates({
             </Text>
           </View>
 
-          {one.mine ? (
+          {!offered ? null : one.mine ? (
             <Text style={styles.already}>le vôtre</Text>
           ) : one.copied ? (
             <Text style={styles.already}>déjà pris</Text>
@@ -160,8 +179,9 @@ export function LikelyDuplicates({
       ))}
 
       <Text style={styles.aside}>
-        Touchez-en un pour le lire. Le vôtre dira peut-être autre chose :
-        continuez si c'est le cas.
+        {offered
+          ? "Touchez-en un pour le lire. Le vôtre dira peut-être autre chose : continuez si c'est le cas."
+          : "Touchez-en un pour le lire. Le vôtre dira peut-être autre chose : enregistrez si c'est le cas."}
       </Text>
 
       {shown === null ? null : (
@@ -178,21 +198,23 @@ export function LikelyDuplicates({
                 grow
                 onPress={() => setReading(null)}
               />
-              <InkButton
-                label={
-                  shown.mine
-                    ? "Le vôtre"
-                    : shown.copied
-                      ? "Déjà pris"
-                      : taking === shown.id
-                        ? "…"
-                        : "Prendre celui-ci"
-                }
-                variant="solid"
-                grow
-                disabled={shown.mine || shown.copied || taking !== null}
-                onPress={() => take(shown)}
-              />
+              {!offered ? null : (
+                <InkButton
+                  label={
+                    shown.mine
+                      ? "Le vôtre"
+                      : shown.copied
+                        ? "Déjà pris"
+                        : taking === shown.id
+                          ? "…"
+                          : "Prendre celui-ci"
+                  }
+                  variant="solid"
+                  grow
+                  disabled={shown.mine || shown.copied || taking !== null}
+                  onPress={() => take(shown)}
+                />
+              )}
             </>
           }
         >
@@ -235,7 +257,11 @@ const styles = StyleSheet.create({
     backgroundColor: palette.wax,
   },
   takeLabel: { ...type.legend, fontWeight: "700", color: palette.paperLight },
-  already: { ...type.legend, color: palette.inkFaint, paddingHorizontal: space.sm },
+  already: {
+    ...type.legend,
+    color: palette.inkFaint,
+    paddingHorizontal: space.sm,
+  },
   dim: { opacity: 0.6 },
   aside: { ...type.legend, color: palette.inkFaint },
 });

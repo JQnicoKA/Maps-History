@@ -1,5 +1,6 @@
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { Silhouette } from "../territories/Silhouette";
 import type { Look, SharedThing } from "./types";
 import { palette } from "../../theme/palette";
 import { radius, shadow, space, type } from "../../theme/tokens";
@@ -42,10 +43,14 @@ export function ThingRow({
       style={({ pressed }) => [styles.entry, pressed && styles.dim]}
     >
       <View style={styles.thumb}>
-        {one.cover === null ? (
-          <Text style={styles.emoji}>{look.glyph(one)}</Text>
-        ) : (
+        {one.cover !== null ? (
           <Image source={{ uri: one.cover }} style={styles.thumbImage} />
+        ) : one.shape ? (
+          // A territory has no photograph and never will; its outline is the
+          // only likeness it has.
+          <Silhouette shape={one.shape} size={THUMB} />
+        ) : (
+          <Text style={styles.emoji}>{look.glyph(one)}</Text>
         )}
       </View>
 
