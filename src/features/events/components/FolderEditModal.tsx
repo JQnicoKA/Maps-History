@@ -16,6 +16,7 @@ import {
   useNotice,
 } from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
+import { whyLocked } from "../../community/copies";
 import { ShareRow } from "../../community/ShareRow";
 import { pickPhotos } from "../pickPhotos";
 import type { Folder, PickedPhoto } from "../types";
@@ -278,6 +279,7 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
           <ShareRow
             what="ce classeur"
             shared={folder.shared}
+            locked={whyLocked(folder.origin)}
             onChange={(next) => share("folder", folder.id, next)}
           />
         ) : null}

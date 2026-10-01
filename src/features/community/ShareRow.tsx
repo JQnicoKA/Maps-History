@@ -10,6 +10,14 @@ export type ShareRowProps = {
   what: string;
   shared: boolean;
   onChange: (shared: boolean) => Promise<void>;
+  /**
+   * Why there is no choice here, when there is none — see `whyLocked`.
+   *
+   * Shown in place of the usual line, with the tick out of reach. Saying
+   * nothing and simply greying the row would leave the reader guessing; the
+   * rule is defensible, so it is stated.
+   */
+  locked?: string | null;
 };
 
 /**
@@ -23,7 +31,12 @@ export type ShareRowProps = {
  * Put at the foot of a card rather than in the middle of a form: it is not a
  * field to fill in, it is a thing that is already true and can be undone.
  */
-export function ShareRow({ what, shared, onChange }: ShareRowProps) {
+export function ShareRow({
+  what,
+  shared,
+  onChange,
+  locked = null,
+}: ShareRowProps) {
   const [busy, setBusy] = useState(false);
   const { say, dialog } = useNotice();
 
@@ -33,14 +46,16 @@ export function ShareRow({ what, shared, onChange }: ShareRowProps) {
       <TickRow
         title="Dans la chronique commune"
         detail={
-          busy
-            ? "…"
-            : shared
-              ? `Les autres peuvent lire ${what} et en prendre copie.`
-              : `${what.charAt(0).toUpperCase()}${what.slice(1)} n'appartient qu'à vous.`
+          locked !== null
+            ? locked
+            : busy
+              ? "…"
+              : shared
+                ? `Les autres peuvent lire ${what} et en prendre copie.`
+                : `${what.charAt(0).toUpperCase()}${what.slice(1)} n'appartient qu'à vous.`
         }
         on={shared}
-        disabled={busy}
+        disabled={busy || locked !== null}
         onToggle={() => {
           setBusy(true);
           void onChange(!shared)

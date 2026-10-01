@@ -10,7 +10,7 @@ import {
 } from "react-native";
 
 import { PhotoViewer } from "./PhotoViewer";
-import { ShareRow } from "../../community/ShareRow";
+import { SharePill } from "../../community/SharePill";
 import { stake } from "../../community/stakes";
 import {
   ConfirmDialog,
@@ -63,7 +63,7 @@ export function EventDetailModal({
   // out — and so the screen is told when it has gone and may raise the next
   // page. Re-seeding happens on the way *in*, by the caller's key.
   const event = useLingering(subject);
-  const { folders, characters, removeEvent, loadEvent, share } = useEvents();
+  const { folders, characters, removeEvent, loadEvent } = useEvents();
   /**
    * The text and the pictures, which the list does not carry.
    *
@@ -165,9 +165,15 @@ export function EventDetailModal({
 
       <ScrollView contentContainerStyle={styles.body}>
         <View style={styles.header}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeEmoji}>{emoji}</Text>
-            <Text style={styles.badgeLabel}>{label}</Text>
+          {/* What kind of thing it is, and who can see it. Both are facts
+              about the event rather than things to do to it, so both are
+              stated here; the change lives in "Modifier l'événement". */}
+          <View style={styles.marks}>
+            <View style={styles.badge}>
+              <Text style={styles.badgeEmoji}>{emoji}</Text>
+              <Text style={styles.badgeLabel}>{label}</Text>
+            </View>
+            <SharePill shared={event.shared} />
           </View>
           <Text style={styles.period}>{formatEventPeriod(event)}</Text>
           <Text style={styles.title}>{event.title}</Text>
@@ -261,11 +267,6 @@ export function EventDetailModal({
             ))}
           </View>
         ) : null}
-        <ShareRow
-          what="cet événement"
-          shared={event.shared}
-          onChange={(next) => share("event", event.id, next)}
-        />
       </ScrollView>
 
       <PhotoViewer photo={viewing} onClose={() => setViewing(null)} />
@@ -302,6 +303,13 @@ const styles = StyleSheet.create({
     gap: space.lg,
   },
   header: { gap: space.sm },
+  /** The badge and the pill, side by side, wrapping if a label is long. */
+  marks: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: space.sm,
+  },
   badge: {
     flexDirection: "row",
     alignItems: "center",

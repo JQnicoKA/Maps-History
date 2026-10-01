@@ -3,6 +3,7 @@ import { StyleSheet, Text } from "react-native";
 
 import { useHidden } from "./HiddenProvider";
 import { Dialog, InkButton, useNotice } from "../../components/ui";
+import { whyLocked } from "../community/copies";
 import { ShareRow } from "../community/ShareRow";
 import { stake } from "../community/stakes";
 import { BORDERS_END } from "../../config/history";
@@ -108,6 +109,7 @@ export function TerritorySheet({ territory, onClose }: TerritorySheetProps) {
         <ShareRow
           what="ce territoire"
           shared={ours.shared}
+          locked={whyLocked(ours.origin)}
           onChange={(next) => share(ours.id, next)}
         />
       ) : null}

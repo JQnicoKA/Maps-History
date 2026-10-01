@@ -9,6 +9,7 @@ import {
 } from "react-native";
 
 import { PhotoViewer } from "./PhotoViewer";
+import { whyLocked } from "../../community/copies";
 import { ShareRow } from "../../community/ShareRow";
 import {
   ConfirmDialog,
@@ -265,6 +266,7 @@ export function CharacterDetailModal({
         <ShareRow
           what="ce personnage"
           shared={person.shared}
+          locked={whyLocked(person.origin)}
           onChange={(next) => share("character", person.id, next)}
         />
       </ScrollView>

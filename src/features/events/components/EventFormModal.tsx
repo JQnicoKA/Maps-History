@@ -3,6 +3,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { CharacterManager } from "./CharacterManager";
 import { LikelyDuplicates } from "../../community/LikelyDuplicates";
+import { whyLocked } from "../../community/copies";
+import { ShareRow } from "../../community/ShareRow";
 import { EVENT_LOOK } from "../../community/looks";
 import { CharacterSelector } from "./CharacterSelector";
 import { FolderManager } from "./FolderManager";
@@ -182,8 +184,15 @@ export function EventFormModal({
   onClosed,
   onSaved,
 }: EventFormModalProps) {
-  const { folders, characters, addEvent, editEvent, refresh, selectEvent } =
-    useEvents();
+  const {
+    folders,
+    characters,
+    addEvent,
+    editEvent,
+    refresh,
+    selectEvent,
+    share,
+  } = useEvents();
   const { aiming, place } = usePlacement();
 
   /**
@@ -236,6 +245,16 @@ export function EventFormModal({
   );
   const [droppedPhotos, setDroppedPhotos] = useState<StoredPhoto[]>([]);
   const [saving, setSaving] = useState(false);
+  /**
+   * Whether it is in the chronicle — held here, though it is written at once.
+   *
+   * Unlike every field above it, this one does not wait for "Enregistrer":
+   * `share` is a one-boolean write and that is how the control behaves
+   * everywhere else in the app. But the `event` prop is a snapshot taken when
+   * the form opened, so it cannot be read back for the tick's position; this
+   * remembers what was said instead.
+   */
+  const [shared, setShared] = useState(event?.shared ?? true);
   const { say, dialog } = useNotice();
 
   const reset = () => {
@@ -639,6 +658,24 @@ export function EventFormModal({
             />
           </Section>
         ) : null}
+
+        {/* Only when correcting. Composing never asks: what is written here
+            is history rather than a diary, so a new event joins the chronicle
+            and the reader withdraws it afterwards if they would rather keep
+            it — one question fewer on the way in, for the rare answer. */}
+        {event ? (
+          <View style={styles.sharing}>
+            <ShareRow
+              what="cet événement"
+              shared={shared}
+              locked={whyLocked(event.origin)}
+              onChange={async (next) => {
+                await share("event", event.id, next);
+                setShared(next);
+              }}
+            />
+          </View>
+        ) : null}
       </ScrollView>
     </Sheet>
   );
@@ -646,6 +683,9 @@ export function EventFormModal({
 
 const styles = StyleSheet.create({
   hint: { ...type.legend, color: palette.inkFaint },
+
+  /** The sections carry their own gutter; this row is not one of them. */
+  sharing: { paddingHorizontal: space.xl },
 
   /**
    * The two ways in, asked before either is taken.
