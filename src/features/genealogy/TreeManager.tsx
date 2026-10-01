@@ -32,9 +32,11 @@ import { space } from "../../theme/tokens";
 export type TreeManagerProps = {
   /** Asks for a tree to be drawn. */
   onOpen: (id: string) => void;
+  /** Asks for the community's genealogies. */
+  onSeek: () => void;
 };
 
-export function TreeManager({ onOpen }: TreeManagerProps) {
+export function TreeManager({ onOpen, onSeek }: TreeManagerProps) {
   const { trees, characters, addTree } = useEvents();
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
@@ -77,6 +79,9 @@ export function TreeManager({ onOpen }: TreeManagerProps) {
             : `${trees.length} arbre${trees.length > 1 ? "s" : ""}`
         }
         addLabel="Nouvel arbre"
+        seekLabel="Chercher dans la chronique"
+        seekDetail="Des généalogies que d'autres ont bâties, à prendre chez vous."
+        onSeek={onSeek}
         onAdd={() => {
           setName("");
           setNaming(true);

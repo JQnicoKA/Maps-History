@@ -1,4 +1,4 @@
-import type { HistoricalDate } from "../events/types";
+import type { HistoricalDate, Importance, TreeBond } from "../events/types";
 
 /**
  * What kind of thing a page of the catalogue is about.
@@ -94,6 +94,29 @@ export type SharedThingDetail = SharedThing & {
    * the reader to the map instead.
    */
   shape: unknown | null;
+  /**
+   * A whole genealogy, for the kinds that are one.
+   *
+   * Members, lines and faces — what the canvas needs and nothing else. Null
+   * for the rest. Like a territory's outline it is never drawn on the card:
+   * a lineage of forty has no business in a panel.
+   */
+  drawing: {
+    members: {
+      id: string;
+      characterId: string;
+      generation: number;
+      position: number;
+      importance: Importance;
+    }[];
+    links: { from: string; to: string; kind: TreeBond }[];
+    people: {
+      id: string;
+      name: string;
+      photo: string | null;
+      dates: string;
+    }[];
+  } | null;
 };
 
 /**

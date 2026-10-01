@@ -40,6 +40,7 @@ import {
   EVENT_LOOK,
   FOLDER_LOOK,
   TERRITORY_LOOK,
+  TREE_LOOK,
 } from "../../features/community/looks";
 import { PlaceLayers } from "../../features/places/PlaceLayers";
 import { TerritoryLayers } from "../../features/territories/TerritoryLayers";
@@ -91,7 +92,8 @@ type Page =
   | { kind: "searchEvents" }
   | { kind: "searchCharacters" }
   | { kind: "searchFolders" }
-  | { kind: "searchTerritories" };
+  | { kind: "searchTerritories" }
+  | { kind: "searchTrees" };
 
 export function MapScreen() {
   const insets = useSafeAreaInsets();
@@ -633,6 +635,9 @@ export function MapScreen() {
         onSearchFolders={() =>
           afterSheet(() => raise({ kind: "searchFolders" }), "folder")
         }
+        onSearchTrees={() =>
+          afterSheet(() => raise({ kind: "searchTrees" }), "tree")
+        }
         onClosed={afterPage}
         onCancel={() => {
           setComposing(false);
@@ -710,6 +715,15 @@ export function MapScreen() {
         kind="character"
         look={CHARACTER_LOOK}
         visible={page?.kind === "searchCharacters"}
+        onClose={() => setPage(null)}
+        onClosed={afterPage}
+      />
+
+      <Catalogue
+        key={`commons-trees-${raised}`}
+        kind="tree"
+        look={TREE_LOOK}
+        visible={page?.kind === "searchTrees"}
         onClose={() => setPage(null)}
         onClosed={afterPage}
       />

@@ -8,6 +8,8 @@ import type {
   SharedThingDetail,
 } from "./types";
 import { bounds } from "./period";
+import { lifespan } from "../events/lifespan";
+import type { Importance, TreeBond } from "../events/types";
 import { supabase } from "../../lib/supabase";
 
 const BUCKET = "event-photos";
@@ -183,6 +185,27 @@ export async function fetchWhole(
     folders: string[];
     held?: Row[];
     shape?: unknown;
+    members?: {
+      id: string;
+      character_id: string;
+      generation: number;
+      position: number;
+      importance: Importance;
+    }[];
+    links?: { from: string; to: string; kind: TreeBond }[];
+    people?: {
+      id: string;
+      name: string;
+      photo: string | null;
+      birth_year: number | null;
+      birth_month: number | null;
+      birth_day: number | null;
+      birth_approx: boolean;
+      death_year: number | null;
+      death_month: number | null;
+      death_day: number | null;
+      death_approx: boolean;
+    }[];
   };
   return {
     ...toThing({ ...whole, kind: whole.type, cover_path: null, rank: 0 }),
@@ -196,6 +219,40 @@ export async function fetchWhole(
     folders: whole.folders,
     held: (whole.held ?? []).map(toThing),
     shape: whole.shape ?? null,
+    // A genealogy arrives flat and is reassembled here, dates included: the
+    // canvas wants a line to print, not two half-known dates to format.
+    drawing:
+      whole.members === undefined
+        ? null
+        : {
+            members: whole.members.map((one) => ({
+              id: one.id,
+              characterId: one.character_id,
+              generation: one.generation,
+              position: one.position,
+              importance: one.importance,
+            })),
+            links: whole.links ?? [],
+            people: (whole.people ?? []).map((one) => ({
+              id: one.id,
+              name: one.name,
+              photo: one.photo === null ? null : publicUrl(one.photo),
+              dates: lifespan({
+                birth: toDate(
+                  one.birth_year,
+                  one.birth_month,
+                  one.birth_day,
+                  one.birth_approx,
+                ),
+                death: toDate(
+                  one.death_year,
+                  one.death_month,
+                  one.death_day,
+                  one.death_approx,
+                ),
+              } as Parameters<typeof lifespan>[0]),
+            })),
+          },
   };
 }
 

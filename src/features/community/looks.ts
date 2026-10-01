@@ -121,11 +121,36 @@ export const TERRITORY_LOOK: Look = {
     "Aucun territoire de ce genre dans la chronique. Essayez d'élargir l'époque ou la région — ou peignez le vôtre.",
 };
 
+export const TREE_LOOK: Look = {
+  many: "Arbres de la chronique",
+  one: "Un arbre",
+  glyph: (one) => one.title.charAt(0).toUpperCase(),
+  /**
+   * How many people across how many generations, and the span of their
+   * lives — which is what tells a lineage of three from a dynasty of forty.
+   */
+  under: (one) => [one.note, span(one)].filter(Boolean).join(" · "),
+  /**
+   * Straight to the drawing, as a territory goes straight to the map.
+   *
+   * A card can count a genealogy and date it, and say nothing of its shape —
+   * and the shape is the whole of what anybody wants to see before taking
+   * one. Unlike a territory, the drawing is not in the row: it is fetched
+   * when the row is touched, which is one short wait for a great deal.
+   */
+  onTheMap: true,
+  castLegend: "",
+  castAside: "",
+  filedLegend: "",
+  filedAside: "",
+  nothing:
+    "Aucun arbre de ce genre dans la chronique. Essayez d'élargir l'époque ou la région — ou bâtissez le vôtre.",
+};
+
 export const LOOKS: Record<Kind, Look> = {
   event: EVENT_LOOK,
   character: CHARACTER_LOOK,
   folder: FOLDER_LOOK,
   territory: TERRITORY_LOOK,
-  // Not built yet; the catalogue never asks for it.
-  tree: EVENT_LOOK,
+  tree: TREE_LOOK,
 };

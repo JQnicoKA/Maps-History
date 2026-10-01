@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
-  Image,
   PanResponder,
   Pressable,
   StyleSheet,
@@ -9,7 +8,8 @@ import {
   View,
 } from "react-native";
 
-import { CARD_TOP, FACE, FACE_AXIS, FACE_BAND, GAP, NODE } from "./layout";
+import { CARD_TOP, FACE_AXIS, GAP, NODE } from "./layout";
+import { TreeFace } from "./TreeFace";
 import { lifespan } from "../events/lifespan";
 import type { Character, Importance, TreeMember } from "../events/types";
 import { lifted as tapLifted, shifted } from "../../lib/touch";
@@ -143,7 +143,6 @@ export function TreeNode({
   drag,
   menu,
 }: TreeNodeProps) {
-  const face = person?.photos[0];
   const [lifted, setLifted] = useState(false);
   const [pressed, setPressed] = useState(false);
   const travel = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
@@ -256,7 +255,6 @@ export function TreeNode({
       onPanResponderTerminate: () => release(0),
     }),
   ).current;
-  const dates = person ? lifespan(person) : "";
 
   return (
     <Animated.View
@@ -274,49 +272,22 @@ export function TreeNode({
       ]}
       {...responder.panHandlers}
     >
-    <View
-      accessibilityRole="button"
-      accessibilityLabel={person?.name ?? "Personnage"}
-      style={[
-        styles.node,
-        lifted && styles.lifted,
-        {
-          opacity: muted
-            ? 0.25
-            : pressed && !lifted
-              ? 0.6
-              : WEIGHT[member.importance],
-        },
-      ]}
-    >
-      {/* Drawn first so everything else sits over it; positioned rather than
-          in the flow, since it begins halfway up the portrait. */}
-      <View style={[styles.card, active && styles.cardActive]} />
-
-      {/* The band is what keeps the axis: the circle is centred in it, so its
-          middle is always FACE_BAND / 2 below the top of the box. */}
-      <View style={styles.band}>
-        {/* The wax dot hangs off the portrait itself rather than off the box,
-            so it follows it whatever size it is drawn at. */}
-        <View style={styles.face}>
-          {face ? (
-            <Image source={{ uri: face.url }} style={styles.image} />
-          ) : (
-            <Text style={styles.initial}>
-              {person?.name.charAt(0).toUpperCase() ?? "?"}
-            </Text>
-          )}
-        </View>
-      </View>
-
-      <Text style={styles.name} numberOfLines={2}>
-        {person?.name ?? "Supprimé"}
-      </Text>
-      {dates === "" ? null : (
-        <Text style={styles.dates} numberOfLines={1}>
-          {dates}
-        </Text>
-      )}
+    <View style={lifted ? styles.lifted : undefined}>
+      <TreeFace
+        face={
+          person === undefined
+            ? undefined
+            : {
+                name: person.name,
+                photo: person.photos[0]?.url ?? null,
+                dates: lifespan(person),
+              }
+        }
+        importance={member.importance}
+        active={active}
+        dimmed={muted}
+        pressed={pressed && !lifted}
+      />
     </View>
 
     {menu ? (
@@ -425,17 +396,6 @@ const MENU_WIDTH = 186;
 /** The two crosses, sized to be hit without covering the face. */
 const JOIN = 28;
 
-/**
- * How present a face is, by the weight its member carries.
- *
- * `low` stays well clear of the 0.25 a muted node uses while a line is being
- * drawn: "minor" and "out of reach right now" must not look alike.
- */
-const WEIGHT: Record<TreeMember["importance"], number> = {
-  high: 1,
-  medium: 0.78,
-  low: 0.5,
-};
 
 const styles = StyleSheet.create({
   /**
@@ -446,12 +406,6 @@ const styles = StyleSheet.create({
    * every frame of the drag.
    */
   holder: { position: "absolute", width: NODE.width, height: NODE.height },
-  node: {
-    width: NODE.width,
-    height: NODE.height,
-    alignItems: "center",
-    gap: 3,
-  },
   /** A card off the page: bigger, and casting further. */
   lifted: { transform: [{ scale: 1.06 }] },
 
@@ -523,65 +477,6 @@ const styles = StyleSheet.create({
   /** Nothing to offer yet — still there, still pressable, and it says why. */
   joinEmpty: { backgroundColor: palette.sunken, borderColor: palette.paperDeep },
   joinGlyphEmpty: { color: palette.inkFaint },
-  card: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: CARD_TOP,
-    bottom: 0,
-    borderRadius: radius.lg,
-    backgroundColor: palette.wax,
-    ...shadow.soft,
-  },
-  /**
-   * Ink, and not a brighter wax: the active state has to read against the wax
-   * it sits on, and dark-on-wax is the only pair that does.
-   */
-  cardActive: { borderWidth: 3, borderColor: palette.ink },
-  band: {
-    width: NODE.width,
-    height: FACE_BAND,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  face: {
-    width: FACE,
-    height: FACE,
-    borderRadius: FACE / 2,
-    overflow: "visible",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: palette.paperLight,
-    // Cream, because this ring crosses two grounds: paper above, wax below.
-    borderWidth: 3,
-    borderColor: palette.paperLight,
-    ...shadow.soft,
-  },
   // Clipped to the circle by the parent's radius — which is why the portrait
   // is a child of the frame rather than the frame itself.
-  image: { width: "100%", height: "100%", borderRadius: 999 },
-  initial: { fontSize: FACE * 0.36, fontWeight: "700", color: palette.inkFaint },
-  /**
-   * Sized to the room the card actually has.
-   *
-   * Below the portrait's band sit 74 points. A name on two lines at this size
-   * takes 40, the dates 16, the spacing 8 — 64 in all, which leaves the card a
-   * margin at the foot rather than text pressed against its edge.
-   */
-  name: {
-    marginTop: space.xs,
-    paddingHorizontal: space.sm,
-    fontSize: 16,
-    lineHeight: 20,
-    fontWeight: "700",
-    color: palette.paperLight,
-    textAlign: "center",
-  },
-  dates: {
-    fontSize: 13,
-    lineHeight: 16,
-    color: palette.paperLight,
-    opacity: 0.78,
-    textAlign: "center",
-  },
 });

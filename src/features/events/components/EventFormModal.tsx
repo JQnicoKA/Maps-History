@@ -159,6 +159,7 @@ export type EventFormModalProps = {
   onSearch: () => void;
   onSearchPeople: () => void;
   onSearchFolders: () => void;
+  onSearchTrees: () => void;
   onCancel: () => void;
   /** Fired once the sheet is off the screen — see `Sheet`. */
   onClosed?: () => void;
@@ -176,6 +177,7 @@ export function EventFormModal({
   onSearch,
   onSearchPeople,
   onSearchFolders,
+  onSearchTrees,
   onCancel,
   onClosed,
   onSaved,
@@ -469,7 +471,9 @@ export function EventFormModal({
           onSeek={onSearchPeople}
         />
       ) : null}
-      {tab === "tree" && !event ? <TreeManager onOpen={onOpenTree} /> : null}
+      {tab === "tree" && !event ? (
+        <TreeManager onOpen={onOpenTree} onSeek={onSearchTrees} />
+      ) : null}
 
       <ScrollView
         style={

@@ -35,6 +35,9 @@ import {
   useNotice,
 } from "../../components/ui";
 import { DateWheels } from "../events/components/EventDateField";
+import { TreePreview } from "../genealogy/TreePreview";
+import type { Face } from "../genealogy/TreeFace";
+import type { Tree } from "../events/types";
 import { useEvents } from "../events/EventsProvider";
 import { useHidden } from "../territories/HiddenProvider";
 import { formatHistoricalDate } from "../events/historicalDate";
@@ -215,6 +218,19 @@ export function Catalogue({
    */
   const [sifting, setSifting] = useState<"sort" | "filters" | null>(null);
   /**
+   * A genealogy being looked at, drawn over the panel.
+   *
+   * Not a card and not the map: a lineage of forty across six generations
+   * needs room, and the sheet is already most of the screen. Fetched on the
+   * tap rather than carried in the row — unlike a territory's outline, a
+   * whole tree is too much to send for every line of a list.
+   */
+  const [drawn, setDrawn] = useState<{
+    thing: SharedThing;
+    tree: Tree;
+    faces: Map<string, Face>;
+  } | null>(null);
+  /**
    * Whether the era's wheels are out.
    *
    * Closed, the row says one thing: "Toute l'histoire", or the period that
@@ -378,7 +394,58 @@ export function Catalogue({
    * because it has nothing to add, and copying from the map saves the trip
    * back for a second decision.
    */
+  /**
+   * Opens a genealogy over the panel, once it has been fetched.
+   *
+   * The payload arrives flat — members, lines, faces — and is assembled into
+   * the shape the canvas draws, which is the same shape the builder draws.
+   */
+  const openDrawing = (one: SharedThing) => {
+    setTaking(one.id);
+    void api
+      .fetchWhole("tree", one.id)
+      .then((whole) => {
+        if (whole?.drawing == null) return;
+        setDrawn({
+          thing: one,
+          tree: {
+            id: one.id,
+            name: one.title,
+            note: null,
+            shared: true,
+            origin: null,
+            members: whole.drawing.members.map((m) => ({
+              id: m.id,
+              characterId: m.characterId,
+              generation: m.generation,
+              position: m.position,
+              importance: m.importance,
+              note: null,
+            })),
+            links: whole.drawing.links,
+          },
+          faces: new Map(
+            whole.drawing.people.map((who) => [
+              who.id,
+              { name: who.name, photo: who.photo, dates: who.dates },
+            ]),
+          ),
+        });
+      })
+      .catch((cause: unknown) =>
+        say(
+          "Arbre illisible",
+          cause instanceof Error ? cause.message : String(cause),
+        ),
+      )
+      .finally(() => setTaking(null));
+  };
+
   const onTheMap = (one: SharedThing) => {
+    if (kind === "tree") {
+      openDrawing(one);
+      return;
+    }
     if (one.shape === undefined) return;
     void showShape(
       one.shape,
@@ -401,6 +468,8 @@ export function Catalogue({
         // itself from the database and needed no telling; these lists are
         // held in memory and did.
         await (its === "territory" ? reloadDrawn() : refresh());
+        // The drawing has served its purpose once the copy is taken.
+        setDrawn(null);
         setRows((current) =>
           current.map((row) =>
             row.id === one.id
@@ -743,6 +812,25 @@ export function Catalogue({
             )}
           </View>
 
+          {/* A genealogy, over the whole panel: it needs the room, and the
+              sheet is already most of the screen. Above the settings card,
+              which cannot be open at the same time but would otherwise win
+              by being written later. */}
+          {drawn === null ? null : (
+            <View style={styles.wide}>
+              <TreePreview
+                tree={drawn.tree}
+                faces={drawn.faces}
+                said={look.under(drawn.thing)}
+                by={drawn.thing.mine ? "vous" : drawn.thing.author}
+                takeable={!drawn.thing.mine && !drawn.thing.copied}
+                busy={taking === drawn.thing.id}
+                onTake={() => takeIt(drawn.thing)}
+                onClose={() => setDrawn(null)}
+              />
+            </View>
+          )}
+
           {/* A card laid on the panel, never a modal over it. See `sifting`.
               Last among its siblings and layered above them, because a
               fragment creates no view: the sheet's own footer is a sibling
@@ -1020,6 +1108,16 @@ const styles = StyleSheet.create({
   toolLabel: { ...type.legend, fontWeight: "700", color: palette.ink },
   toolLabelOn: { color: palette.paperLight },
   toolMore: { ...type.legend, color: palette.inkFaint },
+
+  /** The drawing, over everything the sheet holds. */
+  wide: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 20,
+  },
 
   /**
    * The settings, laid over the panel.
