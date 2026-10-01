@@ -346,11 +346,17 @@ export function MapScreen() {
     );
   }, [settle, reach]);
 
-  // Aiming at a map one cannot see is not aiming. A placement asked for from
-  // the list view brings the plate up first.
+  /**
+   * Anything done *to* the plate brings the plate up first.
+   *
+   * Aiming at a map one cannot see is not aiming, and neither is painting on
+   * one: the brush would have laid its strokes over the list. Both are asked
+   * for from panels that can be opened in either view, so the switch belongs
+   * here rather than at each of the places that start them.
+   */
   useEffect(() => {
-    if (aiming) setView("map");
-  }, [aiming]);
+    if (aiming || drawing) setView("map");
+  }, [aiming, drawing]);
 
   // The reticle opens on the reach the filter already had, and on the plate
   // the reader is looking at when it has none.
