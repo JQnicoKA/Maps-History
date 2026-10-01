@@ -20,6 +20,7 @@ import {
 import * as api from "./api";
 import { LOOKS } from "./looks";
 import { SharedCard } from "./SharedCard";
+import { windowed } from "./trail";
 import { ThingRow } from "./ThingRow";
 import {
   ANYTHING,
@@ -192,6 +193,11 @@ export function Catalogue({
     const deeper = trail.length > rose.current;
     rose.current = trail.length;
     if (!deeper) {
+      // Back at rest, and this is load-bearing now that the trail stays
+      // mounted: the card that just left was carrying `rise` at OFFSCREEN,
+      // and the parent inherits that transform the moment it becomes the top
+      // of the stack. Put back in the same commit as the pop, so the parent
+      // is never painted off the bottom of the screen.
       rise.setValue(0);
       return;
     }
@@ -205,6 +211,15 @@ export function Catalogue({
     }).start();
   }, [trail.length, rise]);
 
+  /**
+   * One step back: the top card leaves, and what it came from is revealed.
+   *
+   * Nothing is rebuilt. The parent has been mounted underneath the whole
+   * time, with what it read and where it was scrolled, so this is a card
+   * sliding off something rather than a card being replaced. Popping only
+   * after the slide is what keeps it on screen while it travels; the layout
+   * effect above puts `rise` back for whoever becomes the top.
+   */
   const back = () => {
     if (descending) return;
     setDescending(true);
@@ -802,68 +817,95 @@ export function Catalogue({
               )}
             />
 
-            {/* A card rises over the list rather than replacing it, and that
-              buys two things at once: it can be animated, and the list keeps
-              its scroll — coming back from the fortieth row used to land at
-              the first. Its own buttons travel with it, so the whole card
-              arrives as one thing. */}
-            {reading === null ? null : (
-              <Animated.View
-                style={[styles.risen, { transform: [{ translateY: rise }] }]}
-              >
-                <SharedCard
-                  // One card per step, and the key is what makes it one.
-                  //
-                  // Without it React reuses the instance, so a step deeper
-                  // kept two things it had no business keeping. Its `whole`
-                  // — the new head drawn over the previous thing's
-                  // description, photos and filing until the read lands. And
-                  // its scroll offset: "Rangé par son auteur dans" is the
-                  // last section of the card, so a reader pressing "Voir le
-                  // classeur" is necessarily scrolled to the bottom, and the
-                  // classeur rose already scrolled past its own contents.
-                  //
-                  // It was always wrong and never showed: the only way
-                  // deeper used to be a classeur to one of its events, and
-                  // `held` sits near the top, so the offset inherited was a
-                  // few pixels. Filing is at the foot, which is the whole
-                  // distance.
-                  key={`${trail.length}:${reading.thing.id}`}
-                  one={reading.thing}
-                  kind={reading.kind}
-                  look={readingLook}
-                  // What a classeur holds is openable: nobody takes
-                  // twenty-seven events on the strength of their titles.
-                  onOpenHeld={(one) =>
-                    setTrail((was) => [...was, { kind: "event", thing: one }])
+            {/* The trail, mounted — the last few steps of it, deepest last.
+
+                One card used to stand here and every step swapped what it
+                drew, which cost the two things a step back ought to be: free
+                and unchanged. The parent had to read itself from the network
+                again, and it came back scrolled to the top — a reader who had
+                worked down a long classeur to its fortieth event lost their
+                place by looking at one of them.
+
+                Kept mounted, each card holds what it loaded and where it was
+                scrolled, so "Retour" is nothing but the card above it
+                leaving. It also means the parent is *already there*,
+                underneath, while that card slides down: the gesture reveals
+                it rather than racing to rebuild it.
+
+                How many is `windowed`'s business, and its reason is memory:
+                this walk has no ceiling, since an event names its classeur
+                and that classeur holds the event.
+
+                Order is the whole of the paint: `risen` is opaque and
+                full-bleed, so the deeper card simply covers the one it came
+                from. Later siblings win, and `trail` is in the order it was
+                walked — which is why these must stay inside `styles.stack`
+                and before the settings card, not after it. */}
+            {windowed(trail).map(({ step, depth }) => {
+              const top = depth === trail.length - 1;
+              /** Drawn as the thing it is, not as the thing that held it. */
+              const its = LOOKS[step.kind];
+
+              return (
+                <Animated.View
+                  key={`${depth}:${step.thing.id}`}
+                  style={[
+                    styles.risen,
+                    // Only the top card travels. The ones under it are at
+                    // rest and covered; moving them would be moving scenery
+                    // nobody can see.
+                    top ? { transform: [{ translateY: rise }] } : null,
+                  ]}
+                  // Buried cards are unreachable by paint order already —
+                  // but a ScrollView under an opaque sibling can still catch
+                  // a pan on some paths, and a screen reader would happily
+                  // read all three. Said plainly instead of relied upon.
+                  pointerEvents={top ? "auto" : "none"}
+                  accessibilityElementsHidden={!top}
+                  importantForAccessibility={
+                    top ? "auto" : "no-hide-descendants"
                   }
-                  // And the other way up: from an event to the classeur it
-                  // was filed in. The trail already runs both ways, so
-                  // "Retour" comes back to the event rather than out to the
-                  // list — a reader can look at the box and decide against
-                  // it without losing their place.
-                  onOpenFiled={(one) =>
-                    setTrail((was) => [...was, { kind: "folder", thing: one }])
-                  }
-                  // A territory is its outline: the card cannot show one, so
-                  // it hands the reader to the map. Taking it from there
-                  // avoids the trip back for a second decision.
-                  onShowShape={(shape) => {
-                    const one = reading.thing;
-                    void showShape(shape, {
-                      name: one.title,
-                      said: readingLook.under(one),
-                      take: readingLook.take,
-                      takeable: !one.mine && !one.copied,
-                    }).then((taken) => {
-                      if (taken) takeIt(one, reading.kind);
-                    });
-                  }}
-                  onReport={() => setFace("report")}
-                  onBlock={block}
-                />
-              </Animated.View>
-            )}
+                >
+                  <SharedCard
+                    one={step.thing}
+                    kind={step.kind}
+                    look={its}
+                    // What a classeur holds is openable: nobody takes
+                    // twenty-seven events on the strength of their titles.
+                    onOpenHeld={(one) =>
+                      setTrail((was) => [...was, { kind: "event", thing: one }])
+                    }
+                    // And the other way up: from an event to the classeur it
+                    // was filed in. The trail already runs both ways, so
+                    // "Retour" comes back to the event rather than out to the
+                    // list — a reader can look at the box and decide against
+                    // it without losing their place.
+                    onOpenFiled={(one) =>
+                      setTrail((was) => [
+                        ...was,
+                        { kind: "folder", thing: one },
+                      ])
+                    }
+                    // A territory is its outline: the card cannot show one,
+                    // so it hands the reader to the map. Taking it from there
+                    // avoids the trip back for a second decision.
+                    onShowShape={(shape) => {
+                      const one = step.thing;
+                      void showShape(shape, {
+                        name: one.title,
+                        said: its.under(one),
+                        take: its.take,
+                        takeable: !one.mine && !one.copied,
+                      }).then((taken) => {
+                        if (taken) takeIt(one, step.kind);
+                      });
+                    }}
+                    onReport={() => setFace("report")}
+                    onBlock={block}
+                  />
+                </Animated.View>
+              );
+            })}
           </View>
 
           {/* A genealogy, over the whole panel: it needs the room, and the
