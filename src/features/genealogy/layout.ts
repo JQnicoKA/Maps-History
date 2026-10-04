@@ -42,16 +42,22 @@ export const CARD_TOP = FACE / 2;
 /**
  * Between two nodes of the same generation, and between two generations.
  *
- * The vertical gap is only what the elbow needs: a taller one pushed the
- * generations apart until a grandparent and a grandchild could not be seen at
- * once, which is the one thing a genealogy is for.
+ * `y` vaut ce qui sépare le bas d'une carte du haut du visage d'en dessous —
+ * et non le pas entre deux générations, qui vaut `NODE.height + y`. L'écart
+ * paraît toujours plus petit que le nombre, parce que le portrait de la
+ * rangée du dessous déborde *vers le haut* hors de sa carte : la moitié d'un
+ * visage, 59 points, mange déjà dans cet intervalle.
  *
- * It is also smaller than it looks, because the portrait of the row below
- * overflows *upwards* out of its card: half a face — 59 points — already
- * reaches into this gap. What separates two cards is therefore 36 points, and
- * what separates a card from the face beneath it is the 36 written here.
+ * Il était de 36, au plus juste de ce que le coude demandait. Les générations
+ * s'en trouvaient trop serrées à la lecture : 56 donne de l'air sans coûter
+ * grand-chose en hauteur — le pas passe de 222 à 242 points, soit 9 % de plus
+ * sur un arbre entier, et un aïeul reste visible en même temps que son
+ * petit-fils, ce qui est la seule chose qu'une généalogie sert à montrer.
+ *
+ * Les coudes suivent seuls : chacun se plie au milieu de l'intervalle, calculé
+ * et non écrit — voir `connectors`.
  */
-export const GAP = { x: 16, y: 36 };
+export const GAP = { x: 16, y: 56 };
 
 export const PADDING = 24;
 
