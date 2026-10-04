@@ -6,7 +6,6 @@ import {
   GlyphButton,
   InkButton,
   InkField,
-  SegmentedControl,
 } from "../../components/ui";
 import { isStrong, PasswordMeter, useAuth } from "../../features/auth";
 import { handleProblem, HANDLE_MAX } from "../../features/community/profile";
@@ -17,18 +16,6 @@ import { radius, space, TOUCH, type } from "../../theme/tokens";
 
 const PROFILE = require("../../../assets/icons/profile.png");
 const TRASH = require("../../../assets/icons/trash.png");
-
-export type ScreenView = "map" | "list";
-
-const VIEWS = [
-  { value: "map" as const, label: "Carte", icon: require("../../../assets/icons/view-map.png") },
-  { value: "list" as const, label: "Liste", icon: require("../../../assets/icons/view-list.png") },
-];
-
-export type AccountButtonProps = {
-  view: ScreenView;
-  onChange: (view: ScreenView) => void;
-};
 
 /**
  * The only button in the top-left corner: who you are, and how you are looking.
@@ -52,7 +39,7 @@ type Face =
   | "erasing"
   | "proving";
 
-export function AccountButton({ view, onChange }: AccountButtonProps) {
+export function AccountButton() {
   const { account, signOut, deleteAccount, changePassword, handle, rename } =
     useAuth();
   const [open, setOpen] = useState(false);
@@ -432,18 +419,6 @@ export function AccountButton({ view, onChange }: AccountButtonProps) {
               </Pressable>
             </View>
 
-            <View style={styles.section}>
-              <Text style={styles.legend}>Vue</Text>
-              <SegmentedControl
-                segments={VIEWS}
-                value={view}
-                onChange={(next) => {
-                  onChange(next);
-                  close();
-                }}
-              />
-            </View>
-
             {done === null ? null : <Text style={styles.done}>{done}</Text>}
 
             {problem === null ? null : (
@@ -539,9 +514,7 @@ const styles = StyleSheet.create({
   },
   binGlyph: { width: 19, height: 19, tintColor: palette.danger },
 
-  section: { gap: space.sm },
   answers: { flexDirection: "row", gap: space.sm },
-  legend: { ...type.legend, color: palette.inkSoft },
   problem: { ...type.caption, color: palette.danger },
   done: { ...type.caption, color: palette.forest },
 });

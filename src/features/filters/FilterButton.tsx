@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { FilterModal } from "./FilterModal";
+import type { ScreenView } from "./view";
 import { useEvents } from "../events/EventsProvider";
 import { palette } from "../../theme/palette";
 import { radius, space, TOUCH } from "../../theme/tokens";
@@ -36,7 +37,12 @@ function Funnel() {
  * is actually filtered — a wax dot, because a map showing less than everything
  * should never look like a map showing everything.
  */
-export function FilterButton() {
+export type FilterButtonProps = {
+  view: ScreenView;
+  onViewChange: (view: ScreenView) => void;
+};
+
+export function FilterButton({ view, onViewChange }: FilterButtonProps) {
   const { filters, folders } = useEvents();
   const [open, setOpen] = useState(false);
 
@@ -50,15 +56,23 @@ export function FilterButton() {
    * reader who cannot find their events needs to be told the events are off,
    * not which classeur is selected. The popup tells the whole story.
    */
-  const shown = [
-    filters.events ? "Événements" : null,
-    filters.characters ? "Personnages" : null,
-    filters.territories ? "Territoires" : null,
-  ].filter((name): name is string => name !== null);
+  // Les calques que cette vue propose réellement. Sur une liste, les
+  // territoires n'en sont pas un : les compter ferait dire « 2 calques » à
+  // une carte qui montre tout ce qu'elle peut montrer.
+  const layers = [
+    { on: filters.events, name: "Événements" },
+    { on: filters.characters, name: "Personnages" },
+    ...(view === "map"
+      ? [{ on: filters.territories, name: "Territoires" }]
+      : []),
+  ];
+  const shown = layers
+    .filter((layer) => layer.on)
+    .map((layer) => layer.name);
 
-  const filtering = shown.length < 3 || selected.length > 0;
+  const filtering = shown.length < layers.length || selected.length > 0;
   const label =
-    shown.length < 3
+    shown.length < layers.length
       ? shown.length === 0
         ? "Rien"
         : shown.length === 1
@@ -87,7 +101,12 @@ export function FilterButton() {
         {filtering ? <View style={styles.dot} /> : null}
       </Pressable>
 
-      <FilterModal visible={open} onClose={() => setOpen(false)} />
+      <FilterModal
+        visible={open}
+        onClose={() => setOpen(false)}
+        view={view}
+        onViewChange={onViewChange}
+      />
     </>
   );
 }

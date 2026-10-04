@@ -5,7 +5,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MissingConfigNotice } from "./MissingConfigNotice";
-import { AccountButton, type ScreenView } from "./AccountButton";
+import { AccountButton } from "./AccountButton";
 import { InkButton, Paper, useNotice } from "../../components/ui";
 import { ParchmentOverlay, WorldMap } from "../../components/WorldMap";
 import { env } from "../../config/env";
@@ -28,6 +28,7 @@ import { TreeBuilder } from "../../features/genealogy/TreeBuilder";
 import { EventSummaryCard } from "../../features/events/components/EventSummaryCard";
 import { LocationReticle } from "../../features/events/components/LocationReticle";
 import { FilterButton } from "../../features/filters/FilterButton";
+import type { ScreenView } from "../../features/filters/view";
 import {
   RegionReticle,
   ShapeBar,
@@ -526,9 +527,9 @@ export function MapScreen() {
             pointerEvents="box-none"
           >
             <View style={styles.topLeft}>
-              <AccountButton view={view} onChange={setView} />
+              <AccountButton />
             </View>
-            <FilterButton />
+            <FilterButton view={view} onViewChange={setView} />
             <View style={styles.topRight}>
               <AddEventButton
                 onPress={() => {

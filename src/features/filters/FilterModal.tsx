@@ -1,14 +1,21 @@
 import type { ReactNode } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { Dialog, TICK, TickRow } from "../../components/ui";
+import { Dialog, SegmentedControl, TICK, TickRow } from "../../components/ui";
+import { VIEWS, type ScreenView } from "./view";
 import { useEvents } from "../events/EventsProvider";
 import { FolderSelector } from "../events/components/FolderSelector";
 import { formatYear } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
 import { radius, shadow, space, type } from "../../theme/tokens";
 
-export type FilterModalProps = { visible: boolean; onClose: () => void };
+export type FilterModalProps = {
+  visible: boolean;
+  onClose: () => void;
+  /** Ce que l'écran montre : la carte, ou la liste des événements. */
+  view: ScreenView;
+  onViewChange: (view: ScreenView) => void;
+};
 
 type LayerProps = {
   title: string;
@@ -51,7 +58,12 @@ function Layer({ title, detail, on, onToggle, children }: LayerProps) {
  * moment it is given, so there is nothing to confirm and the cross is the
  * whole way out.
  */
-export function FilterModal({ visible, onClose }: FilterModalProps) {
+export function FilterModal({
+  visible,
+  onClose,
+  view,
+  onViewChange,
+}: FilterModalProps) {
   const {
     events,
     folders,
@@ -80,6 +92,18 @@ export function FilterModal({ visible, onClose }: FilterModalProps) {
       {/* Bounded and scrolling: the events card grows with every classeur
           opened, and the whole thing would otherwise run off both ends of
           the screen. */}
+      {/* Avant les calques, parce qu'elle les gouverne : sur une liste, un
+          territoire n'a nulle part où s'afficher. Hors du défilement, pour
+          rester en vue quand les classeurs allongent la carte des
+          événements. */}
+      <View style={styles.vue}>
+        <SegmentedControl
+          segments={VIEWS}
+          value={view}
+          onChange={onViewChange}
+        />
+      </View>
+
       <ScrollView style={styles.body} contentContainerStyle={styles.content}>
         <Layer
           title="Événements"
@@ -125,18 +149,28 @@ export function FilterModal({ visible, onClose }: FilterModalProps) {
           </Text>
         </Layer>
 
-        <Layer
-          title="Territoires"
-          detail={filters.territories ? "les frontières de l'année lue" : "masqués"}
-          on={filters.territories}
-          onToggle={() => setFilters({ territories: !filters.territories })}
-        />
+        {/* Rien à cocher en vue liste : les frontières se dessinent sur la
+            carte et nulle part ailleurs. Le réglage lui-même n'est pas
+            touché — il retrouve sa valeur en revenant à la carte. */}
+        {view === "map" ? (
+          <Layer
+            title="Territoires"
+            detail={
+              filters.territories ? "les frontières de l'année lue" : "masqués"
+            }
+            on={filters.territories}
+            onToggle={() => setFilters({ territories: !filters.territories })}
+          />
+        ) : null}
       </ScrollView>
     </Dialog>
   );
 }
 
 const styles = StyleSheet.create({
+  /** Détaché des calques : il change de quoi on parle, eux de ce qu'on voit. */
+  vue: { paddingBottom: space.md },
+
   /** Tall enough for the three cards, short enough to stay a card itself. */
   body: { maxHeight: 420 },
   content: { gap: space.md, paddingBottom: space.xs },
