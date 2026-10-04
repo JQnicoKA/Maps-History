@@ -4,8 +4,17 @@ import { Chip, InkButton, Paper } from "../../components/ui";
 import { palette } from "../../theme/palette";
 import { space, type } from "../../theme/tokens";
 
-/** The radii offered, in metres. A day's ride, and three steps out. */
-export const RADII = [50_000, 200_000, 500_000, 2_000_000];
+/**
+ * The radii offered, in metres.
+ *
+ * Three, and all of them wide: a country, a subcontinent, a continent. The
+ * tighter steps that used to open the row — 50 and 200 km — were the scale at
+ * which one searches for a *place*, and that is not what this filter is for.
+ * What the catalogue holds is history, which happens at the scale of realms:
+ * asking for events within fifty kilometres of a point returned nothing worth
+ * the gesture of having drawn the circle.
+ */
+export const RADII = [500_000, 2_000_000, 5_000_000];
 
 export type RegionReticleProps = {
   metres: number;

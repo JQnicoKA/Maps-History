@@ -173,12 +173,6 @@ export function PhotoPicker({
         ))}
       </ScrollView>
 
-      {existing.length + photos.length === 0 ? (
-        <Text style={styles.hint}>
-          Sans photo, le marqueur prendra celle du classeur, ou l'emoji du type.
-        </Text>
-      ) : null}
-
       <Sheet
         visible={opened !== undefined}
         onClose={() => setOpen(null)}
