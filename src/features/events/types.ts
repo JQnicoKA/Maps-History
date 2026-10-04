@@ -120,6 +120,18 @@ export type StoredPhoto = {
   url: string;
   /** Where the picture came from — a URL or a free-text reference. */
   source: string | null;
+  /**
+   * The dominant colour of the picture, `#rrggbb`, computed once when it was
+   * uploaded — see the `tint` Edge Function and `inWax` in the theme.
+   *
+   * Null for three different reasons, and nothing downstream needs to tell
+   * them apart: nobody has looked yet, the picture had no colour in it (a
+   * daguerreotype, a pencil drawing), or it is an event's photograph rather
+   * than a portrait. **Only portraits carry one today** — the column exists on
+   * `character_photos` alone, because a tree card is the only thing that has
+   * asked for it. Giving events theirs is a column and one line here.
+   */
+  tint: string | null;
 };
 
 /** A picture chosen in the picker, not yet uploaded. */

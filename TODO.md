@@ -43,6 +43,13 @@ collections alors qu'une copie d'événement n'en touche que deux. Examiné le
 fois par copie, pendant que le lecteur regarde déjà un indicateur. La
 machinerie coûterait plus que le gain.
 
+**Les photographies d'événements n'ont pas de couleur dominante.** La colonne
+`tint` n'existe que sur `character_photos`, parce que la carte d'un arbre est
+la seule chose qui en demandait une. L'étendre, le jour où un classeur ou un
+marqueur voudrait la sienne, c'est une colonne, une ligne dans `PHOTOS` côté
+Edge Function et une ligne dans `storedPhotos` — `StoredPhoto.tint` est déjà
+là et vaut `null` pour elles.
+
 **`tree_members.note` est branchée mais jamais affichée.** Recopiée par
 `copy_tree`, lue par l'application, portée par le type — et aucun écran ne la
 montre. Soit on en fait quelque chose, soit on la retire comme `mark` l'a été.
@@ -87,3 +94,4 @@ Septembre–octobre 2026, vérifié :
 | copie atomique des contributions | Edge Function `copy`, plus le filet `mend` |
 | colonne morte `tree_members.mark` | retirée |
 | icône adaptative Android | dérivée de l'icône réelle, le gabarit Expo est parti |
+| couleur dominante des portraits | Edge Function `tint`, colonnes `character_photos.tint` / `tinted_at`, domestication par `inWax` |

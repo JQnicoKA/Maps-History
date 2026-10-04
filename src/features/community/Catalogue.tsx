@@ -463,7 +463,12 @@ export function Catalogue({
           faces: new Map(
             whole.drawing.people.map((who) => [
               who.id,
-              { name: who.name, photo: who.photo, dates: who.dates },
+              {
+                name: who.name,
+                photo: who.photo,
+                dates: who.dates,
+                tint: who.tint,
+              },
             ]),
           ),
         });

@@ -126,6 +126,8 @@ export type SharedThingDetail = SharedThing & {
       name: string;
       photo: string | null;
       dates: string;
+      /** The dominant colour of their first portrait, `#rrggbb`, or null. */
+      tint: string | null;
     }[];
   } | null;
 };

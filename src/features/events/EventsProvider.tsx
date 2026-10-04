@@ -228,6 +228,20 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     void mend();
   }, []);
 
+  /**
+   * Le filet des couleurs, une fois par démarrage lui aussi.
+   *
+   * Même forme que `mend` et pour la même raison : ce n'est pas une lecture de
+   * la collection mais un rattrapage, et il n'a aucune raison de se rejouer à
+   * chaque écriture. Il couvre les portraits déposés avant que la fonction
+   * `tint` existe, et ceux dont le téléchargement avait échoué. Plafonné côté
+   * serveur : sur une collection qui en compte cent, il en peint douze par
+   * démarrage jusqu'à ce qu'il n'en reste plus.
+   */
+  useEffect(() => {
+    void api.paint();
+  }, []);
+
   const setFilters = useCallback((patch: Partial<MapFilters>) => {
     setAllFilters((current) => ({ ...current, ...patch }));
   }, []);
@@ -393,6 +407,10 @@ export function EventsProvider({ children }: { children: ReactNode }) {
 
   const addCharacter = useCallback(async (draft: CharacterDraft) => {
     const created = await api.createCharacter(draft);
+    // Avant la relecture, et attendu : la couleur de la carte doit arriver
+    // avec la photographie, et non la remplacer une seconde plus tard sous
+    // les yeux du lecteur.
+    if (draft.photos.length > 0) await api.paint(created.id);
     // Relu, et non pas inséré tel quel : les portraits sont montés *après* la
     // ligne, donc celle qu'on tient ne les porte pas encore. Mais relu seul —
     // la collection entière coûtait cent lectures pour apprendre une photo.
@@ -409,6 +427,9 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       droppedPhotos: StoredPhoto[],
     ) => {
       await api.updateCharacter(id, draft, keptPhotos, droppedPhotos);
+      // Seulement s'il y a du nouveau à regarder : retirer une photographie
+      // ou corriger sa source ne change pas la couleur de celles qui restent.
+      if (draft.photos.length > 0) await api.paint(id);
       // Même raison qu'à la création, et même remède : un seul personnage.
       // Re-trié, car une date de naissance corrigée change sa place.
       const whole = await api.fetchCharacter(id);

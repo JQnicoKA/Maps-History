@@ -281,6 +281,9 @@ export function TreeNode({
                 name: person.name,
                 photo: person.photos[0]?.url ?? null,
                 dates: lifespan(person),
+                // The first portrait is the one the card is painted from, and
+                // the same one it shows: one photograph, one colour.
+                tint: person.photos[0]?.tint ?? null,
               }
         }
         importance={member.importance}

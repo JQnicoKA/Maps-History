@@ -197,6 +197,7 @@ export async function fetchWhole(
       id: string;
       name: string;
       photo: string | null;
+      tint: string | null;
       birth_year: number | null;
       birth_month: number | null;
       birth_day: number | null;
@@ -240,6 +241,11 @@ export async function fetchWhole(
               id: one.id,
               name: one.name,
               photo: one.photo === null ? null : publicUrl(one.photo),
+              // Somebody else's tree is drawn by the same `TreeFace` as one's
+              // own, so it is painted from the same colours — without this the
+              // catalogue would stay orange while the builder went colourful,
+              // and the two drawings would have started to drift.
+              tint: one.tint,
               dates: lifespan({
                 birth: toDate(
                   one.birth_year,

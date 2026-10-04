@@ -133,6 +133,9 @@ const storedPhotos = (row: EventRow): StoredPhoto[] =>
       path: photo.storage_path,
       url: publicUrl(photo.storage_path),
       source: photo.source,
+      // Events have no `tint` column: only a tree card has asked for one so
+      // far, and a column nothing reads is a column that rots.
+      tint: null,
     }));
 
 type FolderRow = {
@@ -599,6 +602,7 @@ type CharacterRow = {
     storage_path: string;
     position: number;
     source: string | null;
+    tint: string | null;
   }[];
 };
 
@@ -607,7 +611,7 @@ const CHARACTER_COLUMNS = `
   birth_year, birth_month, birth_day, birth_approx,
   death_year, death_month, death_day, death_approx,
   longitude, latitude, shared, origin_id,
-  character_photos ( id, storage_path, position, source )
+  character_photos ( id, storage_path, position, source, tint )
 `;
 
 /** Null when the year is missing: a month without a year is not a date. */
@@ -648,6 +652,7 @@ function toCharacter(row: CharacterRow): Character {
         path: photo.storage_path,
         url: publicUrl(photo.storage_path),
         source: photo.source,
+        tint: photo.tint,
       })),
   };
 }
@@ -704,6 +709,33 @@ export async function fetchCharacter(id: string): Promise<Character | null> {
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data === null ? null : toCharacter(data as CharacterRow);
+}
+
+/**
+ * Fait calculer la couleur dominante des portraits qui ne l'ont pas encore.
+ *
+ * Deux usages, et la différence est l'argument :
+ *
+ * - `paint(id)` juste après un enregistrement, **attendu**, de sorte que la
+ *   relecture du personnage rapporte déjà sa couleur et que la carte ne passe
+ *   pas de l'orange à sa teinte sous les yeux du lecteur.
+ * - `paint()` au démarrage, le filet : il rattrape les portraits déposés
+ *   avant que cette fonction existe, et ceux dont le téléchargement a échoué
+ *   un jour. Plafonné côté serveur, donc sans danger sur une grande
+ *   collection — il reviendra au démarrage suivant.
+ *
+ * **Ne lève jamais.** Une couleur manquante laisse la carte en cire, c'est-à-
+ * dire exactement ce qu'elle était hier ; faire échouer un enregistrement pour
+ * ça serait hors de proportion.
+ */
+export async function paint(character?: string): Promise<void> {
+  try {
+    await supabase().functions.invoke("tint", {
+      body: character === undefined ? {} : { character },
+    });
+  } catch (cause) {
+    console.warn("Couleur des portraits non calculée.", cause);
+  }
 }
 
 export async function createCharacter(

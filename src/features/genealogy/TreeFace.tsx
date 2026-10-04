@@ -3,6 +3,7 @@ import { Image, StyleSheet, Text, View } from "react-native";
 import { CARD_TOP, FACE, FACE_BAND, NODE } from "./layout";
 import type { Importance } from "../events/types";
 import { palette } from "../../theme/palette";
+import { inWax } from "../../theme/tint";
 import { radius, shadow, space } from "../../theme/tokens";
 
 /** Someone, as the drawing needs them — and no more than that. */
@@ -12,6 +13,14 @@ export type Face = {
   photo: string | null;
   /** "1769 – 1821", or empty. */
   dates: string;
+  /**
+   * The dominant colour of their first photograph, `#rrggbb`, or null.
+   *
+   * What the card is painted with, once `inWax` has given it the palette's
+   * saturation and luminance. Null — nobody with a portrait, or a portrait
+   * with no colour in it — leaves the card in wax, as every card was.
+   */
+  tint: string | null;
 };
 
 export type TreeFaceProps = {
@@ -25,7 +34,13 @@ export type TreeFaceProps = {
 };
 
 /**
- * Someone, drawn: a round portrait, a name, two dates, on a card of wax.
+ * Someone, drawn: a round portrait, a name, two dates, on a coloured card.
+ *
+ * **The card takes the colour of their first photograph** — its hue only, laid
+ * in the palette's own saturation and luminance by `inWax`, so that a tree of
+ * twenty people is no longer twenty identical orange cards while the cream
+ * label goes on reading the same on every one of them. Somebody with no
+ * portrait keeps the wax.
  *
  * Every face is the same size — that of a major figure. **Weight in the tree
  * is carried by opacity**: a minor figure recedes into the paper, a founder
@@ -61,7 +76,13 @@ export function TreeFace({
     >
       {/* Drawn first so everything else sits over it; positioned rather than
           in the flow, since it begins halfway up the portrait. */}
-      <View style={[styles.card, active && styles.cardActive]} />
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: inWax(face?.tint) },
+          active && styles.cardActive,
+        ]}
+      />
 
       {/* The band is what keeps the axis: the circle is centred in it, so its
           middle is always FACE_BAND / 2 below the top of the box. */}
@@ -108,6 +129,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 3,
   },
+  /**
+   * The ground is set inline rather than here: a card borrows the colour of
+   * the person's first photograph, and the wax in this sheet is only what a
+   * person without one gets. `inWax` holds both cases.
+   */
   card: {
     position: "absolute",
     left: 0,
@@ -115,12 +141,13 @@ const styles = StyleSheet.create({
     top: CARD_TOP,
     bottom: 0,
     borderRadius: radius.lg,
-    backgroundColor: palette.wax,
     ...shadow.soft,
   },
   /**
    * Ink, and not a brighter wax: the active state has to read against the
-   * wax it sits on, and dark-on-wax is the only pair that does.
+   * card it sits on, and dark-on-colour is the only pair that does. It holds
+   * whatever hue the card borrowed, because `inWax` gives them all the wax's
+   * luminance — so the ring is exactly as visible on a blue card as on a red.
    */
   cardActive: { borderWidth: 3, borderColor: palette.ink },
   band: {
