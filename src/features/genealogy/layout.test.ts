@@ -8,6 +8,7 @@ import {
   FACE,
   FACE_AXIS,
   frame,
+  GAP,
   generationCount,
   NODE,
   PADDING,
@@ -219,7 +220,9 @@ describe("de la colonne au point, et retour", () => {
   });
 
   it("arrondit vers la colonne la plus proche", () => {
-    const pas = NODE.width + 16;
+    // Le pas, et non la valeur du jour : écrit en dur, ce test tombait au
+    // premier élargissement des colonnes.
+    const pas = NODE.width + GAP.x;
     const zero = columnX(0, across);
     expect(columnAt(zero + pas * 0.4, across)).toBe(0);
     expect(columnAt(zero + pas * 0.6, across)).toBe(1);

@@ -54,10 +54,16 @@ export const CARD_TOP = FACE / 2;
  * sur un arbre entier, et un aïeul reste visible en même temps que son
  * petit-fils, ce qui est la seule chose qu'une généalogie sert à montrer.
  *
+ * `x` sépare deux cartes voisines d'une même rangée. Il valait 16, ce qui ne
+ * laissait que 50 points entre deux visages une fois retirée la marge que la
+ * carte montre de part et d'autre du portrait ; 36 en donne 70. La barre qui
+ * marie deux époux s'allonge d'autant, et c'est tant mieux : elle était si
+ * courte qu'elle se lisait comme un trait d'union.
+ *
  * Les coudes suivent seuls : chacun se plie au milieu de l'intervalle, calculé
  * et non écrit — voir `connectors`.
  */
-export const GAP = { x: 16, y: 56 };
+export const GAP = { x: 36, y: 56 };
 
 export const PADDING = 24;
 
