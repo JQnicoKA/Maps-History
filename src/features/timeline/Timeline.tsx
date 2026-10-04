@@ -64,22 +64,28 @@ type Stroke = { year: number; at: number; major: boolean; fade: number };
  * had no frieze at all — and events are marks *on* a rule, not the thing that
  * brings it into being.
  */
-/** One of the two small discs either side of the year. */
+/**
+ * Un des quatre disques qui entourent l'année.
+ *
+ * Deux portées : `|‹` et `›|` sautent à l'événement suivant, où qu'il soit ;
+ * `‹` et `›` avancent d'une seule année. Le trait du glyphe dit laquelle —
+ * une butée se heurte à quelque chose, une chevrons seule ne heurte rien.
+ */
 function Step({
-  direction,
+  glyph,
+  label,
   disabled,
   onPress,
 }: {
-  direction: "previous" | "next";
+  glyph: string;
+  label: string;
   disabled: boolean;
   onPress: () => void;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={
-        direction === "previous" ? "Événement précédent" : "Événement suivant"
-      }
+      accessibilityLabel={label}
       disabled={disabled}
       hitSlop={10}
       onPress={onPress}
@@ -89,9 +95,7 @@ function Step({
         disabled && styles.stepOff,
       ]}
     >
-      <Text style={styles.stepGlyph}>
-        {direction === "previous" ? "‹" : "›"}
-      </Text>
+      <Text style={styles.stepGlyph}>{glyph}</Text>
     </Pressable>
   );
 }
@@ -119,6 +123,22 @@ export function Timeline() {
   );
 
   const at = local ?? year ?? HISTORY.from;
+
+  /**
+   * Avance ou recule d'une année pleine.
+   *
+   * Arrondi avant d'ajouter : la frise rend une année fractionnaire pendant
+   * qu'on la fait glisser, et partir de 1515,4 pour atterrir sur 1516,4
+   * n'aurait aucun sens à l'affichage, qui arrondit de toute façon.
+   *
+   * Et `null` en second argument : changer d'année n'est pas choisir un
+   * événement, et garder la sélection ferait mentir la fiche du bas.
+   */
+  const stepYear = (by: number) => {
+    const wanted = clamp(Math.round(at) + by, HISTORY.from, HISTORY.to);
+    setLocal(null);
+    scrubTo(wanted, null);
+  };
 
   /** Read by the gesture and the glide, neither of which may close over state. */
   const live = useRef({ width, marks, scrubTo, at });
@@ -299,21 +319,37 @@ export function Timeline() {
       }
       {...responder.panHandlers}
     >
-      {/* The year, flanked by the two steps through events. The frieze walks
-          years; these walk what happened in them. */}
+      {/* L'année, flanquée de quatre pas : vers l'événement d'un côté, vers
+          l'année de l'autre. La frise marche en années, ces boutons marchent
+          en événements — et il manquait le pas d'une seule année, qu'on ne
+          pouvait obtenir qu'au doigt, et au jugé. */}
       <View style={styles.head}>
         <Step
-          direction="previous"
+          glyph="|‹"
+          label="Événement précédent"
           disabled={neighbours.previous === null}
           onPress={() =>
             neighbours.previous && selectEvent(neighbours.previous.id)
           }
         />
+        <Step
+          glyph="‹"
+          label="Année précédente"
+          disabled={Math.round(at) <= HISTORY.from}
+          onPress={() => stepYear(-1)}
+        />
         <View style={styles.pill}>
           <Text style={styles.year}>{formatYear(Math.round(at))}</Text>
         </View>
         <Step
-          direction="next"
+          glyph="›"
+          label="Année suivante"
+          disabled={Math.round(at) >= HISTORY.to}
+          onPress={() => stepYear(1)}
+        />
+        <Step
+          glyph="›|"
+          label="Événement suivant"
           disabled={neighbours.next === null}
           onPress={() => neighbours.next && selectEvent(neighbours.next.id)}
         />
@@ -372,25 +408,36 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: space.md,
+    // Resserré : la rangée portait deux disques et en porte quatre, et douze
+    // points entre chacun l'auraient fait déborder sur un écran étroit.
+    gap: space.sm,
   },
+  /**
+   * En cire, comme la pastille de l'année qu'ils encadrent.
+   *
+   * Ils étaient en papier avec un glyphe de cire, ce qui les faisait lire
+   * comme des boutons désactivés posés autour d'un bouton actif. Pleins, les
+   * cinq pièces forment une seule commande — et c'en est une : on y règle une
+   * même chose, l'endroit où l'on se tient dans le temps.
+   */
   step: {
     width: STEP,
     height: STEP,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: STEP / 2,
-    backgroundColor: palette.paperLight,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.line,
+    backgroundColor: palette.wax,
+    borderWidth: 1.5,
+    borderColor: palette.waxDeep,
   },
-  stepPressed: { backgroundColor: palette.paperDeep },
+  stepPressed: { backgroundColor: palette.waxDeep },
   stepOff: { opacity: 0.35 },
   stepGlyph: {
-    fontSize: 20,
-    lineHeight: 23,
-    fontWeight: "600",
-    color: palette.wax,
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+    color: palette.paperLight,
     marginTop: -1,
   },
   // The year in wax, like the needle under it and the ring round the marker
