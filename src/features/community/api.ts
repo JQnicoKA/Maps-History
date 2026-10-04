@@ -271,67 +271,57 @@ export async function fetchWhole(
  * row pointing where it pointed, which still works; failing the whole copy
  * over one image would be a worse answer than a borrowed photograph.
  */
+/**
+ * Prendre copie d'une contribution.
+ *
+ * Un seul appel, côté serveur. Cela tenait dans cette fonction, en deux temps
+ * — la porte SQL puis la duplication des fichiers — et les deux temps étaient
+ * séparés par le réseau : un téléphone mis en arrière-plan entre eux laissait
+ * une copie dont les photos pointaient encore les fichiers de l'auteur, et
+ * rien ne réessayait jamais. Mesuré : une ligne sur soixante-quinze.
+ *
+ * L'Edge Function `copy` fait les deux du même côté, avec notre propre jeton
+ * et aucun privilège de plus. Voir `supabase/functions/copy/index.ts`.
+ */
 export async function copy(kind: Kind, id: string): Promise<string> {
-  const client = supabase();
-  const { data, error } = await client.rpc(DOORS[kind].copy, { wanted: id });
+  const { data, error } = await supabase().functions.invoke("copy", {
+    body: { kind, id },
+  });
   if (error) throw new Error(error.message);
-  const made = data as string;
 
-  const { data: session } = await client.auth.getSession();
-  const me = session.session?.user.id;
-  if (!me) return made;
+  const said = data as { id?: string; error?: string; soucis?: string[] };
+  if (said.error) throw new Error(said.error);
+  if (!said.id) throw new Error("La copie n'a pas abouti.");
 
-  if (kind === "folder") {
-    // A classeur's cover is one path on its own row, and its events' pictures
-    // were walked over by the copies made underneath it.
-    const { data: made_folder } = await client
-      .from("folders")
-      .select("photo_path")
-      .eq("id", made)
-      .maybeSingle();
-    const path = (made_folder as { photo_path: string | null } | null)
-      ?.photo_path;
-    if (path && !path.startsWith(`${me}/`)) {
-      const extension = path.split(".").pop() ?? "jpg";
-      const mine = `${me}/folders/${made}/cover-${Date.now()}.${extension}`;
-      const { error: refused } = await client.storage
-        .from(BUCKET)
-        .copy(path, mine);
-      if (!refused) {
-        await client.from("folders").update({ photo_path: mine }).eq("id", made);
-      }
-    }
-    return made;
+  // La copie existe, mais un fichier n'a pas suivi. On ne la défait pas pour
+  // autant — et on ne se tait pas non plus, ce qui était le défaut d'avant.
+  // `mend` repassera au prochain démarrage.
+  if (said.soucis?.length) {
+    console.warn("Copie incomplète, images à rapatrier :", said.soucis);
   }
+  return said.id;
+}
 
-  const table = kind === "character" ? "character_photos" : "event_photos";
-  const column = kind === "character" ? "character_id" : "event_id";
-  const folder = kind === "character" ? "characters" : "events";
-
-  const { data: photos } = await client
-    .from(table)
-    .select("id, storage_path, position")
-    .eq(column, made);
-
-  for (const photo of (photos ?? []) as {
-    id: string;
-    storage_path: string;
-    position: number;
-  }[]) {
-    // Already under this reader's own folder: nothing to walk over.
-    if (photo.storage_path.startsWith(`${me}/`)) continue;
-
-    const extension = photo.storage_path.split(".").pop() ?? "jpg";
-    const mine = `${me}/${folder}/${made}/${photo.position}-${Date.now()}.${extension}`;
-    const { error: refused } = await client.storage
-      .from(BUCKET)
-      .copy(photo.storage_path, mine);
-    if (refused) continue;
-
-    await client.from(table).update({ storage_path: mine }).eq("id", photo.id);
+/**
+ * Rapatrier les fichiers restés chez leur auteur.
+ *
+ * Le filet, appelé une fois au démarrage. Il reste nécessaire même avec une
+ * copie désormais atomique : la couche de stockage peut toujours refuser une
+ * duplication, et il existe des lignes antérieures à l'Edge Function.
+ *
+ * Silencieux par construction : s'il échoue, il n'y a rien à dire au lecteur
+ * qui n'a rien demandé, et il repassera au démarrage suivant.
+ */
+export async function mend(): Promise<number> {
+  try {
+    const { data, error } = await supabase().functions.invoke("copy", {
+      body: { action: "mend" },
+    });
+    if (error) return 0;
+    return (data as { mended?: number }).mended ?? 0;
+  } catch {
+    return 0;
   }
-
-  return made;
 }
 
 /**

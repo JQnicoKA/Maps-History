@@ -9,9 +9,10 @@ import {
 } from "react";
 
 import * as api from "./api";
+import { mend } from "../community/api";
 import { DEFAULT_YEAR } from "../../config/history";
 import { matchesFilters } from "./filtering";
-import { standsAt } from "./lifespan";
+import { compareByLife, standsAt } from "./lifespan";
 import { toSortKey } from "./historicalDate";
 import { erasure, tidy } from "./rows";
 import {
@@ -214,6 +215,19 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
+  /**
+   * Le filet des copies, une fois par démarrage.
+   *
+   * Une copie dont la duplication de fichiers a échoué pointe encore les
+   * fichiers de son auteur — et le jour où celui-ci supprime son compte,
+   * l'image mourrait. `mend` les rapatrie. Hors du `refresh` et sans
+   * dépendances : ce n'est pas une lecture de la collection, c'est une
+   * réparation, et elle n'a aucune raison de se rejouer à chaque écriture.
+   */
+  useEffect(() => {
+    void mend();
+  }, []);
+
   const setFilters = useCallback((patch: Partial<MapFilters>) => {
     setAllFilters((current) => ({ ...current, ...patch }));
   }, []);
@@ -379,9 +393,11 @@ export function EventsProvider({ children }: { children: ReactNode }) {
 
   const addCharacter = useCallback(async (draft: CharacterDraft) => {
     const created = await api.createCharacter(draft);
-    // Re-read rather than splice in the returned row: the pictures were
-    // uploaded after it, so the row we hold does not carry them yet.
-    setCharacters(await api.fetchCharacters());
+    // Relu, et non pas inséré tel quel : les portraits sont montés *après* la
+    // ligne, donc celle qu'on tient ne les porte pas encore. Mais relu seul —
+    // la collection entière coûtait cent lectures pour apprendre une photo.
+    const whole = (await api.fetchCharacter(created.id)) ?? created;
+    setCharacters((current) => byLife([...current, whole]));
     return created;
   }, []);
 
@@ -393,7 +409,14 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       droppedPhotos: StoredPhoto[],
     ) => {
       await api.updateCharacter(id, draft, keptPhotos, droppedPhotos);
-      setCharacters(await api.fetchCharacters());
+      // Même raison qu'à la création, et même remède : un seul personnage.
+      // Re-trié, car une date de naissance corrigée change sa place.
+      const whole = await api.fetchCharacter(id);
+      setCharacters((current) =>
+        whole === null
+          ? current
+          : byLife(current.map((one) => (one.id === id ? whole : one))),
+      );
     },
     [],
   );
@@ -581,6 +604,13 @@ export function EventsProvider({ children }: { children: ReactNode }) {
    * Chronological, as the database hands them over and as every reader of this
    * list assumes: the timeline walks it, and so do the two arrows.
    */
+  /**
+   * L'ordre des personnages, celui que `fetchCharacters` applique en arrivant.
+   * Replacer une ligne dans la liste oblige à le réappliquer, sinon le
+   * nouveau venu se retrouve en queue quelle que soit sa naissance.
+   */
+  const byLife = (list: Character[]) => [...list].sort(compareByLife);
+
   const inOrder = (list: EventSummary[]) =>
     [...list].sort((a, b) => toSortKey(a.start) - toSortKey(b.start));
 

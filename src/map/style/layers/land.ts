@@ -29,6 +29,15 @@ export function landLayers(): LayerSpecification[] {
        *
        * So this costs nothing that was not already paid for. It simply prints
        * what was in the parcel.
+       *
+       * **It only works on MapTiler's tiles, and that is worth knowing before
+       * anyone wonders why it went dark.** `globallandcover` is not part of
+       * the OpenMapTiles schema that Planetiler implements — there is no
+       * `GlobalLandcover.java` in that project, because the raster the layer
+       * derives from is not one of Planetiler's four inputs. The day we read
+       * our own archive, this draws nothing and the continents go back to bare
+       * parchment below z7, where `landcover` takes over. Measured and written
+       * up in `docs/brancher-les-tuiles.md`.
        */
       id: "globallandcover-wash",
       type: "fill",

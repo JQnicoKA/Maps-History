@@ -9,5 +9,9 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules"]
+  // `supabase/functions` est du Deno : il importe par URL, connaît l'objet
+  // global `Deno`, et n'a rien à voir avec le bundle de l'application. Le
+  // laisser dans le périmètre faisait échouer `tsc` sur du code parfaitement
+  // valide chez lui.
+  "exclude": ["node_modules", "supabase/functions"]
 }

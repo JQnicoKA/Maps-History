@@ -37,6 +37,33 @@ export const TILE_MAX_ZOOM = 10;
  */
 export const RELIEF_MAX_ZOOM = 7;
 
+/**
+ * Combien de tuiles le lecteur garde sous la main, en octets.
+ *
+ * MapLibre hérite de Mapbox un cache ambiant de **50 Mo**, et c'est beaucoup
+ * trop peu pour ce style. Les tuiles ont été pesées le 1er octobre 2026, à
+ * l'octet transféré :
+ *
+ * | zoom | fond vectoriel (gzip) | relief (webp) |
+ * |------|-----------------------|---------------|
+ * | z1   | 152 Ko                | 144 Ko        |
+ * | z3   | 433 Ko                | 211 Ko        |
+ * | z5   | **714 Ko**            | 240 Ko        |
+ * | z7   | 305 Ko                | 361 Ko        |
+ * | z10  | 87 Ko                 | 305 Ko        |
+ *
+ * À ~300 Ko la tuile en moyenne, 50 Mo n'en tiennent qu'environ **170** — soit
+ * une poignée d'écrans à trois échelles. Un lecteur qui parcourt l'Europe a
+ * déjà rempli son cache et commence à évincer ses propres tuiles, qu'il
+ * repaiera donc à la visite suivante.
+ *
+ * 250 Mo en tiennent près de **850**, ce qui couvre les régions qu'un lecteur
+ * revisite — et c'est le cas normal : on revient sur ses propres événements.
+ * Généreux pour un téléphone, mais c'est un cache : le système le purge sous
+ * pression, et le pire qu'il puisse arriver est de retélécharger.
+ */
+export const TILE_CACHE_BYTES = 250 * 1024 * 1024;
+
 export const INITIAL_VIEW = {
   center: [8, 20] as LngLat,
   zoom: 1.4,

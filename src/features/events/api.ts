@@ -208,6 +208,42 @@ export async function renameFolder(id: string, name: string): Promise<Folder> {
 }
 
 /**
+ * Retire des fichiers du seau — mais pas ceux dont la collection d'un autre
+ * dépend encore.
+ *
+ * Une copie prise par quelqu'un d'autre a normalement ses propres fichiers,
+ * dupliqués dans son dossier au moment de la copie. Normalement : la
+ * duplication peut échouer, et il existe des lignes antérieures à l'Edge
+ * Function qui la rend fiable. Dans ce cas la ligne de l'autre pointe encore
+ * notre fichier, et l'effacer lui laisserait une image morte.
+ *
+ * La RLS nous cache les lignes des autres, donc nous ne pouvons pas répondre
+ * à cette question nous-mêmes : c'est la porte `erasable_by_me` qui la
+ * tranche, en `security definer`. Nous lui soumettons des chemins, elle rend
+ * ceux que personne d'autre ne réclame, et nous n'effaçons que ceux-là.
+ *
+ * Un fichier retenu reste à notre nom dans le seau. C'est le prix, et il est
+ * du bon côté : un orphelin coûte quelques kilooctets, une image morte dans
+ * la collection de quelqu'un coûte sa confiance.
+ */
+export async function forget(paths: string[]): Promise<void> {
+  if (paths.length === 0) return;
+  const client = supabase();
+
+  const { data, error } = await client.rpc("erasable_by_me", { paths });
+  if (error) throw new Error(error.message);
+
+  // La porte rend une colonne de texte ; selon le transport, chaque ligne
+  // arrive nue ou enveloppée sous le nom de la fonction.
+  const free = ((data ?? []) as (string | { erasable_by_me: string })[]).map(
+    (row) => (typeof row === "string" ? row : row.erasable_by_me),
+  );
+  if (free.length === 0) return;
+
+  await client.storage.from(PHOTO_BUCKET).remove(free);
+}
+
+/**
  * Removes a folder.
  *
  * `event_folders.folder_id` cascades, so the events keep their existence and
@@ -222,7 +258,7 @@ export async function deleteFolder(folder: Folder): Promise<void> {
   if (error) throw new Error(error.message);
 
   if (folder.photo) {
-    await client.storage.from(PHOTO_BUCKET).remove([folder.photo.path]);
+    await forget([folder.photo.path]);
   }
 }
 
@@ -260,7 +296,7 @@ export async function setFolderPhoto(
   if (error) throw new Error(error.message);
 
   if (folder.photo) {
-    await client.storage.from(PHOTO_BUCKET).remove([folder.photo.path]);
+    await forget([folder.photo.path]);
   }
   return toFolder(data as FolderRow);
 }
@@ -378,9 +414,7 @@ async function syncPhotos(
     if (error) throw new Error(error.message);
 
     // Best effort: an orphaned object costs storage, a failed save costs work.
-    await client.storage
-      .from(PHOTO_BUCKET)
-      .remove(dropped.map((photo) => photo.path));
+    await forget(dropped.map((photo) => photo.path));
   }
 
   // Sources are editable on photos that are staying.
@@ -653,6 +687,25 @@ export async function fetchCharacters(): Promise<Character[]> {
   return ((data ?? []) as CharacterRow[]).map(toCharacter).sort(compareByLife);
 }
 
+/**
+ * Relit un personnage, et lui seul.
+ *
+ * Nécessaire parce que les portraits partent *après* la ligne : ni
+ * `createCharacter` ni `updateCharacter` ne peuvent rendre un personnage dont
+ * les photographies sont déjà là. Il faut donc relire — mais relire les cent
+ * personnages d'une collection pour apprendre les photos d'un seul était un
+ * prix sans rapport avec ce qu'on venait de changer.
+ */
+export async function fetchCharacter(id: string): Promise<Character | null> {
+  const { data, error } = await supabase()
+    .from("characters")
+    .select(CHARACTER_COLUMNS)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data === null ? null : toCharacter(data as CharacterRow);
+}
+
 export async function createCharacter(
   draft: CharacterDraft,
 ): Promise<Character> {
@@ -708,9 +761,7 @@ export async function deleteCharacter(character: Character): Promise<void> {
   if (error) throw new Error(error.message);
 
   if (character.photos.length > 0) {
-    await client.storage
-      .from(PHOTO_BUCKET)
-      .remove(character.photos.map((photo) => photo.path));
+    await forget(character.photos.map((photo) => photo.path));
   }
 }
 
@@ -948,10 +999,7 @@ export async function deleteOwnPhotos(): Promise<void> {
       row.photo_path === null ? [] : [row.photo_path],
     ),
   ];
-  if (paths.length === 0) return;
-
-  const { error } = await client.storage.from(PHOTO_BUCKET).remove(paths);
-  if (error) throw new Error(error.message);
+  await forget(paths);
 }
 
 export async function deleteEvent(id: string): Promise<void> {
@@ -971,7 +1019,5 @@ export async function deleteEvent(id: string): Promise<void> {
   const { error } = await client.from("events").delete().eq("id", id);
   if (error) throw new Error(error.message);
 
-  if (paths.length > 0) {
-    await client.storage.from(PHOTO_BUCKET).remove(paths);
-  }
+  await forget(paths);
 }

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -11,10 +12,17 @@ import {
 import { EventsProvider } from "./features/events/EventsProvider";
 import { HiddenProvider } from "./features/territories/HiddenProvider";
 import { PlacementProvider } from "./features/placement";
+import { holdMoreTiles } from "./map/cache";
 import { MapScreen } from "./screens/MapScreen";
 import { palette } from "./theme/palette";
 
 export default function App() {
+  // Avant toute carte, et à chaque lancement : le cache de tuiles ne garde pas
+  // sa taille d'une session à l'autre — voir `holdMoreTiles`.
+  useEffect(() => {
+    void holdMoreTiles();
+  }, []);
+
   return (
     <SafeAreaProvider>
       {/* Outside the providers, so a failure while loading the session or the

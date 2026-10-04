@@ -9,6 +9,7 @@ import {
 } from "./layers";
 import { MAPTILER_HOST, createSources } from "./sources";
 import { MAP_FEATURES } from "../../config/map";
+import { env } from "../../config/env";
 
 export type OldAtlasStyleOptions = {
   apiKey: string;
@@ -16,6 +17,8 @@ export type OldAtlasStyleOptions = {
   relief?: boolean;
   /** Printed 15° latitude/longitude grid. */
   graticule?: boolean;
+  /** Our own PMTiles archive of the base map, when there is one. */
+  tilesUrl?: string;
 };
 
 /**
@@ -29,12 +32,13 @@ export function createOldAtlasStyle({
   apiKey,
   relief = MAP_FEATURES.relief,
   graticule = MAP_FEATURES.graticule,
+  tilesUrl = env.tilesUrl,
 }: OldAtlasStyleOptions): StyleSpecification {
   return {
     version: 8,
     name: "Old Atlas",
     glyphs: `${MAPTILER_HOST}/fonts/{fontstack}/{range}.pbf?key=${apiKey}`,
-    sources: createSources({ apiKey, relief, graticule }),
+    sources: createSources({ apiKey, relief, graticule, tilesUrl }),
     layers: [
       ...landLayers(),
       ...(relief ? reliefLayers() : []),

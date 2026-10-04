@@ -11,6 +11,16 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN?.trim() ?? "";
 
 /**
+ * Notre propre archive PMTiles du fond de carte, si nous en avons une.
+ *
+ * Vide — et c'est le cas par défaut — le fond vient de MapTiler, tuile par
+ * tuile. Renseignée, MapLibre lit des tranches d'octets dans ce fichier
+ * unique et plus une seule requête de fond ne part chez MapTiler. Voir
+ * `docs/brancher-les-tuiles.md`.
+ */
+const tilesUrl = process.env.EXPO_PUBLIC_TILES_URL?.trim() ?? "";
+
+/**
  * Laquelle des trois applications s'exécute — `app.config.ts` lit la même
  * variable pour décider du nom, de l'identifiant et du schéma d'URL.
  *
@@ -31,6 +41,9 @@ export const env = {
   sentryDsn,
   /** Without it, nothing is reported and nothing else changes. */
   hasSentry: sentryDsn.length > 0,
+  tilesUrl,
+  /** Faux = on lit MapTiler. Un seul interrupteur, et il se vide. */
+  hasOwnTiles: tilesUrl.length > 0,
   variant,
   scheme,
 } as const;
