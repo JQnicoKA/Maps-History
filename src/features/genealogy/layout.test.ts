@@ -4,9 +4,9 @@ import {
   canvasSize,
   columnAt,
   columnX,
+  CARD_TOP,
   connectors,
-  FACE,
-  FACE_AXIS,
+  COUPLE_AXIS,
   frame,
   GAP,
   generationCount,
@@ -61,12 +61,32 @@ describe("le trait d'un couple", () => {
     expect(drawn(subject).segments).toHaveLength(1);
   });
 
-  it("court d'un visage à l'autre, sur leur axe", () => {
+  it("court d'un bord de carte à l'autre, aux trois quarts de la carte", () => {
     const { at: node, segments } = drawn(subject);
     const [bar] = segments;
-    expect(bar!.top + STROKE / 2).toBeCloseTo(node("f").y + FACE_AXIS, 9);
-    expect(bar!.left).toBeCloseTo(node("f").x + NODE.width / 2 + FACE / 2, 9);
-    expect(bar!.left + bar!.width).toBeCloseTo(node("m").x + NODE.width / 2 - FACE / 2, 9);
+    expect(bar!.top + STROKE / 2).toBeCloseTo(node("f").y + COUPLE_AXIS, 9);
+    expect(bar!.left).toBeCloseTo(node("f").x + NODE.width, 9);
+    expect(bar!.left + bar!.width).toBeCloseTo(node("m").x, 9);
+  });
+
+  it("ne déborde sur aucune des deux cartes", () => {
+    const { at: node, segments } = drawn(subject);
+    const [bar] = segments;
+    // À cette hauteur les cartes occupent toute la largeur du nœud : le trait
+    // doit tenir dans la gouttière, et elle seule.
+    expect(bar!.left).toBeGreaterThanOrEqual(node("f").x + NODE.width);
+    expect(bar!.left + bar!.width).toBeLessThanOrEqual(node("m").x);
+    expect(bar!.width).toBeCloseTo(GAP.x, 9);
+  });
+
+  it("se tient à hauteur des cartes, et non au-dessus d'elles", () => {
+    const { at: node, segments } = drawn(subject);
+    const [bar] = segments;
+    // Ce qui compte n'est pas qu'il passe sous les visages — la gouttière où
+    // il court n'en croise aucun, quelle que soit sa hauteur — mais qu'il
+    // joigne bien les deux cartes plutôt que de flotter au-dessus d'elles.
+    expect(bar!.top).toBeGreaterThanOrEqual(node("f").y + CARD_TOP);
+    expect(bar!.top).toBeLessThanOrEqual(node("f").y + NODE.height);
   });
 
   it("a la même longueur quelles que soient les importances", () => {
@@ -127,7 +147,7 @@ describe("le trait d'une filiation", () => {
       (one) => one.width === STROKE && Math.abs(one.left + STROKE / 2 - middle) < 1e-9,
     );
     expect(drops).toHaveLength(2);
-    expect(drops.every((one) => Math.abs(one.top - (node("f").y + FACE_AXIS)) < 1e-9)).toBe(true);
+    expect(drops.every((one) => Math.abs(one.top - (node("f").y + COUPLE_AXIS)) < 1e-9)).toBe(true);
   });
 
   it("garde son propre coude quand les parents ne sont pas mariés", () => {

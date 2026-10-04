@@ -65,6 +65,28 @@ export const CARD_TOP = FACE / 2;
  */
 export const GAP = { x: 36, y: 56 };
 
+/**
+ * La hauteur où court le trait de mariage : le milieu du nœud, exactement.
+ *
+ * Il courait sur `FACE_AXIS`, au milieu des portraits — soit tout en haut de
+ * l'ensemble que forment le cercle et la carte, puisque la carte descend bien
+ * plus bas que le cercle. Le nœud va de 0 à `NODE.height`, le cercle occupe
+ * le haut et la carte le bas : sa moitié est donc le centre visuel des deux
+ * réunis, et c'est là que l'œil attend le lien d'un couple.
+ *
+ * Écrit comme une moitié et non comme une fraction de la carte, parce que
+ * c'est ce que la valeur *est* — on y est arrivé en cherchant le quart de la
+ * carte, qui tombait à deux points près au même endroit, mais la règle est
+ * celle du milieu et elle doit se lire comme telle.
+ *
+ * Descendre a une conséquence qui n'est pas un choix : à cette hauteur la
+ * barre n'est plus au niveau des cercles mais des **cartes**, qui occupent
+ * toute la largeur du nœud. Elle ne peut donc plus aller de bord de visage à
+ * bord de visage — elle passerait par-dessus les deux cartes — et court d'un
+ * bord de carte à l'autre, c'est-à-dire exactement sur `GAP.x`.
+ */
+export const COUPLE_AXIS = NODE.height / 2;
+
 export const PADDING = 24;
 
 export type Placed = { member: TreeMember; x: number; y: number };
@@ -305,8 +327,8 @@ const married = (tree: Tree, a: string, b: string): boolean =>
   );
 
 /**
- * Where the bar between two spouses runs: from the edge of one face to the edge
- * of the other, on the axis they are both hung from.
+ * Where the bar between two spouses runs: across the gutter between their two
+ * cards, on `COUPLE_AXIS`.
  *
  * `null` when they do not share a row. Nothing in the app draws such a link,
  * but a hand-edited database must not turn an equals sign into a diagonal.
@@ -318,9 +340,9 @@ function marriage(
   if (!a || !b || a.member.generation !== b.member.generation) return null;
   const [left, right] = a.x <= b.x ? [a, b] : [b, a];
   return {
-    from: left.x + NODE.width / 2 + FACE / 2,
-    to: right.x + NODE.width / 2 - FACE / 2,
-    y: left.y + FACE_AXIS,
+    from: left.x + NODE.width,
+    to: right.x,
+    y: left.y + COUPLE_AXIS,
   };
 }
 
