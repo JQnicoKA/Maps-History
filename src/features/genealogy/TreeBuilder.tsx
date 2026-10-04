@@ -64,6 +64,19 @@ export type TreeBuilderProps = {
    */
   onNewPerson: () => void;
   onSeekPerson: () => void;
+  /**
+   * Ôté de l'écran sans être démonté.
+   *
+   * Pour le moment où la carte redevient le contrôle : on y vise un point,
+   * et viser une carte qu'on ne voit pas n'est pas viser. Les panneaux se
+   * dépréentent — `visible={visible && !aiming}` — mais un arbre est une vue,
+   * alors il s'efface par le style.
+   *
+   * Effacé et non démonté, parce qu'on y revient aussitôt : le démonter
+   * emporterait le panoramique, l'échelle et la carte à moitié remplie qui
+   * attend derrière.
+   */
+  hidden?: boolean;
 };
 
 /**
@@ -147,6 +160,7 @@ export function TreeBuilder({
   onEditPerson,
   onNewPerson,
   onSeekPerson,
+  hidden = false,
 }: TreeBuilderProps) {
   const insets = useSafeAreaInsets();
   const {
@@ -220,6 +234,20 @@ export function TreeBuilder({
   );
   /** Which generation the picker is adding to. */
   const [adding, setAdding] = useState<number | null>(null);
+  /**
+   * La porte à ouvrir une fois le **sélecteur** descendu, s'il y en a une.
+   *
+   * Même raison que `leaving` plus haut, mais pour une autre feuille — et il
+   * faut bien deux états, puisque deux `onClosed` différents les consomment.
+   * iOS refuse de présenter une modale depuis une autre qui se retire, et ces
+   * deux-là en sont.
+   *
+   * La question ne se posait pas tant que quitter l'arbre démontait tout le
+   * sous-arbre : la feuille disparaissait d'un coup. L'arbre restant désormais
+   * dessiné derrière la page qu'on ouvre, elle s'en va pour de bon — et il
+   * faut l'attendre.
+   */
+  const [afterPicker, setAfterPicker] = useState<"new" | "seek" | null>(null);
   const [busy, setBusy] = useState(false);
   /**
    * How much room the floating header takes.
@@ -390,7 +418,7 @@ export function TreeBuilder({
      * A card opened from here is a panel over the root, with nothing under it
      * in the middle of leaving, and closing the drawing is one state change.
      */
-    <View style={[StyleSheet.absoluteFill, styles.root]}>
+    <View style={[StyleSheet.absoluteFill, styles.root, hidden && styles.away]}>
       <View style={styles.root}>
         <PanZoom
           held={dragging}
@@ -632,6 +660,13 @@ export function TreeBuilder({
         <Sheet
           visible={adding !== null}
           onClose={() => setAdding(null)}
+          onClosed={() => {
+            if (afterPicker === null) return;
+            const door = afterPicker;
+            setAfterPicker(null);
+            if (door === "new") onNewPerson();
+            else onSeekPerson();
+          }}
           title={
             adding !== null && rowCount(tree, adding) === 0
               ? "Ajouter une génération"
@@ -665,13 +700,15 @@ export function TreeBuilder({
                 ? "déjà à une autre génération"
                 : null
             }
+            // Descendre d'abord, ouvrir ensuite : `onClosed` ci-dessus s'en
+            // charge une fois la feuille réellement partie.
             onSeek={() => {
+              setAfterPicker("seek");
               setAdding(null);
-              onSeekPerson();
             }}
             onEdit={() => {
+              setAfterPicker("new");
               setAdding(null);
-              onNewPerson();
             }}
             // Jamais appelé en mode choix, mais la propriété est requise :
             // une rangée refusée ne rend rien, une rangée libre rend `onPick`.
@@ -908,6 +945,8 @@ const SLOT = 72;
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.paper },
+  /** Hors de vue, toujours en mémoire — voir la propriété `hidden`. */
+  away: { display: "none" },
   line: { position: "absolute", backgroundColor: palette.inkSoft },
   /**
    * Dashed and empty, in wax: the colour the app keeps for "this is where you

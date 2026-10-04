@@ -258,10 +258,32 @@ export function MapScreen() {
       : page.id === null
         ? ("new" as const)
         : (characters.find((one) => one.id === page.id) ?? null);
-  const shownTree =
+  /**
+   * L'arbre à dessiner — celui qu'on lit, ou celui qu'on vient de quitter.
+   *
+   * La seconde moitié compte autant que la première. Quitter l'arbre pour une
+   * page suspendait son dessin, et le temps que la modale monte on voyait la
+   * carte derrière : l'impression que l'arbre s'était refermé alors qu'on
+   * allait y revenir.
+   *
+   * Il n'avait pourtant aucune raison de partir. Un arbre est une vue opaque
+   * posée sur la carte, pas une modale ; les pages, elles, en sont, et une
+   * modale se lève par-dessus tout. Le laisser dessiné ne viole donc pas la
+   * règle d'iOS — c'est le `page` unique qui l'escamotait, faute de pouvoir
+   * tenir deux choses à la fois.
+   *
+   * `back` tient exactement l'information manquante : il vaut cet arbre quand
+   * et seulement quand on compte y revenir. Ouvrir *un autre* arbre ne pose
+   * pas de retour, et l'ancien s'efface bien.
+   */
+  const treeId =
     page?.kind === "tree"
-      ? (trees.find((one) => one.id === page.id) ?? null)
-      : null;
+      ? page.id
+      : back !== null && "kind" in back && back.kind === "tree"
+        ? back.id
+        : null;
+  const shownTree =
+    treeId === null ? null : (trees.find((one) => one.id === treeId) ?? null);
 
   const { draw } = useHidden();
   /** Painting: the strokes laid down, the one under the finger, the state. */
@@ -754,8 +776,19 @@ export function MapScreen() {
           here because it carries pages of its own, which cannot be panels
           inside a panel inside a panel. */}
       <TreeBuilder
-        key={`tree-${raised}`}
+        // Sur l'arbre lui-même, et non sur le compteur de levées : celui-ci
+        // sert à re-semer un *panneau* à chaque fois qu'on le lève, ce qui
+        // n'a pas de sens pour une vue qui doit rester en place pendant
+        // qu'une page la survole. Changer d'arbre remonte le dessin ;
+        // revenir au même le retrouve où on l'avait laissé, panoramique et
+        // échelle compris.
+        key={`tree-${shownTree?.id ?? "none"}`}
         tree={shownTree}
+        // Le dessin s'ôte quand la carte redevient le contrôle. Sans quoi,
+        // créer quelqu'un depuis un arbre menait à viser un point sur une
+        // carte que l'arbre recouvrait — il fallait fermer l'arbre pour
+        // l'atteindre, ce qui défaisait tout l'intérêt de l'avoir gardé.
+        hidden={aiming || drawing}
         // A screen rather than a panel, so there is no dismissal to wait for:
         // it is gone the moment the state says so, and whatever is owed —
         // the sheet it was opened from, the page it was left for — may be
