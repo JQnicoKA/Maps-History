@@ -37,7 +37,7 @@ import { lifespan } from "../events/lifespan";
 import type { Tree, TreeMember } from "../events/types";
 import { lifted as tapLifted } from "../../lib/touch";
 import { palette } from "../../theme/palette";
-import { radius, space, TOUCH, type } from "../../theme/tokens";
+import { radius, shadow, space, TOUCH, type } from "../../theme/tokens";
 
 export type TreeBuilderProps = {
   tree: Tree | null;
@@ -125,38 +125,65 @@ const GRASP = 11;
  * tree lost its mode and its banner, which is what made it quiet, and a quiet
  * interface owes the reader one page saying what it can do.
  */
-const GESTURES: { doing: string; means: string }[] = [
+/**
+ * L'aide, posée comme on se la pose.
+ *
+ * Elle listait des gestes — « rester appuyé », « le + à droite » — ce qui
+ * suppose qu'on ait déjà remarqué le geste et qu'on cherche ce qu'il fait.
+ * Or on ouvre un `i` dans l'autre sens : on sait ce qu'on veut faire et on
+ * cherche par où. Les questions d'abord, donc, et dans l'ordre où elles
+ * viennent — on peuple l'arbre avant de le relier.
+ *
+ * **Chaque réponse commence par un verbe à l'impératif**, et ce n'est pas une
+ * coquetterie : qui pose la question veut savoir quoi faire de ses doigts, et
+ * le premier mot doit le lui dire. Ce qui suit la première phrase explique ;
+ * ce qui la commence agit.
+ */
+const HELP: { question: string; answer: string }[] = [
   {
-    doing: "Toucher une carte",
-    means: "Ouvre sa fiche : sa vie, les événements qui la mentionnent, les arbres où elle se tient.",
+    question: "Comment ajouter un personnage ?",
+    answer:
+      "Touchez le + au bout d'une ligne pour ajouter un personnage à cette génération. Les deux + sur des lignes vides, en haut et en bas de votre arbre , permettent d'ajouter un personnage à une nouvelle génération",
   },
   {
-    doing: "Rester appuyé",
-    means: "Ouvre son placement dans cet arbre — discret, normal ou majeur, ce qui décide de sa présence à l'œil — et permet de l'en retirer.",
+    question: "Comment marier deux personnages ?",
+    answer:
+      "Restez appuyé sur un des deux personnages. Puis relâchez et cliquez sur le + à droite de la carte, puis choisissez un des personnages disponibles (sur la même ligne et non déjà marié)",
   },
   {
-    doing: "Rester appuyé, puis glisser",
-    means: "Déplace la personne dans sa ligne. Un couple voyage ensemble, et le cadre en pointillés montre où il se posera.",
+    question: "Comment déclarer un enfant ?",
+    answer:
+      "Restez appuyé sur un des parents. Puis relâchez et cliquez le + sous une carte, puis choisissez quelqu'un de la ligne du dessous. Si le parent est marié, l'enfant est celui du couple et le trait part du milieu de la barre.",
   },
   {
-    doing: "Le + à droite d'une carte",
-    means: "La marie à quelqu'un de la même ligne. Deux par couple, et ni l'un ni l'autre déjà marié.",
+    question: "Comment effacer un lien ?",
+    answer:
+      "Restez appuyé sur le trait. Effacer un mariage efface les enfants de ce mariage",
   },
   {
-    doing: "Le + sous une carte",
-    means: "Lui donne pour enfant quelqu'un de la ligne du dessous. Si elle est mariée, l'enfant est celui du couple et le trait part du milieu de la barre.",
+    question: "Comment retirer quelqu'un de l'arbre ?",
+    answer:
+      "Restez appuyé sur sa carte : le menu qui s'ouvre permet de l'en retirer. Il reste néanmoins dans votre collection.",
   },
   {
-    doing: "Le + au bout d'une ligne",
-    means: "Fait entrer un personnage de votre collection dans l'arbre. Les deux lignes vides, en haut et en bas, ouvrent une génération de plus.",
+    question: "Comment rendre quelqu'un plus ou moins visible ?",
+    answer:
+      "Restez appuyé sur sa carte, puis choisissez discret, normal ou majeur",
   },
   {
-    doing: "Rester appuyé sur un trait",
-    means: "Propose de l'effacer. Effacer un mariage efface les enfants de ce mariage : ils ne tiendraient plus à rien.",
+    question: "Comment déplacer quelqu'un dans sa ligne ?",
+    answer:
+      "Restez appuyé, puis glissez. À noter que déplacer un personnage déplacera son couple s'il est marié",
   },
   {
-    doing: "Deux doigts",
-    means: "Zooment et déplacent le dessin ; un doigt sur le papier le déplace aussi.",
+    question: "Comment ouvrir la fiche de quelqu'un ?",
+    answer:
+      "Touchez sa carte : sa fiche descriptive s'ouvrira",
+  },
+  {
+    question: "Comment me déplacer dans le dessin ?",
+    answer:
+      "Faites glisser un doigt pour déplacer le papier, deux pour zoomer.",
   },
 ];
 
@@ -220,9 +247,9 @@ export function TreeBuilder({
   };
   /** Which face the ··· card is showing, if it is open at all. */
   const [menu, setMenu] = useState<
-    "menu" | "rename" | "delete" | "help" | null
+    "menu" | "delete" | "help" | null
   >(null);
-  /** The new name being typed on the card's second face. */
+  /** Le nom en cours de frappe, sur la carte « Modifier ». */
   const [name, setName] = useState("");
   const { say, dialog } = useNotice();
   /**
@@ -401,13 +428,18 @@ export function TreeBuilder({
       .finally(() => setBusy(false));
   };
 
-  const rename = () => {
+  /**
+   * Enregistre le nom s'il a changé, et seulement ça.
+   *
+   * Le champ est désormais dans la carte « Modifier » plutôt que derrière un
+   * bouton « Renommer », donc il n'y a plus de moment où l'on *valide* : on
+   * tape, puis on s'en va. L'enregistrement se raccroche aux deux façons de
+   * s'en aller — la touche « terminé » du clavier, et la fermeture de la
+   * carte. Un nom vide ou inchangé ne coûte aucune écriture.
+   */
+  const saveName = () => {
     const wanted = name.trim();
-    if (wanted === "" || wanted === tree.name) {
-      setMenu(null);
-      return;
-    }
-    setMenu(null);
+    if (wanted === "" || wanted === tree.name) return;
     run(renameTree(tree.id, wanted));
   };
 
@@ -639,8 +671,7 @@ export function TreeBuilder({
         >
           <View style={[styles.bar, { paddingTop: insets.top + space.sm }]}>
             {/* Two sides of the same width, so the title prints in the middle
-                of what is left. The right holds two buttons now, so the left
-                is given the same room whether it fills it or not. */}
+                of what is left. */}
             <View style={styles.side}>
               <Pressable
                 accessibilityRole="button"
@@ -660,22 +691,11 @@ export function TreeBuilder({
             <View style={[styles.side, styles.sideRight]}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Comment ça marche"
-                hitSlop={8}
-                onPress={() => {
-                  setPlacing(null);
-                  setMenu("help");
-                }}
-                style={({ pressed }) => [styles.icon, pressed && styles.pressed]}
-              >
-                <Text style={styles.helpGlyph}>i</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
                 accessibilityLabel="Options de l'arbre"
                 hitSlop={8}
                 onPress={() => {
                   setPlacing(null);
+                  setName(tree.name);
                   setMenu("menu");
                 }}
                 style={({ pressed }) => [styles.icon, pressed && styles.pressed]}
@@ -686,6 +706,35 @@ export function TreeBuilder({
           </View>
 
         </View>
+
+        {/* Le `i`, posé sur le dessin plutôt que dans l'en-tête.
+
+            Dans la barre, il voisinait avec le retour et les ···, et les trois
+            se lisaient comme un même rang de commandes alors qu'il ne commande
+            rien : il explique le dessin. Posé dessus, au coin de ce qu'il
+            explique, il dit de quoi il parle sans l'écrire.
+
+            `chrome` est la hauteur mesurée de la barre — la même dont le
+            dessin se tient à l'écart — pour qu'il n'y ait jamais deux idées
+            de l'endroit où l'en-tête s'arrête. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Comment ça marche"
+          // La pastille fait 28 ; ceci ramène la cible à 44, le minimum au
+          // doigt. Rapetisser le dessin ne doit pas rapetisser la prise.
+          hitSlop={8}
+          onPress={() => {
+            setPlacing(null);
+            setMenu("help");
+          }}
+          style={({ pressed }) => [
+            styles.helpButton,
+            { top: chrome + space.md },
+            pressed && styles.pressed,
+          ]}
+        >
+          <Text style={styles.helpGlyph}>i</Text>
+        </Pressable>
 
         {/* Qui faire entrer dans cette génération.
 
@@ -831,22 +880,27 @@ export function TreeBuilder({
           onClose={() => setCutting(null)}
         />
 
-        {/* One card, four faces — the menu, the new name, the confirmation,
-            and what every gesture does.
-            Never a second card over the first: iOS refuses to present a modal
-            from a controller already presenting one, and the button that opened
-            it would appear to do nothing at all. */}
+        {/* Une carte, trois faces — ce qu'on modifie, la confirmation, et ce
+            que fait chaque geste. Elle en avait quatre : le nom vivait sur la
+            sienne, derrière un bouton « Renommer », pour une seule ligne de
+            texte. Il est revenu dans la première.
+            Jamais une seconde carte par-dessus la première : iOS refuse de
+            présenter une modale depuis une autre qui en présente déjà une, et
+            le bouton qui l'ouvre semblerait ne rien faire. */}
         <Dialog
           visible={menu !== null}
-          onClose={() => setMenu(null)}
+          onClose={() => {
+            // Fermer, c'est aussi enregistrer : il n'y a pas de bouton pour
+            // le faire, et un nom tapé puis perdu serait pire que tout.
+            saveName();
+            setMenu(null);
+          }}
           title={
-            menu === "rename"
-              ? "Renommer l'arbre"
-              : menu === "delete"
-                ? `Supprimer « ${tree.name} » ?`
-                : menu === "help"
-                  ? "Comment ça marche"
-                  : tree.name
+            menu === "delete"
+              ? `Supprimer « ${tree.name} » ?`
+              : menu === "help"
+                ? "Comment ça marche"
+                : "Modifier"
           }
           hint={
             menu === "delete"
@@ -854,7 +908,7 @@ export function TreeBuilder({
                 ? "Les personnages restent dans la collection ; seul l'arbre disparaît."
                 : "Les personnages restent dans la collection, et vous n'effacez que votre copie : celui de son auteur n'est pas touché."
               : menu === "help"
-                ? "Tout part de la personne : on la touche, ou on reste appuyé dessus."
+                ? "Comment construire votre arbre"
                 : undefined
           }
           dismissLabel={menu === "menu" || menu === "help" ? null : "Retour"}
@@ -863,31 +917,14 @@ export function TreeBuilder({
           {menu === "help" ? (
             <ScrollView style={styles.helpBody}>
               <View style={styles.help}>
-                {GESTURES.map((gesture) => (
-                  <View key={gesture.doing} style={styles.gesture}>
-                    <Text style={styles.gestureDoing}>{gesture.doing}</Text>
-                    <Text style={styles.gestureMeans}>{gesture.means}</Text>
+                {HELP.map((entry) => (
+                  <View key={entry.question} style={styles.gesture}>
+                    <Text style={styles.gestureDoing}>{entry.question}</Text>
+                    <Text style={styles.gestureMeans}>{entry.answer}</Text>
                   </View>
                 ))}
               </View>
             </ScrollView>
-          ) : menu === "rename" ? (
-            <>
-              <InkField
-                label="Nom de l'arbre"
-                value={name}
-                onChangeText={setName}
-                autoFocus
-                returnKeyType="done"
-                onSubmitEditing={() => rename()}
-              />
-              <InkButton
-                label="Renommer"
-                variant="solid"
-                disabled={busy || name.trim() === ""}
-                onPress={rename}
-              />
-            </>
           ) : menu === "delete" ? (
             <InkButton
               label="Supprimer"
@@ -901,6 +938,18 @@ export function TreeBuilder({
             />
           ) : (
             <>
+              {/* Le nom, modifiable sur place. Pas de bouton pour valider :
+                  voir `saveName`. Pas d'`autoFocus` non plus — ouvrir cette
+                  carte, c'est le plus souvent venir partager ou supprimer, et
+                  un clavier qui jaillit recouvrirait les deux. */}
+              <InkField
+                label="Nom de l'arbre"
+                value={name}
+                onChangeText={setName}
+                returnKeyType="done"
+                onSubmitEditing={saveName}
+              />
+
               {/* No `locked` here, and that is the exception rather than an
                   omission: every other kind of copy is barred from the
                   community to keep it free of duplicates, but a copied tree
@@ -911,14 +960,6 @@ export function TreeBuilder({
                 what="cet arbre"
                 shared={tree.shared}
                 onChange={(next) => share("tree", tree.id, next)}
-              />
-              <InkButton
-                label="Renommer"
-                variant="tonal"
-                onPress={() => {
-                  setName(tree.name);
-                  setMenu("rename");
-                }}
               />
               <InkButton
                 label="Supprimer l'arbre"
@@ -1058,12 +1099,36 @@ const styles = StyleSheet.create({
   gestureDoing: { fontSize: 15, fontWeight: "700", color: palette.ink },
   gestureMeans: { ...type.caption, color: palette.inkSoft },
 
-  /** A serif i in a ring: the mark a plate uses for a note in the margin. */
+  /**
+   * Le `i`, flottant au coin du dessin.
+   *
+   * En cire, comme tout ce que l'application offre de toucher, et avec le même
+   * bord coupé que les disques de la carte. Petit — vingt-huit points contre
+   * les quarante-quatre d'un bouton ordinaire — parce qu'il ne se cherche que
+   * la première fois : au-dessus d'un dessin qu'on veut voir, une pastille
+   * discrète suffit, et le `hitSlop` garde la cible à la bonne taille pour le
+   * doigt.
+   */
+  helpButton: {
+    position: "absolute",
+    right: space.lg,
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: palette.wax,
+    borderWidth: 1.5,
+    borderColor: palette.waxDeep,
+    ...shadow.soft,
+  },
+
+  /** A serif i: the mark a plate uses for a note in the margin. */
   helpGlyph: {
     ...type.plate,
-    fontSize: 19,
-    lineHeight: 23,
-    color: palette.ink,
+    fontSize: 15,
+    lineHeight: 18,
+    color: palette.paperLight,
   },
 
 });
