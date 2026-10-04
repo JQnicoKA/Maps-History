@@ -9,7 +9,6 @@ import {
 } from "../../components/ui";
 import { isStrong, PasswordMeter, useAuth } from "../../features/auth";
 import { handleProblem, HANDLE_MAX } from "../../features/community/profile";
-import { CONTACT } from "../../config/contact";
 import { deleteOwnPhotos } from "../../features/events/api";
 import { palette } from "../../theme/palette";
 import { radius, space, TOUCH, type } from "../../theme/tokens";
@@ -367,56 +366,62 @@ export function AccountButton() {
           </>
         ) : (
           <>
-            {/* The address, and beside it the one thing about the account
-                that can be changed. A line rather than a button: this is not
-                an errand anybody opens the card to run, it is a thing that
-                should be *there* on the day it is wanted.
+            {/* Trois champs, et rien d'autre : l'adresse, le mot de passe,
+                le pseudonyme. La carte montrait deux rangées serrées où la
+                valeur et son action se partageaient la ligne, et tout y
+                paraissait collé. Chacun a désormais son titre et sa boîte,
+                comme n'importe quel champ de l'application — `InkField` en
+                donne la recette, et ces trois-là s'y accordent au pixel même
+                s'ils ne se saisissent pas. */}
+            <View style={styles.fields}>
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Adresse Mail</Text>
+                <View style={styles.box}>
+                  <Text style={styles.value} numberOfLines={1}>
+                    {account?.email}
+                  </Text>
+                </View>
+              </View>
 
-                It says "mot de passe" and not "modifier" on purpose — set
-                next to an email address, "modifier" reads as an offer to
-                change the address. */}
-            <View style={styles.identity}>
-              <Text style={styles.email} numberOfLines={1}>
-                {account?.email}
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Changer le mot de passe"
-                hitSlop={10}
-                onPress={() => ask("changing")}
-                style={({ pressed }) => [styles.link, pressed && styles.down]}
-              >
-                <Text style={styles.linkLabel}>Mot de passe ›</Text>
-                <View style={styles.linkRule} />
-              </Pressable>
-            </View>
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Mot de passe</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Changer le mot de passe"
+                  onPress={() => ask("changing")}
+                  style={({ pressed }) => [styles.box, pressed && styles.down]}
+                >
+                  {/* Des points plutôt qu'un vide : la boîte doit se lire
+                      comme les deux autres, et un mot de passe a une valeur
+                      même quand on ne la montre pas. */}
+                  <Text style={styles.value}>••••••••</Text>
+                  <Text style={styles.action}>Changer ›</Text>
+                </Pressable>
+              </View>
 
-            {/* The other half of who you are here. The address is between
-                you and the app; this is what everybody else sees, and the
-                two belong on facing lines rather than in separate corners. */}
-            <View style={styles.identity}>
-              <View style={styles.named}>
-                <Text style={styles.handle} numberOfLines={1}>
-                  {handle ?? "…"}
-                </Text>
-                <Text style={styles.namedLegend}>
-                  Votre nom dans la communauté
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Pseudonyme</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Changer de pseudonyme"
+                  disabled={handle === undefined}
+                  onPress={() => {
+                    ask("naming");
+                    setCalled(handle ?? "");
+                  }}
+                  style={({ pressed }) => [styles.box, pressed && styles.down]}
+                >
+                  <Text style={styles.value} numberOfLines={1}>
+                    {handle ?? "…"}
+                  </Text>
+                  <Text style={styles.action}>Renommer ›</Text>
+                </Pressable>
+                {/* Sous le champ, parce que c'est la seule des trois valeurs
+                    que d'autres gens voient. */}
+                <Text style={styles.hint}>
+                  Votre nom dans la communauté.
                 </Text>
               </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Changer de pseudonyme"
-                hitSlop={10}
-                disabled={handle === undefined}
-                onPress={() => {
-                  ask("naming");
-                  setCalled(handle ?? "");
-                }}
-                style={({ pressed }) => [styles.link, pressed && styles.down]}
-              >
-                <Text style={styles.linkLabel}>Renommer ›</Text>
-                <View style={styles.linkRule} />
-              </Pressable>
             </View>
 
             {done === null ? null : <Text style={styles.done}>{done}</Text>}
@@ -425,11 +430,11 @@ export function AccountButton() {
               <Text style={styles.problem}>{problem}</Text>
             )}
 
-            {/* The way out, and the way out for good, on one line. The bin is
-                small and quiet on purpose: deleting an account must be
-                findable — the App Store asks for exactly that — without
-                sitting under the thumb of someone reaching to sign out. */}
-            <View style={styles.answers}>
+            {/* Tout en bas, et détaché : quitter n'est pas un réglage de
+                plus. La corbeille reste petite et discrète — supprimer son
+                compte doit se trouver, l'App Store l'exige, sans tomber sous
+                le pouce de qui visait la déconnexion. */}
+            <View style={styles.leave}>
               <InkButton
                 label="Se déconnecter"
                 variant="solid"
@@ -446,13 +451,6 @@ export function AccountButton() {
                 <Image source={TRASH} style={styles.binGlyph} resizeMode="contain" />
               </Pressable>
             </View>
-
-            {/* Published, and findable without having to report something
-                first: an app carrying what its readers write owes them a way
-                to reach whoever keeps it. */}
-            <Text style={styles.contact}>
-              Un problème, une réclamation ? {CONTACT}
-            </Text>
 
             {/* Only in a development build, and deliberately kept rather than
                 deleted after the first check: a reporting pipeline nobody can
@@ -474,34 +472,45 @@ export function AccountButton() {
 }
 
 const styles = StyleSheet.create({
+  /**
+   * Les trois champs, largement espacés.
+   *
+   * Vingt points entre eux plutôt que huit : le `Dialog` serre ses enfants
+   * pour une pile de boutons, ce qui est juste quand on choisit et faux
+   * quand on lit. Ici chaque champ est une question distincte, et l'œil doit
+   * pouvoir les séparer sans les relire.
+   */
+  fields: { gap: space.xl, marginTop: space.xs },
+  /** L'intérieur d'un champ : l'écart d'`InkField`, au point près. */
+  field: { gap: space.sm },
+  fieldLabel: { ...type.legend, color: palette.inkSoft },
+  /** La boîte d'`InkField`, à ceci près qu'on n'y tape pas. */
+  box: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    minHeight: TOUCH,
+    backgroundColor: palette.sunken,
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+  },
+  value: { flex: 1, fontSize: 16, color: palette.ink },
+  action: { ...type.caption, fontWeight: "600", color: palette.wax },
+  hint: { ...type.legend, color: palette.inkFaint },
+
+  /** Les deux boutons des autres faces : annuler, et confirmer. */
+  answers: { flexDirection: "row", gap: space.sm },
+
+  /** Détaché du reste : quitter n'est pas un champ de plus. */
+  leave: { flexDirection: "row", gap: space.sm, marginTop: space.lg },
   glyph: { width: 22, height: 22 },
 
   /** Who you are on the left, what proves it on the right. */
-  identity: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: space.md,
-    marginTop: space.xs,
-  },
-  email: { ...type.caption, flex: 1, color: palette.inkSoft },
-  link: { alignItems: "flex-end" },
-  linkLabel: { ...type.caption, fontWeight: "600", color: palette.wax },
   /** Drawn under the words the way the card's own title is underlined. */
-  linkRule: {
-    height: 2,
-    width: "100%",
-    marginTop: 2,
-    borderRadius: radius.pill,
-    backgroundColor: palette.wax,
-    opacity: 0.45,
-  },
   down: { opacity: 0.55 },
-  named: { flex: 1, gap: 1 },
-  handle: { fontSize: 15, fontWeight: "700", color: palette.ink },
-  namedLegend: { ...type.legend, color: palette.inkFaint },
   /** What the field says about itself while it is being typed. */
   rule: { ...type.legend, color: palette.inkSoft },
-  contact: { ...type.legend, color: palette.inkFaint, textAlign: "center" },
 
   /** Square, so it takes only the width the sign-out button gives up. */
   bin: {
@@ -514,7 +523,6 @@ const styles = StyleSheet.create({
   },
   binGlyph: { width: 19, height: 19, tintColor: palette.danger },
 
-  answers: { flexDirection: "row", gap: space.sm },
   problem: { ...type.caption, color: palette.danger },
   done: { ...type.caption, color: palette.forest },
 });
