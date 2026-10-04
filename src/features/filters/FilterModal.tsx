@@ -129,23 +129,30 @@ export function FilterModal({
           />
         </Layer>
 
+        {/* Le même calque gouverne les deux vues, mais il ne dit pas la même
+            chose : la carte ne montre que les vivants de l'année lue et que
+            ceux qui ont un point, la liste les recense tous. Compter les uns
+            en parlant de l'autre serait un chiffre faux. */}
         <Layer
           title="Personnages"
           detail={
             !filters.characters
               ? "masqués"
-              : placed === 0
-                ? "aucun n'est placé sur la carte"
-                : `${visibleCharacters.length} présent${visibleCharacters.length > 1 ? "s" : ""}${
-                    year === null ? "" : ` en ${formatYear(Math.trunc(year))}`
-                  }`
+              : view === "list"
+                ? `${characters.length} dans la liste`
+                : placed === 0
+                  ? "aucun n'est placé sur la carte"
+                  : `${visibleCharacters.length} présent${visibleCharacters.length > 1 ? "s" : ""}${
+                      year === null ? "" : ` en ${formatYear(Math.trunc(year))}`
+                    }`
           }
           on={filters.characters}
           onToggle={() => setFilters({ characters: !filters.characters })}
         >
           <Text style={styles.note}>
-            Chacun se tient à l'endroit où vous l'avez placé, de sa naissance à
-            sa mort.
+            {view === "list"
+              ? "Mêlés aux événements, à la date de leur naissance."
+              : "Chacun se tient à l'endroit où vous l'avez placé, de sa naissance à sa mort."}
           </Text>
         </Layer>
 

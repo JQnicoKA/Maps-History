@@ -19,7 +19,7 @@ import {
 } from "../../features/events/components/AddEventButton";
 import { EventDetailModal } from "../../features/events/components/EventDetailModal";
 import { EventFormModal } from "../../features/events/components/EventFormModal";
-import { EventListView } from "../../features/events/components/EventListView";
+import { CollectionListView } from "../../features/events/components/CollectionListView";
 import { CharacterDetailModal } from "../../features/events/components/CharacterDetailModal";
 import { CharacterEditModal } from "../../features/events/components/CharacterEditModal";
 import { CharacterMarkers } from "../../features/events/components/CharacterMarkers";
@@ -443,10 +443,11 @@ export function MapScreen() {
       </View>
 
       <View style={[styles.stage, view === "list" ? null : styles.hidden]}>
-        <EventListView
-          onOpen={() => {
+        <CollectionListView
+          onOpenEvent={() => {
             if (selectedEvent) raise({ kind: "event", id: selectedEvent.id });
           }}
+          onOpenPerson={(id) => raise({ kind: "person", id })}
           contentPadding={{
             top: insets.top + 62,
             bottom: insets.bottom + 82,

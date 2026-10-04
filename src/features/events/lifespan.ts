@@ -27,12 +27,19 @@ export function lifespan(person: Character): string {
  * Names break ties, so the order never wobbles between two readings.
  */
 export function compareByLife(a: Character, b: Character): number {
-  const at = placeOf(a);
-  const bt = placeOf(b);
+  const at = momentOf(a);
+  const bt = momentOf(b);
   return at === bt ? a.name.localeCompare(b.name) : at - bt;
 }
 
-function placeOf(person: Character): number {
+/**
+ * Où quelqu'un se place sur l'axe du temps, dans la même unité qu'un
+ * événement — ce qui permet de ranger les deux dans une seule liste.
+ *
+ * Exporté pour la vue liste, qui entremêle les uns et les autres ; la règle
+ * reste celle de `compareByLife`, et elle ne doit exister qu'une fois.
+ */
+export function momentOf(person: Character): number {
   const date = person.birth ?? person.death;
   return date === null ? -Infinity : toSortKey(date);
 }
