@@ -94,13 +94,12 @@ export function TreeManager({ onOpen, onSeek }: TreeManagerProps) {
               : "Un arbre relie des personnages entre eux, génération par génération."}
           </RosterEmpty>
         ) : (
-          trees.map((tree, rank) => (
+          trees.map((tree) => (
             <RosterRow
               key={tree.id}
               thumb={<Text style={styles.glyph}>⚘</Text>}
               title={tree.name}
               detail={summarise(tree)}
-              index={rank}
               onPress={() => onOpen(tree.id)}
             />
           ))

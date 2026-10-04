@@ -435,24 +435,6 @@ export function EventFormModal({
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Écrire un événement"
-            onPress={() => setWriting(true)}
-            style={({ pressed }) => [styles.way, pressed && styles.wayDown]}
-          >
-            <View style={styles.quill}>
-              <Text style={styles.quillGlyph}>✎</Text>
-            </View>
-            <View style={styles.wayText}>
-              <Text style={styles.wayTitle}>Écrire un événement</Text>
-              <Text style={styles.wayDetail}>
-                Le vôtre, de la première ligne à la dernière.
-              </Text>
-            </View>
-            <Text style={styles.wayMore}>›</Text>
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
             accessibilityLabel="Chercher dans la communauté"
             onPress={onSearch}
             style={({ pressed }) => [
@@ -475,6 +457,24 @@ export function EventFormModal({
               </Text>
             </View>
             <Text style={[styles.wayMore, styles.waxed]}>›</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Écrire un événement"
+            onPress={() => setWriting(true)}
+            style={({ pressed }) => [styles.way, pressed && styles.wayDown]}
+          >
+            <View style={styles.quill}>
+              <Text style={styles.quillGlyph}>✎</Text>
+            </View>
+            <View style={styles.wayText}>
+              <Text style={styles.wayTitle}>Écrire un événement</Text>
+              <Text style={styles.wayDetail}>
+                Le vôtre, de la première ligne à la dernière.
+              </Text>
+            </View>
+            <Text style={styles.wayMore}>›</Text>
           </Pressable>
         </View>
       ) : null}

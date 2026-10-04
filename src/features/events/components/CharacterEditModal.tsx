@@ -158,7 +158,7 @@ export function CharacterEditModal({
     if (!birth) {
       say(
         "Naissance manquante",
-        "Un personnage apparaît sur la carte à partir de sa naissance : il lui faut au moins une année.",
+        "Ajoutez une date de naissance, même incertaine.",
       );
       return;
     }

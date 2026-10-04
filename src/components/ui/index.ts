@@ -8,7 +8,6 @@ export { Paper } from "./Paper";
 export {
   Grain,
   JournalTitle,
-  lean,
   type JournalTitleProps,
 } from "./Scrapbook";
 export {

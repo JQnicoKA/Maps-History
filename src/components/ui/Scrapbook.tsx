@@ -14,9 +14,12 @@ const GRAIN = require("../../../assets/textures/paper-grain.png");
  * slightly crooked, a line drawn under a heading, a dashed outline where the
  * next one will go.
  *
- * The tilt is the whole trick and it is worth being careful about. Enough to
- * read as placed by a hand, never enough to read as broken: past about a
- * degree and a half a list stops looking charming and starts looking wrong.
+ * Il y eut un temps une inclinaison — un demi-degré en alternance, pour que
+ * les cartes aient l'air posées par une main. Elle est partie le 4 octobre
+ * 2026 : lue par qui n'en connaissait pas l'intention, elle ne disait pas
+ * « posé à la main », elle disait « mal aligné ». Le grain, les règles tracées
+ * et les contours pointillés portent la métaphore sans faire douter personne
+ * de l'aplomb de la page.
  */
 
 /** Paper fibre, behind a panel. The same the map wears, at a whisper. */
@@ -33,17 +36,6 @@ export function Grain({ opacity = 0.22 }: { opacity?: number }) {
     </View>
   );
 }
-
-/**
- * How far a card leans, by its place in a list.
- *
- * Alternating rather than random: a random tilt changes every time React
- * re-renders, and a list that shuffles itself while you read it is not
- * charming, it is haunted. Derived from the index, it is the same on every
- * render and the page settles.
- */
-export const lean = (index: number): string =>
-  `${index % 2 === 0 ? -0.5 : 0.6}deg`;
 
 export type JournalTitleProps = {
   title: string;

@@ -153,7 +153,7 @@ export function DrawTerritoryButton({
                 carte aux années que vous lui donnez, et nulle part ailleurs.
               </RosterEmpty>
             ) : (
-              drawn.map((one, rank) => (
+              drawn.map((one) => (
                 <RosterRow
                   key={one.id}
                   thumb={
@@ -174,7 +174,6 @@ export function DrawTerritoryButton({
                       ? "Suppression…"
                       : `${formatYear(one.from)} – ${formatYear(one.to)}`
                   }
-                  index={rank}
                   onEdit={() =>
                     setAsking({
                       id: one.id,
@@ -199,7 +198,7 @@ export function DrawTerritoryButton({
                   ? "1 territoire retiré de votre carte"
                   : `${hidden.length} territoires retirés de votre carte`}
               </Text>
-              {hidden.map((name, rank) => (
+              {hidden.map((name) => (
                 <RosterRow
                   key={name}
                   thumb={
@@ -209,7 +208,6 @@ export function DrawTerritoryButton({
                   }
                   title={name}
                   detail={busy === name ? "…" : "masqué à toutes les époques"}
-                  index={rank}
                   onEdit={() =>
                     work(name, show(name), "Impossible de le rétablir")
                   }

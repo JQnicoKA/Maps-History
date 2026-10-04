@@ -8,7 +8,6 @@ import {
   type ImageSourcePropType,
 } from "react-native";
 
-import { lean } from "./Scrapbook";
 import { palette } from "../../theme/palette";
 import { radius, shadow, space, TOUCH, type } from "../../theme/tokens";
 
@@ -125,7 +124,6 @@ export type RosterRowProps = {
    * Alternating and not random: a random tilt changes on every render, and a
    * list that reshuffles itself while you read it is not charming.
    */
-  index?: number;
 };
 
 export function RosterRow({
@@ -136,15 +134,10 @@ export function RosterRow({
   editLabel,
   editIcon = PENCIL,
   onPress,
-  index = 0,
 }: RosterRowProps) {
   const body = (
     <>
-      {/* The picture leans the other way from its card, the way a photograph
-          stuck on a page never quite lines up with it. */}
-      <View style={[styles.thumb, { transform: [{ rotate: lean(index + 1) }] }]}>
-        {thumb}
-      </View>
+      <View style={styles.thumb}>{thumb}</View>
       <View style={styles.text}>
         <Text style={styles.title} numberOfLines={1}>
           {title}
@@ -170,15 +163,14 @@ export function RosterRow({
     </>
   );
 
-  const tilt = { transform: [{ rotate: lean(index) }] };
-  if (!onPress) return <View style={[styles.row, tilt]}>{body}</View>;
+  if (!onPress) return <View style={styles.row}>{body}</View>;
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={title}
       onPress={onPress}
-      style={({ pressed }) => [styles.row, tilt, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
       {body}
     </Pressable>

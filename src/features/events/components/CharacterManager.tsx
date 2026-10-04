@@ -62,7 +62,7 @@ export function CharacterManager({
             un arbre.
           </RosterEmpty>
         ) : (
-          characters.map((person, rank) => {
+          characters.map((person) => {
             const appears = events.filter((event) =>
               event.characters.includes(person.id),
             ).length;
@@ -94,7 +94,6 @@ export function CharacterManager({
                 ]
                   .filter(Boolean)
                   .join(" · ")}
-                index={rank}
                 // The row reads, the pencil corrects — the same division the
                 // map makes between a tap on an event and its "Modifier".
                 onPress={() => onRead(person)}
