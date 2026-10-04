@@ -132,9 +132,6 @@ export function DrawTerritoryButton({
         />
 
         <ScrollView style={styles.fill} contentContainerStyle={styles.body}>
-          <Text style={styles.lead}>
-            Ce que vous avez ajouté à la carte, et ce que vous en avez retiré.
-          </Text>
 
           <Roster
             count={
