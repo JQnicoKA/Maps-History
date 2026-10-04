@@ -5,7 +5,14 @@ import { radius, space, type } from "../../theme/tokens";
 
 export type TickRowProps = {
   title: string;
-  /** What is true right now, in as few words as it takes. */
+  /**
+   * The line under the title, in as few words as it takes.
+   *
+   * Either a live readout — the filters count what each layer is showing —
+   * or a fixed description of what ticking the box does, which is what the
+   * sharing row gives. Both are legitimate; what is not is a *description*
+   * that rewrites itself with the state, since the tick says that already.
+   */
   detail?: string;
   on: boolean;
   onToggle: () => void;

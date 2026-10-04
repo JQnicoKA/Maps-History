@@ -30,6 +30,18 @@ export type ShareRowProps = {
  *
  * Put at the foot of a card rather than in the middle of a form: it is not a
  * field to fill in, it is a thing that is already true and can be undone.
+ *
+ * **The line under the title says what ticking the box does, and says it the
+ * same whether the box is ticked or not.** It read the current state before —
+ * "les autres peuvent le lire" against "n'appartient qu'à vous" — and a line
+ * that rewrites itself under the hand that just moved the tick asks the reader
+ * to work out which of the two states they are now in, from prose, when the
+ * tick beside it already answers that. One sentence, and the tick carries the
+ * state alone.
+ *
+ * The exception is `locked`, which replaces the line entirely: there the
+ * reader is not choosing, so there is nothing to describe and a reason to
+ * give instead.
  */
 export function ShareRow({
   what,
@@ -46,13 +58,7 @@ export function ShareRow({
       <TickRow
         title="Partagé avec la communauté"
         detail={
-          locked !== null
-            ? locked
-            : busy
-              ? "…"
-              : shared
-                ? `Les autres peuvent lire ${what} et en prendre copie.`
-                : `${what.charAt(0).toUpperCase()}${what.slice(1)} n'appartient qu'à vous.`
+          locked ?? `Permet aux autres de lire ${what} et d'en prendre copie.`
         }
         on={shared}
         disabled={busy || locked !== null}

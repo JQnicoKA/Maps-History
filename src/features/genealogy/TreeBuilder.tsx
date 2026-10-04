@@ -908,7 +908,7 @@ export function TreeBuilder({
                 ? "Les personnages restent dans la collection ; seul l'arbre disparaît."
                 : "Les personnages restent dans la collection, et vous n'effacez que votre copie : celui de son auteur n'est pas touché."
               : menu === "help"
-                ? "Comment construire votre arbre"
+                ? "Toutes les possibilités pour construire votre arbre"
                 : undefined
           }
           dismissLabel={menu === "menu" || menu === "help" ? null : "Retour"}
