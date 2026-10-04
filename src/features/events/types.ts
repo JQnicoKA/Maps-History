@@ -82,15 +82,15 @@ export type Folder = {
    *
    * What it is for today is telling the truth when something is deleted: a
    * copy's disappearance costs nothing, since its author's still stands in
-   * the chronicle, and saying "c'est définitif" over a copy is a lie.
+   * the community, and saying "c'est définitif" over a copy is a lie.
    */
   origin: string | null;
   /**
-   * In the common chronicle, where anybody may read and copy it.
+   * In the community, where anybody may read and copy it.
    *
    * True unless the reader said otherwise: what is written here is history,
-   * and a chronicle nobody publishes is a chronicle nobody reads. The way out
-   * exists for the reader writing their own family rather than the world's.
+   * and history nobody shares is history nobody reads. The way out exists for
+   * the reader writing their own family rather than the world's.
    */
   shared: boolean;
 
@@ -151,11 +151,11 @@ export type EventSummary = {
   latitude: number;
   folders: EventFolderLink[];
   /**
-   * In the common chronicle, where anybody may read and copy it.
+   * In the community, where anybody may read and copy it.
    *
    * True unless the reader said otherwise: what is written here is history,
-   * and a chronicle nobody publishes is a chronicle nobody reads. The way out
-   * exists for the reader writing their own family rather than the world's.
+   * and history nobody shares is history nobody reads. The way out exists for
+   * the reader writing their own family rather than the world's.
    */
   shared: boolean;
   /**
@@ -163,7 +163,7 @@ export type EventSummary = {
    *
    * What it is for today is telling the truth when something is deleted: a
    * copy's disappearance costs nothing, since its author's still stands in
-   * the chronicle, and saying "c'est définitif" over a copy is a lie.
+   * the community, and saying "c'est définitif" over a copy is a lie.
    */
   origin: string | null;
   /** Identifiers of the people this event is about. */
@@ -210,11 +210,11 @@ export type Character = {
   longitude: number | null;
   latitude: number | null;
   /**
-   * In the common chronicle, where anybody may read and copy it.
+   * In the community, where anybody may read and copy it.
    *
    * True unless the reader said otherwise: what is written here is history,
-   * and a chronicle nobody publishes is a chronicle nobody reads. The way out
-   * exists for the reader writing their own family rather than the world's.
+   * and history nobody shares is history nobody reads. The way out exists for
+   * the reader writing their own family rather than the world's.
    */
   shared: boolean;
   /**
@@ -222,7 +222,7 @@ export type Character = {
    *
    * What it is for today is telling the truth when something is deleted: a
    * copy's disappearance costs nothing, since its author's still stands in
-   * the chronicle, and saying "c'est définitif" over a copy is a lie.
+   * the community, and saying "c'est définitif" over a copy is a lie.
    */
   origin: string | null;
   photos: StoredPhoto[];
@@ -275,15 +275,15 @@ export type Tree = {
    *
    * What it is for today is telling the truth when something is deleted: a
    * copy's disappearance costs nothing, since its author's still stands in
-   * the chronicle, and saying "c'est définitif" over a copy is a lie.
+   * the community, and saying "c'est définitif" over a copy is a lie.
    */
   origin: string | null;
   /**
-   * In the common chronicle, where anybody may read and copy it.
+   * In the community, where anybody may read and copy it.
    *
    * True unless the reader said otherwise: what is written here is history,
-   * and a chronicle nobody publishes is a chronicle nobody reads. The way out
-   * exists for the reader writing their own family rather than the world's.
+   * and history nobody shares is history nobody reads. The way out exists for
+   * the reader writing their own family rather than the world's.
    */
   shared: boolean;
 

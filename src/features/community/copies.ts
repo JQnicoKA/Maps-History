@@ -1,5 +1,5 @@
 /**
- * Why a copy cannot be offered to the chronicle.
+ * Why a copy cannot be offered to the community.
  *
  * Taking a copy is how a reader gets somebody else's work onto their own map.
  * Letting them share it again would put a second Marignan in the catalogue

@@ -220,7 +220,7 @@ export function EventFormModal({
    * Whether the reader has said which way they are adding an event.
    *
    * There are two, and they were on one screen: a title field to fill in and
-   * a link to the chronicle, side by side, which asked the reader to notice
+   * a link to the community, side by side, which asked the reader to notice
    * the second while already answering the first. Asked plainly instead, and
    * only when composing — correcting an event is not a fork.
    */
@@ -247,7 +247,7 @@ export function EventFormModal({
   const [droppedPhotos, setDroppedPhotos] = useState<StoredPhoto[]>([]);
   const [saving, setSaving] = useState(false);
   /**
-   * Whether it is in the chronicle — held here, though it is written at once.
+   * Whether it is in the community — held here, though it is written at once.
    *
    * Unlike every field above it, this one does not wait for "Enregistrer":
    * `share` is a one-boolean write and that is how the control behaves
@@ -657,7 +657,7 @@ export function EventFormModal({
         ) : null}
 
         {/* Only when correcting. Composing never asks: what is written here
-            is history rather than a diary, so a new event joins the chronicle
+            is history rather than a diary, so a new event joins the community
             and the reader withdraws it afterwards if they would rather keep
             it — one question fewer on the way in, for the rare answer. */}
         {event ? (
@@ -687,7 +687,7 @@ const styles = StyleSheet.create({
   /**
    * The two ways in, asked before either is taken.
    *
-   * They were one screen — a title to type and a link to the chronicle
+   * They were one screen — a title to type and a link to the community
    * beside it — which is a fork drawn as a form: it asked the reader to
    * notice the second option while already answering the first. Two cards
    * ask the question instead, and the answer decides what comes next.

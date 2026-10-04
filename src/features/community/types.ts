@@ -86,7 +86,7 @@ export type SharedThingDetail = SharedThing & {
    * canvas, not in a card.
    *
    * Private filing is absent rather than named: withdrawing a classeur from
-   * the chronicle promises it belongs to its author alone.
+   * the community promises it belongs to its author alone.
    */
   folders: { name: string; thing: SharedThing | null }[];
   /**
@@ -176,7 +176,7 @@ export const ANYTHING: Search = {
 /** Where the last page stopped, handed back for the next one. */
 export type Cursor = { rank: number; id: string } | null;
 
-/** Why something should not be in the chronicle. */
+/** Why something should not be in the community. */
 export const REASONS = [
   { value: "offensive" as const, label: "Contenu choquant ou haineux" },
   { value: "wrong" as const, label: "Faux ou trompeur" },

@@ -109,7 +109,7 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
           `${filed > 1 ? "Ils ne seront pas supprimés" : "Il ne sera pas supprimé"}, seulement retiré${filed > 1 ? "s" : ""} de ce classeur.`;
 
     // A copy's disappearance costs nothing: its author's classeur still
-    // stands in the chronicle, with everything in it.
+    // stands in the community, with everything in it.
     return folder?.origin === null || !folder
       ? said
       : `${said} Et vous n'effacez que votre copie : celui de son auteur n'est pas touché.`;
@@ -274,7 +274,7 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
         />
 
         {/* Only once it exists: there is nothing to share until there is
-            something to share. A new folder arrives in the chronicle. */}
+            something to share. A new folder arrives in the community. */}
         {folder ? (
           <ShareRow
             what="ce classeur"

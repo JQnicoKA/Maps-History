@@ -12,7 +12,7 @@ export type DrawnPolity = {
   from: number;
   to: number;
   area: number | null;
-  /** In the common chronicle, where anybody may read and copy it. */
+  /** In the community, where anybody may read and copy it. */
   shared: boolean;
   /**
    * A coarse outline, for the list to draw.
@@ -134,7 +134,7 @@ export async function fetchDrawn(): Promise<DrawnPolity[]> {
   }));
 }
 
-/** Puts a drawn territory into the common chronicle, or takes it out. */
+/** Puts a drawn territory into the community, or takes it out. */
 export async function shareDrawn(id: string, shared: boolean): Promise<void> {
   const { error } = await supabase()
     .from("drawn_polities")

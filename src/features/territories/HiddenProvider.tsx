@@ -44,13 +44,13 @@ type HiddenContextValue = {
     to: number;
   }) => Promise<void>;
   erase: (id: string) => Promise<void>;
-  /** Puts one into the common chronicle, or takes it out. */
+  /** Puts one into the community, or takes it out. */
   share: (id: string, shared: boolean) => Promise<void>;
   /**
    * Re-reads what this account has painted.
    *
    * For the rows that arrive by a route this provider knows nothing about —
-   * a territory copied from the chronicle. The map did not need telling: it
+   * a territory copied from the community. The map did not need telling: it
    * asks the database for the year it is showing and so saw the copy at
    * once. The list is held in memory, and did not.
    */

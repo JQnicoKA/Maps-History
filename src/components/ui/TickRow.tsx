@@ -18,7 +18,7 @@ export type TickRowProps = {
  * Drawn square and thick-edged rather than borrowed from the system: a switch
  * out of the settings app on a hand-coloured plate reads as somebody else's
  * furniture. The same control answers the two questions the app asks this way
- * — what the map is carrying, and what the chronicle may see — so the gesture
+ * — what the map is carrying, and what the community may see — so the gesture
  * is learnt once.
  */
 export function TickRow({

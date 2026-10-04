@@ -8,7 +8,7 @@ export type SharePillProps = {
 };
 
 /**
- * Whether this is in the chronicle, said in one word at the top of a card.
+ * Whether this is in the community, said in one word at the top of a card.
  *
  * It replaced a ticked line at the foot of the detail sheet, and the move is
  * the point: down there it was a *control*, the last thing on the page, read

@@ -99,7 +99,7 @@ export type CatalogueProps = {
  * The catalogue is not the collection and is deliberately not drawn like it:
  * every line carries a name that is not yours and a count of how many readers
  * found it worth keeping. Those two are the whole difference between a list
- * of things and a chronicle written by many hands.
+ * of things and a history written by many hands.
  *
  * Two faces rather than two panels — the list, and one event read whole.
  * iOS will not present a sheet from a sheet that is already presenting one,

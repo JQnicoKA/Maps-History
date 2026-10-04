@@ -94,7 +94,7 @@ export function NamePolityDialog({
 
       {/* Told here rather than after the fact: somebody may have painted
           this very polity for these very years, and the moment to find out
-          is before a second one joins the chronicle. No "Prendre" — the
+          is before a second one joins the community. No "Prendre" — the
           reader has already done the work, and taking somebody else's shape
           instead would throw theirs away. */}
       {start === null ? null : (

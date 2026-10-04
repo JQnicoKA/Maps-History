@@ -233,7 +233,7 @@ export function SharedCard({
       {/* Quiet, and at the foot: most readers never need either, and a card
           that leads with "signaler" reads as a warning about its own
           contents. Absent on one's own work, which one can simply take out
-          of the chronicle. */}
+          of the community. */}
       {one.mine || !onReport || !onBlock ? null : (
         <View style={styles.against}>
           <Pressable

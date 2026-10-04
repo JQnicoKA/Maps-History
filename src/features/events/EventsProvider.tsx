@@ -92,7 +92,7 @@ type EventsContextValue = {
   addFolder: (name: string) => Promise<Folder>;
   renameFolder: (id: string, name: string) => Promise<void>;
   /**
-   * Puts something into the common chronicle, or takes it out.
+   * Puts something into the community, or takes it out.
    *
    * One call for the four kinds: it is one idea, and the row-level security
    * is what makes it safe — the write reaches only the caller's own rows.

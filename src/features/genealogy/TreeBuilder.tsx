@@ -797,7 +797,7 @@ export function TreeBuilder({
             <>
               {/* No `locked` here, and that is the exception rather than an
                   omission: every other kind of copy is barred from the
-                  chronicle to keep it free of duplicates, but a copied tree
+                  community to keep it free of duplicates, but a copied tree
                   is a starting point — branches get added, filiations
                   corrected — and what it becomes is the reader's own work,
                   worth offering back. See `whyLocked`. */}

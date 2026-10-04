@@ -159,7 +159,7 @@ function toFolder(row: FolderRow): Folder {
 const FOLDER_COLUMNS = "id, name, photo_path, shared, origin_id";
 
 /**
- * Puts something into the common chronicle, or takes it out.
+ * Puts something into the community, or takes it out.
  *
  * One function for the four tables because it is one idea, and because the
  * row-level security is what makes it safe: the update reaches only rows the

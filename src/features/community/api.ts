@@ -349,10 +349,10 @@ export async function alike(
 }
 
 /**
- * Says that something should not be in the chronicle.
+ * Says that something should not be in the community.
  *
  * Nothing is told to its author, and nobody but the reporter can see that
- * they reported it — a report is addressed to whoever keeps the chronicle,
+ * they reported it — a report is addressed to whoever keeps the community,
  * not to the person reported. Enough of them and the thing leaves everybody's
  * catalogue on its own; see `withhold_when_reported`.
  */

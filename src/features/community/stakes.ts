@@ -1,8 +1,8 @@
 /**
  * What is really lost when something is deleted.
  *
- * Everything in this app can arrive two ways — written, or taken from the
- * chronicle — and the two are not lost in the same way. Erasing what one
+ * Everything in this app can arrive two ways — written, or taken from
+ * somebody else — and the two are not lost in the same way. Erasing what one
  * wrote is final. Erasing a copy costs nothing: its author's still stands
  * where it was taken from, and saying "c'est définitif" over a copy is
  * simply untrue.

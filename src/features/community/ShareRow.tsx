@@ -21,12 +21,12 @@ export type ShareRowProps = {
 };
 
 /**
- * Whether this belongs to the common chronicle.
+ * Whether this belongs to the community.
  *
  * Ticked by default, everywhere, because that is the app's posture: what is
- * written here is history rather than a diary, and a chronicle nobody
- * publishes is one nobody reads. Untick it and the thing stays entirely
- * yours — off every search, uncopiable, invisible to everyone.
+ * written here is history rather than a diary, and history nobody shares is
+ * history nobody reads. Untick it and the thing stays entirely yours — off
+ * every search, uncopiable, invisible to everyone.
  *
  * Put at the foot of a card rather than in the middle of a form: it is not a
  * field to fill in, it is a thing that is already true and can be undone.
