@@ -19,7 +19,15 @@ import { formatYear } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
 import { space, type } from "../../theme/tokens";
 
-const PENCIL = require("../../../assets/icons/pencil-draw.png");
+/**
+ * Une carte pliée, et non le crayon de la barre de dessin.
+ *
+ * Ce bouton ouvre la liste des territoires ; le crayon, lui, appartient au
+ * moment où l'on peint — voir `DrawPolityBar`, qui le garde. Les deux
+ * partageaient la même image, ce qui faisait dire « dessiner » à un bouton
+ * qui dit « voir ».
+ */
+const TERRITORIES = require("../../../assets/icons/map-folded.png");
 const TRASH = require("../../../assets/icons/trash.png");
 /** Putting a territory back is exactly "show it on the map again". */
 const BACK_ON_MAP = require("../../../assets/icons/view-map.png");
@@ -79,7 +87,7 @@ export function DrawTerritoryButton({
         accessibilityLabel="Territoires"
         onPress={() => setOpen(true)}
       >
-        <Image source={PENCIL} style={styles.glyph} resizeMode="contain" />
+        <Image source={TERRITORIES} style={styles.glyph} resizeMode="contain" />
       </GlyphButton>
 
       <Sheet

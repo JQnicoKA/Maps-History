@@ -2,7 +2,7 @@ import { Image, StyleSheet } from "react-native";
 
 import { GlyphButton } from "../../../components/ui";
 
-const EVENT = require("../../../../assets/icons/event-add.png");
+const EVENT = require("../../../../assets/icons/book.png");
 const PEOPLE = require("../../../../assets/icons/people.png");
 
 /**
