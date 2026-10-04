@@ -11,9 +11,11 @@ export {
   type JournalTitleProps,
 } from "./Scrapbook";
 export {
+  AddSlot,
   Roster,
   RosterEmpty,
   RosterRow,
+  SeekRow,
   THUMB,
   type RosterProps,
   type RosterRowProps,

@@ -12,6 +12,25 @@ export type CharacterManagerProps = {
   onEdit: (target: Character | "new") => void;
   /** Asks for the community's people. */
   onSeek: () => void;
+  /**
+   * Choisir quelqu'un au lieu de le lire — et la liste change de métier.
+   *
+   * Posée, les rangées rendent la personne au lieu d'ouvrir sa page, et le
+   * crayon disparaît : on ne corrige pas quelqu'un au moment de le choisir.
+   * Tout le reste — le compte, les deux portes, les lignes — ne bouge pas,
+   * et c'est le but : l'arbre offre la même liste que la fenêtre Personnages
+   * plutôt qu'une ressemblance entretenue à la main.
+   */
+  onPick?: (person: Character) => void;
+  /**
+   * Pourquoi celui-ci ne peut pas être choisi, s'il ne peut pas.
+   *
+   * Rend une raison à afficher, ou `null`. Grisé et hors d'atteinte plutôt
+   * que retiré : une liste qui escamote ce qu'elle refuse laisse chercher un
+   * nom qui est pourtant là, et fait croire qu'elle est courte alors qu'elle
+   * est filtrée.
+   */
+  unavailable?: (person: Character) => string | null;
 };
 import { palette } from "../../../theme/palette";
 import { space } from "../../../theme/tokens";
@@ -34,6 +53,8 @@ export function CharacterManager({
   onRead,
   onEdit,
   onSeek,
+  onPick,
+  unavailable,
 }: CharacterManagerProps) {
   const { characters, events } = useEvents();
 
@@ -67,6 +88,7 @@ export function CharacterManager({
               event.characters.includes(person.id),
             ).length;
             const face = person.photos[0];
+            const refused = unavailable?.(person) ?? null;
             return (
               <RosterRow
                 key={person.id}
@@ -80,7 +102,11 @@ export function CharacterManager({
                   )
                 }
                 title={person.name}
+                muted={refused !== null}
                 detail={[
+                  // La raison du refus passe devant : c'est la seule chose
+                  // qu'on veut savoir d'une ligne qu'on ne peut pas prendre.
+                  refused,
                   lifespan(person),
                   // Said here rather than left to be discovered: the people
                   // written down before the map knew about them are absent
@@ -96,9 +122,17 @@ export function CharacterManager({
                   .join(" · ")}
                 // The row reads, the pencil corrects — the same division the
                 // map makes between a tap on an event and its "Modifier".
-                onPress={() => onRead(person)}
-                onEdit={() => onEdit(person)}
-                editLabel={`Modifier ${person.name}`}
+                // En mode choix, la rangée rend la personne et le crayon
+                // s'efface ; refusée, elle ne rend rien du tout.
+                {...(refused !== null
+                  ? {}
+                  : onPick
+                    ? { onPress: () => onPick(person) }
+                    : {
+                        onPress: () => onRead(person),
+                        onEdit: () => onEdit(person),
+                        editLabel: `Modifier ${person.name}`,
+                      })}
               />
             );
           })

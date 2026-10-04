@@ -36,6 +36,64 @@ export type RosterProps = {
   children: ReactNode;
 };
 
+
+export type SeekRowProps = {
+  label: string;
+  /** A line under it, saying what is there. */
+  detail?: string;
+  onPress: () => void;
+};
+
+/**
+ * The door to what the community has already made.
+ *
+ * Its own component because it is wanted in two places now — at the head of
+ * every list in the Add sheet, and at the foot of the picker that fills a
+ * generation of a tree. Copied, the two would have drifted apart the first
+ * time one of them was touched.
+ */
+export function SeekRow({ label, detail, onPress }: SeekRowProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => [styles.seek, pressed && styles.pressed]}
+    >
+      <View style={styles.lens}>
+        <View style={styles.lensGlass} />
+        <View style={styles.lensHandle} />
+      </View>
+      <View style={styles.seekText}>
+        <Text style={styles.seekLabel}>{label}</Text>
+        {detail === undefined ? null : (
+          <Text style={styles.seekDetail}>{detail}</Text>
+        )}
+      </View>
+      <Text style={styles.seekMore}>›</Text>
+    </Pressable>
+  );
+}
+
+export type AddSlotProps = { label: string; onPress: () => void };
+
+/** The empty slot waiting to be filled — the other half of `SeekRow`. */
+export function AddSlot({ label, onPress }: AddSlotProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => [styles.add, pressed && styles.pressed]}
+    >
+      <View style={styles.plus}>
+        <Text style={styles.plusGlyph}>+</Text>
+      </View>
+      <Text style={styles.addLabel}>{label}</Text>
+    </Pressable>
+  );
+}
+
 /**
  * The shape every list in the Add sheet takes.
  *
@@ -58,37 +116,14 @@ export function Roster({
       <Text style={styles.count}>{count}</Text>
 
       {onSeek === undefined ? null : (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={seekLabel ?? "Rechercher"}
+        <SeekRow
+          label={seekLabel ?? "Rechercher"}
+          {...(seekDetail === undefined ? {} : { detail: seekDetail })}
           onPress={onSeek}
-          style={({ pressed }) => [styles.seek, pressed && styles.pressed]}
-        >
-          <View style={styles.lens}>
-            <View style={styles.lensGlass} />
-            <View style={styles.lensHandle} />
-          </View>
-          <View style={styles.seekText}>
-            <Text style={styles.seekLabel}>{seekLabel ?? "Rechercher"}</Text>
-            {seekDetail === undefined ? null : (
-              <Text style={styles.seekDetail}>{seekDetail}</Text>
-            )}
-          </View>
-          <Text style={styles.seekMore}>›</Text>
-        </Pressable>
+        />
       )}
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={addLabel}
-        onPress={onAdd}
-        style={({ pressed }) => [styles.add, pressed && styles.pressed]}
-      >
-        <View style={styles.plus}>
-          <Text style={styles.plusGlyph}>+</Text>
-        </View>
-        <Text style={styles.addLabel}>{addLabel}</Text>
-      </Pressable>
+      <AddSlot label={addLabel} onPress={onAdd} />
 
       {children}
     </View>
@@ -119,11 +154,14 @@ export type RosterRowProps = {
   /** The whole row, when the row itself opens something. */
   onPress?: () => void;
   /**
-   * Its place in the list, which decides which way it leans.
+   * Out of reach, and saying so.
    *
-   * Alternating and not random: a random tilt changes on every render, and a
-   * list that reshuffles itself while you read it is not charming.
+   * For a list that must show what it cannot offer: hiding those rows would
+   * leave a reader hunting for a name that is right there, and let them
+   * believe the list is short when it is only filtered. Pair it with no
+   * `onPress` — faded *and* still pressable is the worst of both.
    */
+  muted?: boolean;
 };
 
 export function RosterRow({
@@ -134,6 +172,7 @@ export function RosterRow({
   editLabel,
   editIcon = PENCIL,
   onPress,
+  muted = false,
 }: RosterRowProps) {
   const body = (
     <>
@@ -163,14 +202,20 @@ export function RosterRow({
     </>
   );
 
-  if (!onPress) return <View style={styles.row}>{body}</View>;
+  if (!onPress) {
+    return <View style={[styles.row, muted && styles.muted]}>{body}</View>;
+  }
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={title}
       onPress={onPress}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.row,
+        muted && styles.muted,
+        pressed && styles.pressed,
+      ]}
     >
       {body}
     </Pressable>
@@ -317,4 +362,6 @@ const styles = StyleSheet.create({
   pencil: { width: 16, height: 16, opacity: 0.75 },
   chevron: { fontSize: 22, color: palette.inkFaint, paddingRight: space.xs },
   pressed: { opacity: 0.55 },
+  /** Assez pâle pour qu'on n'essaie pas, assez lisible pour qu'on lise. */
+  muted: { opacity: 0.45 },
 });

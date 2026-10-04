@@ -785,6 +785,22 @@ export function MapScreen() {
             raise({ kind: "editPerson", id });
           })
         }
+        // Les deux portes de la fenêtre « Ajouter à cette génération ». Même
+        // aller-retour que les trois au-dessus : l'arbre se referme, la page
+        // s'ouvre, et refermer la page relève l'arbre là où on l'avait
+        // laissé — avec le nouveau venu désormais dans la liste.
+        onNewPerson={() =>
+          leaveTree((treeId) => {
+            setBack({ kind: "tree", id: treeId });
+            raise({ kind: "editPerson", id: null });
+          })
+        }
+        onSeekPerson={() =>
+          leaveTree((treeId) => {
+            setBack({ kind: "tree", id: treeId });
+            raise({ kind: "searchCharacters" });
+          })
+        }
       />
     </View>
   );

@@ -21,6 +21,7 @@ import { PanZoom } from "./PanZoom";
 import { blocks, dropAt, erasure, spouses } from "../events/rows";
 import { TreeNode } from "./TreeNode";
 import { CharacterDetailModal } from "../events/components/CharacterDetailModal";
+import { CharacterManager } from "../events/components/CharacterManager";
 import { ShareRow } from "../community/ShareRow";
 import {
   ConfirmDialog,
@@ -28,6 +29,7 @@ import {
   InkButton,
   InkField,
   SelectField,
+  Sheet,
   useNotice,
 } from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
@@ -53,6 +55,15 @@ export type TreeBuilderProps = {
   onOpenEvent: (id: string) => void;
   onOpenTree: (id: string) => void;
   onEditPerson: (id: string) => void;
+  /**
+   * Les deux façons de se procurer quelqu'un qu'on n'a pas encore.
+   *
+   * Un arbre se remplit avec les gens de sa collection, et le jour où il en
+   * manque un, la liste ne servait qu'à constater le manque. Ces deux-là
+   * quittent l'arbre comme les trois ci-dessus, et le ramènent après.
+   */
+  onNewPerson: () => void;
+  onSeekPerson: () => void;
 };
 
 /**
@@ -134,6 +145,8 @@ export function TreeBuilder({
   onOpenEvent,
   onOpenTree,
   onEditPerson,
+  onNewPerson,
+  onSeekPerson,
 }: TreeBuilderProps) {
   const insets = useSafeAreaInsets();
   const {
@@ -606,51 +619,65 @@ export function TreeBuilder({
 
         </View>
 
-        {/* The picker for "add someone to generation N". Its own field is never
-            shown — the slot on the canvas is the trigger. */}
-        <SelectField
+        {/* Qui faire entrer dans cette génération.
+
+            C'est **la liste de la fenêtre Personnages**, et non une qui lui
+            ressemble : le même composant, donc le même compte, les deux mêmes
+            portes et les mêmes lignes. Elle avait été refaite ici en liste de
+            choix nue, et les deux avaient commencé à diverger.
+
+            Les indisponibles restent affichés, grisés et hors d'atteinte. Les
+            escamoter, comme on le faisait, laissait chercher un nom qui était
+            pourtant là et faisait croire la liste plus courte qu'elle n'est. */}
+        <Sheet
+          visible={adding !== null}
+          onClose={() => setAdding(null)}
           title={
             adding !== null && rowCount(tree, adding) === 0
               ? "Ajouter une génération"
               : "Ajouter à cette génération"
           }
-          placeholder=""
-          options={characters
-            // Someone may stand twice on one row — a man is drawn once beside
-            // each of his wives — but never on two, which would make him his
-            // own ancestor. So only the other generations rule a name out.
-            .filter(
-              (person) =>
-                !tree.members.some(
-                  (member) =>
-                    member.characterId === person.id &&
-                    member.generation !== adding,
-                ),
-            )
-            .map((person) => {
-              const dates = lifespan(person);
-              const again = tree.members.some(
-                (member) => member.characterId === person.id,
-              );
-              const said = dates === "" ? person.name : `${person.name} · ${dates}`;
-              return {
-                value: person.id,
-                label: again ? `${said} · encore une fois` : said,
-              };
-            })}
-          selected={[]}
-          single
-          onToggle={(characterId) => {
-            if (adding === null) return;
-            run(addToTree(tree.id, characterId, adding));
-            setAdding(null);
-          }}
-          emptyMessage="Tout le monde est déjà dans cet arbre — ou il n'y a personne à y mettre."
-          onClose={() => setAdding(null)}
-          trigger={(openPicker) => (
-            <Opener open={openPicker} when={adding !== null} />
-          )}
-        />
+          tall
+          footer={
+            <InkButton
+              label="Fermer"
+              variant="solid"
+              grow
+              onPress={() => setAdding(null)}
+            />
+          }
+        >
+          <CharacterManager
+            onPick={(person) => {
+              if (adding === null) return;
+              run(addToTree(tree.id, person.id, adding));
+              setAdding(null);
+            }}
+            unavailable={(person) =>
+              // Quelqu'un peut se tenir deux fois sur une rangée — un homme
+              // est dessiné une fois près de chacune de ses femmes — mais
+              // jamais sur deux, ce qui ferait de lui son propre aïeul.
+              tree.members.some(
+                (member) =>
+                  member.characterId === person.id &&
+                  member.generation !== adding,
+              )
+                ? "déjà à une autre génération"
+                : null
+            }
+            onSeek={() => {
+              setAdding(null);
+              onSeekPerson();
+            }}
+            onEdit={() => {
+              setAdding(null);
+              onNewPerson();
+            }}
+            // Jamais appelé en mode choix, mais la propriété est requise :
+            // une rangée refusée ne rend rien, une rangée libre rend `onPick`.
+            onRead={() => {}}
+          />
+        </Sheet>
 
         {/* The picker the two crosses open: who to marry, or whose parent to
             become. Only members of this tree — putting someone *into* the

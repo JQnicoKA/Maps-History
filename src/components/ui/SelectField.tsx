@@ -18,6 +18,13 @@ export type SelectFieldProps = {
   onToggle: (value: string) => void;
   /** One choice only: picking a row closes the sheet. */
   single?: boolean;
+  /**
+   * A legend over the list, when what follows needs naming.
+   *
+   * Worth saying only when the sheet holds something *else* as well: a list
+   * on its own is plainly the list, and a heading over it is furniture.
+   */
+  heading?: string;
   /** Rendered under the list — where "create a new folder" lives. */
   footer?: ReactNode;
   emptyMessage?: string;
@@ -47,6 +54,7 @@ export function SelectField({
   selected,
   onToggle,
   single = false,
+  heading,
   footer,
   emptyMessage = "Aucune entrée pour l'instant.",
   trigger,
@@ -99,6 +107,10 @@ export function SelectField({
           />
         }
       >
+        {heading === undefined ? null : (
+          <Text style={styles.heading}>{heading}</Text>
+        )}
+
         {options.length === 0 ? (
           <Text style={styles.empty}>{emptyMessage}</Text>
         ) : (
@@ -137,6 +149,12 @@ export function SelectField({
 
 const styles = StyleSheet.create({
   container: { gap: space.sm },
+  heading: {
+    ...type.legend,
+    color: palette.inkFaint,
+    paddingHorizontal: space.xl,
+    paddingBottom: space.sm,
+  },
   label: { ...type.legend, color: palette.inkSoft },
   field: {
     flexDirection: "row",
