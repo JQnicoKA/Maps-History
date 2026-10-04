@@ -219,7 +219,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderStyle: "dashed",
     borderColor: palette.paperDeep,
-    transform: [{ rotate: "0.7deg" }],
   },
   plus: {
     width: THUMB,
@@ -233,10 +232,13 @@ const styles = StyleSheet.create({
   addLabel: { flex: 1, fontSize: 15, fontWeight: "600", color: palette.inkSoft },
 
   /**
-   * The other way to fill a list, and it leans the other way from the first.
+   * The other way to fill a list.
    *
    * In wax rather than dashed: the slot above is an empty space waiting to be
-   * filled, this is a door to somewhere that is already full.
+   * filled, this is a door to somewhere that is already full. Both sat at a
+   * slight angle until someone read it as misalignment rather than as a hand
+   * — the tilt stays on the rows below, where a leaning card reads as a
+   * photograph stuck on a page; on a button it read as a defect.
    */
   seek: {
     flexDirection: "row",
@@ -247,7 +249,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1.5,
     borderColor: palette.wax,
-    transform: [{ rotate: "-0.6deg" }],
   },
   /** A lens, drawn: a ring and a handle. */
   lens: {

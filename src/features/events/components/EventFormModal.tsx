@@ -701,8 +701,8 @@ const styles = StyleSheet.create({
    * un titre à 15,5, un chevron à 20 — et la fourche paraissait d'une autre
    * famille que les listes, alors qu'elle pose la même question : faire le
    * sien, ou prendre ce qui existe. Le `Roster` y répond déjà avec un
-   * emplacement pointillé et une porte en cire, penchés en sens inverse. On
-   * lui emprunte tout, jusqu'aux angles d'inclinaison.
+   * emplacement pointillé et une porte en cire. On lui emprunte tout —
+   * y compris le fait de ne plus pencher.
    */
   way: {
     flexDirection: "row",
@@ -714,13 +714,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderStyle: "dashed",
     borderColor: palette.paperDeep,
-    transform: [{ rotate: "0.7deg" }],
   },
   /** Pleine et en cire : une porte, et non un emplacement à remplir. */
   waySeek: {
     borderStyle: "solid",
     borderColor: palette.wax,
-    transform: [{ rotate: "-0.6deg" }],
   },
   wayDown: { opacity: 0.6 },
   quill: {
