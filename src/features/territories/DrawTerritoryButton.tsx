@@ -135,8 +135,8 @@ export function DrawTerritoryButton({
                 : `${drawn.length} territoire${drawn.length > 1 ? "s" : ""} dessiné${drawn.length > 1 ? "s" : ""}`
             }
             addLabel="Dessiner un territoire"
-            seekLabel="Chercher dans la chronique"
-            seekDetail="Des territoires que d'autres ont peints, à prendre chez vous."
+            seekLabel="Chercher dans la communauté"
+            seekDetail="Les territoires créés par les membres de la communauté"
             onSeek={() => {
               // Down, then up: the catalogue is raised by `onClosed` above.
               setSeeking(true);

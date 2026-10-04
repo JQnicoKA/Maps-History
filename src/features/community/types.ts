@@ -192,7 +192,7 @@ export type Blocked = { id: string; handle: string };
 
 /** What a kind looks like, which is all that differs between the five. */
 export type Look = {
-  /** "Chronique commune", and what one of them is called on its own. */
+  /** "Communauté", and what one of them is called on its own. */
   many: string;
   one: string;
   /** Stands in for a missing picture — an emoji, an initial. */

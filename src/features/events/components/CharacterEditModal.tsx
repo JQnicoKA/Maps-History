@@ -110,7 +110,7 @@ export function CharacterEditModal({
   const kept =
     person?.origin === null || person === null
       ? ""
-      : " Et vous n'effacez que votre copie : celle de son auteur, dans la chronique, n'est pas touchée.";
+      : " Et vous n'effacez que votre copie : celle de son auteur, dans la communauté, n'est pas touchée.";
 
   const stake =
     appears === 0

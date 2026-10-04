@@ -299,7 +299,7 @@ export function Catalogue({
       } catch (cause) {
         if (asked.current !== mine) return;
         say(
-          "Chronique illisible",
+          "Recherche impossible",
           cause instanceof Error ? cause.message : String(cause),
         );
       } finally {
@@ -634,8 +634,8 @@ export function Catalogue({
         <ScrollView contentContainerStyle={styles.reading}>
           <Text style={styles.lead}>
             Dites-nous ce qui ne va pas avec « {reading?.thing.title} ». Son
-            auteur n'en saura rien. Assez de signalements et la chose quitte la
-            chronique en attendant d'être relue.
+            auteur n'en saura rien. Assez de signalements et la chose est retirée
+            de la communauté en attendant d'être relue.
           </Text>
 
           {REASONS.map((one) => (
@@ -680,7 +680,7 @@ export function Catalogue({
           {blocked.length === 0 ? (
             <Text style={styles.lead}>
               Vous n'avez bloqué personne. Bloquer quelqu'un retire son travail
-              de votre chronique, et le vôtre de la sienne.
+              de ce que vous voyez, et le vôtre de ce qu'il voit.
             </Text>
           ) : (
             blocked.map((one) => (

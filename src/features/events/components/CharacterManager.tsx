@@ -51,8 +51,8 @@ export function CharacterManager({
         }
         addLabel="Nouveau personnage"
         onAdd={() => onEdit("new")}
-        seekLabel="Chercher dans la chronique"
-        seekDetail="Des personnages que d'autres ont déjà écrits, à prendre chez vous."
+        seekLabel="Chercher dans la communauté"
+        seekDetail="Les personnages créés par les membres de la communauté"
         onSeek={onSeek}
       >
         {characters.length === 0 ? (

@@ -13,5 +13,5 @@
 export function stake(origin: string | null, own: string): string {
   return origin === null
     ? own
-    : "Vous effacez votre copie ; celle de son auteur, dans la chronique, n'est pas touchée.";
+    : "Vous effacez votre copie ; celle de son auteur, dans la communauté, n'est pas touchée.";
 }

@@ -25,5 +25,5 @@
 export function whyLocked(origin: string | null): string | null {
   return origin === null
     ? null
-    : "Une copie reste chez vous : pour que la chronique ne compte pas dix fois la même chose, elle ne peut pas y retourner.";
+    : "Une copie reste chez vous : pour que la communauté ne compte pas dix fois la même chose, elle ne peut pas y retourner.";
 }

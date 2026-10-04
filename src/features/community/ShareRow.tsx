@@ -44,7 +44,7 @@ export function ShareRow({
     <View style={styles.frame}>
       {dialog}
       <TickRow
-        title="Dans la chronique commune"
+        title="Partagé avec la communauté"
         detail={
           locked !== null
             ? locked

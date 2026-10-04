@@ -16,7 +16,7 @@ import { describeType, type EventType } from "../events/types";
  */
 
 export const EVENT_LOOK: Look = {
-  many: "Chronique commune",
+  many: "Communauté",
   one: "Un événement",
   take: "Copier l'événement",
   glyph: (one) => describeType(one.badge as EventType).emoji,
@@ -37,7 +37,7 @@ export const EVENT_LOOK: Look = {
   filedAside: "",
   filedDoor: "Voir le classeur",
   nothing:
-    "Rien de tel dans la chronique. Essayez d'élargir l'époque ou la région — ou écrivez-le vous-même.",
+    "Rien de tel dans la communauté. Essayez d'élargir l'époque ou la région — ou écrivez-le vous-même.",
 };
 
 /** What a classeur's span reads like: two years, or one, or none at all. */
@@ -50,7 +50,7 @@ const span = (one: { start: { year: number } | null; end: { year: number } | nul
 };
 
 export const FOLDER_LOOK: Look = {
-  many: "Classeurs de la chronique",
+  many: "Classeurs de la communauté",
   one: "Un classeur",
   take: "Copier le classeur",
   /** No picture and no type: the initial of the subject it gathers. */
@@ -70,11 +70,11 @@ export const FOLDER_LOOK: Look = {
   filedAside: "",
   filedDoor: "",
   nothing:
-    "Aucun classeur de ce genre dans la chronique. Essayez d'élargir l'époque ou la région — ou faites le vôtre.",
+    "Aucun classeur de ce genre dans la communauté. Essayez d'élargir l'époque ou la région — ou faites le vôtre.",
 };
 
 export const CHARACTER_LOOK: Look = {
-  many: "Personnages de la chronique",
+  many: "Personnages de la communauté",
   one: "Un personnage",
   take: "Copier le personnage",
   /** No sub-kind for a person: their initial stands in for a missing face. */
@@ -93,7 +93,7 @@ export const CHARACTER_LOOK: Look = {
   filedAside: "Les arbres de leur auteur ; les vôtres sont les vôtres.",
   filedDoor: "",
   nothing:
-    "Personne de tel dans la chronique. Essayez d'élargir l'époque ou la région — ou écrivez la fiche vous-même.",
+    "Personne de tel dans la communauté. Essayez d'élargir l'époque ou la région — ou écrivez la fiche vous-même.",
 };
 
 /**
@@ -104,7 +104,7 @@ export const CHARACTER_LOOK: Look = {
  * is, not as the thing that held it.
  */
 export const TERRITORY_LOOK: Look = {
-  many: "Territoires de la chronique",
+  many: "Territoires de la communauté",
   one: "Un territoire",
   take: "Copier le territoire",
   /** No picture and no type: the initial of the polity it draws. */
@@ -130,11 +130,11 @@ export const TERRITORY_LOOK: Look = {
   filedAside: "",
   filedDoor: "",
   nothing:
-    "Aucun territoire de ce genre dans la chronique. Essayez d'élargir l'époque ou la région — ou peignez le vôtre.",
+    "Aucun territoire de ce genre dans la communauté. Essayez d'élargir l'époque ou la région — ou peignez le vôtre.",
 };
 
 export const TREE_LOOK: Look = {
-  many: "Arbres de la chronique",
+  many: "Arbres de la communauté",
   one: "Un arbre",
   take: "Copier l'arbre",
   glyph: (one) => one.title.charAt(0).toUpperCase(),
@@ -158,7 +158,7 @@ export const TREE_LOOK: Look = {
   filedAside: "",
   filedDoor: "",
   nothing:
-    "Aucun arbre de ce genre dans la chronique. Essayez d'élargir l'époque ou la région — ou bâtissez le vôtre.",
+    "Aucun arbre de ce genre dans la communauté. Essayez d'élargir l'époque ou la région — ou bâtissez le vôtre.",
 };
 
 export const LOOKS: Record<Kind, Look> = {

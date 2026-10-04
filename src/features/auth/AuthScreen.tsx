@@ -248,7 +248,7 @@ export function AuthScreen() {
                 >
                   politique de confidentialité
                 </Text>
-                . Ce que j'écris rejoint la chronique commune, où les autres
+                . Ce que j'écris rejoint la communauté, où les autres
                 peuvent le lire et le copier — sauf si je l'en retire.
               </Text>
             </View>

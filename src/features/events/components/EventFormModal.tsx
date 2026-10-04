@@ -18,9 +18,10 @@ import {
   InkField,
   SegmentedControl,
   Sheet,
+  THUMB,
   useNotice,
 } from "../../../components/ui";
-import { radius, shadow, space, type } from "../../../theme/tokens";
+import { radius, space, type } from "../../../theme/tokens";
 import { useEvents } from "../EventsProvider";
 import { usePlacement, type Point } from "../../placement";
 
@@ -452,7 +453,7 @@ export function EventFormModal({
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Chercher dans la chronique commune"
+            accessibilityLabel="Chercher dans la communauté"
             onPress={onSearch}
             style={({ pressed }) => [
               styles.way,
@@ -467,10 +468,10 @@ export function EventFormModal({
             </View>
             <View style={styles.wayText}>
               <Text style={[styles.wayTitle, styles.waxed]}>
-                Chercher dans la chronique commune
+                Chercher dans la communauté
               </Text>
               <Text style={styles.wayDetail}>
-                Ce que les autres ont déjà écrit, à prendre chez vous.
+                Les évènements créés par les membres de la communauté
               </Text>
             </View>
             <Text style={[styles.wayMore, styles.waxed]}>›</Text>
@@ -693,23 +694,38 @@ const styles = StyleSheet.create({
    */
   fork: { paddingHorizontal: space.xl, paddingTop: space.md, gap: space.md },
   forkAsk: { ...type.caption, color: palette.inkSoft, textAlign: "center" },
+  /**
+   * Les deux voies, aux mesures exactes du `Roster`.
+   *
+   * Elles s'en écartaient sans raison — un fond, une ombre, une marge de 12,
+   * un titre à 15,5, un chevron à 20 — et la fourche paraissait d'une autre
+   * famille que les listes, alors qu'elle pose la même question : faire le
+   * sien, ou prendre ce qui existe. Le `Roster` y répond déjà avec un
+   * emplacement pointillé et une porte en cire, penchés en sens inverse. On
+   * lui emprunte tout, jusqu'aux angles d'inclinaison.
+   */
   way: {
     flexDirection: "row",
     alignItems: "center",
     gap: space.md,
-    padding: space.md,
+    padding: space.sm,
+    paddingRight: space.md,
     borderRadius: radius.lg,
-    backgroundColor: palette.paperLight,
     borderWidth: 1.5,
+    borderStyle: "dashed",
     borderColor: palette.paperDeep,
-    ...shadow.soft,
+    transform: [{ rotate: "0.7deg" }],
   },
-  /** The second leans, and is edged in wax: it leads somewhere else. */
-  waySeek: { borderColor: palette.wax, transform: [{ rotate: "-0.6deg" }] },
+  /** Pleine et en cire : une porte, et non un emplacement à remplir. */
+  waySeek: {
+    borderStyle: "solid",
+    borderColor: palette.wax,
+    transform: [{ rotate: "-0.6deg" }],
+  },
   wayDown: { opacity: 0.6 },
   quill: {
-    width: 38,
-    height: 38,
+    width: THUMB,
+    height: THUMB,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -732,9 +748,9 @@ const styles = StyleSheet.create({
     transform: [{ rotate: "45deg" }],
   },
   wayText: { flex: 1, gap: 2 },
-  wayTitle: { fontSize: 15.5, fontWeight: "700", color: palette.ink },
+  wayTitle: { fontSize: 15, fontWeight: "700", color: palette.ink },
   wayDetail: { ...type.legend, color: palette.inkSoft },
-  wayMore: { fontSize: 20, lineHeight: 22, color: palette.inkFaint },
+  wayMore: { fontSize: 18, lineHeight: 20, color: palette.inkFaint },
   waxed: { color: palette.wax },
   switcher: {
     paddingHorizontal: space.xl,
