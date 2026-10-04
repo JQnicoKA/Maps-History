@@ -16,6 +16,10 @@ const PENCIL = require("../../../assets/icons/pencil.png");
 /** Round, like the marker a face or a cover may end up in. */
 export const THUMB = 46;
 
+/** The lens's ring, and the stroke both it and its handle are drawn with. */
+const GLASS = 20;
+const STROKE = 2.5;
+
 export type RosterProps = {
   /** "3 classeurs", "Aucun personnage" — the count, said in words. */
   count: string;
@@ -60,10 +64,7 @@ export function SeekRow({ label, detail, onPress }: SeekRowProps) {
       onPress={onPress}
       style={({ pressed }) => [styles.seek, pressed && styles.pressed]}
     >
-      <View style={styles.lens}>
-        <View style={styles.lensGlass} />
-        <View style={styles.lensHandle} />
-      </View>
+      <Lens />
       <View style={styles.seekText}>
         <Text style={styles.seekLabel}>{label}</Text>
         {detail === undefined ? null : (
@@ -72,6 +73,28 @@ export function SeekRow({ label, detail, onPress }: SeekRowProps) {
       </View>
       <Text style={styles.seekMore}>›</Text>
     </Pressable>
+  );
+}
+
+/**
+ * A magnifying glass, drawn: a ring of wax and a handle off its corner.
+ *
+ * Drawn rather than set as a glyph because 🔍 arrives in somebody else's
+ * colours and at somebody else's angle, and the door to the community sits
+ * beside text in wax.
+ *
+ * **Exported because it was twice a stylesheet, and the two drifted.** The
+ * copy in the event form had its handle 5 points from the corner where this
+ * one had 11, which on a box of `THUMB` put it clear outside the ring — a lens
+ * in two pieces. A number going quietly wrong in a second stylesheet is not
+ * something anybody reviews; one drawing leaves nothing to keep in step.
+ */
+export function Lens() {
+  return (
+    <View style={styles.lens}>
+      <View style={styles.lensGlass} />
+      <View style={styles.lensHandle} />
+    </View>
   );
 }
 
@@ -295,18 +318,28 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   lensGlass: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2.5,
+    width: GLASS,
+    height: GLASS,
+    borderRadius: GLASS / 2,
+    borderWidth: STROKE,
     borderColor: palette.wax,
   },
+  /**
+   * Two points inside the ring's own corner, so the handle starts *under* the
+   * glass rather than beside it.
+   *
+   * The ring is centred, so its bottom-right edge sits `(THUMB - GLASS) / 2`
+   * from the corner — 13 here. Anything much larger than that leaves a gap,
+   * which is precisely how the form's copy came to be broken. Written as the
+   * arithmetic rather than as 11, so that changing `THUMB` or `GLASS` carries
+   * the handle along instead of silently detaching it.
+   */
   lensHandle: {
     position: "absolute",
-    right: 11,
-    bottom: 11,
+    right: (THUMB - GLASS) / 2 - 2,
+    bottom: (THUMB - GLASS) / 2 - 2,
     width: 9,
-    height: 2.5,
+    height: STROKE,
     borderRadius: radius.pill,
     backgroundColor: palette.wax,
     transform: [{ rotate: "45deg" }],

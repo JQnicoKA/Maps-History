@@ -12,6 +12,7 @@ export {
 } from "./Scrapbook";
 export {
   AddSlot,
+  Lens,
   Roster,
   RosterEmpty,
   RosterRow,

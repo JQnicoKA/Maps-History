@@ -16,6 +16,7 @@ import { TypePicker, typeName } from "./TypePicker";
 import {
   InkButton,
   InkField,
+  Lens,
   SegmentedControl,
   Sheet,
   THUMB,
@@ -443,11 +444,9 @@ export function EventFormModal({
               pressed && styles.wayDown,
             ]}
           >
-            {/* A lens, drawn — the same one the people's list wears. */}
-            <View style={styles.quill}>
-              <View style={styles.lensGlass} />
-              <View style={styles.lensHandle} />
-            </View>
+            {/* The very lens the people's list wears, and not a copy of it:
+                this one had drifted until its handle hung off the glass. */}
+            <Lens />
             <View style={styles.wayText}>
               <Text style={[styles.wayTitle, styles.waxed]}>
                 Chercher dans la communauté
@@ -728,23 +727,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   quillGlyph: { fontSize: 22, color: palette.inkSoft },
-  lensGlass: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2.5,
-    borderColor: palette.wax,
-  },
-  lensHandle: {
-    position: "absolute",
-    right: 5,
-    bottom: 5,
-    width: 9,
-    height: 2.5,
-    borderRadius: radius.pill,
-    backgroundColor: palette.wax,
-    transform: [{ rotate: "45deg" }],
-  },
   wayText: { flex: 1, gap: 2 },
   wayTitle: { fontSize: 15, fontWeight: "700", color: palette.ink },
   wayDetail: { ...type.legend, color: palette.inkSoft },
