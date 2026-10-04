@@ -5,6 +5,15 @@ import { radius, space } from "../../theme/tokens";
 
 export type SharePillProps = {
   shared: boolean;
+  /**
+   * Plus discrète, pour une pastille qui tient seule sur sa ligne.
+   *
+   * La taille normale est accordée à la pastille de type d'un événement, à
+   * côté de laquelle elle se pose : deux faits sur une ligne, et l'une plus
+   * haute que l'autre se lirait comme une erreur. Seule, elle n'a personne
+   * à égaler et peut se faire oublier.
+   */
+  small?: boolean;
 };
 
 /**
@@ -24,10 +33,22 @@ export type SharePillProps = {
  * nothing was stamped. A reader can tell them apart at a glance, which two
  * tints of the same shape never manage.
  */
-export function SharePill({ shared }: SharePillProps) {
+export function SharePill({ shared, small = false }: SharePillProps) {
   return (
-    <View style={[styles.pill, shared ? styles.stamped : styles.outlined]}>
-      <Text style={[styles.word, shared ? styles.onWax : styles.onPaper]}>
+    <View
+      style={[
+        styles.pill,
+        small && styles.smaller,
+        shared ? styles.stamped : styles.outlined,
+      ]}
+    >
+      <Text
+        style={[
+          styles.word,
+          small && styles.smallerWord,
+          shared ? styles.onWax : styles.onPaper,
+        ]}
+      >
         {shared ? "Partagé" : "Privé"}
       </Text>
     </View>
@@ -45,9 +66,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
   },
+  smaller: { paddingHorizontal: space.sm, paddingVertical: 2 },
   stamped: { backgroundColor: palette.wax, borderColor: palette.waxDeep },
   outlined: { backgroundColor: "transparent", borderColor: palette.line },
   word: { fontSize: 13, fontWeight: "600", letterSpacing: 0.2 },
+  smallerWord: { fontSize: 11 },
   onWax: { color: palette.paperLight },
   onPaper: { color: palette.inkFaint },
 });

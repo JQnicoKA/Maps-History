@@ -21,6 +21,8 @@ import {
 import { useEvents } from "../EventsProvider";
 import { usePlacement } from "../../placement";
 import { LikelyDuplicates } from "../../community/LikelyDuplicates";
+import { whyLocked } from "../../community/copies";
+import { ShareRow } from "../../community/ShareRow";
 import { CHARACTER_LOOK } from "../../community/looks";
 import type { Point } from "../../placement";
 import type {
@@ -66,6 +68,7 @@ export function CharacterEditModal({
     editCharacter,
     removeCharacter,
     refresh,
+    share,
   } = useEvents();
   const { aiming, place } = usePlacement();
 
@@ -95,6 +98,16 @@ export function CharacterEditModal({
     person?.photos ?? [],
   );
   const [droppedPhotos, setDroppedPhotos] = useState<StoredPhoto[]>([]);
+  /**
+   * S'il est dans la communauté — tenu ici, bien qu'écrit aussitôt.
+   *
+   * À la différence des champs au-dessus, celui-ci n'attend pas
+   * « Enregistrer » : `share` est une écriture d'un seul booléen, et c'est
+   * ainsi que la case se comporte partout ailleurs. Mais `target` est une
+   * photographie prise à l'ouverture du panneau, donc on ne peut pas y relire
+   * la position de la coche ; on retient ce qui a été dit.
+   */
+  const [shared, setShared] = useState(person?.shared ?? true);
   const [saving, setSaving] = useState(false);
   /** The confirmation standing between the trash button and the deed. */
   const [asking, setAsking] = useState(false);
@@ -334,6 +347,23 @@ export function CharacterEditModal({
             }}
           />
         </View>
+
+        {/* Seulement en correction. Créer ne demande rien : ce qu'on écrit
+            ici est de l'histoire et non un journal, donc un personnage neuf
+            rejoint la communauté, et son auteur l'en retire après s'il
+            préfère le garder. Une question de moins à l'aller, pour la
+            réponse rare. */}
+        {person ? (
+          <ShareRow
+            what="ce personnage"
+            shared={shared}
+            locked={whyLocked(person.origin)}
+            onChange={async (next) => {
+              await share("character", person.id, next);
+              setShared(next);
+            }}
+          />
+        ) : null}
 
         {person && appears > 0 ? (
           <Text style={styles.appears}>

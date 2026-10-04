@@ -9,8 +9,7 @@ import {
 } from "react-native";
 
 import { PhotoViewer } from "./PhotoViewer";
-import { whyLocked } from "../../community/copies";
-import { ShareRow } from "../../community/ShareRow";
+import { SharePill } from "../../community/SharePill";
 import {
   ConfirmDialog,
   InkButton,
@@ -71,7 +70,7 @@ export function CharacterDetailModal({
   // Drawn from whoever was last really here, so the panel still has a face on
   // it while it slides away — and so `onClosed` gets a chance to fire.
   const person = useLingering(subject);
-  const { events, trees, removeCharacter, share } = useEvents();
+  const { events, trees, removeCharacter } = useEvents();
   const [deleting, setDeleting] = useState(false);
   /** The confirmation standing between the trash button and the deed. */
   const [asking, setAsking] = useState(false);
@@ -189,11 +188,21 @@ export function CharacterDetailModal({
           <View style={styles.headText}>
             {life === "" ? null : <Text style={styles.life}>{life}</Text>}
             <Text style={styles.name}>{person.name}</Text>
-            <Text style={styles.place}>
-              {at === null
-                ? "Pas encore placé : absent de la carte."
-                : `${at.latitude.toFixed(2)}°, ${at.longitude.toFixed(2)}°`}
-            </Text>
+
+            {/* Là où s'affichaient les coordonnées, qui ne disaient rien à
+                personne : deux nombres à deux décimales ne se lisent pas, et
+                la carte les montre mieux que n'importe quel texte. Qui peut
+                lire cette fiche, en revanche, se lit d'un coup d'œil. Le
+                changement, lui, vit dans « Modifier le personnage ». */}
+            <SharePill shared={person.shared} small />
+
+            {/* Gardé, parce que ce n'est pas la même information : absent de
+                la carte est un manque à combler, pas une donnée. */}
+            {at === null ? (
+              <Text style={styles.place}>
+                Pas encore placé : absent de la carte.
+              </Text>
+            ) : null}
           </View>
         </View>
 
@@ -263,12 +272,6 @@ export function CharacterDetailModal({
             ))}
           </View>
         )}
-        <ShareRow
-          what="ce personnage"
-          shared={person.shared}
-          locked={whyLocked(person.origin)}
-          onChange={(next) => share("character", person.id, next)}
-        />
       </ScrollView>
 
       <PhotoViewer photo={viewing} onClose={() => setViewing(null)} />
