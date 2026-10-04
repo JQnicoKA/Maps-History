@@ -789,6 +789,11 @@ export function MapScreen() {
         // carte que l'arbre recouvrait — il fallait fermer l'arbre pour
         // l'atteindre, ce qui défaisait tout l'intérêt de l'avoir gardé.
         hidden={aiming || drawing}
+        // L'arbre reste dessiné pendant qu'une page le survole, donc il ne
+        // peut pas savoir seul qu'on lui est revenu. Ceci le lui dit, et il
+        // en profite pour rouvrir la fenêtre d'ajout là où on l'avait
+        // laissée — le détour avait un but, on le reprend où il s'arrêtait.
+        active={page?.kind === "tree"}
         // A screen rather than a panel, so there is no dismissal to wait for:
         // it is gone the moment the state says so, and whatever is owed —
         // the sheet it was opened from, the page it was left for — may be

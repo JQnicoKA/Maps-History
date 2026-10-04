@@ -77,6 +77,14 @@ export type TreeBuilderProps = {
    * attend derrière.
    */
   hidden?: boolean;
+  /**
+   * Vrai quand l'arbre est la page qu'on lit, faux quand une autre le survole.
+   *
+   * L'arbre reste dessiné derrière la page qu'on ouvre depuis lui, donc il ne
+   * peut pas déduire de son propre montage qu'on lui est revenu. C'est l'écran
+   * qui le sait, et qui le dit.
+   */
+  active?: boolean;
 };
 
 /**
@@ -161,6 +169,7 @@ export function TreeBuilder({
   onNewPerson,
   onSeekPerson,
   hidden = false,
+  active = true,
 }: TreeBuilderProps) {
   const insets = useSafeAreaInsets();
   const {
@@ -248,6 +257,37 @@ export function TreeBuilder({
    * faut l'attendre.
    */
   const [afterPicker, setAfterPicker] = useState<"new" | "seek" | null>(null);
+  /**
+   * La génération où reprendre, au retour du détour.
+   *
+   * Partir créer quelqu'un n'est pas quitter l'arbre : c'est aller chercher de
+   * quoi remplir *cette* rangée-là. Revenir à l'arbre nu obligerait à
+   * retrouver le bon `+` et à rouvrir la même fenêtre, alors que le fil n'a
+   * jamais été rompu.
+   *
+   * Une référence et non un état : rien ne l'affiche, et un rendu de plus au
+   * moment du départ n'apporterait que l'occasion de se tromper.
+   */
+  const errand = useRef<number | null>(null);
+
+  /**
+   * Rouvrir la fenêtre **au retour**, et seulement au retour.
+   *
+   * Le piège est que `active` ne dit pas « on revient » mais « l'arbre est la
+   * page » — ce qui est vrai aussi à l'instant où l'on clique sur la porte,
+   * avant d'être parti. Lu tel quel, l'effet rouvrait la fenêtre aussitôt
+   * fermée, et la page qu'on allait ouvrir arrivait derrière.
+   *
+   * C'est donc le *passage* de faux à vrai qu'on guette, et non la valeur.
+   */
+  const wasActive = useRef(active);
+  useEffect(() => {
+    const returned = active && !wasActive.current;
+    wasActive.current = active;
+    if (!returned || errand.current === null) return;
+    setAdding(errand.current);
+    errand.current = null;
+  }, [active]);
   const [busy, setBusy] = useState(false);
   /**
    * How much room the floating header takes.
@@ -703,10 +743,12 @@ export function TreeBuilder({
             // Descendre d'abord, ouvrir ensuite : `onClosed` ci-dessus s'en
             // charge une fois la feuille réellement partie.
             onSeek={() => {
+              errand.current = adding;
               setAfterPicker("seek");
               setAdding(null);
             }}
             onEdit={() => {
+              errand.current = adding;
               setAfterPicker("new");
               setAdding(null);
             }}
