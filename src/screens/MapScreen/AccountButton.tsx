@@ -153,6 +153,8 @@ export function AccountButton() {
       <Dialog
         visible={open}
         onClose={close}
+        /* A panel, not a question: titled like the sheets it sits beside. */
+        centred
         title={
           face === "changing"
             ? "Changer le mot de passe"

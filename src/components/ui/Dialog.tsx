@@ -10,7 +10,7 @@ import {
 } from "react-native";
 
 import { InkButton } from "./InkButton";
-import { Grain } from "./Scrapbook";
+import { Grain, JournalTitle } from "./Scrapbook";
 import { palette } from "../../theme/palette";
 import { BACKDROP, radius, shadow, space, type } from "../../theme/tokens";
 
@@ -35,6 +35,20 @@ export type DialogProps = {
    * in the corner always closes.
    */
   onDismiss?: () => void;
+  /**
+   * Title it the way a bottom sheet titles itself: centred, under its own
+   * rule, at the sheets' own size.
+   *
+   * For the cards that are **panels rather than questions** — Filtres, Votre
+   * compte. They are opened to be read and adjusted, like a sheet, and happen
+   * to be shown in the middle only because they are small; a title shoved to
+   * the left marks them out as a different kind of thing from every other
+   * panel in the app, which they are not.
+   *
+   * A card that really does ask a question keeps its heading left, where the
+   * eye starts reading.
+   */
+  centred?: boolean;
   /** The choices, stacked — buttons, usually. */
   children: ReactNode;
 };
@@ -55,6 +69,7 @@ export function Dialog({
   hint,
   dismissLabel = "Annuler",
   onDismiss,
+  centred = false,
   children,
 }: DialogProps) {
   return (
@@ -83,23 +98,42 @@ export function Dialog({
         <View style={styles.card}>
           <Grain />
 
-          <View style={styles.header}>
-            <View style={styles.heading}>
-              <Text style={styles.title}>{title}</Text>
-              <View style={styles.underline} />
-            </View>
+          <View style={centred ? styles.headerCentred : styles.header}>
+            {centred ? (
+              /* The sheets' own heading, not a centred imitation of this
+                 one: that is what makes the two read as the same app. Its
+                 `hint` is left to the card below, which is wider than a
+                 sheet's inset and holds a long sentence better. */
+              <JournalTitle title={title} />
+            ) : (
+              <View style={styles.heading}>
+                <Text style={styles.title}>{title}</Text>
+                <View style={styles.underline} />
+              </View>
+            )}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Fermer"
               hitSlop={8}
               onPress={onClose}
-              style={({ pressed }) => [styles.close, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.close,
+                // Out of the row when centred: a 32-point button sharing the
+                // line would push the title's middle 16 points left of the
+                // card's, which is exactly the thing being fixed.
+                centred && styles.closeFloat,
+                pressed && styles.pressed,
+              ]}
             >
               <Text style={styles.closeGlyph}>×</Text>
             </Pressable>
           </View>
 
-          {hint === undefined ? null : <Text style={styles.hint}>{hint}</Text>}
+          {hint === undefined ? null : (
+            <Text style={[styles.hint, centred && styles.hintCentred]}>
+              {hint}
+            </Text>
+          )}
 
           {/* Nothing here carries `grow`: that is `flex: 1`, meant to fill a
               row. In a column sized by its content it gives each child a basis
@@ -144,6 +178,9 @@ const styles = StyleSheet.create({
   },
   /** The cross sits level with the title, whatever the title wraps to. */
   header: { flexDirection: "row", alignItems: "flex-start", gap: space.sm },
+  /** No row at all: the heading takes the full width so its centre is the
+      card's, and the cross is lifted out of the flow above it. */
+  headerCentred: { position: "relative" },
   heading: { flex: 1, gap: space.xs },
   title: { ...type.plate, fontSize: 22, color: palette.ink },
   /** Hand-drawn under the words, not ruled across the card. */
@@ -156,6 +193,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.paperDeep,
   },
   hint: { ...type.caption, color: palette.inkSoft, marginTop: space.xs },
+  hintCentred: { textAlign: "center" },
   close: {
     width: 32,
     height: 32,
@@ -165,6 +203,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radius.pill,
   },
+  /** Pulled into the card's own padding, level with the first line of type. */
+  closeFloat: { position: "absolute", top: -4, right: -4, marginTop: 0, marginRight: 0 },
   closeGlyph: { fontSize: 24, lineHeight: 28, color: palette.inkFaint, marginTop: -2 },
   pressed: { opacity: 0.6 },
   choices: { gap: space.sm, marginTop: space.xs, marginBottom: space.xs },

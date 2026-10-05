@@ -895,11 +895,16 @@ export function TreeBuilder({
             saveName();
             setMenu(null);
           }}
+          /* Une seule des trois faces est un panneau : « Modifier » s'ouvre
+             pour être lu et ajusté, comme une feuille. « Supprimer ? » pose
+             une question et « Comment ça marche » se lit en continu — les
+             deux gardent leur titre à gauche, là où l'œil commence. */
+          centred={menu === "menu"}
           title={
             menu === "delete"
               ? `Supprimer « ${tree.name} » ?`
               : menu === "help"
-                ? "Comment ça marche"
+                ? "Comment ça marche ?"
                 : "Modifier"
           }
           hint={

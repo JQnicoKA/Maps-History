@@ -85,6 +85,8 @@ export function FilterModal({
       visible={visible}
       onClose={onClose}
       title="Filtres"
+      /* A panel, not a question: titled like the sheets it sits beside. */
+      centred
       /* Every change lands on the map at once: nothing to confirm, nothing to
          back out of, and a row of buttons would only be furniture. */
       dismissLabel={null}
