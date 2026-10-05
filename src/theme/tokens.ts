@@ -76,10 +76,18 @@ export const type = {
   heading: { fontSize: 17, letterSpacing: 0.2 },
   body: { fontSize: 15, lineHeight: 22 },
   caption: { fontSize: 13, lineHeight: 18 },
-  /** The one place the atlas voice survives: small tracked-out capitals. */
+  /**
+   * The one place the atlas voice survives: small capitals.
+   *
+   * Tracked out, but less than they were: 1.1 drew the letters so far apart
+   * that a whole sentence — "votre nom dans la communauté" — had to be read
+   * letter by letter instead of recognised as words. Capitals do need air,
+   * having neither ascenders nor descenders to tell them apart, so the air is
+   * kept; there is simply a third of it.
+   */
   legend: {
     fontSize: 11,
-    letterSpacing: 1.1,
+    letterSpacing: 0.1,
     textTransform: "uppercase",
   },
 } as const;
