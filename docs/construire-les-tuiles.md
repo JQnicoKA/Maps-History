@@ -16,10 +16,15 @@ Un fond de carte d'atlas ne dessine que l'eau, le couvert végétal et les
 sommets. Mesuré sur de vraies tuiles, les douze autres calques du jeu complet
 représentent jusqu'à 99 % du poids téléchargé pour rien.
 
-> Les étapes 4 à 7 ont été **éprouvées en vrai** sur Monaco puis sur la Suisse
-> le 2 octobre 2026 ; les repères chiffrés viennent de là. Les étapes 8 à 10,
-> côté R2, n'ont encore été exercées par personne — elles sont écrites avec
-> leurs points de vérification.
+> **La chaîne entière a été parcourue le 10 octobre 2026**, de la location à
+> une adresse HTTPS qui répond en `206`. Tous les chiffres de ce document sont
+> mesurés, plus aucun n'est extrapolé. Le § 14 dit ce qui reste inconnu, et la
+> liste a beaucoup maigri.
+>
+> Mesures de ce parcours : pbf planétaire **89 Go**, construction
+> **13 min 34 s** sur une CCX63, archive **2 155 370 880 octets** pour
+> **1 144 368 tuiles**, envoi sur R2 en **59 s**. Environ **3 heures** en tout,
+> **~1,40 €**.
 
 ---
 
@@ -101,15 +106,37 @@ docker --version
 
 # Le client pmtiles, pour vérifier et mesurer
 cd /tmp
-curl -sL -o pmtiles.tar.gz \
-  "$(curl -s https://api.github.com/repos/protomaps/go-pmtiles/releases/latest \
-     | grep -o 'https://[^"]*Linux_x86_64.tar.gz' | head -1)"
-tar xzf pmtiles.tar.gz && mv pmtiles /usr/local/bin/
+curl -s https://api.github.com/repos/protomaps/go-pmtiles/releases/latest > r.json
+grep -o 'https://[^"]*Linux_x86_64.tar.gz' r.json | head -1
+# puis, avec l'adresse affichée (1.31.2 au 10 octobre 2026) :
+curl -sLO https://github.com/protomaps/go-pmtiles/releases/download/v1.31.2/go-pmtiles_1.31.2_Linux_x86_64.tar.gz
+tar xzf go-pmtiles_1.31.2_Linux_x86_64.tar.gz
+mv pmtiles /usr/local/bin/
 pmtiles version
 
 # Doit afficher ~900 Go libres
 df -h /
 ```
+
+### ⚠️ Des commandes courtes, et un `echo` avant de lancer
+
+**Vécu, et c'est l'ennui qui a coûté le plus de temps du parcours** : au-delà
+d'une centaine de caractères, un collage dans un terminal SSH **perd des
+caractères en silence**. Observé deux fois — un `-v /chemin/data:/data` devenu
+`:/dat`, une espace avalée entre deux drapeaux. Le shell exécute alors une
+commande qui n'est pas celle qu'on croit, et sur une construction de plusieurs
+heures la faute ne se voit qu'à la fin.
+
+Deux habitudes suffisent :
+
+- **ranger les morceaux dans des variables**, de sorte qu'aucune ligne collée
+  ne dépasse ~50 caractères ;
+- **relire la commande assemblée avec `echo` avant de la lancer**, et la
+  comparer caractère par caractère.
+
+Les barres obliques de continuation de ligne sont le pire cas : elles ne
+survivent presque jamais au collage. Tout ce document les utilise pour la
+lisibilité ; **sur le terminal, aplatissez-les.**
 
 ### ⚠️ Tout le long travail dans `tmux`
 
@@ -214,7 +241,16 @@ ls -lh planet.osm.pbf
 ```
 
 `-C -` reprend là où le transfert s'était arrêté : si ça coupe, relancer la
-même commande. Compter 15 à 30 minutes sur le réseau d'un serveur loué.
+même commande.
+
+**Mesuré le 10 octobre 2026** : **88,7 Go** annoncés, 89 Go sur le disque,
+**20 minutes** à ~42 Mo/s depuis Helsinki. Les données OSM du fichier datent
+de cinq jours avant le téléchargement.
+
+⚠️ **La source grossit avec le temps**, et le `-Xmx` de l'étape 6 en dépend :
+la règle est « au moins 1,5 × la source », soit 133 Go pour 88,7. Les 140 Go
+prescrits tiennent encore, mais la marge se réduit d'année en année — vérifiez
+ce rapport avant de lancer, et augmentez `-Xmx` si la source a dépassé 125 Go.
 
 Des miroirs plus rapides selon la géographie sont listés sur
 `wiki.openstreetmap.org/wiki/Planet.osm` — à essayer si le débit déçoit.
@@ -273,6 +309,23 @@ Les réglages, un par un :
 Si le travail est interrompu, relancer la même commande : les sources sont
 conservées, seul le calcul reprend de zéro.
 
+### Mesuré, et une correction
+
+**13 minutes 34 secondes** sur une CCX63 (48 vCPU, 188 Go, Helsinki), pour
+89 Go de source. C'est bien plus rapide que je ne l'annonçais.
+
+Et **ma règle des « 5 à 10 fois la taille de la source » en espace de travail
+était fausse dans cette configuration** : le fichier transitoire de
+caractéristiques n'a pesé que **6,1 Go**, là où cette règle laissait craindre
+440 à 890 Go. Deux raisons : `--nodemap-storage=ram` met en mémoire la plus
+grosse structure, et **cinq calques jusqu'au zoom 10 seulement** réduisent
+énormément le nombre d'objets triés sur disque. La règle vaut pour une
+construction complète à haut zoom, pas pour celle-ci.
+
+**Conséquence sur le dimensionnement** : le disque n'est pas le facteur
+limitant, la RAM l'est. Une CCX53 (128 Go) resterait trop juste pour le `-Xmx`,
+mais ses 600 Go de disque auraient amplement suffi.
+
 ---
 
 ## 7. Mesurer
@@ -329,18 +382,22 @@ pmtiles serve data/planet-z10-2026-10.pmtiles --port 8080
 
 ### Repères mesurés
 
-| | pbf source | archive z0–10 | tuiles |
-|---|---|---|---|
-| Monaco | 675 Ko | 46 Ko | 13 |
-| Suisse | 522 Mo | 5,2 Mo | 171 |
+| | pbf source | archive z0–10 | tuiles adressées | calcul |
+|---|---|---|---|---|
+| Monaco | 675 Ko | 46 Ko | 13 | 34 s |
+| Suisse | 522 Mo | 5,2 Mo | 171 | — |
+| **Planète** | **89 Go** | **2 155 370 880 o** | **1 144 368** | **13 min 34 s** |
 
-Deux extrapolations vers la planète, et je ne prétends pas trancher :
-**0,8 Go** au prorata du pbf (qui sous-estime, les tuiles de bas zoom ne
-grandissant pas avec la source), **18 Go** au prorata des terres émergées (qui
-surestime, la Suisse étant un cas dense et les tuiles océaniques quasi vides).
+Les deux extrapolations que portait ce document — 0,8 Go au prorata du pbf,
+18 Go au prorata des terres émergées — encadraient correctement la réalité
+sans l'approcher. **La mesure est 2,1 Go**, donc plus près de la borne basse.
 
-Les deux bornes conviennent : sous 10 Go le stockage R2 est gratuit, à 20 Go
-c'est 0,30 $/mois.
+Ce qui explique ce chiffre : sur 1 144 368 tuiles adressées, seules **329 906
+sont réellement distinctes**. **71 % sont des doublons** déduplyqués par le
+format, parce que toutes les tuiles de plein océan sont identiques entre elles.
+D'où **~1,8 ko par tuile adressée** et ~6,4 ko par tuile distincte.
+
+**Le stockage R2 est donc gratuit** : 2,1 Go sous le seuil de 10 Go.
 
 ---
 
@@ -352,7 +409,17 @@ heures à descendre 20 Go pour les remonter ensuite.
 
 ### 8.1 Le bucket
 
-Tableau de bord Cloudflare → **R2** → *Create bucket*, nommé `tiles`.
+Tableau de bord Cloudflare → **R2** → *Create bucket*.
+
+**Deux choix à noter, parce qu'ils sont tous deux source d'un `NoSuchBucket`
+trompeur à l'étape 8.3 :**
+
+- **Le nom exact.** La suite l'emploie littéralement. Copiez-le depuis
+  l'interface au moment de l'envoi plutôt que de le retaper.
+- **La juridiction.** Si vous choisissez l'**Union européenne** — recommandé
+  dès que votre politique de confidentialité promet de ne pas transférer hors
+  de l'EEE — alors **l'adresse du point d'accès S3 n'est pas la même**, et
+  c'est l'erreur qui a fait échouer trois envois lors du parcours. Voir 8.3.
 
 Pour mémoire : 10 Go de stockage et 10 millions de lectures gratuits par mois,
 puis 0,015 $/Go et 0,36 $ le million. **L'egress est gratuit sans plafond** —
@@ -366,34 +433,72 @@ bucket. Noter l'**Access Key ID**, la **Secret Access Key** et l'**Account ID**.
 ### 8.3 L'envoi
 
 L'interface web ne convient pas à un fichier de plusieurs gigaoctets. Avec
-`rclone`, déjà installé à l'étape 3 :
+`rclone`, déjà installé à l'étape 3.
+
+**Par variables d'environnement plutôt que par options de ligne de commande**,
+et ce n'est pas un détail de style : la forme à options tient sur dix lignes
+prolongées par des barres obliques, qui ne survivent pas au collage — voir
+l'avertissement de l'étape 3. Ici, aucune ligne ne dépasse 50 caractères.
 
 ```sh
 cd ~/tuiles
 
-export R2_ACCOUNT=…
-export R2_KEY=…
-read -rs R2_SECRET        # saisi sans écho, pas dans l'historique
+export R2_ACCOUNT=…               # l'identifiant de compte Cloudflare
+export R2_KEY=…                   # l'Access Key ID du jeton
+read -rs R2_SECRET                # saisi sans écho, pas dans l'historique
 export R2_SECRET
 
-rclone copyto data/planet-z10-2026-10.pmtiles \
-  ":s3:tiles/planet-z10-2026-10.pmtiles" \
-  --s3-provider=Cloudflare \
-  --s3-endpoint="https://$R2_ACCOUNT.r2.cloudflarestorage.com" \
-  --s3-access-key-id="$R2_KEY" \
-  --s3-secret-access-key="$R2_SECRET" \
-  --s3-no-check-bucket \
-  --header-upload="Cache-Control: public, max-age=31536000, immutable" \
-  --progress
+export RCLONE_S3_PROVIDER=Cloudflare
+export RCLONE_S3_ENDPOINT=https://$R2_ACCOUNT.r2.cloudflarestorage.com
+export RCLONE_S3_ACCESS_KEY_ID=$R2_KEY
+export RCLONE_S3_SECRET_ACCESS_KEY=$R2_SECRET
+export RCLONE_S3_NO_CHECK_BUCKET=true
+export RCLONE_HEADER_UPLOAD="Cache-Control: public, max-age=31536000, immutable"
+
+F=data/planet-z10-2026-10.pmtiles
+B=:s3:<NOM-DU-BUCKET>/planet-z10-2026-10.pmtiles
+echo $B                           # relire avant de lancer
+rclone copyto $F $B -P
 ```
 
-Deux détails qui comptent :
+### ⚠️ Si R2 répond `NoSuchBucket`
 
-- **`--s3-no-check-bucket`** évite un appel de création de bucket que R2
-  refuse. Sans lui, l'envoi peut échouer alors que le bucket existe.
+Les deux causes, dans l'ordre où il faut les écarter :
+
+**1. La juridiction.** Un bucket créé en juridiction **Union européenne** ne
+répond **pas** sur `https://<compte>.r2.cloudflarestorage.com` mais sur :
+
+```sh
+export RCLONE_S3_ENDPOINT=https://$R2_ACCOUNT.eu.r2.cloudflarestorage.com
+```
+
+C'était la cause lors du parcours du 10 octobre 2026, et le message
+`NoSuchBucket` ne l'indique en rien. L'adresse S3 exacte du bucket est
+affichée par Cloudflare dans *Settings* → **S3 API** : c'est la vérité de
+terrain, lisez-la là plutôt que de la déduire.
+
+**2. Le nom.** Un tiret, un pluriel ou une majuscule produisent le même
+message. Copiez le nom depuis l'interface.
+
+> **Diagnostic utile** : `rclone lsd :s3:` qui répond `403 AccessDenied` est
+> une **bonne** nouvelle — identifiants et adresse valides, mais jeton limité à
+> un seul bucket, ce qui est exactement ce qu'on veut d'un jeton. Un échec de
+> connexion, lui, désignerait l'adresse ou les clés.
+
+### Les trois détails qui comptent
+
+- **`--s3-no-check-bucket`** (ici `RCLONE_S3_NO_CHECK_BUCKET`) évite un appel
+  de création de bucket que R2 refuse.
 - **L'en-tête de cache** : le fichier ne change jamais, et un an de cache évite
-  de repayer la même lecture. On ne peut pas le poser après coup sans
-  réenvoyer.
+  de repayer la même lecture. **On ne peut pas le poser après coup sans
+  réenvoyer** — donc le vérifier tout de suite (voir plus bas).
+- **Un `501 NotImplemented` à la première tentative n'est pas un échec.** Lors
+  du parcours, rclone a signalé `Attempt 1/3 failed … NotImplemented` puis
+  `Attempt 2/3 succeeded`, et le fichier est arrivé complet avec son en-tête de
+  cache. R2 n'implémente pas tout le protocole S3 d'envoi partitionné ; rclone
+  se replie seul. **Ce qui fait foi, c'est la vérification ci-dessous.**
+
+Mesuré : **2,1 Go en 59 secondes** à 34,7 Mio/s depuis Helsinki.
 
 > **Si l'envoi échoue sur une erreur de somme de contrôle** avec le client AWS
 > plutôt que rclone, c'est une incompatibilité connue entre ses versions
@@ -401,14 +506,22 @@ Deux détails qui comptent :
 > `AWS_REQUEST_CHECKSUM_CALCULATION=when_required`. À n'appliquer qu'en cas
 > d'échec, cela peut avoir été corrigé entre-temps.
 
-Vérifier que l'objet est bien arrivé, et à la bonne taille :
+Vérifier que l'objet est arrivé, à la bonne taille, **et avec son en-tête de
+cache** — c'est ce dernier point qui justifie la seconde commande :
 
 ```sh
-rclone ls ":s3:tiles" \
-  --s3-provider=Cloudflare \
-  --s3-endpoint="https://$R2_ACCOUNT.r2.cloudflarestorage.com" \
-  --s3-access-key-id="$R2_KEY" --s3-secret-access-key="$R2_SECRET"
+rclone ls :s3:<NOM-DU-BUCKET>
+rclone lsjson --metadata :s3:<NOM-DU-BUCKET>
 ```
+
+La seconde doit montrer, dans `Metadata` :
+
+```
+"cache-control":"public, max-age=31536000,  immutable"
+```
+
+La double espace avant `immutable` est cosmétique, HTTP l'ignore. **S'il est
+absent**, réenvoyez : une minute contre un an de cache sur chaque lecture.
 
 ---
 
@@ -462,6 +575,18 @@ cache-control: public, max-age=31536000, immutable
 **Un `200` au lieu d'un `206` est un échec** : le serveur renverrait tout le
 fichier à chaque tuile. Ne pas continuer sans `206`.
 
+**Mesuré le 10 octobre 2026 : R2 répond `206`**, au début du fichier comme au
+milieu, avec `Accept-Ranges: bytes` et l'en-tête de cache. Cette inconnue est
+levée.
+
+> **Faites ce test avant de détruire la machine, sur l'adresse `r2.dev`.**
+> Cloudflare l'ouvre en un interrupteur — bucket → *Settings* → *Public
+> access* → sous-domaine `r2.dev` — et elle suffit à valider toute la chaîne.
+> Elle est bridée et réservée au développement, donc pas destinée au trafic
+> réel, mais elle vous permet de **détruire le serveur tout de suite** et de
+> régler la question du domaine (étape 9) à froid, des jours plus tard s'il le
+> faut.
+
 Puis la vérification de bout en bout, qui lit l'en-tête PMTiles à distance :
 
 ```sh
@@ -469,6 +594,26 @@ pmtiles show "https://tiles.example.com/planet-z10-2026-10.pmtiles"
 ```
 
 Mêmes chiffres qu'en local : la chaîne est complète.
+
+**Sans `pmtiles` sur votre machine**, les 127 premiers octets suffisent — c'est
+l'en-tête du format, et le lire par une requête de plage prouve exactement ce
+que fera le lecteur de cartes :
+
+```sh
+curl -s -H "Range: bytes=0-126" "<URL>" -o entete.bin
+python3 -c "
+import struct
+d=open('entete.bin','rb').read()
+print('signature :', d[:7].decode(), d[:7]==b'PMTiles')
+print('spec      :', d[7])
+a,e,c = struct.unpack('<QQQ', d[72:96])
+print('adressées :', a, '| distinctes :', c)
+print('zoom      :', d[100], '-', d[101])"
+```
+
+Lors du parcours, les chiffres lus à distance étaient **identiques** à ceux
+mesurés sur le serveur : 1 144 368 tuiles adressées, 329 906 distinctes,
+zoom 0–10.
 
 ---
 
@@ -479,6 +624,24 @@ Mêmes chiffres qu'en local : la chaîne est complète.
 - Le **maxzoom** réellement construit, s'il a fallu descendre à 9.
 - La **liste des cinq calques** avec leurs plages de zoom.
 - La confirmation du **`206`** sur l'adresse finale.
+
+### Le relevé du 10 octobre 2026
+
+| | |
+|---|---|
+| fichier | `planet-z10-2026-10.pmtiles` |
+| poids | 2 155 370 880 octets (2,007 Gio) |
+| tuiles adressées | 1 144 368 |
+| tuiles distinctes | 329 906 — **71 % de doublons** |
+| poids moyen | ~1,8 ko par tuile adressée |
+| zooms | 0 à 10, comme demandé |
+| calques | les cinq, `landcover` `mountain_peak` `water` `water_name` `waterway` |
+| données OSM | planète du 5 octobre 2026 |
+| `206` | confirmé, au début **et** au milieu du fichier |
+
+**Le chantier en chiffres** : CCX63 à Helsinki, ~3 heures de location pour
+**~1,40 €**. Téléchargement 20 min, construction 13 min 34 s, envoi 59 s — le
+reste du temps étant passé à chercher le point d'accès européen.
 
 ---
 
@@ -524,63 +687,106 @@ application qui lit ces tuiles. Ce n'est pas optionnel.
 
 ## 14. Points encore non vérifiés
 
-- **Les réglages planétaires** (`nodemap`, `-Xmx`, le dimensionnement de la
-  machine) viennent de la documentation de Planetiler. Les essais sont allés
-  jusqu'à 522 Mo de source, pas 80 Go.
-- **La taille réelle** de l'archive mondiale : voir les deux extrapolations de
-  l'étape 7, qui vont de 0,8 à 18 Go. L'étape 7 est là pour les remplacer par
-  une mesure.
-- **Les requêtes de plage à travers un domaine Cloudflare personnalisé** :
-  vérifiées sur un autre hébergeur, pas sur R2. D'où l'étape 10.
-- **`rclone` vers R2** : les deux détails signalés à l'étape 8.3
-  (`--s3-no-check-bucket`, l'en-tête de cache) viennent de la documentation et
-  de retours connus, pas d'un envoi réussi sous mes yeux.
+La liste du 2 octobre comptait quatre points. **Trois sont tombés** le
+10 octobre 2026 : les réglages planétaires ont tourné pour de vrai, la taille
+de l'archive est mesurée à 2,1 Go, et l'envoi `rclone` vers R2 a réussi avec
+son en-tête de cache. Ce qui reste :
+
+- **Les requêtes de plage à travers un domaine Cloudflare *personnalisé*.**
+  Le `206` est éprouvé sur l'adresse `pub-….r2.dev`, pas derrière un domaine
+  rattaché. Rien ne laisse craindre une différence — c'est le même serveur —
+  mais refaites le test de l'étape 10 sur l'adresse définitive.
+- **La tenue dans le temps.** Une archive datée du 10 octobre 2026 vieillit :
+  les côtes ne bougent pas, les toponymes et les glaciers un peu. Aucune idée
+  de la fréquence à laquelle il vaut la peine de reconstruire ; probablement
+  une fois l'an, et le § 6 explique pourquoi le nom porte sa date.
+- **Le comportement sous charge réelle.** 10 millions de lectures gratuites par
+  mois chez R2, puis 0,36 $ le million. Avec ~1,8 ko par tuile et un an de
+  cache sur chaque lecture, la facture devrait rester nulle longtemps — mais
+  c'est un calcul, pas une observation.
 
 ---
 
 ## Annexe — l'enchaînement, sans les explications
 
+**Tel qu'il a réellement tourné le 10 octobre 2026.** Les lignes sont aplaties
+et les arguments rangés dans des variables : c'est la forme qui survit au
+collage, voir l'avertissement de l'étape 3. Un `echo` avant chaque commande
+longue.
+
 ```sh
-# sur le serveur, dans tmux
+# ── sur le serveur ────────────────────────────────────────────────────
 apt-get update && apt-get install -y docker.io tmux rclone
 systemctl enable --now docker
-mkdir -p ~/tuiles/data && cd ~/tuiles
 
-# 1. sources fixes (et essai à blanc)
-docker run --rm -v "$(pwd)/data":/data \
-  openmaptiles/planetiler-openmaptiles:latest \
-  --only-download --download --area=monaco \
-  --http-timeout=120s --http-retries=5 \
-  --output=/data/monaco-z10.pmtiles
+cd /tmp
+curl -sLO https://github.com/protomaps/go-pmtiles/releases/download/v1.31.2/go-pmtiles_1.31.2_Linux_x86_64.tar.gz
+tar xzf go-pmtiles_1.31.2_Linux_x86_64.tar.gz
+mv pmtiles /usr/local/bin/
+df -h /                      # doit montrer ~900 Go libres
 
-# 2. le pbf planétaire, reprenable
-curl -L -C - --retry 5 -o data/sources/planet.osm.pbf \
-  https://planet.openstreetmap.org/pbf/planet-latest.osm.pbf
+tmux new -s tuiles           # ← tout ce qui suit là-dedans
+mkdir -p ~/tuiles/data
+cd ~/tuiles
 
-# 3. la construction
-docker run --rm -v "$(pwd)/data":/data \
-  -e JAVA_TOOL_OPTIONS=-Xmx140g \
-  openmaptiles/planetiler-openmaptiles:latest \
-  --force \
-  --osm-path=/data/sources/planet.osm.pbf \
-  --bounds=world --minzoom=0 --maxzoom=10 \
-  --only-layers=water,waterway,landcover,water_name,mountain_peak \
-  --nodemap-type=sparsearray --nodemap-storage=ram \
-  --output=/data/planet-z10-2026-10.pmtiles
+# 1. sources fixes + essai à blanc (~1,4 Go, 2 min)
+IMG=openmaptiles/planetiler-openmaptiles:latest
+V=/root/tuiles/data:/data
+D="docker run --rm -v $V $IMG"
+F2="--http-timeout=120s --http-retries=5"
+$D --only-download --download --area=monaco $F2 --output=/data/m.pmtiles
+L=water,waterway,landcover,water_name,mountain_peak
+$D --force --area=monaco --minzoom=0 --maxzoom=10 --only-layers=$L --output=/data/m.pmtiles
+pmtiles show data/m.pmtiles  # 13 tuiles, z0-10 ; 3 calques seulement = normal
 
-# 4. contrôle
-pmtiles verify data/planet-z10-2026-10.pmtiles
-pmtiles show   data/planet-z10-2026-10.pmtiles
+# 2. le pbf planétaire, reprenable (89 Go, 20 min)
+cd ~/tuiles/data/sources
+U=https://planet.openstreetmap.org/pbf/planet-latest.osm.pbf
+curl -L -C - --retry 5 --retry-delay 10 -o planet.osm.pbf $U
+cd ~/tuiles
 
-# 5. envoi
-rclone copyto data/planet-z10-2026-10.pmtiles \
-  ":s3:tiles/planet-z10-2026-10.pmtiles" \
-  --s3-provider=Cloudflare \
-  --s3-endpoint="https://$R2_ACCOUNT.r2.cloudflarestorage.com" \
-  --s3-access-key-id="$R2_KEY" --s3-secret-access-key="$R2_SECRET" \
-  --s3-no-check-bucket \
-  --header-upload="Cache-Control: public, max-age=31536000, immutable" \
-  --progress
+# 3. la construction (13 min 34 s)
+M="-e JAVA_TOOL_OPTIONS=-Xmx140g"
+D="docker run --rm -v $V $M $IMG"
+P=--osm-path=/data/sources/planet.osm.pbf
+N="--nodemap-type=sparsearray --nodemap-storage=ram"
+O=--output=/data/planet-z10-2026-10.pmtiles
+echo $D --force $P --bounds=world --minzoom=0 --maxzoom=10 --only-layers=$L $N $O
+$D --force $P --bounds=world --minzoom=0 --maxzoom=10 --only-layers=$L $N $O
 
-# 6. et DÉTRUIRE la machine dans la console Hetzner
+# 4. contrôle (les CINQ calques doivent être là)
+F=data/planet-z10-2026-10.pmtiles
+ls -lh $F
+pmtiles verify $F
+pmtiles show $F | head -11
+pmtiles show --metadata $F | grep -o '"id":"[a-z_]*"'
+
+# 5. envoi (59 s)
+export R2_ACCOUNT=…
+export R2_KEY=…
+read -rs R2_SECRET
+export R2_SECRET
+export RCLONE_S3_PROVIDER=Cloudflare
+export RCLONE_S3_ENDPOINT=https://$R2_ACCOUNT.eu.r2.cloudflarestorage.com
+export RCLONE_S3_ACCESS_KEY_ID=$R2_KEY
+export RCLONE_S3_SECRET_ACCESS_KEY=$R2_SECRET
+export RCLONE_S3_NO_CHECK_BUCKET=true
+export RCLONE_HEADER_UPLOAD="Cache-Control: public, max-age=31536000, immutable"
+B=:s3:<NOM-DU-BUCKET>/planet-z10-2026-10.pmtiles
+echo $B
+rclone copyto $F $B -P
+rclone lsjson --metadata :s3:<NOM-DU-BUCKET>   # vérifier cache-control
+```
+
+L'adresse du point d'accès ci-dessus est la variante **européenne**, celle qui
+a fonctionné ; retirez le `.eu.` si votre bucket est en juridiction mondiale.
+
+```sh
+# ── depuis votre machine, AVANT de détruire ───────────────────────────
+# ouvrir l'accès r2.dev dans Cloudflare, puis :
+curl -s -o /dev/null -D- -H "Range: bytes=0-16383" "<URL>" | grep -iE "^HTTP/|content-range"
+# doit répondre 206 Partial Content
+
+# ── puis DÉTRUIRE la machine dans la console Hetzner ──────────────────
+# Delete, pas Power off. Et vérifier Volumes + Floating IPs.
 ```

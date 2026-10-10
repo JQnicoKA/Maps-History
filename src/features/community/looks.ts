@@ -50,7 +50,7 @@ const span = (one: { start: { year: number } | null; end: { year: number } | nul
 };
 
 export const FOLDER_LOOK: Look = {
-  many: "Classeurs de la communauté",
+  many: "Communauté",
   one: "Un classeur",
   take: "Copier le classeur",
   /** No picture and no type: the initial of the subject it gathers. */
@@ -74,7 +74,7 @@ export const FOLDER_LOOK: Look = {
 };
 
 export const CHARACTER_LOOK: Look = {
-  many: "Personnages de la communauté",
+  many: "Communauté",
   one: "Un personnage",
   take: "Copier le personnage",
   /** No sub-kind for a person: their initial stands in for a missing face. */
@@ -104,7 +104,7 @@ export const CHARACTER_LOOK: Look = {
  * is, not as the thing that held it.
  */
 export const TERRITORY_LOOK: Look = {
-  many: "Territoires de la communauté",
+  many: "Communauté",
   one: "Un territoire",
   take: "Copier le territoire",
   /** No picture and no type: the initial of the polity it draws. */
@@ -134,7 +134,7 @@ export const TERRITORY_LOOK: Look = {
 };
 
 export const TREE_LOOK: Look = {
-  many: "Arbres de la communauté",
+  many: "Communauté",
   one: "Un arbre",
   take: "Copier l'arbre",
   glyph: (one) => one.title.charAt(0).toUpperCase(),

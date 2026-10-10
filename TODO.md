@@ -56,19 +56,67 @@ montre. Soit on en fait quelque chose, soit on la retire comme `mark` l'a été.
 
 ---
 
+## Un avertissement de sécurité qui restera, et c'est normal
+
+Trois, examinés le 7 octobre 2026 et **délibérément laissés** — les réexaminer
+coûterait le même temps pour la même conclusion :
+
+**`st_estimatedextent` appelable par `anon`.** Fonction PostGIS en `security
+definer`, et l'ACL accorde bien `EXECUTE` à `anon`. Mais ses trois surcharges
+sont déclarées **sans nom d'argument**, et PostgREST apparie les paramètres par
+leur nom : la fonction n'a donc aucune route par l'API — vérifié, `PGRST202` sur
+les quatre formes essayées. Et on ne peut pas retirer le droit : elle appartient
+à `supabase_admin`, le projet tourne en `postgres`, et un `revoke` par un autre
+rôle échoue en silence. Le linter lit l'ACL, pas l'accessibilité.
+
+**`spatial_ref_sys` sans RLS.** Table PostGIS des systèmes de coordonnées,
+propriété de l'extension : la RLS n'y est pas activable sans en être
+propriétaire, et elle ne contient aucune donnée de lecteur.
+
+**`postgis` installé dans `public`.** La déplacer casserait tout ce qui en
+dépend pour un gain de pure forme.
+
+---
+
 ## Les tuiles auto-hébergées
 
-Chantier à part, en pause. Deux documents le portent :
+**L'archive existe depuis le 10 octobre 2026.** Construite sur une CCX63 à
+Helsinki en 13 min 34 s, publiée sur R2 (bucket `history-note-map`, juridiction
+européenne), serveur détruit le jour même. Coût total : ~1,40 €.
 
-- `docs/construire-les-tuiles.md` — la construction sur serveur loué et la
-  publication sur R2, éprouvée jusqu'à la Suisse.
-- `docs/brancher-les-tuiles.md` — le branchement côté application.
+| | |
+|---|---|
+| fichier | `planet-z10-2026-10.pmtiles` |
+| poids | 2,1 Go — **sous le seuil gratuit de 10 Go chez R2** |
+| couverture | le monde, zooms 0 à 10, les cinq calques |
+| `206 Partial Content` | vérifié, c'était la seule inconnue technique |
 
-Le code est **déjà en place** : `EXPO_PUBLIC_TILES_URL` vide fait lire
-MapTiler, renseignée fait lire notre archive. Il ne manque que l'archive.
+Les deux documents sont à jour de ce parcours :
+`docs/construire-les-tuiles.md` (toutes ses mesures sont désormais réelles) et
+`docs/brancher-les-tuiles.md` (le branchement côté application).
 
-**Le déclencheur, décidé d'avance** : 300 000 requêtes MapTiler par mois, ou la
-première ligne de dépassement sur une facture.
+**Ce qu'il reste à faire, et rien ne presse :**
+
+1. **Une adresse définitive.** L'archive n'est joignable que par son adresse
+   `pub-….r2.dev`, que Cloudflare bride et réserve au développement. Il faut
+   rattacher un domaine, ce qui suppose la zone DNS chez Cloudflare — or
+   `historynote.fr` est chez OVH **avec les MX du courriel**. Trois sorties au
+   § 9 du runbook : déplacer la zone, déléguer `tiles.historynote.fr` seul, ou
+   prendre un autre domaine.
+2. **Renseigner `EXPO_PUBLIC_TILES_URL`** et republier. Le code est déjà en
+   place : vide il lit MapTiler, renseignée il lit notre archive.
+3. **Mettre à jour la page de confidentialité le même jour.** Elle nomme
+   MapTiler (Suisse) comme sous-traitant et promet qu'il n'y a aucun transfert
+   hors EEE ; Cloudflare la remplace. La juridiction européenne du bucket est
+   ce qui permet de garder la promesse telle quelle.
+
+**Et le crédit obligatoire** : les tuiles sont sous CC-BY d'OpenMapTiles, la
+mention « © OpenMapTiles © OpenStreetMap contributors » devra être visible
+dans l'app. Elle est déjà inscrite dans les métadonnées de l'archive.
+
+**Le déclencheur du basculement, décidé d'avance** : 300 000 requêtes MapTiler
+par mois, ou la première ligne de dépassement sur une facture. Rien n'oblige à
+basculer avant.
 
 ---
 
@@ -95,3 +143,5 @@ Septembre–octobre 2026, vérifié :
 | colonne morte `tree_members.mark` | retirée |
 | icône adaptative Android | dérivée de l'icône réelle, le gabarit Expo est parti |
 | couleur dominante des portraits | Edge Function `tint`, colonnes `character_photos.tint` / `tinted_at`, domestication par `inWax` |
+| seau de photos restreint | `image/{jpeg,png,webp,heic,heif}` et 10 Mo — éprouvé : HTML et SVG refusés en 415, 12 Mo en 413 |
+| un profil ne se lit que par son titulaire | la policy était `USING (true)` sur toute la ligne ; les pseudonymes des autres passent par les portes `security definer` |
