@@ -201,6 +201,24 @@ export type Look = {
   glyph: (thing: SharedThing) => string;
   /** The line under the title: a period, a lifespan, a reign. */
   under: (thing: SharedThing) => string;
+  /**
+   * What the search field asks for — "Nom du personnage", not "Nom".
+   *
+   * The panel is one screen reused five times, and "Nom" was the price of
+   * that: a reader arriving from the Territoires button saw a field that
+   * could have belonged to anything. Rendered in small capitals by
+   * `InkField`, so it is written here in sentence case.
+   */
+  named: string;
+  /**
+   * Three examples in the empty field, in this kind's own vocabulary.
+   *
+   * A placeholder's one job is to say what sort of word is expected, and
+   * "Marignan, sacre, traité…" does that for events and misleads everywhere
+   * else. Real names rather than invented ones: they also tell a reader that
+   * the catalogue is not only French.
+   */
+  hint: string;
   /** What the two name lists mean for this kind. */
   /**
    * True when a tap belongs on the map rather than on a card.

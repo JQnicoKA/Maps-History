@@ -719,13 +719,15 @@ export function Catalogue({
         <>
           <View style={styles.stack}>
             <View style={styles.sieve}>
+              {/* `look`, non `readingLook` : le champ interroge la liste
+                  qu'on parcourt, pas la fiche qu'on lit par-dessus. */}
               <InkField
-                label="Nom"
+                label={look.named}
                 value={search.words}
                 onChangeText={(words) =>
                   setSearch((was) => ({ ...was, words }))
                 }
-                placeholder="Marignan, sacre, traité…"
+                placeholder={look.hint}
                 autoCorrect={false}
                 returnKeyType="search"
               />

@@ -11,14 +11,18 @@ import { describeType, type EventType } from "../events/types";
  *
  * Everything else about the panel is the same for all five — the sieve, the
  * paging, the reporting, the blocking — so this is where the differences are
- * kept, and they amount to a glyph, a line, and four labels. Written as data
- * rather than as five screens.
+ * kept: a glyph, a line, and the handful of sentences that name things. The
+ * search field's own label and placeholder are among them, because "Nom" over
+ * "Marignan, sacre, traité…" was wrong on four of the five screens. Written as
+ * data rather than as five screens.
  */
 
 export const EVENT_LOOK: Look = {
   many: "Communauté",
   one: "Un événement",
   take: "Copier l'événement",
+  named: "Nom de l'événement",
+  hint: "Marignan, sacre, traité…",
   glyph: (one) => describeType(one.badge as EventType).emoji,
   under: (one) =>
     one.start === null
@@ -53,6 +57,9 @@ export const FOLDER_LOOK: Look = {
   many: "Communauté",
   one: "Un classeur",
   take: "Copier le classeur",
+  named: "Nom du classeur",
+  /* Des sujets, pas des faits : un classeur rassemble, il ne date pas. */
+  hint: "Mérovingiens, croisades, Renaissance…",
   /** No picture and no type: the initial of the subject it gathers. */
   glyph: (one) => one.title.charAt(0).toUpperCase(),
   /**
@@ -77,6 +84,8 @@ export const CHARACTER_LOOK: Look = {
   many: "Communauté",
   one: "Un personnage",
   take: "Copier le personnage",
+  named: "Nom du personnage",
+  hint: "Clovis, Aliénor, Soliman…",
   /** No sub-kind for a person: their initial stands in for a missing face. */
   glyph: (one) => one.title.charAt(0).toUpperCase(),
   /** A life said the way the collection says it everywhere else. */
@@ -107,6 +116,8 @@ export const TERRITORY_LOOK: Look = {
   many: "Communauté",
   one: "Un territoire",
   take: "Copier le territoire",
+  named: "Nom du territoire",
+  hint: "Austrasie, Bourgogne, Saint-Empire…",
   /** No picture and no type: the initial of the polity it draws. */
   glyph: (one) => one.title.charAt(0).toUpperCase(),
   /**
@@ -137,6 +148,9 @@ export const TREE_LOOK: Look = {
   many: "Communauté",
   one: "Un arbre",
   take: "Copier l'arbre",
+  named: "Nom de l'arbre",
+  /* Des maisons, pas des personnes : on cherche une lignée entière. */
+  hint: "Capétiens, Plantagenêt, Habsbourg…",
   glyph: (one) => one.title.charAt(0).toUpperCase(),
   /**
    * How many people across how many generations, and the span of their
