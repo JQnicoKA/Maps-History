@@ -407,9 +407,19 @@ export function Catalogue({
       .finally(() => setTaking(null));
   };
 
-  /** How many of the two filters are doing something, for the button. */
+  /**
+   * How many of the two filters are doing something, for the button.
+   *
+   * **Both halves, for both filters.** A point alone narrows nothing — the
+   * query sends `within_m: null` without a radius, exactly as it sends no
+   * era without a width — and the panel opens with a point already seeded on
+   * whatever the plate is centred over. Testing `near` alone therefore lit
+   * the Filtres chip and counted « 1 » on every single opening, over a row
+   * that read « Partout ». The seeding effect's own comment promises that
+   * nothing is narrowed until a width is chosen; this is what keeps it.
+   */
   const era = search.span !== null && search.at !== null;
-  const region = search.near !== null;
+  const region = search.near !== null && search.withinMetres !== null;
   const narrowed = (era ? 1 : 0) + (region ? 1 : 0);
   /** The date in the wheels, which stand on today when nothing was said. */
   const when = search.at ?? { year: new Date().getFullYear() };
@@ -1100,6 +1110,8 @@ export function Catalogue({
                     <Text style={styles.siftLegend}>Région</Text>
                     <Row
                       said={
+                        // `region` implique désormais les deux valeurs ; le
+                        // second test ne reste que pour le compilateur.
                         region && search.withinMetres !== null
                           ? `${Math.round(search.withinMetres / 1000)} km autour de ${search.near?.latitude.toFixed(1)}°, ${search.near?.longitude.toFixed(1)}°`
                           : "Partout"
