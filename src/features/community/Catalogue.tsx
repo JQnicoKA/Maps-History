@@ -42,6 +42,10 @@ import {
   useNotice,
 } from "../../components/ui";
 import { DateWheels } from "../events/components/EventDateField";
+import {
+  PhotoViewer,
+  type Shown,
+} from "../events/components/PhotoViewer";
 import { TreePreview } from "../genealogy/TreePreview";
 import type { Face } from "../genealogy/TreeFace";
 import type { Tree } from "../events/types";
@@ -266,6 +270,15 @@ export function Catalogue({
     tree: Tree;
     faces: Map<string, Face>;
   } | null>(null);
+  /**
+   * La photographie qu'on regarde en grand, s'il y en a une.
+   *
+   * Tenue ici et non dans la fiche, pour la même raison que l'arbre juste
+   * au-dessus : une photographie plein écran doit couvrir l'en-tête de la
+   * feuille et son pied, ce qu'une vue montée dans la fiche ne peut pas faire.
+   */
+  const [viewing, setViewing] = useState<Shown | null>(null);
+
   /**
    * Whether the era's wheels are out.
    *
@@ -917,6 +930,9 @@ export function Catalogue({
                         if (taken) takeIt(one, step.kind);
                       });
                     }}
+                    // La fiche demande, le panneau dessine — voir
+                    // `onShowPhoto` dans `SharedCard`.
+                    onShowPhoto={setViewing}
                     onReport={() => setFace("report")}
                     onBlock={block}
                   />
@@ -1158,6 +1174,11 @@ export function Catalogue({
           )}
         </>
       )}
+
+      {/* Enfant direct de la feuille, exactement comme dans
+          `EventDetailModal` : c'est ce qui lui donne tout l'écran, et c'est
+          cette place-là qui marche sur Android. */}
+      <PhotoViewer photo={viewing} onClose={() => setViewing(null)} />
     </Sheet>
   );
 }

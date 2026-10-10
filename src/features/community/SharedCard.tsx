@@ -12,6 +12,7 @@ import {
 import * as api from "./api";
 
 import { InkButton } from "../../components/ui";
+import type { Shown } from "../events/components/PhotoViewer";
 import { EVENT_LOOK } from "./looks";
 import { ThingRow } from "./ThingRow";
 import type { Kind, Look, SharedThing } from "./types";
@@ -22,6 +23,20 @@ export type SharedCardProps = {
   one: SharedThing;
   kind: Kind;
   look: Look;
+  /**
+   * Agrandir une photographie, demandé au panneau qui tient la fiche.
+   *
+   * **Pas dessiné ici, et c'est la seule façon que ça marche.** Un visionneur
+   * monté dans cette fiche serait borné par la vue qui la porte — laquelle ne
+   * couvre ni l'en-tête de la feuille ni son pied. Une photographie qui remplit
+   * l'écran doit remplir l'écran. C'est la même raison qui met l'aperçu d'arbre
+   * au niveau du catalogue, et c'est ainsi que `EventDetailModal` procède déjà :
+   * le visionneur y est un enfant direct de la feuille.
+   *
+   * Absent là où la fiche n'est qu'un avertissement de doublon, qui n'a pas de
+   * panneau derrière elle pour l'accueillir.
+   */
+  onShowPhoto?: (photo: Shown) => void;
   /**
    * The two things one can do *about* somebody's work, rather than with it.
    *
@@ -76,6 +91,7 @@ export function SharedCard({
   onOpenHeld,
   onShowShape,
   onOpenFiled,
+  onShowPhoto,
 }: SharedCardProps) {
   const [whole, setWhole] = useState<
     Awaited<ReturnType<typeof api.fetchWhole>> | null
@@ -160,11 +176,18 @@ export function SharedCard({
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.photos}>
             {(whole?.photos ?? []).map((photo) => (
-              <Image
+              /* Agrandissables, comme celles de notre propre fiche. Une
+                 vignette de 168 points ne se juge pas, et c'est souvent la
+                 photographie qui décide si on prend la chose. */
+              <Pressable
                 key={photo.url}
-                source={{ uri: photo.url }}
-                style={styles.photo}
-              />
+                accessibilityRole="imagebutton"
+                accessibilityLabel="Agrandir la photo"
+                onPress={() => onShowPhoto?.(photo)}
+                style={({ pressed }) => (pressed ? styles.dim : undefined)}
+              >
+                <Image source={{ uri: photo.url }} style={styles.photo} />
+              </Pressable>
             ))}
           </View>
         </ScrollView>

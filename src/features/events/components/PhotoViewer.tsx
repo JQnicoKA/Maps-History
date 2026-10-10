@@ -15,7 +15,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { StoredPhoto } from "../types";
 import { palette } from "../../../theme/palette";
 import { radius, shadow, space, TOUCH, type } from "../../../theme/tokens";
 
@@ -47,8 +46,20 @@ function fit(ratio: number, room: Box): Box {
     : { width: room.height * ratio, height: room.height };
 }
 
+/**
+ * Tout ce dont le visionneur a besoin d'une photographie, et rien de plus.
+ *
+ * Plus étroit que `StoredPhoto`, et c'est délibéré : il ne lit que `url` et
+ * `source`. Les fiches de la communauté portent exactement ces deux champs —
+ * leur charge utile n'a ni identifiant de ligne ni chemin de stockage — donc
+ * exiger une `StoredPhoto` entière les aurait obligées à en inventer une.
+ * `StoredPhoto` satisfait structurellement cette forme : les deux appelants
+ * passent sans rien changer.
+ */
+export type Shown = { url: string; source: string | null };
+
 export type PhotoViewerProps = {
-  photo: StoredPhoto | null;
+  photo: Shown | null;
   onClose: () => void;
 };
 
