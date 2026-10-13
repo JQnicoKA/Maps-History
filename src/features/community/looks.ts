@@ -43,6 +43,7 @@ export const EVENT_LOOK: Look = {
   // no panel behind it, and promising a way in there would be a lie.
   filedAside: "",
   filedDoor: "Voir le classeur",
+  filedKind: "folder",
   nothing:
     "Rien de tel dans la communauté. Essayez d'élargir l'époque ou la région — ou écrivez-le vous-même.",
 };
@@ -108,7 +109,11 @@ export const CHARACTER_LOOK: Look = {
   castAside: "Ces événements restent à leur auteur : la copie n'apporte que la personne.",
   filedLegend: "Se tient dans",
   filedAside: "Les arbres de leur auteur ; les vôtres sont les vôtres.",
-  filedDoor: "",
+  /* Ouvert le 13 octobre 2026, avec la moitié SQL qui lui manquait — voir la
+     migration `un_personnage_ouvre_ses_arbres`. Un arbre s'ouvre sur son
+     dessin et non sur une fiche : c'est là qu'est sa substance. */
+  filedDoor: "Voir l'arbre",
+  filedKind: "tree",
   nothing:
     "Personne de tel dans la communauté. Essayez d'élargir l'époque ou la région — ou écrivez la fiche vous-même.",
 };

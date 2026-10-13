@@ -936,16 +936,27 @@ export function Catalogue({
                       setTrail((was) => [...was, { kind: "event", thing: one }])
                     }
                     // And the other way up: from an event to the classeur it
-                    // was filed in. The trail already runs both ways, so
-                    // "Retour" comes back to the event rather than out to the
-                    // list — a reader can look at the box and decide against
-                    // it without losing their place.
-                    onOpenFiled={(one) =>
-                      setTrail((was) => [
-                        ...was,
-                        { kind: "folder", thing: one },
-                      ])
-                    }
+                    // was filed in, from a person to an arbre they stand in.
+                    // The trail already runs both ways, so "Retour" comes back
+                    // to what was being read rather than out to the list — a
+                    // reader can look at the box and decide against it without
+                    // losing their place.
+                    //
+                    // Where it leads is the look's business (`filedKind`), not
+                    // a list kept here.
+                    onOpenFiled={(one) => {
+                      const to = its.filedKind;
+                      if (to === undefined) return;
+                      // Un arbre n'a pas de fiche qui vaille : toute sa
+                      // substance est le dessin, et c'est ce que « Voir
+                      // l'arbre » promet. Même porte que depuis une ligne de
+                      // la liste.
+                      if (to === "tree") {
+                        openDrawing(one);
+                        return;
+                      }
+                      setTrail((was) => [...was, { kind: to, thing: one }]);
+                    }}
                     // A territory is its outline: the card cannot show one,
                     // so it hands the reader to the map. Taking it from there
                     // avoids the trip back for a second decision.

@@ -233,14 +233,24 @@ export type Look = {
   filedLegend: string;
   filedAside: string;
   /**
-   * The button beside each thing it is filed under — "Voir le classeur".
+   * The button beside each thing it is filed under — "Voir le classeur",
+   * "Voir l'arbre".
    *
-   * Empty for the kinds whose filing leads nowhere: a person's trees are the
-   * author's, read on a canvas rather than in a card. Blank here and a null
+   * Empty for the kinds whose filing leads nowhere. Blank here and a null
    * `thing` in the payload say the same thing from the two ends, and the card
-   * needs both to agree before it draws a way in.
+   * needs **both** to agree before it draws a way in — which is why opening
+   * this door for a kind means touching the SQL door as well.
    */
   filedDoor: string;
+  /**
+   * What kind that door leads to: a classeur from an event, an arbre from a
+   * person.
+   *
+   * Absent wherever `filedDoor` is empty. Named here rather than guessed by
+   * the panel, which would otherwise hold a list of which kind files under
+   * which — a second place to keep in step with this one.
+   */
+  filedKind?: Kind;
   /**
    * The button that takes it — "Copier l'événement", not "Copier".
    *
