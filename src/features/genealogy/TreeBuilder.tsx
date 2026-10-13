@@ -30,6 +30,7 @@ import {
   InkField,
   SelectField,
   Sheet,
+  useLingering,
   useNotice,
 } from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
@@ -384,6 +385,22 @@ export function TreeBuilder({
   const columns = span(tree);
   const byId = new Map(characters.map((person) => [person.id, person]));
   const open = tree.members.find((member) => member.id === openId) ?? null;
+  /**
+   * La fiche garde sa clé pendant qu'elle se retire.
+   *
+   * **C'est ce qui faisait que « Modifier » ne faisait rien.** Elle était
+   * keyée sur `open?.id`, qui retombe à « none » à l'instant où on la ferme :
+   * React jetait alors l'instance au lieu de la laisser partir, et avec elle
+   * l'animation de sortie *et* le `onClosed` qui porte la suite du geste. La
+   * fiche se fermait, l'arbre réapparaissait, et le formulaire du personnage
+   * n'ouvrait jamais — pas plus que l'événement ou l'autre arbre, qui passent
+   * par le même chemin.
+   *
+   * Keyée sur la valeur qui s'attarde, la clé ne change qu'en **changeant de
+   * personne** — ce qui est la seule raison pour laquelle elle existait : y
+   * remettre à neuf les états internes de la fiche, dont la photo agrandie.
+   */
+  const lingering = useLingering(open);
 
   /**
    * Who this person may still be joined to, on each of the two lines.
@@ -1083,7 +1100,7 @@ export function TreeBuilder({
             the weight, and whether they stand here at all — is held down for
             instead, which is why the sheet this replaced is gone. */}
         <CharacterDetailModal
-          key={open?.id ?? "none"}
+          key={lingering?.id ?? "none"}
           // Une étiquette n'a pas de fiche : la maintenir ouvre son propre
           // éditeur, plus bas.
           person={
