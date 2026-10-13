@@ -24,6 +24,7 @@ const at = (
   position: number,
   importance: Importance = "medium",
 ): TreeMember => ({
+  kind: "person",
   id,
   characterId: `c${id}`,
   generation,

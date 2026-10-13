@@ -247,7 +247,8 @@ export type Character = {
  * individual can stand in several trees, and carry a different weight and a
  * different note in each.
  */
-export type TreeMember = {
+export type TreePerson = {
+  kind: "person";
   id: string;
   characterId: string;
   generation: number;
@@ -255,6 +256,59 @@ export type TreeMember = {
   importance: Importance;
   note: string | null;
 };
+
+/** How many columns of the grid an étiquette covers. */
+export const LABEL_WIDTHS = [1, 2, 3] as const;
+export type LabelWidth = (typeof LABEL_WIDTHS)[number];
+
+/**
+ * A few words written on the tree, occupying the grid like a person.
+ *
+ * What it is for: titling a branch, naming a house, marking the year a line
+ * turns. A reading mark, not somebody — which is why it is drawn on paper
+ * where a person is drawn in wax, and why it carries no weight: "discret" and
+ * "majeur" mean nothing about a piece of writing.
+ *
+ * **It has no relations, and that is a rule rather than an omission.** A
+ * trigger in the database refuses a link that points at one, because a line
+ * drawn from a title to a person would be a claim about a filiation that
+ * nobody made.
+ *
+ * It belongs to the tree alone: no dates, no point on the map, and nothing in
+ * the Personnages list. Two trees never share one.
+ */
+export type TreeLabel = {
+  kind: "label";
+  id: string;
+  text: string;
+  generation: number;
+  position: number;
+  width: LabelWidth;
+};
+
+/**
+ * Whatever stands in a cell of a tree: a person, or a few written words.
+ *
+ * A discriminated union rather than one shape with optional halves, and the
+ * reason is the compiler: every place that reads `characterId` has to say
+ * what it does about a label before it will build. On a feature threaded
+ * through ten files, that turns an audit into a list.
+ */
+export type TreeMember = TreePerson | TreeLabel;
+
+/** How many columns this cell covers: one for a person, its width for a label. */
+export const columnsOf = (member: TreeMember): number =>
+  member.kind === "label" ? member.width : 1;
+
+/**
+ * Narrows a width read from the database.
+ *
+ * A CHECK constraint keeps the column to 1, 2 or 3, but the client receives a
+ * plain number — and a row written before that constraint, or by a future
+ * version, should land somewhere sane rather than typed as a lie.
+ */
+export const asLabelWidth = (n: number): LabelWidth =>
+  n === 2 || n === 3 ? n : 1;
 
 /**
  * What a line between two members means.

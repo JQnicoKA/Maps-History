@@ -115,7 +115,10 @@ export type SharedThingDetail = SharedThing & {
   drawing: {
     members: {
       id: string;
-      characterId: string;
+      /** Null sur une étiquette, qui est un écrit et non quelqu'un. */
+      characterId: string | null;
+      text: string | null;
+      width: number;
       generation: number;
       position: number;
       importance: Importance;

@@ -10,6 +10,7 @@ import {
 
 import { CARD_TOP, FACE_AXIS, GAP, NODE } from "./layout";
 import { TreeFace } from "./TreeFace";
+import { TreePlate } from "./TreePlate";
 import { lifespan } from "../events/lifespan";
 import type { Character, Importance, TreeMember } from "../events/types";
 import { lifted as tapLifted, shifted } from "../../lib/touch";
@@ -18,7 +19,8 @@ import { radius, shadow, space, type } from "../../theme/tokens";
 
 export type TreeNodeProps = {
   member: TreeMember;
-  person: Character | undefined;
+  /** La personne, quand la case en est une. Absente sur une étiquette. */
+  person?: Character | undefined;
   x: number;
   y: number;
   /** Ringed in wax: the one being worked on, or someone already linked to it. */
@@ -273,24 +275,36 @@ export function TreeNode({
       {...responder.panHandlers}
     >
     <View style={lifted ? styles.lifted : undefined}>
-      <TreeFace
-        face={
-          person === undefined
-            ? undefined
-            : {
-                name: person.name,
-                photo: person.photos[0]?.url ?? null,
-                dates: lifespan(person),
-                // The first portrait is the one the card is painted from, and
-                // the same one it shows: one photograph, one colour.
-                tint: person.photos[0]?.tint ?? null,
-              }
-        }
-        importance={member.importance}
-        active={active}
-        dimmed={muted}
-        pressed={pressed && !lifted}
-      />
+      {/* Deux matières pour deux natures : la cire pour quelqu'un, le papier
+          pour un écrit. Le glissement, lui, est le même — c'est pourquoi les
+          deux partagent cette coque plutôt que d'avoir chacune la sienne. */}
+      {member.kind === "label" ? (
+        <TreePlate
+          label={member}
+          active={active}
+          dimmed={muted}
+          pressed={pressed && !lifted}
+        />
+      ) : (
+        <TreeFace
+          face={
+            person === undefined
+              ? undefined
+              : {
+                  name: person.name,
+                  photo: person.photos[0]?.url ?? null,
+                  dates: lifespan(person),
+                  // The first portrait is the one the card is painted from,
+                  // and the same one it shows: one photograph, one colour.
+                  tint: person.photos[0]?.tint ?? null,
+                }
+          }
+          importance={member.importance}
+          active={active}
+          dimmed={muted}
+          pressed={pressed && !lifted}
+        />
+      )}
     </View>
 
     {menu ? (
@@ -304,6 +318,12 @@ export function TreeNode({
           },
         ]}
       >
+        {/* Le poids n'existe pas pour un écrit : « discret » et « majeur » ne
+            disent rien d'une étiquette. Son menu est ailleurs — c'est
+            `TreeBuilder` qui l'ouvre, parce qu'il faut un champ de saisie et
+            qu'un champ ne tient pas sur une carte à l'échelle du dessin. */}
+        {member.kind === "label" ? null : (
+          <>
         <Text style={styles.menuTitle}>Place dans cet arbre</Text>
         <View style={styles.choices}>
           {PLACES.map((place) => {
@@ -328,6 +348,8 @@ export function TreeNode({
             );
           })}
         </View>
+          </>
+        )}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Retirer de l'arbre"

@@ -187,7 +187,9 @@ export async function fetchWhole(
     shape?: unknown;
     members?: {
       id: string;
-      character_id: string;
+      character_id: string | null;
+      text: string | null;
+      width: number;
       generation: number;
       position: number;
       importance: Importance;
@@ -232,6 +234,8 @@ export async function fetchWhole(
             members: whole.members.map((one) => ({
               id: one.id,
               characterId: one.character_id,
+              text: one.text,
+              width: one.width,
               generation: one.generation,
               position: one.position,
               importance: one.importance,

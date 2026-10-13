@@ -14,7 +14,7 @@ import { DEFAULT_YEAR } from "../../config/history";
 import { matchesFilters } from "./filtering";
 import { compareByLife, standsAt } from "./lifespan";
 import { toSortKey } from "./historicalDate";
-import { erasure, tidy } from "./rows";
+import { afterRow, erasure, tidy } from "./rows";
 import {
   NO_FILTERS,
   type Character,
@@ -28,7 +28,8 @@ import {
   type EventSummary,
   type Tree,
   type TreeBond,
-  type TreeMember,
+  type LabelWidth,
+  type TreePerson,
   type PickedPhoto,
 } from "./types";
 
@@ -133,8 +134,21 @@ type EventsContextValue = {
     treeId: string,
     id: string,
     patch: Partial<
-      Pick<TreeMember, "generation" | "position" | "importance" | "note">
+      Pick<TreePerson, "generation" | "position" | "importance" | "note">
     >,
+  ) => Promise<void>;
+  /** Pose quelques mots dans une case — voir `addTreeLabel`. */
+  addLabel: (
+    treeId: string,
+    text: string,
+    generation: number,
+    width: LabelWidth,
+  ) => Promise<void>;
+  /** Son texte, ou sa largeur. */
+  editLabel: (
+    treeId: string,
+    id: string,
+    patch: { text?: string; width?: LabelWidth },
   ) => Promise<void>;
   removeFromTree: (treeId: string, memberId: string) => Promise<void>;
   /**
@@ -508,16 +522,10 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       // *position*, not past the count: with gaps allowed, a row of three can
       // perfectly well end at column 7. An empty row starts where the tree's
       // leftmost column is, so a new generation lines up with the others.
-      const row = (target?.members ?? []).filter(
-        (member) => member.generation === generation,
-      );
+      const past = target === null ? null : afterRow(target, generation);
       const position =
-        row.length > 0
-          ? Math.max(...row.map((member) => member.position)) + 1
-          : Math.min(
-              0,
-              ...(target?.members ?? []).map((member) => member.position),
-            );
+        past ??
+        Math.min(0, ...(target?.members ?? []).map((member) => member.position));
       await api.addTreeMember(treeId, characterId, generation, position);
       await reloadTree(treeId);
     },
@@ -529,10 +537,50 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       treeId: string,
       id: string,
       patch: Partial<
-        Pick<TreeMember, "generation" | "position" | "importance" | "note">
+        Pick<TreePerson, "generation" | "position" | "importance" | "note">
       >,
     ) => {
       await api.updateTreeMember(id, patch);
+      await reloadTree(treeId);
+    },
+    [reloadTree],
+  );
+
+  /**
+   * Une étiquette au bout du rang, comme un personnage qu'on ajoute.
+   *
+   * La colonne est calculée ici et non demandée à l'appelant : c'est la même
+   * règle que pour une personne — après la dernière case occupée de la rangée,
+   * largeur comprise.
+   */
+  const addLabel = useCallback(
+    async (
+      treeId: string,
+      text: string,
+      generation: number,
+      width: LabelWidth,
+    ) => {
+      // Relu plutôt que pris dans l'état : la rangée a pu bouger depuis le
+      // dernier rendu, et deux cases dans la même colonne sont précisément ce
+      // que cette arithmétique existe pour éviter.
+      const target = await api.fetchTree(treeId);
+      const past = target === null ? null : afterRow(target, generation);
+      const position =
+        past ??
+        Math.min(0, ...(target?.members ?? []).map((member) => member.position));
+      await api.addTreeLabel(treeId, text, generation, position, width);
+      await reloadTree(treeId);
+    },
+    [reloadTree],
+  );
+
+  const editLabel = useCallback(
+    async (
+      treeId: string,
+      id: string,
+      patch: { text?: string; width?: LabelWidth },
+    ) => {
+      await api.updateTreeLabel(id, patch);
       await reloadTree(treeId);
     },
     [reloadTree],
@@ -698,6 +746,8 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       removeTree,
       addToTree,
       editTreeMember,
+      addLabel,
+      editLabel,
       removeFromTree,
       orderRow,
       eraseLink,
@@ -713,7 +763,8 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       filters, setFilters, year,
       selectedEvent, neighbours, selectEvent, scrubTo, loading, error, refresh,
       addFolder, renameFolder, removeFolder, share, addCharacter, editCharacter,
-      removeCharacter, addTree, renameTree, removeTree, addToTree,
+      removeCharacter, addTree, renameTree, removeTree, addToTree, addLabel,
+      editLabel,
       editTreeMember, removeFromTree, orderRow, eraseLink, linkInTree, setFolderPhoto,
       addEvent,
       editEvent, removeEvent, loadEvent,

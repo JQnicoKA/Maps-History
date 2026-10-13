@@ -1,4 +1,6 @@
 import type { Tree, TreeMember } from "../events/types";
+import { columnsOf } from "../events/types";
+import { afterRow } from "../events/rows";
 
 /**
  * How big a face is drawn. One size, for everyone.
@@ -149,8 +151,13 @@ export function frame(tree: Tree): Frame {
  */
 export function span(tree: Tree): Frame {
   if (tree.members.length === 0) return { from: 0, to: 0 };
-  const columns = tree.members.map((member) => member.position);
-  return { from: Math.min(...columns), to: Math.max(...columns) + 1 };
+  const lefts = tree.members.map((member) => member.position);
+  // Le bord droit, étiquettes comprises : une large dépasse sa position, et
+  // sans ça la toile se coupait au milieu d'elle.
+  const rights = tree.members.map(
+    (member) => member.position + columnsOf(member) - 1,
+  );
+  return { from: Math.min(...lefts), to: Math.max(...rights) + 1 };
 }
 
 export const rowY = (generation: number, within: Frame): number =>
@@ -179,10 +186,22 @@ export const rowCount = (tree: Tree, generation: number): number =>
  * Past the *position*, not past the count — with gaps allowed, a row of three
  * can perfectly well end at column 7.
  */
+/**
+ * La largeur d'une case en points.
+ *
+ * Une personne tient une colonne. Une étiquette en tient une, deux ou trois —
+ * et elle **avale les gouttières** qu'elle enjambe, sinon elle laisserait deux
+ * fentes blanches au milieu d'elle-même. D'où 152, 340 et 528.
+ */
+export const cellWidth = (member: TreeMember): number => {
+  const n = columnsOf(member);
+  return NODE.width * n + GAP.x * (n - 1);
+};
+
 export function nextColumn(tree: Tree, generation: number): number {
-  const row = tree.members.filter((member) => member.generation === generation);
-  if (row.length === 0) return span(tree).from;
-  return Math.max(...row.map((member) => member.position)) + 1;
+  // La largeur compte : une étiquette de trois colonnes pousse le `+` trois
+  // crans plus loin, pas un. `afterRow` porte cette règle pour tout le monde.
+  return afterRow(tree, generation) ?? span(tree).from;
 }
 
 /**

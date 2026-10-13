@@ -5,7 +5,9 @@ import type {
   Move,
   Tree,
   TreeBond,
+  TreeLabel,
   TreeMember,
+  TreePerson,
   EventDraft,
   Folder,
   PickedPhoto,
@@ -14,7 +16,9 @@ import type {
   StoredPhoto,
   EventType,
   Importance,
+  LabelWidth,
 } from "./types";
+import { asLabelWidth } from "./types";
 import { compareByLife } from "./lifespan";
 import { decodeBase64 } from "../../lib/base64";
 import { currentUserId, PHOTO_BUCKET, supabase } from "../../lib/supabase";
@@ -805,7 +809,10 @@ type TreeRow = {
   origin_id: string | null;
   tree_members: {
     id: string;
-    character_id: string;
+    /** Null on an étiquette, which is written rather than someone. */
+    character_id: string | null;
+    text: string | null;
+    width: number;
     generation: number;
     position: number;
     importance: Importance;
@@ -816,7 +823,9 @@ type TreeRow = {
 
 const TREE_COLUMNS = `
   id, name, note, shared, origin_id,
-  tree_members ( id, character_id, generation, position, importance, note ),
+  tree_members (
+    id, character_id, text, width, generation, position, importance, note
+  ),
   tree_links ( parent_id, child_id, kind )
 `;
 
@@ -829,14 +838,28 @@ function toTree(row: TreeRow): Tree {
     origin: row.origin_id,
     members: [...row.tree_members]
       .sort((a, b) => a.generation - b.generation || a.position - b.position)
-      .map((member) => ({
-        id: member.id,
-        characterId: member.character_id,
-        generation: member.generation,
-        position: member.position,
-        importance: member.importance,
-        note: member.note,
-      })),
+      // Which of the two a row is, read off `character_id`: the database
+      // keeps exactly one of the pair filled.
+      .map((member): TreeMember =>
+        member.character_id === null
+          ? {
+              kind: "label",
+              id: member.id,
+              text: member.text ?? "",
+              generation: member.generation,
+              position: member.position,
+              width: asLabelWidth(member.width),
+            }
+          : {
+              kind: "person",
+              id: member.id,
+              characterId: member.character_id,
+              generation: member.generation,
+              position: member.position,
+              importance: member.importance,
+              note: member.note,
+            },
+      ),
     // The columns are still named for descent, which is what they held before
     // couples existed; on a couple row they are simply the two spouses, in the
     // order they were touched.
@@ -915,6 +938,7 @@ export async function addTreeMember(
     .single();
   if (error) throw new Error(error.message);
   return {
+    kind: "person",
     id: data.id,
     characterId: data.character_id,
     generation: data.generation,
@@ -924,9 +948,63 @@ export async function addTreeMember(
   };
 }
 
+/**
+ * Pose quelques mots dans une case de l'arbre.
+ *
+ * **La même table que les personnages**, et c'est tout l'intérêt : une
+ * étiquette se déplace, se fait pousser par ses voisines et se recopie par la
+ * machinerie qui existe déjà. Ce qui la distingue est l'absence de
+ * `character_id`, que la base impose.
+ */
+export async function addTreeLabel(
+  treeId: string,
+  text: string,
+  generation: number,
+  position: number,
+  width: LabelWidth,
+): Promise<TreeLabel> {
+  const { data, error } = await supabase()
+    .from("tree_members")
+    .insert({
+      tree_id: treeId,
+      text: text.trim(),
+      width,
+      generation,
+      position,
+    })
+    .select("id, text, width, generation, position")
+    .single();
+  if (error) throw new Error(error.message);
+  return {
+    kind: "label",
+    id: data.id,
+    text: data.text ?? "",
+    generation: data.generation,
+    position: data.position,
+    width: asLabelWidth(data.width),
+  };
+}
+
+/** Le texte d'une étiquette, ou sa largeur. */
+export async function updateTreeLabel(
+  id: string,
+  patch: { text?: string; width?: LabelWidth },
+): Promise<void> {
+  const { error } = await supabase()
+    .from("tree_members")
+    .update({
+      ...(patch.text === undefined ? {} : { text: patch.text.trim() }),
+      ...(patch.width === undefined ? {} : { width: patch.width }),
+    })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 export async function updateTreeMember(
   id: string,
-  patch: Partial<Pick<TreeMember, "generation" | "position" | "importance" | "note">>,
+  patch: Partial<
+    Pick<TreePerson, "generation" | "position" | "importance" | "note">
+  >,
 ): Promise<void> {
   const { error } = await supabase()
     .from("tree_members")

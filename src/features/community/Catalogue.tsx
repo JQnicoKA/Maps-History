@@ -49,7 +49,7 @@ import {
 } from "../events/components/PhotoViewer";
 import { TreePreview } from "../genealogy/TreePreview";
 import type { Face } from "../genealogy/TreeFace";
-import type { Tree } from "../events/types";
+import { asLabelWidth, type Tree, type TreeMember } from "../events/types";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useEvents } from "../events/EventsProvider";
@@ -491,14 +491,27 @@ export function Catalogue({
             note: null,
             shared: true,
             origin: null,
-            members: whole.drawing.members.map((m) => ({
-              id: m.id,
-              characterId: m.characterId,
-              generation: m.generation,
-              position: m.position,
-              importance: m.importance,
-              note: null,
-            })),
+            members: whole.drawing.members.map(
+              (m): TreeMember =>
+                m.text === null
+                  ? {
+                      kind: "person",
+                      id: m.id,
+                      characterId: m.characterId ?? "",
+                      generation: m.generation,
+                      position: m.position,
+                      importance: m.importance,
+                      note: null,
+                    }
+                  : {
+                      kind: "label",
+                      id: m.id,
+                      text: m.text,
+                      generation: m.generation,
+                      position: m.position,
+                      width: asLabelWidth(m.width),
+                    },
+            ),
             links: whole.drawing.links,
           },
           faces: new Map(

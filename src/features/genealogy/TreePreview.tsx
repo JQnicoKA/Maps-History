@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { canvasSize, connectors, place } from "./layout";
 import { PanZoom } from "./PanZoom";
 import { TreeFace, type Face } from "./TreeFace";
+import { TreePlate } from "./TreePlate";
 import { InkButton } from "../../components/ui";
 import type { Tree } from "../events/types";
 import { palette } from "../../theme/palette";
@@ -77,10 +78,17 @@ export function TreePreview({
             style={[styles.holder, { left: node.x, top: node.y }]}
             pointerEvents="none"
           >
-            <TreeFace
-              face={faces.get(node.member.characterId)}
-              importance={node.member.importance}
-            />
+            {/* Le même partage que dans le constructeur : la cire pour
+                quelqu'un, le papier pour un écrit. Sans ça, l'arbre de
+                quelqu'un d'autre perdrait ses étiquettes en silence. */}
+            {node.member.kind === "label" ? (
+              <TreePlate label={node.member} />
+            ) : (
+              <TreeFace
+                face={faces.get(node.member.characterId)}
+                importance={node.member.importance}
+              />
+            )}
           </View>
         ))}
       </PanZoom>

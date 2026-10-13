@@ -1,4 +1,5 @@
 import type { Move, Tree, TreeLink, TreeMember } from "./types";
+import { columnsOf } from "./types";
 
 /**
  * The one rule a row of a genealogy obeys: **a couple stands together.**
@@ -227,16 +228,27 @@ export function dropAt(tree: Tree, member: TreeMember, column: number): Move[] {
   const household = order[index];
   if (index < 0 || !household) return [];
 
-  const rank = household.findIndex((one) => one.id === member.id);
+  /**
+   * **En colonnes, pas en membres**, et c'est ce que les étiquettes changent.
+   *
+   * Les deux nombres étaient le même tant que chaque case tenait une colonne.
+   * Une étiquette de trois casse l'égalité : un seul objet, trois colonnes.
+   * Compter les membres l'aurait poussée dans une fente d'une colonne, par
+   * dessus sa voisine — ce que toute cette fonction existe pour empêcher.
+   */
+  const rank = steps(household)[
+    household.findIndex((one) => one.id === member.id)
+  ] ?? 0;
   const start = column - rank;
-  const end = start + household.length - 1;
+  const end = start + width(household) - 1;
 
   const moves: Move[] = [];
   const put = (one: TreeMember, position: number) => {
     if (one.position !== position) moves.push({ id: one.id, position });
   };
 
-  household.forEach((one, step) => put(one, start + step));
+  const inside = steps(household);
+  household.forEach((one, k) => put(one, start + (inside[k] ?? 0)));
 
   /**
    * Which side a bystander falls on is read from **where it stands**, not from
@@ -253,16 +265,22 @@ export function dropAt(tree: Tree, member: TreeMember, column: number): Move[] {
   let free = start - 1;
   for (let i = before.length - 1; i >= 0; i--) {
     const block = before[i]!;
-    const right = Math.min(block[block.length - 1]!.position, free);
-    block.forEach((one, step) => put(one, right - (block.length - 1 - step)));
-    free = right - block.length;
+    const last = block[block.length - 1]!;
+    // Le bord droit, et non la position du dernier membre : une étiquette de
+    // trois dépasse sa propre position de deux colonnes.
+    const edge = Math.min(last.position + columnsOf(last) - 1, free);
+    const left = edge - width(block) + 1;
+    const inner = steps(block);
+    block.forEach((one, k) => put(one, left + (inner[k] ?? 0)));
+    free = left - 1;
   }
 
   free = end + 1;
   for (const block of after) {
     const left = Math.max(block[0]!.position, free);
-    block.forEach((one, step) => put(one, left + step));
-    free = left + block.length;
+    const inner = steps(block);
+    block.forEach((one, k) => put(one, left + (inner[k] ?? 0)));
+    free = left + width(block);
   }
 
   return moves;
@@ -336,3 +354,46 @@ const claims = (tree: Tree, parent: string, child: string): boolean =>
     (link) =>
       link.kind === "descent" && link.from === parent && link.to === child,
   );
+
+/**
+ * La colonne qui suit la dernière case occupée d'une rangée, ou `null` si la
+ * rangée est vide.
+ *
+ * **Au-delà de la case, pas au-delà du compte**, et c'est ce qui change avec
+ * les étiquettes : trois personnes peuvent très bien finir à la colonne 7
+ * puisque les trous sont permis, et une étiquette de trois colonnes occupe
+ * `position`, `position + 1` et `position + 2`. Compter les membres aurait
+ * posé la case suivante par-dessus elle.
+ *
+ * Rendu `null` plutôt qu'un défaut : une rangée vide se remplit différemment
+ * selon qui demande — le dessin aligne sur le bord gauche de l'arbre, l'ajout
+ * d'une génération aussi mais par un autre chemin — et choisir ici pour eux
+ * aurait caché cette différence.
+ */
+export function afterRow(tree: Tree, generation: number): number | null {
+  const row = tree.members.filter((one) => one.generation === generation);
+  if (row.length === 0) return null;
+  return Math.max(...row.map((one) => one.position + columnsOf(one)));
+}
+
+/** Combien de colonnes un bloc occupe, étiquettes comprises. */
+const width = (block: TreeMember[]): number =>
+  block.reduce((sum, one) => sum + columnsOf(one), 0);
+
+/**
+ * Le décalage de chaque case depuis le bord gauche de son bloc.
+ *
+ * `[0, 1]` pour un couple, `[0]` pour une case seule — et ce serait
+ * `[0, 2, 3]` pour un bloc mêlant une étiquette large et deux personnes, ce
+ * que rien ne produit aujourd'hui puisqu'une étiquette n'a pas de lien. Écrit
+ * général plutôt que juste par accident.
+ */
+const steps = (block: TreeMember[]): number[] => {
+  const out: number[] = [];
+  let at = 0;
+  for (const one of block) {
+    out.push(at);
+    at += columnsOf(one);
+  }
+  return out;
+};

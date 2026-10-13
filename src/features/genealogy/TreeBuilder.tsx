@@ -34,7 +34,14 @@ import {
 } from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import { lifespan } from "../events/lifespan";
-import type { Tree, TreeMember } from "../events/types";
+import type {
+  Tree,
+  TreeLabel,
+  TreeMember,
+  TreePerson,
+} from "../events/types";
+import { columnsOf } from "../events/types";
+import { LabelSheet } from "./LabelSheet";
 import { lifted as tapLifted } from "../../lib/touch";
 import { palette } from "../../theme/palette";
 import { radius, shadow, space, TOUCH, type } from "../../theme/tokens";
@@ -146,6 +153,16 @@ const HELP: { question: string; answer: string }[] = [
       "Touchez le + au bout d'une ligne pour ajouter un personnage à cette génération. Les deux + sur des lignes vides, en haut et en bas de votre arbre , permettent d'ajouter un personnage à une nouvelle génération",
   },
   {
+    question: "Comment écrire une étiquette ?",
+    answer:
+      "Touchez le + au bout d'une ligne, puis « Nouvelle étiquette » en bas de la fenêtre. Quelques mots, et une largeur de une, deux ou trois cartes. Une étiquette titre une branche ou marque une date ; elle ne porte aucun lien.",
+  },
+  {
+    question: "Comment modifier une étiquette ?",
+    answer:
+      "Touchez-la : la fenêtre qui s'ouvre permet de changer ce qui est écrit, sa largeur, ou de la retirer. Restez appuyé dessus, en revanche, et vous la déplacez comme une carte.",
+  },
+  {
     question: "Comment marier deux personnages ?",
     answer:
       "Restez appuyé sur un des deux personnages. Puis relâchez et cliquez sur le + à droite de la carte, puis choisissez un des personnages disponibles (sur la même ligne et non déjà marié)",
@@ -202,6 +219,8 @@ export function TreeBuilder({
   const {
     characters,
     addToTree,
+    addLabel,
+    editLabel,
     editTreeMember,
     eraseLink,
     linkInTree,
@@ -283,7 +302,19 @@ export function TreeBuilder({
    * dessiné derrière la page qu'on ouvre, elle s'en va pour de bon — et il
    * faut l'attendre.
    */
-  const [afterPicker, setAfterPicker] = useState<"new" | "seek" | null>(null);
+  const [afterPicker, setAfterPicker] = useState<
+    "new" | "seek" | "label" | null
+  >(null);
+  /**
+   * L'étiquette qu'on écrit : une existante, ou `"new"` pour une neuve.
+   *
+   * Ouverte au **toucher** d'une étiquette, là où un maintien la décolle. Le
+   * même partage que pour un personnage — toucher pour lire ou écrire,
+   * maintenir pour ranger.
+   */
+  const [writing, setWriting] = useState<TreeLabel | "new" | null>(null);
+  /** La génération où poser l'étiquette neuve, retenue le temps d'y arriver. */
+  const writingAt = useRef<number | null>(null);
   /**
    * La génération où reprendre, au retour du détour.
    *
@@ -364,23 +395,33 @@ export function TreeBuilder({
    * rules are the same ones — two to a couple, neither already married; a
    * child stands on the row below and is claimed once.
    */
-  const spousesFor = (member: TreeMember): TreeMember[] =>
-    spouses(tree, member.id).length > 0
+  /**
+   * Une étiquette n'est jamais candidate à un lien, et c'est la règle plutôt
+   * qu'un oubli : un trait tiré d'un titre vers quelqu'un serait une
+   * affirmation de filiation que personne n'a faite. Un déclencheur en base
+   * le refuse aussi, pour que la règle ne tienne pas qu'à l'interface.
+   */
+  const spousesFor = (member: TreeMember): TreePerson[] =>
+    member.kind === "label" || spouses(tree, member.id).length > 0
       ? []
       : tree.members.filter(
-          (other) =>
+          (other): other is TreePerson =>
+            other.kind === "person" &&
             other.id !== member.id &&
             other.generation === member.generation &&
             other.characterId !== member.characterId &&
             spouses(tree, other.id).length === 0,
         );
 
-  const childrenFor = (member: TreeMember): TreeMember[] =>
-    tree.members.filter(
-      (other) =>
-        other.generation === member.generation + 1 &&
-        !hasLine(tree, member.id, other.id),
-    );
+  const childrenFor = (member: TreeMember): TreePerson[] =>
+    member.kind === "label"
+      ? []
+      : tree.members.filter(
+          (other): other is TreePerson =>
+            other.kind === "person" &&
+            other.generation === member.generation + 1 &&
+            !hasLine(tree, member.id, other.id),
+        );
 
   /**
    * The outline that shows where a card in the air would come to rest.
@@ -407,11 +448,19 @@ export function TreeBuilder({
     const first = household[0];
     if (!first) return null;
 
+    // En colonnes et non en membres : une étiquette de trois doit
+    // montrer une marque de trois, sinon elle promet une place
+    // qu'elle ne prendra pas. Même règle que `dropAt`, qui décide
+    // vraiment où elle se pose.
+    const across = household.reduce(
+      (sum, one) => sum + columnsOf(one),
+      0,
+    );
+
     return {
       left: columnX(first.position + landing.columns, columns),
       top: rowY(dragged.generation, rows) + CARD_TOP,
-      width:
-        household.length * NODE.width + (household.length - 1) * GAP.x,
+      width: across * NODE.width + (across - 1) * GAP.x,
       height: NODE.height - CARD_TOP,
     };
   })();
@@ -446,6 +495,11 @@ export function TreeBuilder({
   const tap = (member: TreeMember) => {
     // A tap anywhere puts the placement menu away, wherever it was open.
     setPlacing(null);
+    // Une étiquette n'a pas de fiche : la toucher ouvre ce qu'elle dit.
+    if (member.kind === "label") {
+      setWriting(member);
+      return;
+    }
     setOpenId(member.id);
   };
 
@@ -549,7 +603,11 @@ export function TreeBuilder({
           <TreeNode
             key={node.member.id}
             member={node.member}
-            person={byId.get(node.member.characterId)}
+            person={
+              node.member.kind === "person"
+                ? byId.get(node.member.characterId)
+                : undefined
+            }
             x={node.x}
             y={node.y}
             onPress={() => tap(node.member)}
@@ -564,6 +622,7 @@ export function TreeBuilder({
                     below: node.member.generation <= rows.from + 1,
                     onImportance: (importance) => {
                       setPlacing(null);
+                      if (node.member.kind !== "person") return;
                       if (importance === node.member.importance) return;
                       run(
                         editTreeMember(tree.id, node.member.id, { importance }),
@@ -753,7 +812,10 @@ export function TreeBuilder({
             if (afterPicker === null) return;
             const door = afterPicker;
             setAfterPicker(null);
-            if (door === "new") onNewPerson();
+            // La troisième porte ne quitte pas l'arbre : elle n'a donc pas
+            // d'errand à reprendre, seulement une rangée à retenir.
+            if (door === "label") setWriting("new");
+            else if (door === "new") onNewPerson();
             else onSeekPerson();
           }}
           title={
@@ -763,12 +825,27 @@ export function TreeBuilder({
           }
           tall
           footer={
-            <InkButton
-              label="Fermer"
-              variant="solid"
-              grow
-              onPress={() => setAdding(null)}
-            />
+            <>
+              {/* La troisième façon de remplir une case : ni quelqu'un de la
+                  collection, ni quelqu'un de la communauté, mais quelques
+                  mots. Dans le pied et non dans la liste, parce qu'une
+                  étiquette n'est pas une personne qu'on y chercherait. */}
+              <InkButton
+                label="Nouvelle étiquette"
+                variant="tonal"
+                onPress={() => {
+                  writingAt.current = adding;
+                  setAfterPicker("label");
+                  setAdding(null);
+                }}
+              />
+              <InkButton
+                label="Fermer"
+                variant="solid"
+                grow
+                onPress={() => setAdding(null)}
+              />
+            </>
           }
         >
           <CharacterManager
@@ -783,6 +860,7 @@ export function TreeBuilder({
               // jamais sur deux, ce qui ferait de lui son propre aïeul.
               tree.members.some(
                 (member) =>
+                  member.kind === "person" &&
                   member.characterId === person.id &&
                   member.generation !== adding,
               )
@@ -806,6 +884,37 @@ export function TreeBuilder({
             onRead={() => {}}
           />
         </Sheet>
+
+        {/* Ce qu'une étiquette dit, et la place qu'elle prend. Jamais
+            ouverte en même temps que la feuille d'ajout : celle-ci se
+            retire d'abord et la passe à celle-là par `onClosed`, comme les
+            deux autres portes — iOS refuse de présenter une feuille depuis
+            une feuille. */}
+        <LabelSheet
+          visible={writing !== null}
+          label={writing === null || writing === "new" ? null : writing}
+          busy={busy}
+          onClose={() => setWriting(null)}
+          onSave={(text, width) => {
+            const which = writing;
+            setWriting(null);
+            if (which === null) return;
+            if (which === "new") {
+              run(addLabel(tree.id, text, writingAt.current ?? 0, width));
+              return;
+            }
+            run(editLabel(tree.id, which.id, { text, width }));
+          }}
+          {...(writing === null || writing === "new"
+            ? {}
+            : {
+                onRemove: () => {
+                  const id = writing.id;
+                  setWriting(null);
+                  run(removeFromTree(tree.id, id));
+                },
+              })}
+        />
 
         {/* The picker the two crosses open: who to marry, or whose parent to
             become. Only members of this tree — putting someone *into* the
@@ -983,7 +1092,13 @@ export function TreeBuilder({
             instead, which is why the sheet this replaced is gone. */}
         <CharacterDetailModal
           key={open?.id ?? "none"}
-          person={open ? (byId.get(open.characterId) ?? null) : null}
+          // Une étiquette n'a pas de fiche : la maintenir ouvre son propre
+          // éditeur, plus bas.
+          person={
+            open?.kind === "person"
+              ? (byId.get(open.characterId) ?? null)
+              : null
+          }
           // The tree being drawn is not offered as somewhere to go: the
           // reader is already in it, and "open it" would mean closing this
           // drawing to open the same one again.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  afterRow,
   blockOf,
   blocks,
   couple,
@@ -12,19 +13,35 @@ import {
   tidy,
   tied,
 } from "./rows";
-import type { Move, Tree, TreeLink, TreeMember } from "./types";
+import type { LabelWidth, Move, Tree, TreeLink, TreeMember } from "./types";
 
 const at = (
   id: string,
   position: number,
   generation = 0,
 ): TreeMember => ({
+  kind: "person",
   id,
   characterId: `c${id}`,
   generation,
   position,
   importance: "medium",
   note: null,
+});
+
+/** Une étiquette, large de une à trois colonnes. */
+const writ = (
+  id: string,
+  position: number,
+  width: LabelWidth = 1,
+  generation = 0,
+): TreeMember => ({
+  kind: "label",
+  id,
+  text: id,
+  generation,
+  position,
+  width,
 });
 
 const tree = (members: TreeMember[], links: TreeLink[]): Tree => ({
@@ -321,5 +338,76 @@ describe("lire les liens", () => {
     expect(spouses(subject(), "a")).toEqual(["b"]);
     expect(spouses(subject(), "b")).toEqual(["a"]);
     expect(spouses(subject(), "c")).toEqual([]);
+  });
+});
+
+/**
+ * Les étiquettes, et la seule chose qu'elles changent à l'algèbre : une case
+ * peut être plus large qu'une colonne.
+ *
+ * Toute cette suite aurait passé avant les étiquettes, parce que les tests
+ * d'alors ne pouvaient pas poser de case large. C'est précisément le trou que
+ * ces cas comblent.
+ */
+describe("une étiquette occupe plusieurs colonnes", () => {
+  it("compte ses colonnes et non son unité, au bout du rang", () => {
+    // Une étiquette de trois en colonne 0 occupe 0, 1 et 2 : la case suivante
+    // est la 3, pas la 1.
+    const subject = tree([writ("T", 0, 3)], []);
+    expect(afterRow(subject, 0)).toBe(3);
+  });
+
+  it("laisse la rangée vide sans réponse, pour que l'appelant décide", () => {
+    expect(afterRow(tree([], []), 0)).toBeNull();
+    expect(afterRow(tree([at("A", 0)], []), 7)).toBeNull();
+  });
+
+  it("pousse son voisin de sa largeur, pas d'une colonne", () => {
+    // T large de 3 en 0 (donc 0–2), A en 3. Lâcher T en 1 doit envoyer A en 4.
+    const subject = tree([writ("T", 0, 3), at("A", 3)], []);
+    const moves = dropAt(subject, subject.members[0]!, 1);
+    expect(moves.find((one) => one.id === "T")?.position).toBe(1);
+    expect(moves.find((one) => one.id === "A")?.position).toBe(4);
+  });
+
+  it("se fait pousser de sa propre largeur quand on lui marche dessus", () => {
+    // A en 0, T large de 2 en 1 (donc 1–2). Lâcher A en 1 pousse T à droite,
+    // et T doit se retrouver en 2 — pas en 1, où elle recouvrirait A.
+    const subject = tree([at("A", 0), writ("T", 1, 2)], []);
+    const moves = dropAt(subject, subject.members[0]!, 1);
+    expect(moves.find((one) => one.id === "T")?.position).toBe(2);
+  });
+
+  it("recule de sa largeur entière quand elle est à gauche du point de chute", () => {
+    // T large de 3 en 0 (0–2), A en 3. Lâcher A en 2 doit faire reculer T
+    // jusqu'à ce que son bord droit soit en 1, donc sa position en -1.
+    const subject = tree([writ("T", 0, 3), at("A", 3)], []);
+    const moves = dropAt(subject, subject.members[1]!, 2);
+    expect(moves.find((one) => one.id === "A")?.position).toBe(2);
+    expect(moves.find((one) => one.id === "T")?.position).toBe(-1);
+  });
+
+  it("ne chevauche jamais personne, quelle que soit la chute", () => {
+    // La propriété qui compte, éprouvée sur toutes les cibles d'une rangée
+    // mêlant une étiquette large et deux personnes.
+    const occupied = (subject: Tree, moves: Move[]): number[] => {
+      const out: number[] = [];
+      for (const one of subject.members) {
+        const moved = moves.find((m) => m.id === one.id);
+        const left = moved ? moved.position : one.position;
+        const n = one.kind === "label" ? one.width : 1;
+        for (let k = 0; k < n; k += 1) out.push(left + k);
+      }
+      return out;
+    };
+
+    for (const who of [0, 1, 2]) {
+      for (let target = -2; target <= 6; target += 1) {
+        const subject = tree([at("A", 0), writ("T", 1, 2), at("B", 3)], []);
+        const moves = dropAt(subject, subject.members[who]!, target);
+        const cells = occupied(subject, moves);
+        expect(new Set(cells).size).toBe(cells.length);
+      }
+    }
   });
 });

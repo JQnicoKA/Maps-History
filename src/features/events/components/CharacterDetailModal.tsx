@@ -88,7 +88,9 @@ export function CharacterDetailModal({
   );
   /** Every tree they stand in — what a deletion would take them out of. */
   const rooted = trees.filter((tree) =>
-    tree.members.some((member) => member.characterId === person.id),
+    tree.members.some(
+      (member) => member.kind === "person" && member.characterId === person.id,
+    ),
   );
   /** And the ones worth offering as somewhere to go from here. */
   const standsIn = rooted.filter((tree) => tree.id !== exceptTree);
