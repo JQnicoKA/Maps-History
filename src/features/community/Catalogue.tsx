@@ -36,6 +36,7 @@ import {
 } from "./types";
 import {
   Chip,
+  ConfirmDialog,
   InkButton,
   InkField,
   Sheet,
@@ -278,6 +279,23 @@ export function Catalogue({
    * feuille et son pied, ce qu'une vue montée dans la fiche ne peut pas faire.
    */
   const [viewing, setViewing] = useState<Shown | null>(null);
+  /**
+   * La copie demandée, pas encore faite.
+   *
+   * Toutes les portes vers la copie passent par là — le pied d'une fiche, le
+   * bouton d'une ligne, le bouton de la carte, celui du dessin d'arbre. Elles
+   * **demandaient** quatre fois la même chose sans jamais dire ce qu'une copie
+   * fait : ce qui vient avec, ce qui reste à l'auteur, et qu'elle ne pourra
+   * pas repartir dans la communauté. Un geste irréversible qui s'explique
+   * après coup ne s'explique pas.
+   *
+   * Le genre est porté avec la chose : une copie peut partir d'un événement
+   * ouvert depuis un classeur, donc deux genres plus loin que la liste.
+   */
+  const [asking, setAsking] = useState<{
+    one: SharedThing;
+    kind: Kind;
+  } | null>(null);
 
   /**
    * Whether the era's wheels are out.
@@ -517,7 +535,7 @@ export function Catalogue({
       take: look.take,
       takeable: !one.mine && !one.copied,
     }).then((taken) => {
-      if (taken) takeIt(one);
+      if (taken) setAsking({ one, kind });
     });
   };
 
@@ -650,7 +668,9 @@ export function Catalogue({
               disabled={
                 reading.thing.mine || reading.thing.copied || taking !== null
               }
-              onPress={() => takeIt(reading.thing, reading.kind)}
+              onPress={() =>
+                setAsking({ one: reading.thing, kind: reading.kind })
+              }
             />
           </>
         )
@@ -659,11 +679,21 @@ export function Catalogue({
       {dialog}
 
       {face === "report" ? (
-        <ScrollView contentContainerStyle={styles.reading}>
+        /* La feuille ne monte pas avec le clavier — elle fait déjà la hauteur
+           de l'écran, et la soulever ne ferait que coller ses boutons aux
+           touches. C'est donc au contenu défilant d'amener le champ visé à
+           l'écran, exactement comme dans les deux autres formulaires longs de
+           l'app. Sans ces deux réglages, « Ce qui vous a fait le signaler »
+           s'écrivait sous le clavier, invisible. */
+        <ScrollView
+          contentContainerStyle={styles.reading}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
+        >
           <Text style={styles.lead}>
             Dites-nous ce qui ne va pas avec « {reading?.thing.title} ». Son
-            auteur n'en saura rien. Assez de signalements et la chose est retirée
-            de la communauté en attendant d'être relue.
+            auteur n'en saura rien. Assez de signalements et l'élément est retiré
+            de la communauté en attendant d'être relu.
           </Text>
 
           {REASONS.map((one) => (
@@ -842,7 +872,7 @@ export function Catalogue({
                       ? onTheMap(item)
                       : setTrail([{ kind, thing: item }])
                   }
-                  onTake={() => takeIt(item)}
+                  onTake={() => setAsking({ one: item, kind })}
                 />
               )}
             />
@@ -927,7 +957,7 @@ export function Catalogue({
                         take: its.take,
                         takeable: !one.mine && !one.copied,
                       }).then((taken) => {
-                        if (taken) takeIt(one, step.kind);
+                        if (taken) setAsking({ one, kind: step.kind });
                       });
                     }}
                     // La fiche demande, le panneau dessine — voir
@@ -954,7 +984,7 @@ export function Catalogue({
                 by={drawn.thing.mine ? "vous" : drawn.thing.author}
                 takeable={!drawn.thing.mine && !drawn.thing.copied}
                 busy={taking === drawn.thing.id}
-                onTake={() => takeIt(drawn.thing)}
+                onTake={() => setAsking({ one: drawn.thing, kind: "tree" })}
                 onClose={() => setDrawn(null)}
                 // The panel reaches the foot of the screen, so the buttons
                 // must clear the home indicator themselves — the sheet's own
@@ -1179,6 +1209,29 @@ export function Catalogue({
           `EventDetailModal` : c'est ce qui lui donne tout l'écran, et c'est
           cette place-là qui marche sur Android. */}
       <PhotoViewer photo={viewing} onClose={() => setViewing(null)} />
+
+      {/* La question, avant le geste. `ConfirmDialog` est monté dans la
+          feuille et non à la racine — iOS refuse une seconde modale depuis un
+          contrôleur qui en présente déjà une. */}
+      {asking === null ? null : (
+        <ConfirmDialog
+          visible
+          title={LOOKS[asking.kind].ask}
+          message={LOOKS[asking.kind].means}
+          confirmLabel={LOOKS[asking.kind].take}
+          /* Encre et non rouge : copier ne retire rien, et peindre ce bouton
+             en rouge mettrait en garde contre ce que le lecteur est venu
+             faire. */
+          tone="ink"
+          cancelLabel="Annuler"
+          onConfirm={() => {
+            const { one, kind: its } = asking;
+            setAsking(null);
+            takeIt(one, its);
+          }}
+          onClose={() => setAsking(null)}
+        />
+      )}
     </Sheet>
   );
 }

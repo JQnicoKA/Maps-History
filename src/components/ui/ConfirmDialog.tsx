@@ -6,8 +6,26 @@ export type ConfirmDialogProps = {
   title: string;
   /** What is at stake, in a line or two. */
   message?: string;
-  /** The word on the red button: "Supprimer", "Retirer"… */
+  /** The word on the button: "Supprimer", "Retirer", "Copier l'événement"… */
   confirmLabel: string;
+  /**
+   * Red by default, because this card was built for losing things.
+   *
+   * `"ink"` for a decision that takes nothing away — taking a copy, say.
+   * Painting it red there would warn against the very thing the reader came
+   * to do.
+   */
+  tone?: "ink" | "danger";
+  /**
+   * A second way out, named.
+   *
+   * Absent by default: in front of a deletion, "Annuler" and the cross do
+   * exactly the same thing, and one of them is furniture. But a question that
+   * is **not** a warning reads better with its two answers side by side —
+   * "Annuler" and "Copier le classeur" — than with one button and a cross in
+   * the corner.
+   */
+  cancelLabel?: string | null;
   onConfirm: () => void;
   onClose: () => void;
 };
@@ -31,6 +49,8 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel,
+  tone = "danger",
+  cancelLabel = null,
   onConfirm,
   onClose,
 }: ConfirmDialogProps) {
@@ -40,17 +60,16 @@ export function ConfirmDialog({
       onClose={onClose}
       title={title}
       hint={message}
-      /* The cross in the corner is the way out, and it is the same way out:
-         unlike the cards that turn over — where "Annuler" steps back one
-         face and the cross closes the lot — here the two would do exactly
-         the same thing, and one of them would be furniture in front of a
-         decision that deserves an uncluttered screen. */
-      dismissLabel={null}
+      /* Rien par défaut : devant une suppression, "Annuler" et la croix font
+         exactement la même chose, et l'un des deux serait du mobilier devant
+         une décision qui mérite un écran dégagé. Nommé en revanche quand la
+         question n'est pas un avertissement. */
+      dismissLabel={cancelLabel}
     >
       <InkButton
         label={confirmLabel}
         variant="solid"
-        tone="danger"
+        tone={tone}
         onPress={onConfirm}
       />
     </Dialog>

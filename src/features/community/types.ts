@@ -252,6 +252,25 @@ export type Look = {
    * kind rather than built from `one`, because the elision differs.
    */
   take: string;
+  /**
+   * La question posée avant de copier — « Copier cet événement ? »
+   *
+   * Écrite par genre plutôt que construite depuis `one`, pour la même raison
+   * que `take` : l'élision diffère, et « cet arbre » contre « ce classeur »
+   * ne se devine pas.
+   */
+  ask: string;
+  /**
+   * Ce qui vient **avec** la chose, dit avant de la prendre.
+   *
+   * Rien d'autre, et c'est une décision : une fenêtre de confirmation répond
+   * à « qu'est-ce que j'obtiens en touchant ce bouton », pas « comment cette
+   * application fonctionne-t-elle ». Les règles — ce qui reste à l'auteur, le
+   * fait qu'une copie ne retourne pas dans la communauté — ont leur place sur
+   * les fiches (`castAside`, `filedAside`) et dans `whyLocked`, où le lecteur
+   * les rencontre quand elles le concernent.
+   */
+  means: string;
   nothing: string;
 };
 

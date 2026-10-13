@@ -23,6 +23,9 @@ export const EVENT_LOOK: Look = {
   take: "Copier l'événement",
   named: "Nom de l'événement",
   hint: "Marignan, sacre, traité…",
+  ask: "Copier cet événement ?",
+  means:
+    "Il entre dans votre collection, avec ses photographies et les personnages qu'il cite.",
   glyph: (one) => describeType(one.badge as EventType).emoji,
   under: (one) =>
     one.start === null
@@ -60,6 +63,9 @@ export const FOLDER_LOOK: Look = {
   named: "Nom du classeur",
   /* Des sujets, pas des faits : un classeur rassemble, il ne date pas. */
   hint: "Mérovingiens, croisades, Renaissance…",
+  ask: "Copier ce classeur ?",
+  means:
+    "Il entre dans votre collection avec tous ses événements, leurs photographies et les personnages qu'ils citent.",
   /** No picture and no type: the initial of the subject it gathers. */
   glyph: (one) => one.title.charAt(0).toUpperCase(),
   /**
@@ -86,6 +92,8 @@ export const CHARACTER_LOOK: Look = {
   take: "Copier le personnage",
   named: "Nom du personnage",
   hint: "Clovis, Aliénor, Soliman…",
+  ask: "Copier ce personnage ?",
+  means: "Il entre dans votre collection, avec ses photographies.",
   /** No sub-kind for a person: their initial stands in for a missing face. */
   glyph: (one) => one.title.charAt(0).toUpperCase(),
   /** A life said the way the collection says it everywhere else. */
@@ -118,6 +126,8 @@ export const TERRITORY_LOOK: Look = {
   take: "Copier le territoire",
   named: "Nom du territoire",
   hint: "Austrasie, Bourgogne, Saint-Empire…",
+  ask: "Copier ce territoire ?",
+  means: "Son tracé rejoint les territoires que vous avez peints.",
   /** No picture and no type: the initial of the polity it draws. */
   glyph: (one) => one.title.charAt(0).toUpperCase(),
   /**
@@ -151,6 +161,9 @@ export const TREE_LOOK: Look = {
   named: "Nom de l'arbre",
   /* Des maisons, pas des personnes : on cherche une lignée entière. */
   hint: "Capétiens, Plantagenêt, Habsbourg…",
+  ask: "Copier cet arbre ?",
+  means:
+    "Il entre dans votre collection avec les personnages qui le composent.",
   glyph: (one) => one.title.charAt(0).toUpperCase(),
   /**
    * How many people across how many generations, and the span of their

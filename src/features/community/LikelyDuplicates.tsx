@@ -178,12 +178,6 @@ export function LikelyDuplicates({
         </Pressable>
       ))}
 
-      <Text style={styles.aside}>
-        {offered
-          ? "Touchez-en un pour le lire. Le vôtre dira peut-être autre chose : continuez si c'est le cas."
-          : "Touchez-en un pour le lire. Le vôtre dira peut-être autre chose : enregistrez si c'est le cas."}
-      </Text>
-
       {shown === null ? null : (
         <Sheet
           visible={reading !== null}

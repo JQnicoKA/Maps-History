@@ -209,11 +209,6 @@ export function SharedCard({
               />
             ))}
           </View>
-          <Text style={styles.aside}>
-            {onOpenHeld
-              ? `Touchez-en un pour le lire. ${look.castAside}`
-              : look.castAside}
-          </Text>
         </View>
       ) : null}
 
