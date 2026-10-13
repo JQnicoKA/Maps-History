@@ -162,6 +162,26 @@ export function DateWheels({
 }
 
 /**
+ * La date sur laquelle les roues s'ouvrent quand il n'y en a pas encore.
+ *
+ * **Le 1er janvier plutôt que « — — »**, et c'est un choix d'accueil, pas de
+ * sens : un sélecteur qui ouvre sur deux tirets demande deux gestes avant de
+ * dire quoi que ce soit, alors que la plupart des dates qu'on saisit sont
+ * complètes.
+ *
+ * Le « — » reste entier et garde exactement sa signification — « on ne sait
+ * pas » —, il suffit de remonter la roue d'un cran. C'est important : une date
+ * sans mois s'affiche « 1453 » là où une date au jour s'affiche « 1 janvier
+ * 1453 », et cette distinction est une information sur la source, pas un
+ * détail de présentation.
+ */
+const firstDayOf = (year: number): HistoricalDate => ({
+  year,
+  month: 1,
+  day: 1,
+});
+
+/**
  * Clearing the day, or the month and the day with it.
  *
  * Written out rather than rebuilt inline, because rebuilding `{ year }` from
@@ -267,7 +287,7 @@ export function EventDateField({
   const { say, dialog } = useNotice();
 
   const [draftStart, setDraftStart] = useState<HistoricalDate>(
-    start ?? { year: new Date().getFullYear() },
+    start ?? firstDayOf(new Date().getFullYear()),
   );
   const [draftEnd, setDraftEnd] = useState<HistoricalDate | null>(end);
   const [editing, setEditing] = useState<"start" | "end">("start");
@@ -281,7 +301,7 @@ export function EventDateField({
   };
 
   const reopen = () => {
-    setDraftStart(start ?? { year: new Date().getFullYear() });
+    setDraftStart(start ?? firstDayOf(new Date().getFullYear()));
     setDraftEnd(end);
     setEditing("start");
     setOpen(true);
