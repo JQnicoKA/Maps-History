@@ -60,6 +60,15 @@ const DOORS: Record<
     copy: "copy_tree",
     alike: null,
   },
+  place: {
+    search: "search_places",
+    whole: "shared_place",
+    copy: "copy_place",
+    // Une ville a une date et un nom court : exactement le cas où
+    // l'avertissement de doublon vaut quelque chose. Deux Carthage dans la
+    // communauté seraient deux pastilles au même endroit.
+    alike: "places_like",
+  },
   territory: {
     search: "search_territories",
     whole: "shared_territory",

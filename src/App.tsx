@@ -11,6 +11,7 @@ import {
 } from "./features/auth";
 import { EventsProvider } from "./features/events/EventsProvider";
 import { HiddenProvider } from "./features/territories/HiddenProvider";
+import { MyPlacesProvider } from "./features/places/MyPlacesProvider";
 import { PlacementProvider } from "./features/placement";
 import { holdMoreTiles } from "./map/cache";
 import { MapScreen } from "./screens/MapScreen";
@@ -71,11 +72,15 @@ function Gate() {
   return (
     <EventsProvider key={account.id}>
       <HiddenProvider key={account.id}>
-        {/* Not keyed on the account: it holds a question in flight, not
-            anything belonging to a reader. */}
-        <PlacementProvider>
-          <MapScreen />
-        </PlacementProvider>
+        {/* Les territoires et les villes se chargent et se périment à des
+            moments sans rapport, d'où deux réserves et non une. */}
+        <MyPlacesProvider key={account.id}>
+          {/* Not keyed on the account: it holds a question in flight, not
+              anything belonging to a reader. */}
+          <PlacementProvider>
+            <MapScreen />
+          </PlacementProvider>
+        </MyPlacesProvider>
       </HiddenProvider>
     </EventsProvider>
   );

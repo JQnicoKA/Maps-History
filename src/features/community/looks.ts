@@ -193,10 +193,48 @@ export const TREE_LOOK: Look = {
     "Aucun arbre de ce genre dans la communauté. Essayez d'élargir l'époque ou la région — ou bâtissez le vôtre.",
 };
 
+export const PLACE_LOOK: Look = {
+  many: "Communauté",
+  one: "Une ville",
+  take: "Copier la ville",
+  named: "Nom de la ville",
+  /* Des villes que l'histoire a faites et parfois défaites, et pas seulement
+     européennes : le catalogue n'est pas une carte de France. */
+  hint: "Carthage, Byzance, Tenochtitlan…",
+  ask: "Copier cette ville ?",
+  means:
+    "Elle rejoint les villes de votre carte, à l'endroit et aux années où son auteur l'a posée.",
+  /** Ni portrait ni genre : l'initiale du nom, comme pour un territoire. */
+  glyph: (one) => one.title.charAt(0).toUpperCase(),
+  /**
+   * Sa fondation, et sa disparition quand elle en a une.
+   *
+   * Son propre `under` plutôt que le `span` commun, parce qu'une ville sans
+   * fin n'est pas une ville dont on ignore la fin : elle est encore là, et
+   * une année seule ne le dirait pas.
+   */
+  under: (one) => {
+    const from = one.start?.year;
+    if (from === undefined) return "";
+    const to = one.end?.year;
+    if (to === undefined) return `fondée en ${formatYear(from)}`;
+    if (to === from) return formatYear(from);
+    return `${formatYear(from)} – ${formatYear(to)}`;
+  },
+  castLegend: "",
+  castAside: "",
+  filedLegend: "",
+  filedAside: "",
+  filedDoor: "",
+  nothing:
+    "Aucune ville de ce genre dans la communauté. Essayez d'élargir l'époque ou la région — ou posez la vôtre.",
+};
+
 export const LOOKS: Record<Kind, Look> = {
   event: EVENT_LOOK,
   character: CHARACTER_LOOK,
   folder: FOLDER_LOOK,
   territory: TERRITORY_LOOK,
   tree: TREE_LOOK,
+  place: PLACE_LOOK,
 };

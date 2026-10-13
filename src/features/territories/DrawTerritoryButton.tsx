@@ -4,6 +4,7 @@ import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useHidden } from "./HiddenProvider";
 import { Silhouette } from "./Silhouette";
 import { stake } from "../community/stakes";
+import { PlaceList } from "../places/PlaceList";
 import {
   ConfirmDialog,
   GlyphButton,
@@ -11,6 +12,7 @@ import {
   Roster,
   RosterEmpty,
   RosterRow,
+  SegmentedControl,
   Sheet,
   THUMB,
   useNotice,
@@ -32,11 +34,29 @@ const TRASH = require("../../../assets/icons/trash.png");
 /** Putting a territory back is exactly "show it on the map again". */
 const BACK_ON_MAP = require("../../../assets/icons/view-map.png");
 
+/**
+ * Les deux choses qu'on ajoute à la planche elle-même.
+ *
+ * Deux onglets et non deux boutons : ce sont deux façons de la même chose —
+ * changer la carte sur laquelle la collection se lit — et un second bouton
+ * dans la colonne aurait fait trois crayons côte à côte.
+ */
+const PARTS = [
+  { value: "territory" as const, label: "Territoires" },
+  { value: "place" as const, label: "Villes" },
+];
+
+type Part = (typeof PARTS)[number]["value"];
+
 export type DrawTerritoryButtonProps = {
   /** Hands the map over to the brush. */
   onDraw: () => void;
   /** Asks for the community's territories. */
   onSeek: () => void;
+  /** Donne la carte au viseur, pour y poser une ville. */
+  onPose: () => void;
+  /** Demande les villes de la communauté. */
+  onSeekPlaces: () => void;
 };
 
 /**
@@ -51,40 +71,34 @@ export type DrawTerritoryButtonProps = {
  * The button is under the `+` and deliberately apart from it: one adds an
  * event to the collection, the other changes the map the collection is read
  * on. Two different kinds of making.
+ *
+ * Le panneau garde le nom de son premier onglet, comme celui des personnages
+ * garde le sien alors qu'il porte aussi les arbres.
  */
 export function DrawTerritoryButton({
   onDraw,
   onSeek,
+  onPose,
+  onSeekPlaces,
 }: DrawTerritoryButtonProps) {
-  const { hidden, show, drawn, erase } = useHidden();
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState<string | null>(null);
-  /** The drawn territory awaiting a "yes" before it is rubbed out. */
-  const [asking, setAsking] = useState<{
-    id: string;
-    name: string;
-    origin: string | null;
-  } | null>(null);
-  const { say, dialog } = useNotice();
+  const [part, setPart] = useState<Part>("territory");
   /**
-   * True from the moment the catalogue is asked for until this sheet has
-   * gone, because iOS will not present a panel from one still dismissing.
+   * Ce qu'il faudra lever une fois ce panneau parti, s'il faut lever quelque
+   * chose — iOS refuse de présenter depuis un panneau qui se retire encore.
    */
-  const [seeking, setSeeking] = useState(false);
+  const [leaving, setLeaving] = useState<(() => void) | null>(null);
 
-  const work = (key: string, deed: Promise<void>, failed: string) => {
-    setBusy(key);
-    void deed
-      .catch((cause: unknown) =>
-        say(failed, cause instanceof Error ? cause.message : String(cause)),
-      )
-      .finally(() => setBusy(null));
+  /** Baisser, puis lever : la suite est jouée par `onClosed`. */
+  const after = (deed: () => void) => {
+    setLeaving(() => deed);
+    setOpen(false);
   };
 
   return (
     <>
       <GlyphButton
-        accessibilityLabel="Territoires"
+        accessibilityLabel="Territoires et villes"
         onPress={() => setOpen(true)}
       >
         <Image source={TERRITORIES} style={styles.glyph} resizeMode="contain" />
@@ -94,9 +108,10 @@ export function DrawTerritoryButton({
         visible={open}
         onClose={() => setOpen(false)}
         onClosed={() => {
-          if (!seeking) return;
-          setSeeking(false);
-          onSeek();
+          if (!leaving) return;
+          const deed = leaving;
+          setLeaving(null);
+          deed();
         }}
         title="Territoires"
         // Two lists that grow as the reader works; a panel resizing itself
@@ -111,116 +126,21 @@ export function DrawTerritoryButton({
           />
         }
       >
-        {dialog}
-
-        <ConfirmDialog
-          visible={asking !== null}
-          title={`Effacer « ${asking?.name ?? ""} » ?`}
-          message={stake(
-            asking?.origin ?? null,
-            "Il n'existe que sur votre carte : l'effacer est définitif.",
-          )}
-          confirmLabel="Effacer"
-          onConfirm={() => {
-            const target = asking;
-            setAsking(null);
-            if (target) {
-              work(target.id, erase(target.id), "Suppression impossible");
-            }
-          }}
-          onClose={() => setAsking(null)}
-        />
+        <View style={styles.switcher}>
+          <SegmentedControl segments={PARTS} value={part} onChange={setPart} />
+        </View>
 
         <ScrollView style={styles.fill} contentContainerStyle={styles.body}>
-
-          <Roster
-            count={
-              drawn.length === 0
-                ? "Aucun territoire dessiné"
-                : `${drawn.length} territoire${drawn.length > 1 ? "s" : ""} dessiné${drawn.length > 1 ? "s" : ""}`
-            }
-            addLabel="Dessiner un territoire"
-            seekLabel="Chercher dans la communauté"
-            seekDetail="Les territoires créés par les membres de la communauté"
-            onSeek={() => {
-              // Down, then up: the catalogue is raised by `onClosed` above.
-              setSeeking(true);
-              setOpen(false);
-            }}
-            onAdd={() => {
-              setOpen(false);
-              onDraw();
-            }}
-          >
-            {drawn.length === 0 ? (
-              <RosterEmpty>
-                Un territoire dessiné est à vous seul : il apparaît sur votre
-                carte aux années que vous lui donnez, et nulle part ailleurs.
-              </RosterEmpty>
-            ) : (
-              drawn.map((one) => (
-                <RosterRow
-                  key={one.id}
-                  thumb={
-                    // Its own outline, the only likeness a territory has.
-                    // The initial stands in for a shape with no area, which
-                    // ought not to exist but costs one line to survive.
-                    one.shape ? (
-                      <Silhouette shape={one.shape} size={THUMB - 6} />
-                    ) : (
-                      <Text style={styles.initial}>
-                        {one.name.charAt(0).toUpperCase()}
-                      </Text>
-                    )
-                  }
-                  title={one.name}
-                  detail={
-                    busy === one.id
-                      ? "Suppression…"
-                      : `${formatYear(one.from)} – ${formatYear(one.to)}`
-                  }
-                  onEdit={() =>
-                    setAsking({
-                      id: one.id,
-                      name: one.name,
-                      origin: one.origin,
-                    })
-                  }
-                  editLabel={`Effacer ${one.name}`}
-                  editIcon={TRASH}
-                />
-              ))
-            )}
-          </Roster>
-
-          {/* Only when there is something to say. An empty half-panel headed
-              "retirés de votre carte" would be a promise of a feature the
-              reader has not used. */}
-          {hidden.length === 0 ? null : (
-            <View style={styles.section}>
-              <Text style={styles.legend}>
-                {hidden.length === 1
-                  ? "1 territoire retiré de votre carte"
-                  : `${hidden.length} territoires retirés de votre carte`}
-              </Text>
-              {hidden.map((name) => (
-                <RosterRow
-                  key={name}
-                  thumb={
-                    <Text style={styles.initialFaded}>
-                      {name.charAt(0).toUpperCase()}
-                    </Text>
-                  }
-                  title={name}
-                  detail={busy === name ? "…" : "masqué à toutes les époques"}
-                  onEdit={() =>
-                    work(name, show(name), "Impossible de le rétablir")
-                  }
-                  editLabel={`Rétablir ${name}`}
-                  editIcon={BACK_ON_MAP}
-                />
-              ))}
-            </View>
+          {part === "territory" ? (
+            <TerritoryList
+              onDraw={() => after(onDraw)}
+              onSeek={() => after(onSeek)}
+            />
+          ) : (
+            <PlaceList
+              onPose={() => after(onPose)}
+              onSeek={() => after(onSeekPlaces)}
+            />
           )}
         </ScrollView>
       </Sheet>
@@ -228,15 +148,148 @@ export function DrawTerritoryButton({
   );
 }
 
+/** L'onglet Territoires : ce que le lecteur a peint, et ce qu'il a ôté. */
+function TerritoryList({
+  onDraw,
+  onSeek,
+}: {
+  onDraw: () => void;
+  onSeek: () => void;
+}) {
+  const { hidden, show, drawn, erase } = useHidden();
+  const [busy, setBusy] = useState<string | null>(null);
+  /** The drawn territory awaiting a "yes" before it is rubbed out. */
+  const [asking, setAsking] = useState<{
+    id: string;
+    name: string;
+    origin: string | null;
+  } | null>(null);
+  const { say, dialog } = useNotice();
+
+  const work = (key: string, deed: Promise<void>, failed: string) => {
+    setBusy(key);
+    void deed
+      .catch((cause: unknown) =>
+        say(failed, cause instanceof Error ? cause.message : String(cause)),
+      )
+      .finally(() => setBusy(null));
+  };
+
+  return (
+    <>
+      {dialog}
+
+      <ConfirmDialog
+        visible={asking !== null}
+        title={`Effacer « ${asking?.name ?? ""} » ?`}
+        message={stake(
+          asking?.origin ?? null,
+          "Il n'existe que sur votre carte : l'effacer est définitif.",
+        )}
+        confirmLabel="Effacer"
+        onConfirm={() => {
+          const target = asking;
+          setAsking(null);
+          if (target) {
+            work(target.id, erase(target.id), "Suppression impossible");
+          }
+        }}
+        onClose={() => setAsking(null)}
+      />
+
+      <Roster
+        count={
+          drawn.length === 0
+            ? "Aucun territoire dessiné"
+            : `${drawn.length} territoire${drawn.length > 1 ? "s" : ""} dessiné${drawn.length > 1 ? "s" : ""}`
+        }
+        addLabel="Dessiner un territoire"
+        seekLabel="Chercher dans la communauté"
+        seekDetail="Les territoires créés par les membres de la communauté"
+        onSeek={onSeek}
+        onAdd={onDraw}
+      >
+        {drawn.length === 0 ? (
+          <RosterEmpty>
+            Un territoire dessiné est à vous seul : il apparaît sur votre
+            carte aux années que vous lui donnez, et nulle part ailleurs.
+          </RosterEmpty>
+        ) : (
+          drawn.map((one) => (
+            <RosterRow
+              key={one.id}
+              thumb={
+                // Its own outline, the only likeness a territory has.
+                // The initial stands in for a shape with no area, which
+                // ought not to exist but costs one line to survive.
+                one.shape ? (
+                  <Silhouette shape={one.shape} size={THUMB - 6} />
+                ) : (
+                  <Text style={styles.initial}>
+                    {one.name.charAt(0).toUpperCase()}
+                  </Text>
+                )
+              }
+              title={one.name}
+              detail={
+                busy === one.id
+                  ? "Suppression…"
+                  : `${formatYear(one.from)} – ${formatYear(one.to)}`
+              }
+              onEdit={() =>
+                setAsking({
+                  id: one.id,
+                  name: one.name,
+                  origin: one.origin,
+                })
+              }
+              editLabel={`Effacer ${one.name}`}
+              editIcon={TRASH}
+            />
+          ))
+        )}
+      </Roster>
+
+      {/* Only when there is something to say. An empty half-panel headed
+          "retirés de votre carte" would be a promise of a feature the
+          reader has not used. */}
+      {hidden.length === 0 ? null : (
+        <View style={styles.section}>
+          <Text style={styles.legend}>
+            {hidden.length === 1
+              ? "1 territoire retiré de votre carte"
+              : `${hidden.length} territoires retirés de votre carte`}
+          </Text>
+          {hidden.map((name) => (
+            <RosterRow
+              key={name}
+              thumb={
+                <Text style={styles.initialFaded}>
+                  {name.charAt(0).toUpperCase()}
+                </Text>
+              }
+              title={name}
+              detail={busy === name ? "…" : "masqué à toutes les époques"}
+              onEdit={() => work(name, show(name), "Impossible de le rétablir")}
+              editLabel={`Rétablir ${name}`}
+              editIcon={BACK_ON_MAP}
+            />
+          ))}
+        </View>
+      )}
+    </>
+  );
+}
+
 const styles = StyleSheet.create({
   glyph: { width: 22, height: 22 },
   fill: { flex: 1 },
+  switcher: { paddingHorizontal: space.xl, paddingBottom: space.md },
   body: {
     paddingHorizontal: space.xl,
     paddingBottom: space.lg,
     gap: space.xl,
   },
-  lead: { ...type.caption, color: palette.inkSoft, textAlign: "center" },
   section: { gap: space.md },
   legend: { ...type.legend, color: palette.inkSoft, alignSelf: "center" },
   initial: { fontSize: 18, fontWeight: "700", color: palette.inkFaint },

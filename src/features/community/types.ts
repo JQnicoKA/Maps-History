@@ -3,12 +3,22 @@ import type { HistoricalDate, Importance, TreeBond } from "../events/types";
 /**
  * What kind of thing a page of the catalogue is about.
  *
- * The five are drawn the same way and searched the same way — a name, a span,
+ * The six are drawn the same way and searched the same way — a name, a span,
  * a place, an author, a count of stars — so one panel lists them all and this
  * is what tells it which door to knock on. Only the thumbnail and the line
  * under the title differ, and those are two functions, not two screens.
+ *
+ * Une union discriminée plutôt qu'une chaîne : ajouter un genre ici fait
+ * lister par le compilateur tout ce qui reste à compléter, ce qui est la
+ * seule manière sûre d'en ajouter un.
  */
-export type Kind = "event" | "character" | "folder" | "tree" | "territory";
+export type Kind =
+  | "event"
+  | "character"
+  | "folder"
+  | "tree"
+  | "territory"
+  | "place";
 
 /**
  * One line of the community catalogue.

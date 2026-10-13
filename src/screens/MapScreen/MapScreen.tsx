@@ -9,7 +9,7 @@ import { AccountButton } from "./AccountButton";
 import { InkButton, Paper, useNotice } from "../../components/ui";
 import { ParchmentOverlay, WorldMap } from "../../components/WorldMap";
 import { env } from "../../config/env";
-import { MAP_FEATURES } from "../../config/map";
+import { INITIAL_VIEW, MAP_FEATURES } from "../../config/map";
 import { useEvents } from "../../features/events/EventsProvider";
 import type { HistoricalEvent } from "../../features/events/types";
 import type { Tab } from "../../features/events/components/EventFormModal";
@@ -34,16 +34,27 @@ import {
   ShapeBar,
   ShapeOnShow,
   usePlacement,
+  type Point,
 } from "../../features/placement";
 import { Catalogue } from "../../features/community/Catalogue";
 import {
   CHARACTER_LOOK,
   EVENT_LOOK,
   FOLDER_LOOK,
+  PLACE_LOOK,
   TERRITORY_LOOK,
   TREE_LOOK,
 } from "../../features/community/looks";
-import { PlaceLayers } from "../../features/places/PlaceLayers";
+import {
+  PlaceLayers,
+  type TouchedPlace,
+} from "../../features/places/PlaceLayers";
+import { PlaceSheet } from "../../features/places/PlaceSheet";
+import { useMyPlaces } from "../../features/places/MyPlacesProvider";
+import {
+  NamePlaceDialog,
+  type NamedPlace,
+} from "../../features/places/NamePlaceDialog";
 import { TerritoryLayers } from "../../features/territories/TerritoryLayers";
 import {
   TerritorySheet,
@@ -94,6 +105,7 @@ type Page =
   | { kind: "searchCharacters" }
   | { kind: "searchFolders" }
   | { kind: "searchTerritories" }
+  | { kind: "searchPlaces" }
   | { kind: "searchTrees" };
 
 export function MapScreen() {
@@ -109,7 +121,7 @@ export function MapScreen() {
     trees,
     selectEvent,
   } = useEvents();
-  const { aiming, asking, settle, looking } = usePlacement();
+  const { aiming, asking, place, settle, looking } = usePlacement();
   /**
    * How much of a metre a screen point is worth, where the plate is looking.
    *
@@ -118,6 +130,14 @@ export function MapScreen() {
    * region reticle needs it to draw a radius in metres as a circle in points.
    */
   const [pointsPerMetre, setPointsPerMetre] = useState<number | null>(null);
+  /**
+   * L'échelle à laquelle la planche est lue.
+   *
+   * Tenue pour les villes, qui s'en servent pour savoir laquelle le doigt a
+   * le droit de trouver. Tenue ici parce que c'est l'écran qui écoute la
+   * carte, et gratuite : `onLook` provoquait déjà un rendu à chaque geste.
+   */
+  const [zoom, setZoom] = useState<number>(INITIAL_VIEW.zoom);
   /** The reach being set, while the region reticle is up. */
   const [reach, setReach] = useState(500_000);
   // The opening shot should not fly across the world; every later move should.
@@ -142,6 +162,8 @@ export function MapScreen() {
   const [detailed, setDetailed] = useState(false);
   /** The territory the finger last landed on, if its card is open. */
   const [touched, setTouched] = useState<TouchedTerritory | null>(null);
+  /** La ville sur laquelle le doigt est tombé, si sa fiche est ouverte. */
+  const [touchedPlace, setTouchedPlace] = useState<TouchedPlace | null>(null);
   /**
    * Which page is open, if any.
    *
@@ -286,6 +308,16 @@ export function MapScreen() {
     treeId === null ? null : (trees.find((one) => one.id === treeId) ?? null);
 
   const { draw } = useHidden();
+  const { add: addPlace } = useMyPlaces();
+  /**
+   * Le point qu'on vient de viser, pendant qu'on nomme la ville qui s'y pose.
+   *
+   * Une ville se nomme après avoir visé et non avant, comme un territoire se
+   * nomme après avoir été peint : on sait ce qu'on vient de poser, on ne sait
+   * pas encore ce qu'on va poser.
+   */
+  const [posing, setPosing] = useState<Point | null>(null);
+  const [posingSaving, setPosingSaving] = useState(false);
   /** Painting: the strokes laid down, the one under the finger, the state. */
   const [drawing, setDrawing] = useState(false);
   const [strokes, setStrokes] = useState<Stroke[]>([]);
@@ -333,6 +365,42 @@ export function MapScreen() {
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  /**
+   * Donne la carte au viseur, puis demande son nom à ce qu'on y a posé.
+   *
+   * Deux temps et non un : le viseur rend un point ou rien du tout, et le
+   * lecteur qui renonce en chemin ne doit pas se retrouver devant un
+   * formulaire à remplir sur une ville qu'il n'a pas posée.
+   */
+  const poseAPlace = async () => {
+    const spot = await place();
+    if (spot) setPosing(spot);
+  };
+
+  /** Garde la ville à l'endroit visé, sous le nom et les années données. */
+  const keepPlace = async (named: NamedPlace) => {
+    const spot = posing;
+    if (!spot) return;
+    setPosingSaving(true);
+    try {
+      await addPlace({
+        name: named.name,
+        longitude: spot.longitude,
+        latitude: spot.latitude,
+        from: named.from,
+        to: named.to,
+      });
+      setPosing(null);
+    } catch (cause) {
+      sayMap(
+        "Ville non enregistrée",
+        cause instanceof Error ? cause.message : String(cause),
+      );
+    } finally {
+      setPosingSaving(false);
     }
   };
 
@@ -420,6 +488,7 @@ export function MapScreen() {
           onDetailChange={setDetailed}
           onLook={(centre, zoom) => {
             looking.current = centre;
+            setZoom(zoom);
             const metresPerPoint =
               (156543.03392 * Math.cos((centre.latitude * Math.PI) / 180)) /
               2 ** zoom;
@@ -432,7 +501,14 @@ export function MapScreen() {
           {/* Settlements first, territories after: MapLibre places symbols
               from the topmost layer down, so the country name wins the room
               against the town names crowding around its anchor. */}
-          {MAP_FEATURES.places ? <PlaceLayers /> : null}
+          {MAP_FEATURES.places ? (
+            <PlaceLayers
+              zoom={zoom}
+              // Pas pendant qu'on vise ou qu'on peint : chaque touche
+              // appartient à cela, et le viseur est ce avec quoi on vise.
+              onTouch={aiming || drawing ? undefined : setTouchedPlace}
+            />
+          ) : null}
           {MAP_FEATURES.territories && filters.territories ? (
             <TerritoryLayers
               detailed={detailed}
@@ -543,6 +619,16 @@ export function MapScreen() {
         onClose={() => setNaming(false)}
       />
 
+      <NamePlaceDialog
+        // Remonté à chaque pose, pour que les champs soient vierges : la
+        // fenêtre tient son brouillon, et la ville d'avant y serait restée.
+        key={`place-${posing?.longitude ?? "none"}-${posing?.latitude ?? ""}`}
+        visible={posing !== null}
+        busy={posingSaving}
+        onConfirm={(named) => void keepPlace(named)}
+        onClose={() => setPosing(null)}
+      />
+
       {aiming || drawing ? null : (
         <>
           <View
@@ -576,6 +662,8 @@ export function MapScreen() {
                 <DrawTerritoryButton
                   onDraw={() => setDrawing(true)}
                   onSeek={() => raise({ kind: "searchTerritories" })}
+                  onPose={() => void poseAPlace()}
+                  onSeekPlaces={() => raise({ kind: "searchPlaces" })}
                 />
               ) : null}
             </View>
@@ -676,6 +764,8 @@ export function MapScreen() {
 
       <TerritorySheet territory={touched} onClose={() => setTouched(null)} />
 
+      <PlaceSheet place={touchedPlace} onClose={() => setTouchedPlace(null)} />
+
       {/* Someone's page: what a tap asks for, on the plate, on a row, and on
           a name in an event's cast. Every way in leads here, so a face on the
           map is a way into the collection and not a dead end. */}
@@ -758,6 +848,15 @@ export function MapScreen() {
         kind="territory"
         look={TERRITORY_LOOK}
         visible={page?.kind === "searchTerritories"}
+        onClose={() => setPage(null)}
+        onClosed={afterPage}
+      />
+
+      <Catalogue
+        key={`commons-places-${raised}`}
+        kind="place"
+        look={PLACE_LOOK}
+        visible={page?.kind === "searchPlaces"}
         onClose={() => setPage(null)}
         onClosed={afterPage}
       />

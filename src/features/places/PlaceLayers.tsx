@@ -84,18 +84,98 @@ const RADIUS: ExpressionSpecification = [
 ];
 
 /**
+ * De combien de points autour du doigt on cherche une ville.
+ *
+ * Une pastille fait 0,7 à 1,7 point de rayon : c'est de l'encre, pas une
+ * cible, et sans marge aucune ville ne s'ouvrirait jamais. La source en
+ * ménage une d'elle-même — 22 points de tous côtés, soit la cible tactile
+ * entière de 44 — mais c'est trop ici : les villes se côtoient par dizaines,
+ * et un doigt posé sur rien en happerait toujours une. Douze points laissent
+ * la pastille atteignable sans que la planche entière devienne un bouton. Le
+ * nom, lui, est déjà une large cible à lui seul.
+ */
+const HIT = { top: 12, right: 12, bottom: 12, left: 12 };
+
+/** Ce qu'un doigt a trouvé sur la planche. */
+export type TouchedPlace = {
+  name: string;
+  /** Un bourg ou une ville, dans le jeu de référence. */
+  kind: string;
+  /** Son identité chez OpenHistoricalMap — null pour celles du lecteur. */
+  ohm: number | null;
+  /** Sa ligne, quand c'est le lecteur qui l'a posée. */
+  id: string | null;
+  /** Vrai quand le lecteur l'a posée lui-même. */
+  drawn: boolean;
+};
+
+export type PlaceLayersProps = {
+  /**
+   * L'échelle à laquelle la planche est lue.
+   *
+   * Sert au doigt et non à l'œil : voir `onPress`, qui s'en sert pour ne
+   * rendre que ce qui est effectivement dessiné.
+   */
+  zoom: number;
+  /** Non fourni pendant qu'on vise ou qu'on peint : le doigt sert à cela. */
+  onTouch?: (place: TouchedPlace) => void;
+};
+
+/**
  * Settlements as they stood in the year being read. The base tileset's own
  * place labels were removed from the style: they are today's, and this map
  * never shows two epochs at once.
+ *
+ * Deux jeux dans une seule source : celui d'OpenHistoricalMap et les villes
+ * que le lecteur a posées — assemblés par `usePlacesAt`, qui ôte au passage
+ * ce qu'il a masqué. Une seule source parce que les deux se dessinent de la
+ * même encre et se disputent la même place : séparées, chaque groupe
+ * passerait sa collision de son côté et deux noms finiraient l'un sur
+ * l'autre.
  */
-export function PlaceLayers() {
+export function PlaceLayers({ zoom, onTouch }: PlaceLayersProps) {
   const { year } = useEvents();
   const collection = usePlacesAt(year);
 
   if (!collection) return null;
 
   return (
-    <GeoJSONSource id="places" data={collection}>
+    <GeoJSONSource
+      id="places"
+      data={collection}
+      hitbox={HIT}
+      onPress={(event) => {
+        /**
+         * La première qui soit réellement dessinée, et non la première tout
+         * court.
+         *
+         * L'opacité cache une pastille ; elle ne la retire pas de ce que le
+         * doigt peut trouver. Sans ce tri, dix-sept mille bourgs invisibles
+         * happeraient les touches à l'échelle du monde, et la carte
+         * deviendrait impossible à parcourir. Le tri se fait ici plutôt que
+         * dans le rayon de la couche parce qu'une propriété de peinture ne
+         * supporte qu'une seule sous-expression en `zoom` — multiplier
+         * `VISIBLE` par `RADIUS` en mettrait deux et la planche refuserait de
+         * se charger. Même piège que celui décrit au-dessus de `VISIBLE`.
+         */
+        const touched = event.nativeEvent.features.find((feature) => {
+          const its = feature.properties?.["kind"];
+          return zoom >= (its === "town" ? APPEARS.town : APPEARS.city);
+        })?.properties;
+        const name = touched?.["name"];
+        if (typeof name !== "string" || name === "") return;
+        const ohm = touched?.["ohm"];
+        const id = touched?.["id"];
+        const kind = touched?.["kind"];
+        onTouch?.({
+          name,
+          kind: typeof kind === "string" ? kind : "city",
+          ohm: typeof ohm === "number" ? ohm : null,
+          id: typeof id === "string" ? id : null,
+          drawn: touched?.["drawn"] === true,
+        });
+      }}
+    >
       <Layer
         id="place-dot"
         type="circle"

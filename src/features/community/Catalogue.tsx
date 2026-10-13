@@ -54,6 +54,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useEvents } from "../events/EventsProvider";
 import { useHidden } from "../territories/HiddenProvider";
+import { useMyPlaces } from "../places/MyPlacesProvider";
 import { formatHistoricalDate } from "../events/historicalDate";
 import { widthsFor } from "./period";
 import { usePlacement } from "../placement";
@@ -123,6 +124,7 @@ export function Catalogue({
 }: CatalogueProps) {
   const { year, refresh } = useEvents();
   const { reload: reloadDrawn } = useHidden();
+  const { reload: reloadPlaces } = useMyPlaces();
   const { aiming, placeRegion, showShape, looking } = usePlacement();
   const insets = useSafeAreaInsets();
   const { say, dialog } = useNotice();
@@ -557,12 +559,16 @@ export function Catalogue({
     void api
       .copy(its, one.id)
       .then(async () => {
-        // Two stores hold what this account owns, and a copy arrives by a
-        // route neither knows about: the collection for events, people and
-        // classeurs, the painted territories for the rest. The map redraws
-        // itself from the database and needed no telling; these lists are
-        // held in memory and did.
-        await (its === "territory" ? reloadDrawn() : refresh());
+        // Trois réserves tiennent ce que ce compte possède, et une copie
+        // arrive par une route qu'aucune ne connaît : la collection pour les
+        // événements, les gens et les classeurs ; les territoires peints ;
+        // les villes posées. La carte se redessine depuis la base et n'avait
+        // besoin de rien ; ces listes-là sont tenues en mémoire, si.
+        await (its === "territory"
+          ? reloadDrawn()
+          : its === "place"
+            ? reloadPlaces()
+            : refresh());
         // The drawing has served its purpose once the copy is taken.
         setDrawn(null);
         setRows((current) =>

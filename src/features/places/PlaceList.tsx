@@ -1,0 +1,175 @@
+import { useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
+
+import { useMyPlaces } from "./MyPlacesProvider";
+import { stake } from "../community/stakes";
+import {
+  ConfirmDialog,
+  Roster,
+  RosterEmpty,
+  RosterRow,
+  useNotice,
+} from "../../components/ui";
+import { formatYear } from "../events/historicalDate";
+import { palette } from "../../theme/palette";
+import { space, type } from "../../theme/tokens";
+
+const TRASH = require("../../../assets/icons/trash.png");
+/** Remettre une ville, c'est exactement « la remontrer sur la carte ». */
+const BACK_ON_MAP = require("../../../assets/icons/view-map.png");
+
+export type PlaceListProps = {
+  /** Donne la carte au viseur, pour y poser une ville. */
+  onPose: () => void;
+  /** Demande les villes de la communauté. */
+  onSeek: () => void;
+};
+
+/** Ses années, dites comme le lecteur les a données. */
+function said(from: number, to: number | null): string {
+  if (to === null) return `depuis ${formatYear(from)}`;
+  if (to === from) return formatYear(from);
+  return `${formatYear(from)} – ${formatYear(to)}`;
+}
+
+/**
+ * L'onglet Villes : ce que le lecteur a posé, et ce qu'il a ôté.
+ *
+ * Même forme que la liste des territoires à côté — un compte, deux manières
+ * d'en ajouter une, les lignes, puis les retirées quand il y en a. Dans son
+ * propre dossier parce que tout ce qu'elle touche y est ; le panneau qui la
+ * porte ne fait que l'appeler.
+ */
+export function PlaceList({ onPose, onSeek }: PlaceListProps) {
+  const { mine, masked, erase, unmask } = useMyPlaces();
+  const [busy, setBusy] = useState<string | null>(null);
+  /** La ville qui attend un « oui » avant d'être effacée. */
+  const [asking, setAsking] = useState<{
+    id: string;
+    name: string;
+    origin: string | null;
+  } | null>(null);
+  const { say, dialog } = useNotice();
+
+  const work = (key: string, deed: Promise<void>, failed: string) => {
+    setBusy(key);
+    void deed
+      .catch((cause: unknown) =>
+        say(failed, cause instanceof Error ? cause.message : String(cause)),
+      )
+      .finally(() => setBusy(null));
+  };
+
+  return (
+    <>
+      {dialog}
+
+      <ConfirmDialog
+        visible={asking !== null}
+        title={`Effacer « ${asking?.name ?? ""} » ?`}
+        message={stake(
+          asking?.origin ?? null,
+          "Elle n'existe que sur votre carte : l'effacer est définitif.",
+        )}
+        confirmLabel="Effacer"
+        onConfirm={() => {
+          const target = asking;
+          setAsking(null);
+          if (target) {
+            work(target.id, erase(target.id), "Suppression impossible");
+          }
+        }}
+        onClose={() => setAsking(null)}
+      />
+
+      <Roster
+        count={
+          mine.length === 0
+            ? "Aucune ville posée"
+            : `${mine.length} ville${mine.length > 1 ? "s" : ""} posée${mine.length > 1 ? "s" : ""}`
+        }
+        addLabel="Poser une ville"
+        seekLabel="Chercher dans la communauté"
+        seekDetail="Les villes posées par les membres de la communauté"
+        onSeek={onSeek}
+        onAdd={onPose}
+      >
+        {mine.length === 0 ? (
+          <RosterEmpty>
+            Une ville posée est à vous seul : elle paraît sur votre carte à
+            partir de l'année que vous lui donnez, et nulle part ailleurs.
+          </RosterEmpty>
+        ) : (
+          mine.map((one) => (
+            <RosterRow
+              key={one.id}
+              thumb={
+                <Text style={styles.initial}>
+                  {one.name.charAt(0).toUpperCase()}
+                </Text>
+              }
+              title={one.name}
+              detail={
+                busy === one.id ? "Suppression…" : said(one.from, one.to)
+              }
+              onEdit={() =>
+                setAsking({
+                  id: one.id,
+                  name: one.name,
+                  origin: one.origin,
+                })
+              }
+              editLabel={`Effacer ${one.name}`}
+              editIcon={TRASH}
+            />
+          ))
+        )}
+      </Roster>
+
+      {/* Seulement s'il y a quelque chose à dire. Une demi-page intitulée
+          « retirées de votre carte » serait la promesse d'une fonction que le
+          lecteur n'a pas utilisée. */}
+      {masked.length === 0 ? null : (
+        <View style={styles.section}>
+          <Text style={styles.legend}>
+            {masked.length === 1
+              ? "1 ville retirée de votre carte"
+              : `${masked.length} villes retirées de votre carte`}
+          </Text>
+          {masked.map((one) => (
+            <RosterRow
+              key={one.ohm}
+              thumb={
+                <Text style={styles.initialFaded}>
+                  {(one.name ?? "?").charAt(0).toUpperCase()}
+                </Text>
+              }
+              /* Sans nom quand le lieu a quitté l'extrait depuis : la ligne
+                 reste, et rétablir la fera reparaître si le lieu revient. */
+              title={one.name ?? "Un lieu que la carte ne connaît plus"}
+              detail={
+                busy === String(one.ohm) ? "…" : "masquée à toutes les époques"
+              }
+              onEdit={() =>
+                work(
+                  String(one.ohm),
+                  unmask(one.ohm),
+                  "Impossible de la rétablir",
+                )
+              }
+              editLabel={`Rétablir ${one.name ?? "ce lieu"}`}
+              editIcon={BACK_ON_MAP}
+            />
+          ))}
+        </View>
+      )}
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  section: { gap: space.md },
+  legend: { ...type.legend, color: palette.inkSoft, alignSelf: "center" },
+  initial: { fontSize: 18, fontWeight: "700", color: palette.inkFaint },
+  initialFaded: { fontSize: 18, fontWeight: "700", color: palette.line },
+});
