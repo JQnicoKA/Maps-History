@@ -416,8 +416,19 @@ export function EventDateField({
               accessibilityRole="button"
               accessibilityLabel={labels.addEnd}
               onPress={() => {
-                // Opens on the start's year, which is where a period begins.
-                setDraftEnd({ year: draftStart.year });
+                // Sur le début lui-même, précision comprise : une période
+                // qui commence « en mars 1453 » doit ouvrir sa fin sur
+                // mars, pas retomber sur le 1er janvier. L'incertitude,
+                // elle, ne se recopie pas — la fin a la sienne.
+                setDraftEnd({
+                  year: draftStart.year,
+                  ...(draftStart.month === undefined
+                    ? {}
+                    : { month: draftStart.month }),
+                  ...(draftStart.day === undefined
+                    ? {}
+                    : { day: draftStart.day }),
+                });
                 setEditing("end");
               }}
               style={({ pressed }) => [styles.add, pressed && styles.pressed]}
