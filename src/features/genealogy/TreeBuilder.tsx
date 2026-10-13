@@ -155,7 +155,7 @@ const HELP: { question: string; answer: string }[] = [
   {
     question: "Comment écrire une étiquette ?",
     answer:
-      "Touchez le + au bout d'une ligne, puis « Nouvelle étiquette » en bas de la fenêtre. Quelques mots, et une largeur de une, deux ou trois cartes. Une étiquette titre une branche ou marque une date ; elle ne porte aucun lien.",
+      "Restez appuyé sur le + au bout d'une ligne. Vous pourrez alors placer le texte que vous souhaitez dans votre arbre",
   },
   {
     question: "Comment modifier une étiquette ?",
@@ -302,9 +302,7 @@ export function TreeBuilder({
    * dessiné derrière la page qu'on ouvre, elle s'en va pour de bon — et il
    * faut l'attendre.
    */
-  const [afterPicker, setAfterPicker] = useState<
-    "new" | "seek" | "label" | null
-  >(null);
+  const [afterPicker, setAfterPicker] = useState<"new" | "seek" | null>(null);
   /**
    * L'étiquette qu'on écrit : une existante, ou `"new"` pour une neuve.
    *
@@ -700,10 +698,22 @@ export function TreeBuilder({
                 ? "Ajouter une génération"
                 : "Ajouter à cette génération"
             }
+            accessibilityHint="Maintenez pour écrire une étiquette"
             disabled={busy}
             onPress={() => {
               setPlacing(null);
               setAdding(generation);
+            }}
+            /* Un second geste sur la même case, et c'est la règle que cet
+               arbre emploie déjà partout : toucher pour la chose
+               ordinaire, maintenir pour l'autre. Une étiquette s'ouvre
+               donc directement, sans passer par la fenêtre d'ajout —
+               aucune feuille n'est ouverte au moment du maintien, donc
+               rien à céder à personne. */
+            onLongPress={() => {
+              setPlacing(null);
+              writingAt.current = generation;
+              setWriting("new");
             }}
             style={({ pressed }) => [
               styles.slot,
@@ -812,10 +822,7 @@ export function TreeBuilder({
             if (afterPicker === null) return;
             const door = afterPicker;
             setAfterPicker(null);
-            // La troisième porte ne quitte pas l'arbre : elle n'a donc pas
-            // d'errand à reprendre, seulement une rangée à retenir.
-            if (door === "label") setWriting("new");
-            else if (door === "new") onNewPerson();
+            if (door === "new") onNewPerson();
             else onSeekPerson();
           }}
           title={
@@ -825,27 +832,12 @@ export function TreeBuilder({
           }
           tall
           footer={
-            <>
-              {/* La troisième façon de remplir une case : ni quelqu'un de la
-                  collection, ni quelqu'un de la communauté, mais quelques
-                  mots. Dans le pied et non dans la liste, parce qu'une
-                  étiquette n'est pas une personne qu'on y chercherait. */}
-              <InkButton
-                label="Nouvelle étiquette"
-                variant="tonal"
-                onPress={() => {
-                  writingAt.current = adding;
-                  setAfterPicker("label");
-                  setAdding(null);
-                }}
-              />
-              <InkButton
-                label="Fermer"
-                variant="solid"
-                grow
-                onPress={() => setAdding(null)}
-              />
-            </>
+            <InkButton
+              label="Fermer"
+              variant="solid"
+              grow
+              onPress={() => setAdding(null)}
+            />
           }
         >
           <CharacterManager

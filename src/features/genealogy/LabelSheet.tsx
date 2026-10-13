@@ -38,6 +38,13 @@ const SAID: Record<LabelWidth, string> = {
  * Elle s'ouvre au **toucher** d'une étiquette, là où un maintien la décolle
  * pour la déplacer. Le même partage que pour un personnage : toucher pour
  * lire ou écrire, maintenir pour ranger.
+ *
+ * **Pas d'`autoFocus` sur le champ**, et c'est une correction plutôt qu'un
+ * oubli : le clavier s'ouvrait pendant que la feuille montait encore, et sur
+ * Android la fenêtre se réduisait sous un panneau qui n'avait pas fini de se
+ * placer — on voyait un cadre vide jusqu'à ce qu'un toucher remette tout
+ * d'aplomb. Aucune autre feuille de l'application ne l'emploie, ce qui était
+ * le signe qu'il ne fallait pas commencer ici.
  */
 export function LabelSheet({
   visible,
@@ -92,12 +99,7 @@ export function LabelSheet({
           onChangeText={setText}
           placeholder="Maison de Bourgogne, 1066, la branche cadette…"
           maxLength={80}
-          autoFocus={label === null}
         />
-        <Text style={styles.aside}>
-          Quelques mots, pas un paragraphe : une étiquette titre une branche,
-          elle ne la raconte pas.
-        </Text>
 
         <View style={styles.rule} />
 
@@ -112,11 +114,6 @@ export function LabelSheet({
             />
           ))}
         </View>
-        <Text style={styles.aside}>
-          Une étiquette large enjambe les gouttières : elle occupe la place de
-          deux ou trois cartes, et pousse ses voisines comme le ferait un
-          couple.
-        </Text>
 
         {onRemove === undefined ? null : (
           <>
