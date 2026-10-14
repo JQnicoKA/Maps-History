@@ -4,9 +4,7 @@ import { StyleSheet, Text } from "react-native";
 import { useMyPlaces } from "./MyPlacesProvider";
 import type { TouchedPlace } from "./PlaceLayers";
 import { Dialog, InkButton, useNotice } from "../../components/ui";
-import { whyLocked } from "../community/copies";
 import { ShareRow } from "../community/ShareRow";
-import { stake } from "../community/stakes";
 import { formatYear } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
 import { type } from "../../theme/tokens";
@@ -44,7 +42,7 @@ export function PlaceSheet({ place, onClose }: PlaceSheetProps) {
   const { say, dialog } = useNotice();
 
   const own = place?.drawn === true;
-  /** Sa ligne à nous, qui porte ses années et son partage. */
+  /** Sa ligne à nous, qui porte ses années. */
   const ours = own ? (mine.find((one) => one.id === place?.id) ?? null) : null;
 
   return (
@@ -69,21 +67,25 @@ export function PlaceSheet({ place, onClose }: PlaceSheetProps) {
 
       <Text style={styles.line}>
         {own
-          ? stake(
-              ours?.origin ?? null,
-              "La supprimer est définitif : elle n'existe que sur votre carte.",
-            )
+          ? "La supprimer est définitif : elle n'existe que sur votre carte."
           : "La retirer ne l'efface pas : elle disparaît de votre carte, à toutes les époques, et vous pourrez la rétablir depuis le bouton territoires."}
       </Text>
 
       {/* Seulement ce que le lecteur a posé : le jeu de référence appartient
-          déjà à tout le monde, et rien de lui n'est à nous pour le partager
-          ou le retenir. */}
+          déjà à tout le monde, et rien de lui n'est à nous pour l'accorder ou
+          le retenir.
+
+          La case ne met pas la ville dans un catalogue — il n'en existe plus
+          pour les villes. Elle autorise sa promotion dans le fond de carte,
+          ce qui va plus loin : la ville y est reprise telle quelle, tout le
+          monde l'a, et la ligne du lecteur disparaît puisqu'elle y ferait
+          doublon. D'où une phrase à elle plutôt que celle de la
+          bibliothèque. */}
       {own && ours ? (
         <ShareRow
           what="cette ville"
+          means="Autorise la bibliothèque, si elle la vérifie, à l'ajouter au fond de carte que tous les lecteurs voient. Elle quittera alors votre liste."
           shared={ours.shared}
-          locked={whyLocked(ours.origin)}
           onChange={(next) => share(ours.id, next)}
         />
       ) : null}

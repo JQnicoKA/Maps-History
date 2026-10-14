@@ -49,8 +49,8 @@ export type LikelyDuplicatesProps = {
  * Never a blockage, and never a choice made for the reader. Several events
  * can carry one name and be different facts — this very collection holds a
  * "Sacre de Pépin le bref" and a "Second sacre de Pépin le bref" four years
- * apart — so the card lists them, says who wrote each and how many readers
- * kept it, and leaves the decision where it belongs.
+ * apart — so the card lists them with their span and how many readers kept
+ * each, and leaves the decision where it belongs.
  */
 export function LikelyDuplicates({
   kind,
@@ -152,15 +152,15 @@ export function LikelyDuplicates({
                     start: one.start,
                     end: one.end,
                   } as Parameters<typeof formatEventPeriod>[0])}
-              {" · "}
-              {one.mine ? "vous" : one.author}
               {one.stars > 0 ? ` · ★ ${one.stars}` : ""}
             </Text>
           </View>
 
-          {!offered ? null : one.mine ? (
-            <Text style={styles.already}>le vôtre</Text>
-          ) : one.copied ? (
+          {/* `one.mine` ne vaut plus que pour la bibliothèque elle-même —
+              c'est la seule à rencontrer ses propres entrées ici. Elle n'a
+              rien à y prendre, et « le vôtre » sur chaque ligne ne le lui
+              apprenait pas : on ne montre rien. */}
+          {!offered || one.mine ? null : one.copied ? (
             <Text style={styles.already}>déjà pris</Text>
           ) : (
             <Pressable
@@ -192,20 +192,18 @@ export function LikelyDuplicates({
                 grow
                 onPress={() => setReading(null)}
               />
-              {!offered ? null : (
+              {!offered || shown.mine ? null : (
                 <InkButton
                   label={
-                    shown.mine
-                      ? "Le vôtre"
-                      : shown.copied
-                        ? "Déjà pris"
-                        : taking === shown.id
-                          ? "…"
-                          : "Prendre celui-ci"
+                    shown.copied
+                      ? "Déjà pris"
+                      : taking === shown.id
+                        ? "…"
+                        : "Prendre celui-ci"
                   }
                   variant="solid"
                   grow
-                  disabled={shown.mine || shown.copied || taking !== null}
+                  disabled={shown.copied || taking !== null}
                   onPress={() => take(shown)}
                 />
               )}

@@ -2,8 +2,6 @@ import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { Dialog, InkButton, InkField } from "../../components/ui";
-import { LikelyDuplicates } from "../community/LikelyDuplicates";
-import { TERRITORY_LOOK } from "../community/looks";
 import { HISTORY } from "../../config/history";
 import { palette } from "../../theme/palette";
 import { space, type } from "../../theme/tokens";
@@ -92,23 +90,12 @@ export function NamePolityDialog({
           : `Une année négative est avant Jésus-Christ ; de ${HISTORY.from} à ${HISTORY.to}.`}
       </Text>
 
-      {/* Told here rather than after the fact: somebody may have painted
-          this very polity for these very years, and the moment to find out
-          is before a second one joins the community. No "Prendre" — the
-          reader has already done the work, and taking somebody else's shape
-          instead would throw theirs away. */}
-      {start === null ? null : (
-        <LikelyDuplicates
-          kind="territory"
-          look={TERRITORY_LOOK}
-          noun="territoire"
-          title={name}
-          year={start}
-          approximate={false}
-          taking={false}
-          onTaken={() => undefined}
-        />
-      )}
+      {/* Plus d'avertissement de doublon ici.
+          Il interrogeait la communauté : « quelqu'un a déjà peint ce
+          territoire-là ». Mais un territoire ne se partage plus — il reste au
+          lecteur, ou le conservateur le promeut dans le fond de carte, où il
+          est unique par construction. Il n'y a donc plus de doublon possible
+          à annoncer. */}
 
       <InkButton
         label={busy ? "Enregistrement…" : "Enregistrer"}

@@ -81,12 +81,13 @@ export type Folder = {
    * The row this was taken from, in another account — null for an original.
    *
    * What it is for today is telling the truth when something is deleted: a
-   * copy's disappearance costs nothing, since its author's still stands in
-   * the community, and saying "c'est définitif" over a copy is a lie.
+   * copy's disappearance costs nothing, since the entry it was taken from
+   * still stands in the library, and saying "c'est définitif" over a copy is
+   * a lie.
    */
   origin: string | null;
   /**
-   * In the community, where anybody may read and copy it.
+   * Proposé à la bibliothèque, qui le reprendra si elle le vérifie.
    *
    * True unless the reader said otherwise: what is written here is history,
    * and history nobody shares is history nobody reads. The way out exists for
@@ -163,7 +164,7 @@ export type EventSummary = {
   latitude: number;
   folders: EventFolderLink[];
   /**
-   * In the community, where anybody may read and copy it.
+   * Proposé à la bibliothèque, qui le reprendra si elle le vérifie.
    *
    * True unless the reader said otherwise: what is written here is history,
    * and history nobody shares is history nobody reads. The way out exists for
@@ -174,8 +175,9 @@ export type EventSummary = {
    * The row this was taken from, in another account — null for an original.
    *
    * What it is for today is telling the truth when something is deleted: a
-   * copy's disappearance costs nothing, since its author's still stands in
-   * the community, and saying "c'est définitif" over a copy is a lie.
+   * copy's disappearance costs nothing, since the entry it was taken from
+   * still stands in the library, and saying "c'est définitif" over a copy is
+   * a lie.
    */
   origin: string | null;
   /** Identifiers of the people this event is about. */
@@ -222,7 +224,7 @@ export type Character = {
   longitude: number | null;
   latitude: number | null;
   /**
-   * In the community, where anybody may read and copy it.
+   * Proposé à la bibliothèque, qui le reprendra si elle le vérifie.
    *
    * True unless the reader said otherwise: what is written here is history,
    * and history nobody shares is history nobody reads. The way out exists for
@@ -233,8 +235,9 @@ export type Character = {
    * The row this was taken from, in another account — null for an original.
    *
    * What it is for today is telling the truth when something is deleted: a
-   * copy's disappearance costs nothing, since its author's still stands in
-   * the community, and saying "c'est définitif" over a copy is a lie.
+   * copy's disappearance costs nothing, since the entry it was taken from
+   * still stands in the library, and saying "c'est définitif" over a copy is
+   * a lie.
    */
   origin: string | null;
   photos: StoredPhoto[];
@@ -340,12 +343,13 @@ export type Tree = {
    * The row this was taken from, in another account — null for an original.
    *
    * What it is for today is telling the truth when something is deleted: a
-   * copy's disappearance costs nothing, since its author's still stands in
-   * the community, and saying "c'est définitif" over a copy is a lie.
+   * copy's disappearance costs nothing, since the entry it was taken from
+   * still stands in the library, and saying "c'est définitif" over a copy is
+   * a lie.
    */
   origin: string | null;
   /**
-   * In the community, where anybody may read and copy it.
+   * Proposé à la bibliothèque, qui le reprendra si elle le vérifie.
    *
    * True unless the reader said otherwise: what is written here is history,
    * and history nobody shares is history nobody reads. The way out exists for

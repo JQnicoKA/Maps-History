@@ -1,11 +1,14 @@
 /**
- * Why a copy cannot be offered to the community.
+ * Why a copy has nothing to offer the library.
  *
- * Taking a copy is how a reader gets somebody else's work onto their own map.
- * Letting them share it again would put a second Marignan in the catalogue
- * beside the first — same words, none of the stars, none of the history — and
- * the hundred and first reader would have a hundred Marignans to choose
- * between. The rule that prevents that is simply: a copy stays home.
+ * Prendre une copie, c'est faire venir sur sa carte une entrée de la
+ * bibliothèque. L'ouvrir à son tour à la bibliothèque serait lui proposer ce
+ * qu'elle a déjà écrit : l'entrée d'origine est la sienne. La règle est donc
+ * simplement qu'une copie reste chez soi.
+ *
+ * La raison a changé en route. Elle était « sinon le catalogue compterait
+ * cent Marignan » — la jungle que la curation a défaite. Elle est maintenant
+ * qu'il n'y a rien à apporter. La règle, elle, n'a pas bougé.
  *
  * **Trees are the exception, and `TreeBuilder` therefore never calls this.**
  * A genealogy taken from someone else is a starting point rather than a
@@ -25,5 +28,5 @@
 export function whyLocked(origin: string | null): string | null {
   return origin === null
     ? null
-    : "Une copie reste chez vous : pour que la communauté ne compte pas dix fois la même chose, elle ne peut pas y retourner.";
+    : "Une copie reste chez vous : la bibliothèque a déjà l'entrée dont elle vient.";
 }

@@ -41,8 +41,6 @@ import {
   CHARACTER_LOOK,
   EVENT_LOOK,
   FOLDER_LOOK,
-  PLACE_LOOK,
-  TERRITORY_LOOK,
   TREE_LOOK,
 } from "../../features/community/looks";
 import {
@@ -104,8 +102,6 @@ type Page =
   | { kind: "searchEvents" }
   | { kind: "searchCharacters" }
   | { kind: "searchFolders" }
-  | { kind: "searchTerritories" }
-  | { kind: "searchPlaces" }
   | { kind: "searchTrees" };
 
 export function MapScreen() {
@@ -661,9 +657,7 @@ export function MapScreen() {
               {MAP_FEATURES.territories ? (
                 <DrawTerritoryButton
                   onDraw={() => setDrawing(true)}
-                  onSeek={() => raise({ kind: "searchTerritories" })}
                   onPose={() => void poseAPlace()}
-                  onSeekPlaces={() => raise({ kind: "searchPlaces" })}
                 />
               ) : null}
             </View>
@@ -839,24 +833,6 @@ export function MapScreen() {
         kind="tree"
         look={TREE_LOOK}
         visible={page?.kind === "searchTrees"}
-        onClose={() => setPage(null)}
-        onClosed={afterPage}
-      />
-
-      <Catalogue
-        key={`commons-territories-${raised}`}
-        kind="territory"
-        look={TERRITORY_LOOK}
-        visible={page?.kind === "searchTerritories"}
-        onClose={() => setPage(null)}
-        onClosed={afterPage}
-      />
-
-      <Catalogue
-        key={`commons-places-${raised}`}
-        kind="place"
-        look={PLACE_LOOK}
-        visible={page?.kind === "searchPlaces"}
         onClose={() => setPage(null)}
         onClosed={afterPage}
       />

@@ -2,8 +2,6 @@ import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { Dialog, InkButton, InkField } from "../../components/ui";
-import { LikelyDuplicates } from "../community/LikelyDuplicates";
-import { PLACE_LOOK } from "../community/looks";
 import { HISTORY } from "../../config/history";
 import { palette } from "../../theme/palette";
 import { space, type } from "../../theme/tokens";
@@ -101,21 +99,13 @@ export function NamePlaceDialog({
               : `Une année négative est avant Jésus-Christ ; de ${HISTORY.from} à ${HISTORY.to}.`}
       </Text>
 
-      {/* Quelqu'un a peut-être déjà posé cette ville-là. Pas de « Prendre »
-          ici : le lecteur a déjà visé son point, et prendre celle d'un autre
-          jetterait son travail. */}
-      {start === null ? null : (
-        <LikelyDuplicates
-          kind="place"
-          look={PLACE_LOOK}
-          noun="ville"
-          title={name}
-          year={start}
-          approximate={false}
-          taking={false}
-          onTaken={() => undefined}
-        />
-      )}
+      {/* Plus d'avertissement de doublon ici.
+          Il interrogeait la communauté : « quelqu'un a déjà posé cette
+          Carthage ». Mais une ville ne se partage plus — elle reste au
+          lecteur, ou le conservateur la promeut dans le fond de carte, où
+          elle est unique par construction. Il n'y a donc plus de doublon
+          possible à annoncer, et prévenir de ce qui n'arrivera pas est pire
+          que se taire. */}
 
       <InkButton
         label={busy ? "Enregistrement…" : "Enregistrer"}

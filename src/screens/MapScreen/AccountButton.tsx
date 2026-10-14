@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
 import {
   Dialog,
@@ -8,7 +16,10 @@ import {
   InkField,
 } from "../../components/ui";
 import { isStrong, PasswordMeter, useAuth } from "../../features/auth";
-import { handleProblem, HANDLE_MAX } from "../../features/community/profile";
+import {
+  NoticeList,
+  useNotices,
+} from "../../features/community/NoticeList";
 import { deleteOwnPhotos } from "../../features/events/api";
 import { palette } from "../../theme/palette";
 import { radius, space, TOUCH, type } from "../../theme/tokens";
@@ -29,26 +40,45 @@ const TRASH = require("../../../assets/icons/trash.png");
  * déconnecter" did nothing at all. So the card changes what it holds instead of
  * putting a second card on top of itself.
  */
-/** Which of the card's six faces is showing. */
+/**
+ * Which of the card's six faces is showing.
+ *
+ * Le pseudonyme a perdu la sienne le jour où la bibliothèque a cessé de
+ * signer ses entrées : plus rien ne l'affiche à personne, et un champ
+ * intitulé « votre nom dans la communauté » promettait alors une chose
+ * fausse. Le pseudonyme existe toujours, engendré par l'application, et ne
+ * sert plus qu'au conservateur pour lire sa file.
+ *
+ * Les notifications ont pris la place vide, et ce n'est pas un hasard : ce
+ * sont les deux seules choses que la bibliothèque ait à dire à quelqu'un, et
+ * cette carte était déjà le seul endroit qui lui parle de son compte.
+ */
 type Face =
   | "account"
-  | "naming"
   | "changing"
   | "leaving"
   | "erasing"
-  | "proving";
+  | "proving"
+  | "notices";
 
 export function AccountButton() {
-  const { account, signOut, deleteAccount, changePassword, handle, rename } =
-    useAuth();
+  const { account, signOut, deleteAccount, changePassword } = useAuth();
+  const { notices, reload } = useNotices();
+  /**
+   * De quoi plafonner la liste des notifications.
+   *
+   * La carte n'a pas de hauteur maximale et ne défile pas : elle grandit avec
+   * son contenu, et `overflow: "hidden"` coupe net ce qui dépasse. Trois
+   * notifications suffisent à sortir de l'écran, et le lecteur n'en verrait
+   * jamais la fin — ni le bouton de retour.
+   */
+  const { height } = useWindowDimensions();
   const [open, setOpen] = useState(false);
   const [face, setFace] = useState<Face>("account");
   /** The password being proved: the current one on both asking faces. */
   const [password, setPassword] = useState("");
   /** And the one being chosen, on the face that chooses one. */
   const [chosen, setChosen] = useState("");
-  /** The pseudonym being typed, on the face that renames. */
-  const [called, setCalled] = useState("");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   /** What just worked, said once on the first face and then forgotten. */
@@ -67,7 +97,6 @@ export function AccountButton() {
     setFace("account");
     setPassword("");
     setChosen("");
-    setCalled("");
     setProblem(null);
     setDone(null);
   };
@@ -76,7 +105,6 @@ export function AccountButton() {
     setFace("account");
     setPassword("");
     setChosen("");
-    setCalled("");
     setProblem(null);
   };
 
@@ -85,7 +113,6 @@ export function AccountButton() {
     setFace(next);
     setPassword("");
     setChosen("");
-    setCalled("");
     setProblem(null);
     setDone(null);
   };
@@ -113,17 +140,6 @@ export function AccountButton() {
   /** Both fields answered, and the new one worth having. */
   const ready = password !== "" && isStrong(chosen);
 
-  /** What is wrong with the pseudonym being typed, while it is being typed. */
-  const naming = handleProblem(called);
-
-  const callMe = () =>
-    attempt(async () => {
-      await rename(called);
-      setFace("account");
-      setCalled("");
-      setDone("Pseudonyme modifié.");
-    });
-
   const change = () =>
     attempt(async () => {
       await changePassword(password, chosen);
@@ -146,8 +162,25 @@ export function AccountButton() {
 
   return (
     <>
-      <GlyphButton accessibilityLabel="Votre compte" onPress={() => setOpen(true)}>
+      <GlyphButton
+        accessibilityLabel={
+          notices.length === 0
+            ? "Votre compte"
+            : `Votre compte, ${notices.length} notification${notices.length > 1 ? "s" : ""}`
+        }
+        onPress={() => {
+          setOpen(true);
+          // Relu à l'ouverture : la carte reste montée toute la session, et
+          // ce qui a changé depuis le lancement doit s'y voir.
+          void reload();
+        }}
+      >
         <Image source={PROFILE} style={styles.glyph} resizeMode="contain" />
+        {/* Le point sur le disque lui-même, et pas seulement dans la carte :
+            une notification qu'il faut penser à aller chercher n'est pas une
+            notification. Cire à cacheter plutôt que rouge d'alerte — elle
+            signale ce qui attend un regard, pas ce qui a mal tourné. */}
+        {notices.length > 0 ? <View style={styles.spot} /> : null}
       </GlyphButton>
 
       <Dialog
@@ -160,73 +193,26 @@ export function AccountButton() {
             ? "Changer le mot de passe"
             : face === "leaving"
             ? "Se déconnecter ?"
-            : face === "naming"
-              ? "Votre pseudonyme"
-              : face === "erasing"
-                ? "Supprimer le compte ?"
-                : face === "proving"
-                  ? "Votre mot de passe"
+            : face === "erasing"
+              ? "Supprimer le compte ?"
+              : face === "proving"
+                ? "Votre mot de passe"
+                : face === "notices"
+                  ? "Mes notifications"
                   : "Votre compte"
         }
         hint={
           face === "leaving"
             ? "Il faudra vous reconnecter."
-            : face === "naming"
-              ? "C'est le nom qui accompagne ce que vous partagez. Il ne dit rien de votre adresse."
-              : face === "erasing"
-                ? "Événements, classeurs, personnages, arbres et photos seront effacés. C'est définitif."
-                : face === "proving"
-                  ? "Dernière étape : tapez-le pour confirmer la suppression."
-                  : undefined
+            : face === "erasing"
+              ? "Événements, classeurs, personnages, arbres et photos seront effacés. C'est définitif."
+              : face === "proving"
+                ? "Dernière étape : tapez-le pour confirmer la suppression."
+                : undefined
         }
         dismissLabel={null}
       >
-        {face === "naming" ? (
-          <>
-            <InkField
-              label="Pseudonyme"
-              value={called}
-              onChangeText={setCalled}
-              placeholder={handle ?? "Cartographe-1487"}
-              autoCapitalize="words"
-              autoCorrect={false}
-              maxLength={HANDLE_MAX}
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={() => {
-                if (naming === null && !busy) void callMe();
-              }}
-            />
-
-            {/* The rule, said while it is being broken rather than after. */}
-            <Text style={styles.rule}>
-              {called === ""
-                ? "Lettres, chiffres, espaces, tirets et apostrophes."
-                : (naming ?? "Ce pseudonyme convient.")}
-            </Text>
-
-            {problem === null ? null : (
-              <Text style={styles.problem}>{problem}</Text>
-            )}
-
-            <View style={styles.answers}>
-              <InkButton
-                label="Annuler"
-                variant="tonal"
-                grow
-                disabled={busy}
-                onPress={back}
-              />
-              <InkButton
-                label={busy ? "…" : "Enregistrer"}
-                variant="solid"
-                grow
-                disabled={busy || naming !== null}
-                onPress={() => void callMe()}
-              />
-            </View>
-          </>
-        ) : face === "changing" ? (
+        {face === "changing" ? (
           <>
             {/* Proof before choice, in that order: it is the question the
                 reader can answer straight away, and the one that decides
@@ -366,10 +352,25 @@ export function AccountButton() {
               />
             </View>
           </>
+        ) : face === "notices" ? (
+          <>
+            <ScrollView
+              style={{ maxHeight: Math.round(height * 0.5) }}
+              contentContainerStyle={styles.scrolled}
+            >
+              <NoticeList notices={notices} onChanged={() => void reload()} />
+            </ScrollView>
+            {/* Sans `grow`, et la carte en dépendait : `grow` est `flex: 1`,
+                fait pour remplir une rangée. En enfant direct de la colonne
+                que `Dialog` empile, il donne au bouton une base nulle — et
+                la carte paraissait coupée. Les autres `grow` de ce fichier
+                sont tous dans une rangée. */}
+            <InkButton label="Retour" variant="tonal" onPress={back} />
+          </>
         ) : (
           <>
             {/* Trois champs, et rien d'autre : l'adresse, le mot de passe,
-                le pseudonyme. La carte montrait deux rangées serrées où la
+                les notifications. La carte montrait deux rangées serrées où la
                 valeur et son action se partageaient la ligne, et tout y
                 paraissait collé. Chacun a désormais son titre et sa boîte,
                 comme n'importe quel champ de l'application — `InkField` en
@@ -402,27 +403,21 @@ export function AccountButton() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Pseudonyme</Text>
+                <Text style={styles.fieldLabel}>Mes notifications</Text>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Changer de pseudonyme"
-                  disabled={handle === undefined}
-                  onPress={() => {
-                    ask("naming");
-                    setCalled(handle ?? "");
-                  }}
+                  accessibilityLabel="Voir mes notifications"
+                  onPress={() => ask("notices")}
                   style={({ pressed }) => [styles.box, pressed && styles.down]}
                 >
-                  <Text style={styles.value} numberOfLines={1}>
-                    {handle ?? "…"}
+                  {notices.length > 0 ? <View style={styles.dot} /> : null}
+                  <Text style={styles.value}>
+                    {notices.length === 0
+                      ? "Rien de neuf"
+                      : `${notices.length} à lire`}
                   </Text>
-                  <Text style={styles.action}>Renommer ›</Text>
+                  <Text style={styles.action}>Voir ›</Text>
                 </Pressable>
-                {/* Sous le champ, parce que c'est la seule des trois valeurs
-                    que d'autres gens voient. */}
-                <Text style={styles.hint}>
-                  Votre nom dans la communauté.
-                </Text>
               </View>
             </View>
 
@@ -498,21 +493,47 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm,
   },
   value: { flex: 1, fontSize: 16, color: palette.ink },
+  /** Dans la boîte, devant le compte : on le voit avant de l'avoir lu. */
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: palette.wax,
+    marginRight: -space.xs,
+  },
   action: { ...type.caption, fontWeight: "600", color: palette.wax },
-  hint: { ...type.legend, color: palette.inkFaint },
 
   /** Les deux boutons des autres faces : annuler, et confirmer. */
   answers: { flexDirection: "row", gap: space.sm },
 
+  /** Le contenu défilant des notifications, à l'écart du bord de la carte. */
+  scrolled: { paddingVertical: space.xs },
+
   /** Détaché du reste : quitter n'est pas un champ de plus. */
   leave: { flexDirection: "row", gap: space.sm, marginTop: space.lg },
   glyph: { width: 22, height: 22 },
+  /**
+   * Le point sur le disque du compte.
+   *
+   * Bordé de la couleur du disque : posé sur le bord du cercle, sans cette
+   * bordure il se confond avec le trait qui le dessine.
+   */
+  spot: {
+    position: "absolute",
+    top: 7,
+    right: 7,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: palette.wax,
+    borderWidth: 1.5,
+    borderColor: palette.paperLight,
+  },
 
   /** Who you are on the left, what proves it on the right. */
   /** Drawn under the words the way the card's own title is underlined. */
   down: { opacity: 0.55 },
   /** What the field says about itself while it is being typed. */
-  rule: { ...type.legend, color: palette.inkSoft },
 
   /** Square, so it takes only the width the sign-out button gives up. */
   bin: {

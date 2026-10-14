@@ -10,6 +10,7 @@ import {
 
 import { PhotoViewer } from "./PhotoViewer";
 import { SharePill } from "../../community/SharePill";
+import { COPY_IS_A_COPY } from "../../community/stakes";
 import {
   ConfirmDialog,
   InkButton,
@@ -111,9 +112,7 @@ export function CharacterDetailModal({
     rooted.length === 0
       ? null
       : `Il quittera ${rooted.length === 1 ? "l'arbre" : `les ${rooted.length} arbres`} où il se tient.`,
-    person.origin === null
-      ? null
-      : "Vous effacez votre copie ; celle de son auteur, dans la communauté, n'est pas touchée.",
+    person.origin === null ? null : COPY_IS_A_COPY,
   ]
     .filter(Boolean)
     .join(" ");

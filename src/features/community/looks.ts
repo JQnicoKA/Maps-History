@@ -18,7 +18,7 @@ import { describeType, type EventType } from "../events/types";
  */
 
 export const EVENT_LOOK: Look = {
-  many: "Communauté",
+  many: "Bibliothèque",
   one: "Un événement",
   take: "Copier l'événement",
   named: "Nom de l'événement",
@@ -36,7 +36,7 @@ export const EVENT_LOOK: Look = {
         } as Parameters<typeof formatEventPeriod>[0]),
   castLegend: "Personnages",
   castAside: "Ils viendront avec l'événement si vous le copiez.",
-  filedLegend: "Rangé par son auteur dans",
+  filedLegend: "Rangé dans",
   // Nothing kind-neutral to add: whether a classeur can be opened depends on
   // where the card is standing, so that half of the sentence belongs to the
   // card — see `SharedCard`. The duplicate warning shows the same card with
@@ -45,7 +45,7 @@ export const EVENT_LOOK: Look = {
   filedDoor: "Voir le classeur",
   filedKind: "folder",
   nothing:
-    "Rien de tel dans la communauté. Essayez d'élargir l'époque ou la région — ou écrivez-le vous-même.",
+    "Rien de tel dans la bibliothèque. Essayez d'élargir l'époque ou la région — ou écrivez-le vous-même.",
 };
 
 /** What a classeur's span reads like: two years, or one, or none at all. */
@@ -58,7 +58,7 @@ const span = (one: { start: { year: number } | null; end: { year: number } | nul
 };
 
 export const FOLDER_LOOK: Look = {
-  many: "Communauté",
+  many: "Bibliothèque",
   one: "Un classeur",
   take: "Copier le classeur",
   named: "Nom du classeur",
@@ -84,11 +84,11 @@ export const FOLDER_LOOK: Look = {
   filedAside: "",
   filedDoor: "",
   nothing:
-    "Aucun classeur de ce genre dans la communauté. Essayez d'élargir l'époque ou la région — ou faites le vôtre.",
+    "Aucun classeur de ce genre dans la bibliothèque. Essayez d'élargir l'époque ou la région — ou faites le vôtre.",
 };
 
 export const CHARACTER_LOOK: Look = {
-  many: "Communauté",
+  many: "Bibliothèque",
   one: "Un personnage",
   take: "Copier le personnage",
   named: "Nom du personnage",
@@ -106,16 +106,17 @@ export const CHARACTER_LOOK: Look = {
     return "";
   },
   castLegend: "Cité par",
-  castAside: "Ces événements restent à leur auteur : la copie n'apporte que la personne.",
+  castAside:
+    "Ces événements restent dans la bibliothèque : la copie n'apporte que la personne.",
   filedLegend: "Se tient dans",
-  filedAside: "Les arbres de leur auteur ; les vôtres sont les vôtres.",
+  filedAside: "Les arbres de la bibliothèque ; les vôtres sont les vôtres.",
   /* Ouvert le 13 octobre 2026, avec la moitié SQL qui lui manquait — voir la
      migration `un_personnage_ouvre_ses_arbres`. Un arbre s'ouvre sur son
      dessin et non sur une fiche : c'est là qu'est sa substance. */
   filedDoor: "Voir l'arbre",
   filedKind: "tree",
   nothing:
-    "Personne de tel dans la communauté. Essayez d'élargir l'époque ou la région — ou écrivez la fiche vous-même.",
+    "Personne de tel dans la bibliothèque. Essayez d'élargir l'époque ou la région — ou écrivez la fiche vous-même.",
 };
 
 /**
@@ -125,42 +126,8 @@ export const CHARACTER_LOOK: Look = {
  * inside another — an event inside a classeur — must be drawn as the thing it
  * is, not as the thing that held it.
  */
-export const TERRITORY_LOOK: Look = {
-  many: "Communauté",
-  one: "Un territoire",
-  take: "Copier le territoire",
-  named: "Nom du territoire",
-  hint: "Austrasie, Bourgogne, Saint-Empire…",
-  ask: "Copier ce territoire ?",
-  means: "Son tracé rejoint les territoires que vous avez peints.",
-  /** No picture and no type: the initial of the polity it draws. */
-  glyph: (one) => one.title.charAt(0).toUpperCase(),
-  /**
-   * Its extent and the years it was painted for.
-   *
-   * The size comes first because it is what places a shape: "24 319 km² ·
-   * 1000 – 1477" says duchy, where the years alone say nothing.
-   */
-  under: (one) => [one.note, span(one)].filter(Boolean).join(" · "),
-  /**
-   * Straight to the map, with no card in between.
-   *
-   * A card could name a territory and measure it, and say nothing about the
-   * one thing that decides whether the reader wants it: what it covers.
-   * Since the outline rides along in the row, the plate can show it at once.
-   */
-  onTheMap: true,
-  castLegend: "",
-  castAside: "",
-  filedLegend: "",
-  filedAside: "",
-  filedDoor: "",
-  nothing:
-    "Aucun territoire de ce genre dans la communauté. Essayez d'élargir l'époque ou la région — ou peignez le vôtre.",
-};
-
 export const TREE_LOOK: Look = {
-  many: "Communauté",
+  many: "Bibliothèque",
   one: "Un arbre",
   take: "Copier l'arbre",
   named: "Nom de l'arbre",
@@ -190,51 +157,12 @@ export const TREE_LOOK: Look = {
   filedAside: "",
   filedDoor: "",
   nothing:
-    "Aucun arbre de ce genre dans la communauté. Essayez d'élargir l'époque ou la région — ou bâtissez le vôtre.",
-};
-
-export const PLACE_LOOK: Look = {
-  many: "Communauté",
-  one: "Une ville",
-  take: "Copier la ville",
-  named: "Nom de la ville",
-  /* Des villes que l'histoire a faites et parfois défaites, et pas seulement
-     européennes : le catalogue n'est pas une carte de France. */
-  hint: "Carthage, Byzance, Tenochtitlan…",
-  ask: "Copier cette ville ?",
-  means:
-    "Elle rejoint les villes de votre carte, à l'endroit et aux années où son auteur l'a posée.",
-  /** Ni portrait ni genre : l'initiale du nom, comme pour un territoire. */
-  glyph: (one) => one.title.charAt(0).toUpperCase(),
-  /**
-   * Sa fondation, et sa disparition quand elle en a une.
-   *
-   * Son propre `under` plutôt que le `span` commun, parce qu'une ville sans
-   * fin n'est pas une ville dont on ignore la fin : elle est encore là, et
-   * une année seule ne le dirait pas.
-   */
-  under: (one) => {
-    const from = one.start?.year;
-    if (from === undefined) return "";
-    const to = one.end?.year;
-    if (to === undefined) return `fondée en ${formatYear(from)}`;
-    if (to === from) return formatYear(from);
-    return `${formatYear(from)} – ${formatYear(to)}`;
-  },
-  castLegend: "",
-  castAside: "",
-  filedLegend: "",
-  filedAside: "",
-  filedDoor: "",
-  nothing:
-    "Aucune ville de ce genre dans la communauté. Essayez d'élargir l'époque ou la région — ou posez la vôtre.",
+    "Aucun arbre de ce genre dans la bibliothèque. Essayez d'élargir l'époque ou la région — ou bâtissez le vôtre.",
 };
 
 export const LOOKS: Record<Kind, Look> = {
   event: EVENT_LOOK,
   character: CHARACTER_LOOK,
   folder: FOLDER_LOOK,
-  territory: TERRITORY_LOOK,
   tree: TREE_LOOK,
-  place: PLACE_LOOK,
 };

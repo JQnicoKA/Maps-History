@@ -3,28 +3,29 @@ import type { HistoricalDate, Importance, TreeBond } from "../events/types";
 /**
  * What kind of thing a page of the catalogue is about.
  *
- * The six are drawn the same way and searched the same way — a name, a span,
- * a place, an author, a count of stars — so one panel lists them all and this
- * is what tells it which door to knock on. Only the thumbnail and the line
- * under the title differ, and those are two functions, not two screens.
+ * Tous se dessinent et se cherchent pareil — un nom, une période, un lieu, un
+ * nombre de copies — donc un seul panneau les liste tous et ceci dit à quelle
+ * porte frapper. Seuls la vignette et la ligne sous le titre diffèrent, et ce
+ * sont deux fonctions, pas deux écrans.
+ *
+ * **Les villes et les territoires n'en sont pas**, et ne l'ont été qu'un
+ * jour. Ce sont les deux seuls genres qui possèdent déjà un fond partagé par
+ * tout le monde — `places` et `polities` — alors un conservateur les y
+ * promeut au lieu de les publier dans une bibliothèque où l'on viendrait les
+ * copier. Rien à chercher, rien à copier : tout le monde les a. Voir
+ * `promote_place` et `promote_polity`.
  *
  * Une union discriminée plutôt qu'une chaîne : ajouter un genre ici fait
  * lister par le compilateur tout ce qui reste à compléter, ce qui est la
  * seule manière sûre d'en ajouter un.
  */
-export type Kind =
-  | "event"
-  | "character"
-  | "folder"
-  | "tree"
-  | "territory"
-  | "place";
+export type Kind = "event" | "character" | "folder" | "tree";
 
 /**
  * One line of the community catalogue.
  *
  * Deliberately not an `EventSummary`: it is somebody else's row, it carries
- * things a summary never has — an author, a count of stars, whether this
+ * things a summary never has — a count of copies, whether this
  * reader already took it — and it lacks things a summary always has, like the
  * folders it is filed under, which are the owner's way of thinking and not
  * ours to display. Two shapes, because they are two different objects.
@@ -53,8 +54,6 @@ export type SharedThing = {
   latitude: number | null;
   /** Ready to put in an Image, or null. */
   cover: string | null;
-  /** The author's pseudonym — never anything else about them. */
-  author: string;
   /** How many readers have taken a copy. */
   stars: number;
   mine: boolean;
@@ -202,12 +201,9 @@ export const REASONS = [
 
 export type Reason = (typeof REASONS)[number]["value"];
 
-/** Somebody this reader no longer wishes to see. */
-export type Blocked = { id: string; handle: string };
-
-/** What a kind looks like, which is all that differs between the five. */
+/** What a kind looks like, which is all that differs between the four. */
 export type Look = {
-  /** "Communauté", and what one of them is called on its own. */
+  /** "Bibliothèque", and what one of them is called on its own. */
   many: string;
   one: string;
   /** Stands in for a missing picture — an emoji, an initial. */
@@ -288,8 +284,8 @@ export type Look = {
    *
    * Rien d'autre, et c'est une décision : une fenêtre de confirmation répond
    * à « qu'est-ce que j'obtiens en touchant ce bouton », pas « comment cette
-   * application fonctionne-t-elle ». Les règles — ce qui reste à l'auteur, le
-   * fait qu'une copie ne retourne pas dans la communauté — ont leur place sur
+   * application fonctionne-t-elle ». Les règles — ce qui reste à la
+   * bibliothèque, le fait qu'une copie n'y retourne pas — ont leur place sur
    * les fiches (`castAside`, `filedAside`) et dans `whyLocked`, où le lecteur
    * les rencontre quand elles le concernent.
    */

@@ -3,7 +3,6 @@ import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useHidden } from "./HiddenProvider";
 import { Silhouette } from "./Silhouette";
-import { stake } from "../community/stakes";
 import { PlaceList } from "../places/PlaceList";
 import {
   ConfirmDialog,
@@ -51,12 +50,8 @@ type Part = (typeof PARTS)[number]["value"];
 export type DrawTerritoryButtonProps = {
   /** Hands the map over to the brush. */
   onDraw: () => void;
-  /** Asks for the community's territories. */
-  onSeek: () => void;
   /** Donne la carte au viseur, pour y poser une ville. */
   onPose: () => void;
-  /** Demande les villes de la communauté. */
-  onSeekPlaces: () => void;
 };
 
 /**
@@ -77,9 +72,7 @@ export type DrawTerritoryButtonProps = {
  */
 export function DrawTerritoryButton({
   onDraw,
-  onSeek,
   onPose,
-  onSeekPlaces,
 }: DrawTerritoryButtonProps) {
   const [open, setOpen] = useState(false);
   const [part, setPart] = useState<Part>("territory");
@@ -132,15 +125,9 @@ export function DrawTerritoryButton({
 
         <ScrollView style={styles.fill} contentContainerStyle={styles.body}>
           {part === "territory" ? (
-            <TerritoryList
-              onDraw={() => after(onDraw)}
-              onSeek={() => after(onSeek)}
-            />
+            <TerritoryList onDraw={() => after(onDraw)} />
           ) : (
-            <PlaceList
-              onPose={() => after(onPose)}
-              onSeek={() => after(onSeekPlaces)}
-            />
+            <PlaceList onPose={() => after(onPose)} />
           )}
         </ScrollView>
       </Sheet>
@@ -149,21 +136,13 @@ export function DrawTerritoryButton({
 }
 
 /** L'onglet Territoires : ce que le lecteur a peint, et ce qu'il a ôté. */
-function TerritoryList({
-  onDraw,
-  onSeek,
-}: {
-  onDraw: () => void;
-  onSeek: () => void;
-}) {
+function TerritoryList({ onDraw }: { onDraw: () => void }) {
   const { hidden, show, drawn, erase } = useHidden();
   const [busy, setBusy] = useState<string | null>(null);
   /** The drawn territory awaiting a "yes" before it is rubbed out. */
-  const [asking, setAsking] = useState<{
-    id: string;
-    name: string;
-    origin: string | null;
-  } | null>(null);
+  const [asking, setAsking] = useState<{ id: string; name: string } | null>(
+    null,
+  );
   const { say, dialog } = useNotice();
 
   const work = (key: string, deed: Promise<void>, failed: string) => {
@@ -182,10 +161,9 @@ function TerritoryList({
       <ConfirmDialog
         visible={asking !== null}
         title={`Effacer « ${asking?.name ?? ""} » ?`}
-        message={stake(
-          asking?.origin ?? null,
-          "Il n'existe que sur votre carte : l'effacer est définitif.",
-        )}
+        /* Plus de `stake` : un territoire n'est jamais une copie, puisqu'il
+           ne se copie plus. L'enjeu est donc toujours le même. */
+        message="Il n'existe que sur votre carte : l'effacer est définitif."
         confirmLabel="Effacer"
         onConfirm={() => {
           const target = asking;
@@ -204,9 +182,6 @@ function TerritoryList({
             : `${drawn.length} territoire${drawn.length > 1 ? "s" : ""} dessiné${drawn.length > 1 ? "s" : ""}`
         }
         addLabel="Dessiner un territoire"
-        seekLabel="Chercher dans la communauté"
-        seekDetail="Les territoires créés par les membres de la communauté"
-        onSeek={onSeek}
         onAdd={onDraw}
       >
         {drawn.length === 0 ? (
@@ -237,11 +212,7 @@ function TerritoryList({
                   : `${formatYear(one.from)} – ${formatYear(one.to)}`
               }
               onEdit={() =>
-                setAsking({
-                  id: one.id,
-                  name: one.name,
-                  origin: one.origin,
-                })
+                setAsking({ id: one.id, name: one.name })
               }
               editLabel={`Effacer ${one.name}`}
               editIcon={TRASH}

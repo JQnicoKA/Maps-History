@@ -12,7 +12,13 @@
 
 begin;
 
-delete from public.polities;
+-- `where not curated` : SANS CETTE CONDITION, cette ligne efface les
+-- territoires que le conservateur a promus à la main dans le fond de carte.
+-- Ils ne sont nulle part ailleurs — leur ligne d'origine a été supprimée au
+-- moment de la promotion, comme prévu — et une reconstruction des frontières
+-- les perdrait sans un mot. Les villes curées, elles, sont protégées par
+-- leur `ohm_id` négatif, que `load-places.mjs` épargne déjà.
+delete from public.polities where not curated;
 
 insert into public.polities (
   name, start_year, end_year, area, area_km2,

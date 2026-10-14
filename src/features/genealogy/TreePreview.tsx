@@ -15,8 +15,6 @@ export type TreePreviewProps = {
   tree: Tree;
   faces: Map<string, Face>;
   said: string;
-  /** Who drew it, and how many readers have kept it. */
-  by: string;
   /** False when it is the reader's own, or already taken. */
   takeable: boolean;
   busy: boolean;
@@ -49,7 +47,6 @@ export function TreePreview({
   tree,
   faces,
   said,
-  by,
   takeable,
   busy,
   onTake,
@@ -103,7 +100,7 @@ export function TreePreview({
         </Text>
         <View style={styles.rule} />
         <Text style={styles.said} numberOfLines={2}>
-          {said} · {by}
+          {said}
         </Text>
       </View>
 

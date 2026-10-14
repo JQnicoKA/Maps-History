@@ -25,4 +25,10 @@ export const PRIVACY_URL = "https://historynote.fr/confidentialite.html";
  * from terms accepted before them. Change it whenever the page changes in a
  * way a reader should be told about.
  */
-export const TERMS_VERSION = "2026-09-29";
+/*
+ * Reprise le 14 octobre 2026 : ce que la case de partage accorde a changé de
+ * nature — elle n'ouvre plus l'élément aux autres lecteurs, elle autorise la
+ * bibliothèque à s'en inspirer — et les entrées ne portent plus de signature.
+ * Un lecteur qui a accepté la version précédente a accepté autre chose.
+ */
+export const TERMS_VERSION = "2026-10-14";

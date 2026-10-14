@@ -1,5 +1,4 @@
 import type {
-  Blocked,
   Cursor,
   Kind,
   Reason,
@@ -60,21 +59,6 @@ const DOORS: Record<
     copy: "copy_tree",
     alike: null,
   },
-  place: {
-    search: "search_places",
-    whole: "shared_place",
-    copy: "copy_place",
-    // Une ville a une date et un nom court : exactement le cas où
-    // l'avertissement de doublon vaut quelque chose. Deux Carthage dans la
-    // communauté seraient deux pastilles au même endroit.
-    alike: "places_like",
-  },
-  territory: {
-    search: "search_territories",
-    whole: "shared_territory",
-    copy: "copy_territory",
-    alike: "territories_like",
-  },
 };
 
 /** Which photo bucket a kind's pictures live in — one, so far. */
@@ -94,7 +78,6 @@ type Row = {
   longitude: number | null;
   latitude: number | null;
   cover_path: string | null;
-  author: string;
   stars: number;
   mine: boolean;
   copied: boolean;
@@ -134,7 +117,6 @@ function toThing(row: Row): SharedThing {
     longitude: row.longitude,
     latitude: row.latitude,
     cover: row.cover_path === null ? null : publicUrl(row.cover_path),
-    author: row.author,
     stars: row.stars,
     mine: row.mine,
     copied: row.copied,
@@ -370,10 +352,10 @@ export async function alike(
 /**
  * Says that something should not be in the community.
  *
- * Nothing is told to its author, and nobody but the reporter can see that
- * they reported it — a report is addressed to whoever keeps the community,
- * not to the person reported. Enough of them and the thing leaves everybody's
- * catalogue on its own; see `withhold_when_reported`.
+ * Adressé au conservateur, et à personne d'autre : lui seul publie, donc lui
+ * seul peut s'être trompé. Le signalement n'est plus un rempart mais une
+ * assurance contre cette erreur-là. Assez de voix et la chose quitte le
+ * catalogue d'elle-même ; voir `withhold_when_reported`.
  */
 export async function report(
   kind: Kind,
@@ -391,26 +373,11 @@ export async function report(
 }
 
 /**
- * Stops seeing somebody, and stops them seeing you.
+ * Le blocage a disparu avec les signatures.
  *
- * Asked for by pointing at the work rather than at the person: the catalogue
- * hands out pseudonyms and no identifiers, and it should stay that way.
+ * Il existait pour qu'un lecteur puisse dire « ne me montre plus jamais le
+ * travail de cette personne ». La bibliothèque étant relue par une seule main
+ * avant d'être publiée, il n'y a plus personne à bloquer : ce qu'il fallait
+ * écarter l'a été en amont. La table `blocks` et ses deux fonctions SQL
+ * partiront au dernier passage de ménage, quand la surface sera minimale.
  */
-export async function blockAuthorOf(kind: Kind, id: string): Promise<void> {
-  const { error } = await supabase().rpc("block_author", {
-    kind,
-    source_id: id,
-  });
-  if (error) throw new Error(error.message);
-}
-
-export async function blockedPeople(): Promise<Blocked[]> {
-  const { data, error } = await supabase().rpc("blocked_people");
-  if (error) throw new Error(error.message);
-  return (data ?? []) as Blocked[];
-}
-
-export async function unblock(id: string): Promise<void> {
-  const { error } = await supabase().from("blocks").delete().eq("blocked", id);
-  if (error) throw new Error(error.message);
-}

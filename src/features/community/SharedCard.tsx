@@ -46,7 +46,6 @@ export type SharedCardProps = {
    * about to take.
    */
   onReport?: () => void;
-  onBlock?: () => void;
   /**
    * Opens one of the things this one holds — a classeur's events.
    *
@@ -87,7 +86,6 @@ export function SharedCard({
   kind,
   look,
   onReport,
-  onBlock,
   onOpenHeld,
   onShowShape,
   onOpenFiled,
@@ -138,11 +136,16 @@ export function SharedCard({
           "Un classeur", and saying it twice on one card is furniture. */}
       <Text style={styles.when}>{look.under(one)}</Text>
       <Text style={styles.title}>{one.title}</Text>
+      {/* Plus de signature.
+          Ce qu'on lit ici est une entrée de la bibliothèque : relue,
+          corrigée, parfois fondue à partir de deux versions. « Écrit par
+          Scribe-1436 » n'y serait pas exact, et une encyclopédie ne signe
+          pas ses articles. Reste le seul chiffre qui dise quelque chose au
+          lecteur : combien l'ont prise. */}
       <Text style={styles.by}>
-        {one.mine ? "Écrit par vous" : `Écrit par ${one.author}`}
         {one.stars > 0
-          ? ` · copié ${one.stars} fois`
-          : " · personne ne l'a encore copié"}
+          ? `Copié ${one.stars} fois`
+          : "Personne ne l'a encore copié"}
       </Text>
 
       {/* A card now mounts fresh at every step — see the key in `Catalogue`
@@ -248,11 +251,14 @@ export function SharedCard({
         </View>
       ) : null}
 
-      {/* Quiet, and at the foot: most readers never need either, and a card
-          that leads with "signaler" reads as a warning about its own
-          contents. Absent on one's own work, which one can simply take out
-          of the community. */}
-      {one.mine || !onReport || !onBlock ? null : (
+      {/* Discret, et au pied : presque personne n'en a besoin, et une fiche
+          qui commence par « signaler » se lit comme un avertissement sur son
+          propre contenu. Absent sur son propre travail.
+
+          Seul le signalement reste. Bloquer quelqu'un n'a plus d'objet : rien
+          n'atteint le catalogue sans avoir été relu, donc il n'y a plus
+          d'auteur hostile à écarter — et plus de nom à écarter sous. */}
+      {one.mine || !onReport ? null : (
         <View style={styles.against}>
           <Pressable
             accessibilityRole="button"
@@ -263,14 +269,6 @@ export function SharedCard({
             <Text style={styles.quiet}>
               {one.reported ? "Déjà signalé" : "Signaler"}
             </Text>
-          </Pressable>
-          <Text style={styles.quietDot}>·</Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onBlock}
-            style={({ pressed }) => [pressed && styles.dim]}
-          >
-            <Text style={styles.quiet}>Bloquer {one.author}</Text>
           </Pressable>
         </View>
       )}
@@ -325,5 +323,4 @@ const styles = StyleSheet.create({
     color: palette.inkFaint,
     textDecorationLine: "underline",
   },
-  quietDot: { ...type.legend, color: palette.inkFaint },
 });

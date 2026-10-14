@@ -18,6 +18,7 @@ import {
 import { useEvents } from "../EventsProvider";
 import { whyLocked } from "../../community/copies";
 import { ShareRow } from "../../community/ShareRow";
+import { COPY_IS_A_COPY } from "../../community/stakes";
 import { pickPhotos } from "../pickPhotos";
 import type { Folder, PickedPhoto } from "../types";
 import { palette } from "../../../theme/palette";
@@ -108,11 +109,9 @@ export function FolderEditModal({ target, onClose }: FolderEditModalProps) {
         : `${filed} événement${filed > 1 ? "s" : ""} y ${filed > 1 ? "sont rangés" : "est rangé"}. ` +
           `${filed > 1 ? "Ils ne seront pas supprimés" : "Il ne sera pas supprimé"}, seulement retiré${filed > 1 ? "s" : ""} de ce classeur.`;
 
-    // A copy's disappearance costs nothing: its author's classeur still
-    // stands in the community, with everything in it.
-    return folder?.origin === null || !folder
-      ? said
-      : `${said} Et vous n'effacez que votre copie : celui de son auteur n'est pas touché.`;
+    // A copy's disappearance costs nothing: le classeur dont elle vient est
+    // toujours dans la bibliothèque, avec tout ce qu'il range.
+    return folder?.origin === null || !folder ? said : `${said} ${COPY_IS_A_COPY}`;
   };
 
   const erase = () => {

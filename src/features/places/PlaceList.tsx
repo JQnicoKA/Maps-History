@@ -2,7 +2,6 @@ import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { useMyPlaces } from "./MyPlacesProvider";
-import { stake } from "../community/stakes";
 import {
   ConfirmDialog,
   Roster,
@@ -21,8 +20,6 @@ const BACK_ON_MAP = require("../../../assets/icons/view-map.png");
 export type PlaceListProps = {
   /** Donne la carte au viseur, pour y poser une ville. */
   onPose: () => void;
-  /** Demande les villes de la communauté. */
-  onSeek: () => void;
 };
 
 /** Ses années, dites comme le lecteur les a données. */
@@ -40,15 +37,13 @@ function said(from: number, to: number | null): string {
  * propre dossier parce que tout ce qu'elle touche y est ; le panneau qui la
  * porte ne fait que l'appeler.
  */
-export function PlaceList({ onPose, onSeek }: PlaceListProps) {
+export function PlaceList({ onPose }: PlaceListProps) {
   const { mine, masked, erase, unmask } = useMyPlaces();
   const [busy, setBusy] = useState<string | null>(null);
   /** La ville qui attend un « oui » avant d'être effacée. */
-  const [asking, setAsking] = useState<{
-    id: string;
-    name: string;
-    origin: string | null;
-  } | null>(null);
+  const [asking, setAsking] = useState<{ id: string; name: string } | null>(
+    null,
+  );
   const { say, dialog } = useNotice();
 
   const work = (key: string, deed: Promise<void>, failed: string) => {
@@ -67,10 +62,10 @@ export function PlaceList({ onPose, onSeek }: PlaceListProps) {
       <ConfirmDialog
         visible={asking !== null}
         title={`Effacer « ${asking?.name ?? ""} » ?`}
-        message={stake(
-          asking?.origin ?? null,
-          "Elle n'existe que sur votre carte : l'effacer est définitif.",
-        )}
+        /* Plus de `stake` : une ville n'est jamais une copie, puisqu'elle
+           ne se copie plus. L'enjeu est donc toujours le même, et le dire
+           par une fonction qui n'a plus qu'une branche serait du détour. */
+        message="Elle n'existe que sur votre carte : l'effacer est définitif."
         confirmLabel="Effacer"
         onConfirm={() => {
           const target = asking;
@@ -89,9 +84,6 @@ export function PlaceList({ onPose, onSeek }: PlaceListProps) {
             : `${mine.length} ville${mine.length > 1 ? "s" : ""} posée${mine.length > 1 ? "s" : ""}`
         }
         addLabel="Poser une ville"
-        seekLabel="Chercher dans la communauté"
-        seekDetail="Les villes posées par les membres de la communauté"
-        onSeek={onSeek}
         onAdd={onPose}
       >
         {mine.length === 0 ? (
@@ -113,11 +105,7 @@ export function PlaceList({ onPose, onSeek }: PlaceListProps) {
                 busy === one.id ? "Suppression…" : said(one.from, one.to)
               }
               onEdit={() =>
-                setAsking({
-                  id: one.id,
-                  name: one.name,
-                  origin: one.origin,
-                })
+                setAsking({ id: one.id, name: one.name })
               }
               editLabel={`Effacer ${one.name}`}
               editIcon={TRASH}

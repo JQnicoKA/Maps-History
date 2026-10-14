@@ -41,6 +41,7 @@ type MyPlacesContextValue = {
     to: number | null;
   }) => Promise<void>;
   erase: (id: string) => Promise<void>;
+  /** Ouvre une ville à la bibliothèque, ou l'en soustrait. */
   share: (id: string, shared: boolean) => Promise<void>;
   mask: (ohm: number) => Promise<void>;
   unmask: (ohm: number) => Promise<void>;

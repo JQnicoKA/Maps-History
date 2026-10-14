@@ -8,6 +8,16 @@ import { radius, space } from "../../theme/tokens";
 export type ShareRowProps = {
   /** What this is, said in the line: "cet événement", "ce personnage"… */
   what: string;
+  /**
+   * Ce que l'autorisation permet, quand ce n'est pas l'ordinaire.
+   *
+   * Par défaut : la bibliothèque s'inspire de la chose pour écrire ses
+   * propres entrées, et rien n'est publié tel quel. **Une ville et un
+   * territoire ne marchent pas comme ça** — vérifiés, ils sont promus dans le
+   * fond de carte tels quels, donc leur dire la phrase par défaut serait leur
+   * mentir. Voir `promote_place`.
+   */
+  means?: string;
   shared: boolean;
   onChange: (shared: boolean) => Promise<void>;
   /**
@@ -21,12 +31,18 @@ export type ShareRowProps = {
 };
 
 /**
- * Whether this belongs to the community.
+ * Ce que la bibliothèque a le droit de faire de ceci.
  *
- * Ticked by default, everywhere, because that is the app's posture: what is
- * written here is history rather than a diary, and history nobody shares is
- * history nobody reads. Untick it and the thing stays entirely yours — off
- * every search, uncopiable, invisible to everyone.
+ * **La case ne partage plus rien.** Elle le faisait : cocher mettait la chose
+ * dans le catalogue, où chacun pouvait la lire et la copier — d'où la jungle
+ * de doublons que ce virage défait. Désormais le catalogue ne montre que la
+ * bibliothèque, qui est relue et composée par une seule main, et ce que
+ * cette case accorde est tout autre : **l'autorisation de s'en inspirer.**
+ *
+ * Cochée par défaut, partout, et c'est la posture de l'application : ce qu'on
+ * écrit ici est de l'histoire et non un journal intime. L'effort est demandé
+ * à qui ne veut pas y contribuer, pas à qui le veut bien. Décochez-la et la
+ * chose n'est plus regardée du tout.
  *
  * Put at the foot of a card rather than in the middle of a form: it is not a
  * field to fill in, it is a thing that is already true and can be undone.
@@ -45,6 +61,7 @@ export type ShareRowProps = {
  */
 export function ShareRow({
   what,
+  means,
   shared,
   onChange,
   locked = null,
@@ -56,9 +73,11 @@ export function ShareRow({
     <View style={styles.frame}>
       {dialog}
       <TickRow
-        title="Partagé avec la communauté"
+        title="Ouvert à la bibliothèque"
         detail={
-          locked ?? `Permet aux autres de lire ${what} et d'en prendre copie.`
+          locked ??
+          means ??
+          `Autorise la bibliothèque à s'inspirer de ${what} pour ses propres entrées. Rien n'est publié tel quel, et personne d'autre ne le lit.`
         }
         on={shared}
         disabled={busy || locked !== null}

@@ -23,6 +23,7 @@ import { TreeNode } from "./TreeNode";
 import { CharacterDetailModal } from "../events/components/CharacterDetailModal";
 import { CharacterManager } from "../events/components/CharacterManager";
 import { ShareRow } from "../community/ShareRow";
+import { COPY_IS_A_COPY } from "../community/stakes";
 import {
   ConfirmDialog,
   Dialog,
@@ -1029,7 +1030,7 @@ export function TreeBuilder({
             menu === "delete"
               ? tree.origin === null
                 ? "Les personnages restent dans la collection ; seul l'arbre disparaît."
-                : "Les personnages restent dans la collection, et vous n'effacez que votre copie : celui de son auteur n'est pas touché."
+                : `Les personnages restent dans la collection. ${COPY_IS_A_COPY}`
               : menu === "help"
                 ? "Toutes les possibilités pour construire votre arbre"
                 : undefined

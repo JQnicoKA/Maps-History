@@ -50,7 +50,7 @@ function fit(ratio: number, room: Box): Box {
  * Tout ce dont le visionneur a besoin d'une photographie, et rien de plus.
  *
  * Plus étroit que `StoredPhoto`, et c'est délibéré : il ne lit que `url` et
- * `source`. Les fiches de la communauté portent exactement ces deux champs —
+ * `source`. Les fiches de la bibliothèque portent exactement ces deux champs —
  * leur charge utile n'a ni identifiant de ligne ni chemin de stockage — donc
  * exiger une `StoredPhoto` entière les aurait obligées à en inventer une.
  * `StoredPhoto` satisfait structurellement cette forme : les deux appelants

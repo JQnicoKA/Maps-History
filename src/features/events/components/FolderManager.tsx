@@ -38,8 +38,8 @@ export function FolderManager({ onSeek }: FolderManagerProps) {
             : `${folders.length} classeur${folders.length > 1 ? "s" : ""}`
         }
         addLabel="Nouveau classeur"
-        seekLabel="Chercher dans la communauté"
-        seekDetail="Les classeurs créés par les membres de la communauté"
+        seekLabel="Chercher dans la bibliothèque"
+        seekDetail="Les classeurs rassemblés dans la bibliothèque"
         onSeek={onSeek}
         onAdd={() => setEditing("new")}
       >

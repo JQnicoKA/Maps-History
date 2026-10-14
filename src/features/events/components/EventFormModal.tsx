@@ -25,6 +25,7 @@ import {
 import { radius, space, type } from "../../../theme/tokens";
 import { useEvents } from "../EventsProvider";
 import { usePlacement, type Point } from "../../placement";
+import { UpdateRow } from "../../community/UpdateRow";
 
 import {
   type Character,
@@ -436,7 +437,7 @@ export function EventFormModal({
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Chercher dans la communauté"
+            accessibilityLabel="Chercher dans la bibliothèque"
             onPress={onSearch}
             style={({ pressed }) => [
               styles.way,
@@ -449,10 +450,10 @@ export function EventFormModal({
             <Lens />
             <View style={styles.wayText}>
               <Text style={[styles.wayTitle, styles.waxed]}>
-                Chercher dans la communauté
+                Chercher dans la bibliothèque
               </Text>
               <Text style={styles.wayDetail}>
-                Les évènements créés par les membres de la communauté
+                Les évènements rassemblés dans la bibliothèque
               </Text>
             </View>
             <Text style={[styles.wayMore, styles.waxed]}>›</Text>
@@ -504,6 +505,20 @@ export function EventFormModal({
         // itself for the keys, so a focused field is never behind them.
         automaticallyAdjustKeyboardInsets
       >
+        {/* En tête du formulaire, et seulement s'il y a du neuf à reprendre.
+            C'est l'endroit que le lecteur ouvre pour corriger quelque chose :
+            apprendre à ce moment-là que la bibliothèque l'a déjà corrigé lui
+            épargne le travail. */}
+        {event ? (
+          <UpdateRow
+            kind="event"
+            id={event.id}
+            // La fiche est semée depuis l'événement qu'on lui a donné, et
+            // celui-ci vient d'être réécrit en base. Le parent la remonte.
+            onRefreshed={onSaved}
+          />
+        ) : null}
+
         {show(0) ? (
           <Section title="Ce qui s'est passé">
             <InkField

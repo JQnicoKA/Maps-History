@@ -79,8 +79,8 @@ export function TreeManager({ onOpen, onSeek }: TreeManagerProps) {
             : `${trees.length} arbre${trees.length > 1 ? "s" : ""}`
         }
         addLabel="Nouvel arbre"
-        seekLabel="Chercher dans la communauté"
-        seekDetail="Les arbres créés par les membres de la communauté"
+        seekLabel="Chercher dans la bibliothèque"
+        seekDetail="Les arbres rassemblés dans la bibliothèque"
         onSeek={onSeek}
         onAdd={() => {
           setName("");

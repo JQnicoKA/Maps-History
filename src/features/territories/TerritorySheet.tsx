@@ -3,9 +3,7 @@ import { StyleSheet, Text } from "react-native";
 
 import { useHidden } from "./HiddenProvider";
 import { Dialog, InkButton, useNotice } from "../../components/ui";
-import { whyLocked } from "../community/copies";
 import { ShareRow } from "../community/ShareRow";
-import { stake } from "../community/stakes";
 import { BORDERS_END } from "../../config/history";
 import { formatYear } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
@@ -71,7 +69,7 @@ export function TerritorySheet({ territory, onClose }: TerritorySheetProps) {
   const { say, dialog } = useNotice();
 
   const mine = territory?.drawn === true;
-  /** The reader's own row for it, which carries whether it is shared. */
+  /** The reader's own row for it, which carries whether it is open to us. */
   const ours = mine
     ? (drawn.find((one) => one.id === territory?.id) ?? null)
     : null;
@@ -96,20 +94,23 @@ export function TerritorySheet({ territory, onClose }: TerritorySheetProps) {
 
       <Text style={styles.line}>
         {mine
-          ? stake(
-              ours?.origin ?? null,
-              "Le supprimer est définitif : il n'existe que sur votre carte.",
-            )
+          ? "Le supprimer est définitif : il n'existe que sur votre carte."
           : "Le retirer ne l'efface pas : il disparaît de votre carte, à toutes les époques, et vous pourrez le rétablir depuis le bouton territoires."}
       </Text>
 
       {/* Only what the reader drew: the reference set belongs to everybody
-          already, and nothing about it is theirs to share or withhold. */}
+          already, and nothing about it is theirs to grant or withhold.
+
+          La case ne met pas le territoire dans un catalogue — il n'en existe
+          plus pour les territoires. Elle autorise sa promotion dans le fond
+          de carte, ce qui va plus loin : il y est repris tel quel, tout le
+          monde l'a, et la ligne du lecteur disparaît puisqu'elle y ferait
+          doublon. */}
       {mine && ours ? (
         <ShareRow
           what="ce territoire"
+          means="Autorise la bibliothèque, si elle le vérifie, à l'ajouter au fond de carte que tous les lecteurs voient. Il quittera alors votre liste."
           shared={ours.shared}
-          locked={whyLocked(ours.origin)}
           onChange={(next) => share(ours.id, next)}
         />
       ) : null}

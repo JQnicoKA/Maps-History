@@ -12,8 +12,8 @@ import { fetchHiddenPolities, hidePolity, showPolity } from "./hidden";
 import {
   drawPolity,
   eraseDrawn,
-  fetchDrawn,
   shareDrawn,
+  fetchDrawn,
   type DrawnPolity,
   type Stroke,
 } from "./drawn";
@@ -44,7 +44,7 @@ type HiddenContextValue = {
     to: number;
   }) => Promise<void>;
   erase: (id: string) => Promise<void>;
-  /** Puts one into the community, or takes it out. */
+  /** Ouvre un territoire à la bibliothèque, ou l'en soustrait. */
   share: (id: string, shared: boolean) => Promise<void>;
   /**
    * Re-reads what this account has painted.

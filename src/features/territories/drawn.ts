@@ -12,8 +12,6 @@ export type DrawnPolity = {
   from: number;
   to: number;
   area: number | null;
-  /** In the community, where anybody may read and copy it. */
-  shared: boolean;
   /**
    * A coarse outline, for the list to draw.
    *
@@ -23,11 +21,17 @@ export type DrawnPolity = {
    */
   shape: unknown | null;
   /**
-   * The row this was taken from, in another account — null for an original.
+   * L'auteur autorise la bibliothèque à le promouvoir dans le fond de carte.
    *
-   * What it decides today is what the deletion warning may honestly say.
+   * Pas de filiation ici, en revanche, et plus jamais : un territoire ne va
+   * pas dans une bibliothèque où l'on viendrait le copier. Vérifié, il est
+   * promu dans le fond, où tout le monde l'a d'un coup et où chacun peut le
+   * masquer — et où la ligne de son auteur disparaît, puisqu'elle y ferait
+   * doublon. D'où `stars` et `origin_id` déposées de `drawn_polities`, mais
+   * `shared` conservée : ce que le conservateur en fait va plus loin que d'en
+   * tirer une entrée. Voir `promote_polity`.
    */
-  origin: string | null;
+  shared: boolean;
 };
 
 /**
@@ -118,9 +122,8 @@ export async function fetchDrawn(): Promise<DrawnPolity[]> {
       start_year: number;
       end_year: number;
       area: number | null;
-      shared: boolean;
       shape: unknown | null;
-      origin: string | null;
+      shared: boolean;
     }[]
   ).map((row) => ({
     id: row.id,
@@ -128,13 +131,12 @@ export async function fetchDrawn(): Promise<DrawnPolity[]> {
     from: row.start_year,
     to: row.end_year,
     area: row.area,
-    shared: row.shared,
     shape: row.shape,
-    origin: row.origin,
+    shared: row.shared,
   }));
 }
 
-/** Puts a drawn territory into the community, or takes it out. */
+/** Ouvre un territoire à la bibliothèque, ou l'en soustrait. */
 export async function shareDrawn(id: string, shared: boolean): Promise<void> {
   const { error } = await supabase()
     .from("drawn_polities")

@@ -59,10 +59,14 @@ export function ThingRow({
           {one.title}
         </Text>
         <Text style={styles.entryWhen}>{look.under(one)}</Text>
-        <Text style={styles.entryWho} numberOfLines={1}>
-          {one.mine ? "vous" : one.author}
-          {one.stars > 0 ? ` · ★ ${one.stars}` : ""}
-        </Text>
+        {/* Plus de signature : ce qu'on liste est la bibliothèque, et elle
+            n'a qu'un auteur. Reste le compte de copies, qui dit au lecteur
+            ce que les autres ont retenu. */}
+        {one.stars > 0 ? (
+          <Text style={styles.entryWho} numberOfLines={1}>
+            ★ {one.stars}
+          </Text>
+        ) : null}
       </View>
 
       {/* The one thing to do with somebody else's work, on the line itself:

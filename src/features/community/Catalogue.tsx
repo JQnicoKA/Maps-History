@@ -25,7 +25,6 @@ import { ThingRow } from "./ThingRow";
 import {
   ANYTHING,
   REASONS,
-  type Blocked,
   type Cursor,
   type Kind,
   type Look,
@@ -53,8 +52,6 @@ import { asLabelWidth, type Tree, type TreeMember } from "../events/types";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useEvents } from "../events/EventsProvider";
-import { useHidden } from "../territories/HiddenProvider";
-import { useMyPlaces } from "../places/MyPlacesProvider";
 import { formatHistoricalDate } from "../events/historicalDate";
 import { widthsFor } from "./period";
 import { usePlacement } from "../placement";
@@ -123,8 +120,6 @@ export function Catalogue({
   onClosed,
 }: CatalogueProps) {
   const { year, refresh } = useEvents();
-  const { reload: reloadDrawn } = useHidden();
-  const { reload: reloadPlaces } = useMyPlaces();
   const { aiming, placeRegion, showShape, looking } = usePlacement();
   const insets = useSafeAreaInsets();
   const { say, dialog } = useNotice();
@@ -246,7 +241,7 @@ export function Catalogue({
    * Faces and not panels: a sheet cannot present a sheet, and turning a card
    * over is what the rest of the app does with the same problem.
    */
-  const [face, setFace] = useState<"list" | "report" | "blocked">("list");
+  const [face, setFace] = useState<"list" | "report">("list");
   /**
    * Which setting is open over the panel, if either.
    *
@@ -287,8 +282,8 @@ export function Catalogue({
    * Toutes les portes vers la copie passent par là — le pied d'une fiche, le
    * bouton d'une ligne, le bouton de la carte, celui du dessin d'arbre. Elles
    * **demandaient** quatre fois la même chose sans jamais dire ce qu'une copie
-   * fait : ce qui vient avec, ce qui reste à l'auteur, et qu'elle ne pourra
-   * pas repartir dans la communauté. Un geste irréversible qui s'explique
+   * fait : ce qui vient avec, ce qui reste à la bibliothèque, et qu'elle ne
+   * pourra pas y repartir. Un geste irréversible qui s'explique
    * après coup ne s'explique pas.
    *
    * Le genre est porté avec la chose : une copie peut partir d'un événement
@@ -309,7 +304,6 @@ export function Catalogue({
   const [tuning, setTuning] = useState(false);
   const [why, setWhy] = useState<Reason>("offensive");
   const [said, setSaid] = useState("");
-  const [blocked, setBlocked] = useState<Blocked[]>([]);
 
   /**
    * Which request is the current one.
@@ -350,17 +344,6 @@ export function Catalogue({
     const waiting = setTimeout(() => void fetchPage(null), 250);
     return () => clearTimeout(waiting);
   }, [visible, fetchPage]);
-
-  /** Who this reader has put out of sight, read when the face opens. */
-  const listBlocked = () => {
-    void api
-      .blockedPeople()
-      .then(setBlocked)
-      .catch(() => setBlocked([]));
-  };
-  useEffect(() => {
-    if (visible) listBlocked();
-  }, [visible]);
 
   /**
    * The two filters open on what the reader is already looking at.
@@ -410,30 +393,6 @@ export function Catalogue({
       .catch((cause: unknown) =>
         say(
           "Signalement impossible",
-          cause instanceof Error ? cause.message : String(cause),
-        ),
-      )
-      .finally(() => setTaking(null));
-  };
-
-  const block = () => {
-    const one = reading?.thing;
-    if (!one) return;
-    setTaking(one.id);
-    void api
-      .blockAuthorOf(reading.kind, one.id)
-      .then(() => {
-        setTrail([]);
-        listBlocked();
-        void fetchPage(null);
-        say(
-          "Auteur bloqué",
-          `Vous ne verrez plus rien de ${one.author}, et cette personne ne verra plus rien de vous.`,
-        );
-      })
-      .catch((cause: unknown) =>
-        say(
-          "Blocage impossible",
           cause instanceof Error ? cause.message : String(cause),
         ),
       )
@@ -559,16 +518,12 @@ export function Catalogue({
     void api
       .copy(its, one.id)
       .then(async () => {
-        // Trois réserves tiennent ce que ce compte possède, et une copie
-        // arrive par une route qu'aucune ne connaît : la collection pour les
-        // événements, les gens et les classeurs ; les territoires peints ;
-        // les villes posées. La carte se redessine depuis la base et n'avait
-        // besoin de rien ; ces listes-là sont tenues en mémoire, si.
-        await (its === "territory"
-          ? reloadDrawn()
-          : its === "place"
-            ? reloadPlaces()
-            : refresh());
+        // Une copie arrive par une route que la collection ne connaît pas,
+        // et elle est tenue en mémoire : il faut la lui dire. Il y avait trois
+        // réserves à prévenir ici, du temps où l'on copiait aussi des
+        // territoires et des villes ; ceux-là vont maintenant dans le fond de
+        // carte, que la base redessine sans qu'on lui demande rien.
+        await refresh();
         // The drawing has served its purpose once the copy is taken.
         setDrawn(null);
         setRows((current) =>
@@ -623,13 +578,7 @@ export function Catalogue({
        * simply the name of the catalogue one is in, the card slides up
        * beneath it, and nothing flickers.
        */
-      title={
-        face === "report"
-          ? "Signaler"
-          : face === "blocked"
-            ? "Personnes bloquées"
-            : look.many
-      }
+      title={face === "report" ? "Signaler" : look.many}
       footer={
         face === "report" ? (
           <>
@@ -648,13 +597,6 @@ export function Catalogue({
               onPress={report}
             />
           </>
-        ) : face === "blocked" ? (
-          <InkButton
-            label="Retour"
-            variant="tonal"
-            grow
-            onPress={() => setFace("list")}
-          />
         ) : !atCard || reading === null ? (
           <InkButton label="Fermer" variant="tonal" grow onPress={onClose} />
         ) : (
@@ -663,17 +605,29 @@ export function Catalogue({
              prettier — and left the sheet's own footer showing underneath,
              two rows of buttons at once. */
           <>
-            {/* Not `grow`: six letters claiming half the footer left the
-                other button 121pt of room, and "Copier le personnage" needs
-                156. "Retour" takes what it needs and the copy button, whose
-                label is the long one and the one that matters, takes the
-                rest. */}
-            <InkButton label="Retour" variant="tonal" onPress={back} />
+            {/* `grow` only when "Retour" is alone. Beside the copy button it
+                must not: six letters claiming half the footer left the other
+                one 121pt of room, and "Copier le personnage" needs 156. So
+                "Retour" takes what it needs and the copy button, whose label
+                is the long one and the one that matters, takes the rest. */}
             <InkButton
-              label={
-                reading.thing.mine
-                  ? "Le vôtre"
-                  : reading.thing.copied
+              label="Retour"
+              variant="tonal"
+              grow={reading.thing.mine}
+              onPress={back}
+            />
+            {/* Rien à prendre dans sa propre bibliothèque.
+                `mine` ne peut plus être vrai que pour un seul compte : le
+                catalogue ne montre que les entrées publiées de la
+                bibliothèque, donc on ne rencontre sa propre entrée que si
+                l'on *est* la bibliothèque. Un bouton éteint marqué « Le
+                vôtre » le disait alors sur chaque carte, sans rien
+                apprendre. La ligne de la liste n'en montre aucun depuis
+                toujours (`ThingRow`) ; la carte fait pareil. */}
+            {reading.thing.mine ? null : (
+              <InkButton
+                label={
+                  reading.thing.copied
                     ? "Déjà copié"
                     : taking === reading.thing.id
                       ? "Copie…"
@@ -681,16 +635,15 @@ export function Catalogue({
                         // card in front of it, which may be two kinds away
                         // from the list that was searched.
                         readingLook.take
-              }
-              variant="solid"
-              grow
-              disabled={
-                reading.thing.mine || reading.thing.copied || taking !== null
-              }
-              onPress={() =>
-                setAsking({ one: reading.thing, kind: reading.kind })
-              }
-            />
+                }
+                variant="solid"
+                grow
+                disabled={reading.thing.copied || taking !== null}
+                onPress={() =>
+                  setAsking({ one: reading.thing, kind: reading.kind })
+                }
+              />
+            )}
           </>
         )
       }
@@ -710,9 +663,9 @@ export function Catalogue({
           automaticallyAdjustKeyboardInsets
         >
           <Text style={styles.lead}>
-            Dites-nous ce qui ne va pas avec « {reading?.thing.title} ». Son
-            auteur n'en saura rien. Assez de signalements et l'élément est retiré
-            de la communauté en attendant d'être relu.
+            Dites-nous ce qui ne va pas avec « {reading?.thing.title} ».
+            Assez de signalements et l'élément est retiré de la bibliothèque en
+            attendant d'être relu.
           </Text>
 
           {REASONS.map((one) => (
@@ -751,41 +704,6 @@ export function Catalogue({
             Nous répondons sous {ANSWER_WITHIN}. Vous pouvez aussi écrire à{" "}
             {CONTACT}.
           </Text>
-        </ScrollView>
-      ) : face === "blocked" ? (
-        <ScrollView contentContainerStyle={styles.reading}>
-          {blocked.length === 0 ? (
-            <Text style={styles.lead}>
-              Vous n'avez bloqué personne. Bloquer quelqu'un retire son travail
-              de ce que vous voyez, et le vôtre de ce qu'il voit.
-            </Text>
-          ) : (
-            blocked.map((one) => (
-              <View key={one.id} style={styles.blocked}>
-                <Text style={styles.blockedName}>{one.handle}</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Débloquer ${one.handle}`}
-                  hitSlop={8}
-                  onPress={() => {
-                    void api
-                      .unblock(one.id)
-                      .then(() => {
-                        listBlocked();
-                        void fetchPage(null);
-                      })
-                      .catch(() => undefined);
-                  }}
-                  style={({ pressed }) => [
-                    styles.unblock,
-                    pressed && styles.dim,
-                  ]}
-                >
-                  <Text style={styles.unblockLabel}>Débloquer</Text>
-                </Pressable>
-              </View>
-            ))
-          )}
         </ScrollView>
       ) : (
         <>
@@ -847,12 +765,6 @@ export function Catalogue({
                   </Text>
                 </Pressable>
 
-                {blocked.length > 0 ? (
-                  <Chip
-                    label={`Bloqués · ${blocked.length}`}
-                    onPress={() => setFace("blocked")}
-                  />
-                ) : null}
               </View>
             </View>
 
@@ -994,7 +906,6 @@ export function Catalogue({
                     // `onShowPhoto` dans `SharedCard`.
                     onShowPhoto={setViewing}
                     onReport={() => setFace("report")}
-                    onBlock={block}
                   />
                 </Animated.View>
               );
@@ -1011,7 +922,6 @@ export function Catalogue({
                 tree={drawn.tree}
                 faces={drawn.faces}
                 said={look.under(drawn.thing)}
-                by={drawn.thing.mine ? "vous" : drawn.thing.author}
                 takeable={!drawn.thing.mine && !drawn.thing.copied}
                 busy={taking === drawn.thing.id}
                 onTake={() => setAsking({ one: drawn.thing, kind: "tree" })}
@@ -1521,19 +1431,6 @@ const styles = StyleSheet.create({
   reasonOn: { backgroundColor: palette.wax },
   reasonLabel: { fontSize: 15, fontWeight: "600", color: palette.ink },
   reasonLabelOn: { color: palette.paperLight },
-
-  blocked: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: space.md,
-    padding: space.md,
-    borderRadius: radius.md,
-    backgroundColor: palette.sunken,
-  },
-  blockedName: { flex: 1, fontSize: 15, fontWeight: "600", color: palette.ink },
-  unblock: { paddingHorizontal: space.sm, paddingVertical: 4 },
-  unblockLabel: { ...type.caption, fontWeight: "700", color: palette.wax },
 
   aside: { ...type.legend, color: palette.inkFaint },
 });

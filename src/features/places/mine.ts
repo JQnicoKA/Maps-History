@@ -20,14 +20,19 @@ export type MyPlace = {
   from: number;
   /** L'année de disparition, ou null pour « elle y est encore ». */
   to: number | null;
-  /** Dans la communauté, où chacun peut la lire et la copier. */
-  shared: boolean;
   /**
-   * La ligne d'où celle-ci a été copiée, dans un autre compte — null pour une
-   * originale. Décide ce que l'avertissement de suppression peut dire
-   * honnêtement, et interdit le repartage.
+   * L'auteur autorise la bibliothèque à la promouvoir dans le fond de carte.
+   *
+   * Pas de filiation ici, en revanche, et plus jamais : une ville ne va pas
+   * dans une bibliothèque où l'on viendrait la copier. Vérifiée, elle est
+   * promue dans le fond, où tout le monde l'a d'un coup et où chacun peut la
+   * masquer — et où la ligne de son auteur disparaît, puisqu'elle y ferait
+   * doublon. D'où `stars` et `origin_id` déposées de `drawn_places`, mais
+   * `shared` conservée : ce que le conservateur en fait va plus loin que d'en
+   * tirer une entrée, donc le refus compte davantage ici qu'ailleurs. Voir
+   * `promote_place`.
    */
-  origin: string | null;
+  shared: boolean;
 };
 
 /** Un lieu de référence ôté de la carte : son identité chez OHM, et son nom. */
@@ -46,7 +51,6 @@ export async function fetchMyPlaces(): Promise<MyPlace[]> {
       start_year: number;
       end_year: number | null;
       shared: boolean;
-      origin: string | null;
     }[]
   ).map((row) => ({
     id: row.id,
@@ -56,7 +60,6 @@ export async function fetchMyPlaces(): Promise<MyPlace[]> {
     from: row.start_year,
     to: row.end_year,
     shared: row.shared,
-    origin: row.origin,
   }));
 }
 
@@ -85,7 +88,7 @@ export async function addPlace(place: {
   if (error) throw new Error(error.message);
 }
 
-/** Met une ville dans la communauté, ou l'en retire. */
+/** Ouvre une ville à la bibliothèque, ou l'en soustrait. */
 export async function sharePlace(id: string, shared: boolean): Promise<void> {
   const { error } = await supabase()
     .from("drawn_places")

@@ -23,6 +23,7 @@ import { usePlacement } from "../../placement";
 import { LikelyDuplicates } from "../../community/LikelyDuplicates";
 import { whyLocked } from "../../community/copies";
 import { ShareRow } from "../../community/ShareRow";
+import { COPY_IS_A_COPY } from "../../community/stakes";
 import { CHARACTER_LOOK } from "../../community/looks";
 import type { Point } from "../../placement";
 import type {
@@ -31,6 +32,7 @@ import type {
   PickedPhoto,
   StoredPhoto,
 } from "../types";
+import { UpdateRow } from "../../community/UpdateRow";
 import { palette } from "../../../theme/palette";
 import { radius, space, TOUCH, type } from "../../../theme/tokens";
 
@@ -99,7 +101,7 @@ export function CharacterEditModal({
   );
   const [droppedPhotos, setDroppedPhotos] = useState<StoredPhoto[]>([]);
   /**
-   * S'il est dans la communauté — tenu ici, bien qu'écrit aussitôt.
+   * S'il est proposé à la bibliothèque — tenu ici, bien qu'écrit aussitôt.
    *
    * À la différence des champs au-dessus, celui-ci n'attend pas
    * « Enregistrer » : `share` est une écriture d'un seul booléen, et c'est
@@ -123,7 +125,7 @@ export function CharacterEditModal({
   const kept =
     person?.origin === null || person === null
       ? ""
-      : " Et vous n'effacez que votre copie : celle de son auteur, dans la communauté, n'est pas touchée.";
+      : ` ${COPY_IS_A_COPY}`;
 
   const stake =
     appears === 0
@@ -265,6 +267,19 @@ export function CharacterEditModal({
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
       >
+        {/* En tête de la fiche, et seulement s'il y a du neuf à reprendre.
+            Même place et même raison que sur le formulaire d'un événement. */}
+        {subject !== null && subject !== "new" ? (
+          <UpdateRow
+            kind="character"
+            id={subject.id}
+            // Les champs sont semés depuis la personne qu'on nous a donnée,
+            // et celle-ci vient d'être réécrite en base : la collection se
+            // relit, puis la fiche se referme sur sa version à jour.
+            onRefreshed={() => void refresh().then(onClose)}
+          />
+        ) : null}
+
         <InkField
           label="Nom"
           value={name}
@@ -350,8 +365,8 @@ export function CharacterEditModal({
 
         {/* Seulement en correction. Créer ne demande rien : ce qu'on écrit
             ici est de l'histoire et non un journal, donc un personnage neuf
-            rejoint la communauté, et son auteur l'en retire après s'il
-            préfère le garder. Une question de moins à l'aller, pour la
+            est proposé à la bibliothèque, et son auteur l'en soustrait après
+            s'il préfère le garder. Une question de moins à l'aller, pour la
             réponse rare. */}
         {person ? (
           <ShareRow
