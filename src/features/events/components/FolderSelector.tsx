@@ -138,8 +138,15 @@ export function FolderSelector({
     <View style={styles.container}>
       <View style={styles.chips}>
         {value.map((name) => (
-          <Chip key={name} label={name} selected onPress={() => toggle(name)} />
+          <Chip
+            key={name}
+            label={name}
+            selected
+            tone="wax"
+            onPress={() => toggle(name)}
+          />
         ))}
+        {/* La porte garde le ton neutre : ce n'est pas un classeur. */}
         <Chip
           label={value.length === 0 ? emptyLabel : "+ Autre"}
           onPress={() => setOpen(true)}
@@ -192,6 +199,7 @@ export function FolderSelector({
                   key={name}
                   label={name}
                   selected={value.includes(name)}
+                  tone="wax"
                   onPress={() => toggle(name)}
                 />
               ))}

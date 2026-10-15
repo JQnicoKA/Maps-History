@@ -13,6 +13,7 @@ import { PhotoViewer } from "./PhotoViewer";
 import { SharePill } from "../../community/SharePill";
 import { stake } from "../../community/stakes";
 import {
+  Chip,
   ConfirmDialog,
   InkButton,
   Sheet,
@@ -34,10 +35,18 @@ import { radius, space, TOUCH, type } from "../../../theme/tokens";
 
 const TRASH = require("../../../../assets/icons/trash.png");
 
+/**
+ * Les trois crans, tels qu'ils se lisent seuls.
+ *
+ * Avec une capitale, parce qu'ils ne sont plus dans une phrase : ils tenaient
+ * la fin d'« Importance élevée », où une minuscule allait de soi. Sous une
+ * légende, ce sont des valeurs, et une valeur commence par une capitale comme
+ * tout ce que porte cette fiche.
+ */
 const IMPORTANCE_LABEL: Record<Importance, string> = {
-  high: "élevée",
-  medium: "moyenne",
-  low: "faible",
+  high: "Élevée",
+  medium: "Moyenne",
+  low: "Faible",
 };
 
 export type EventDetailModalProps = {
@@ -251,22 +260,31 @@ export function EventDetailModal({
           </View>
         ) : null}
 
-        {/* Les sujets d'abord, l'importance ensuite et une seule fois : elle
-            est celle de l'événement, et non plus celle de son rangement dans
-            tel classeur. */}
+        {/* Deux sections et non une, comme le formulaire en a deux étapes :
+            les classeurs sont des sujets, l'importance est celle de
+            l'événement. Les tenir ensemble faisait lire l'une comme une
+            propriété des autres — ce qu'elle a été, et qui a été démonté. */}
         <View style={styles.section}>
           <Text style={styles.legend}>Classement</Text>
-          {event.folders.map((name) => (
-            <View key={name} style={styles.folderRow}>
-              <Text style={styles.folderName} numberOfLines={1}>
-                {name}
-              </Text>
+          {event.folders.length === 0 ? (
+            <Text style={styles.plain}>Rangé nulle part</Text>
+          ) : (
+            <View style={styles.chips}>
+              {/* Les mêmes pastilles que le formulaire, sans le geste : il n'y
+                  a rien à cocher sur la fiche de ce qu'on lit. */}
+              {event.folders.map((name) => (
+                <Chip key={name} label={name} selected tone="wax" />
+              ))}
             </View>
-          ))}
-          <Text style={styles.importance}>
-            {event.folders.length === 0
-              ? `Rangé nulle part · importance ${IMPORTANCE_LABEL[event.importance]}`
-              : `Importance ${IMPORTANCE_LABEL[event.importance]}`}
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.legend}>Importance</Text>
+          {/* Le cran seul : la légende au-dessus porte déjà le mot, et
+              « Importance » suivi de « Importance élevée » bégaie. */}
+          <Text style={styles.plain}>
+            {IMPORTANCE_LABEL[event.importance]}
           </Text>
         </View>
       </ScrollView>
@@ -329,19 +347,16 @@ const styles = StyleSheet.create({
   description: { ...type.body, color: palette.inkSoft },
   section: { gap: space.sm },
   legend: { ...type.legend, color: palette.inkFaint },
-  // Un seul enfant depuis que l'importance a quitté la ligne : plus rien à
-  // répartir aux deux bouts.
-  folderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.md,
-    minHeight: 40,
-    paddingHorizontal: space.md,
-    borderRadius: radius.sm,
-    backgroundColor: palette.sunken,
-  },
-  folderName: { flex: 1, fontSize: 15, color: palette.ink },
-  importance: { fontSize: 13, color: palette.inkSoft },
+  /**
+   * Les classeurs en pastilles, et plus en rangées pleine largeur.
+   *
+   * Une rangée par classeur disait qu'il y avait quelque chose à y faire — on
+   * en ouvre une, on la corrige — alors qu'un classeur n'est qu'un nom, et que
+   * cette fiche est en lecture. Une pastille énonce ; une rangée invite.
+   */
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+  /** Une valeur ou un constat, sous sa légende. */
+  plain: { ...type.body, color: palette.inkSoft },
   photos: { flexDirection: "row", gap: space.md },
   photo: { width: 168, height: 120, borderRadius: radius.md },
   dim: { opacity: 0.6 },
