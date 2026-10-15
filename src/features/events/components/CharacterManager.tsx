@@ -6,12 +6,21 @@ import { lifespan, placeOfPerson } from "../lifespan";
 import type { Character } from "../types";
 
 export type CharacterManagerProps = {
-  /** Asks for someone's page, to be read. */
-  onRead: (person: Character) => void;
-  /** Asks for the form — on someone, or blank. */
-  onEdit: (target: Character | "new") => void;
-  /** Asks for the community's people. */
-  onSeek: () => void;
+  /**
+   * Asks for someone's page, to be read. Absent where a row has nothing to
+   * open — a list standing in a picker, whose rows answer `onPick` instead.
+   */
+  onRead?: (person: Character) => void;
+  /**
+   * Asks for the form — on someone, or blank.
+   *
+   * Absent in a picker, and that takes the empty slot away with it: « Nouveau
+   * personnage » at the head of a list one is choosing from is a door out of
+   * a half-written event, and the pencil on a row is a second one.
+   */
+  onEdit?: (target: Character | "new") => void;
+  /** Asks for the community's people. Absent where there is nowhere to go. */
+  onSeek?: () => void;
   /**
    * Choisir quelqu'un au lieu de le lire — et la liste change de métier.
    *
@@ -70,17 +79,26 @@ export function CharacterManager({
             ? "Aucun personnage"
             : `${characters.length} personnage${characters.length > 1 ? "s" : ""}`
         }
-        addLabel="Nouveau personnage"
-        onAdd={() => onEdit("new")}
-        seekLabel="Chercher dans la bibliothèque"
-        seekDetail="Les personnages rassemblés dans la bibliothèque"
-        onSeek={onSeek}
+        {...(onEdit === undefined
+          ? {}
+          : { addLabel: "Nouveau personnage", onAdd: () => onEdit("new") })}
+        {...(onSeek === undefined
+          ? {}
+          : {
+              seekLabel: "Chercher dans la bibliothèque",
+              seekDetail: "Les personnages rassemblés dans la bibliothèque",
+              onSeek,
+            })}
       >
         {characters.length === 0 ? (
           <RosterEmpty>
-            Un personnage est quelqu'un qu'un événement met en scène : on peut
-            en lier plusieurs au même événement, et les relier entre eux dans
-            un arbre.
+            {/* Sans emplacement vide, la liste n'offre aucune porte : elle
+                doit donc dire où l'on en fait un, sinon elle est un
+                cul-de-sac. C'est le cas du choix — lier quelqu'un à un
+                événement, poser quelqu'un dans un arbre. */}
+            {onEdit === undefined
+              ? "Aucun personnage à lier. On en écrit un depuis le bouton + de la carte, « Personnage »."
+              : "Un personnage est quelqu'un qu'un événement met en scène : on peut en lier plusieurs au même événement, et les relier entre eux dans un arbre."}
           </RosterEmpty>
         ) : (
           characters.map((person) => {
@@ -129,9 +147,15 @@ export function CharacterManager({
                   : onPick
                     ? { onPress: () => onPick(person) }
                     : {
-                        onPress: () => onRead(person),
-                        onEdit: () => onEdit(person),
-                        editLabel: `Modifier ${person.name}`,
+                        ...(onRead === undefined
+                          ? {}
+                          : { onPress: () => onRead(person) }),
+                        ...(onEdit === undefined
+                          ? {}
+                          : {
+                              onEdit: () => onEdit(person),
+                              editLabel: `Modifier ${person.name}`,
+                            }),
                       })}
               />
             );

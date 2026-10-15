@@ -56,14 +56,23 @@ export type SheetProps = {
    */
   tall?: boolean;
   /**
-   * Whether the whole panel rides up when the keyboard opens.
+   * Whether the panel gets out of the keyboard's way when it opens.
    *
-   * On by default, and right for a short sheet asking one thing: its only
-   * field would otherwise be under the keys. A long form is the other case —
-   * the panel is already as tall as the screen, so lifting it only shoves the
-   * buttons up against the keyboard, which looks like a mistake and hides
-   * more of the form than it saves. Those pass `false` and let the scrolling
-   * content bring the focused field into view instead.
+   * On by default, and right for almost everything — including the tall
+   * forms, which is a correction. The rule written here used to say a long
+   * panel had nowhere to rise to, so lifting it would only shove its buttons
+   * against the keys. That was wrong about the mechanism: a `tall` panel's
+   * height is a percentage of the content box, the keyboard's padding
+   * shrinks that box, so the panel **shortens** and sits whole above the
+   * keys — footer included. What `false` really cost was the footer, hidden
+   * under the keyboard at the moment one finishes typing and wants the next
+   * step.
+   *
+   * `false` remains for a panel that would rather keep its full height and
+   * let its own scrolling list make room underneath — the catalogue, whose
+   * rows are the point and whose only field is at the top. On iOS that is
+   * `automaticallyAdjustKeyboardInsets` on the list; on Android nothing lifts
+   * either way, and the window resizes instead.
    */
   liftsForKeyboard?: boolean;
   children: ReactNode;

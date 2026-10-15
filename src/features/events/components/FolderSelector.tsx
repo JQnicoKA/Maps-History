@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { Chip, Dialog, InkButton, InkField } from "../../../components/ui";
+import { Chip, InkButton, InkField, Sheet } from "../../../components/ui";
 import { palette } from "../../../theme/palette";
 import { radius, space, type } from "../../../theme/tokens";
 
@@ -94,7 +94,7 @@ export function FolderSelector({
   value,
   onChange,
   allowNew = false,
-  emptyLabel = "Ranger dans un classeur",
+  emptyLabel = "+ Ranger dans un classeur",
 }: FolderSelectorProps) {
   const [open, setOpen] = useState(false);
   /** Ce qui est tapé : à la fois le tamis et le nom d'un classeur à naître. */
@@ -146,29 +146,35 @@ export function FolderSelector({
         />
       </View>
 
-      {/* Sans titre : la carte est tout entière sa propre réponse — un champ
-          et ce qu'il tamise. La nommer « Classeurs » ne dirait rien que les
-          pastilles ne disent déjà. Sans bouton au pied non plus : choisir
-          s'applique sur le coup, donc il n'y a rien à confirmer ni à annuler,
-          et la croix suffit. */}
-      <Dialog
+      {/* Une feuille qui monte du bas, comme toutes les autres de
+          l'application. Elle a été une carte centrée un moment, et le voile
+          doublé la rendait trouble ; ce défaut avait une vraie correction
+          — `veil="soft"` sur `Dialog`, qui reste — mais une feuille n'a jamais
+          eu le problème : son panneau est opaque et collé au bas, donc le
+          voile doublé ne se voit que dans la bande au-dessus.
+
+          Pleine hauteur, comme les autres : le panneau se dimensionnait sur
+          son contenu, et tamiser lui faisait perdre une rangée de pastilles —
+          donc il se resserrait sous les doigts à chaque lettre tapée. C'est
+          exactement le cas que `tall` décrit : un contenu qui va et vient veut
+          un panneau qui ne bouge pas. La liste prend la hauteur qui reste. */}
+      <Sheet
         visible={open}
         onClose={shut}
-        /* Elle s'ouvre depuis une feuille — ou, pour le filtre, depuis une
-           autre carte — qui a déjà posé le voile. */
-        veil="soft"
-        dismissLabel={null}
+        title="Mes classeurs"
+        tall
+        footer={
+          <InkButton label="Fermer" variant="solid" grow onPress={shut} />
+        }
       >
-        {/* Rien ici ne porte `grow` : dans une colonne dimensionnée par son
-            contenu, `flex: 1` donne une base nulle et les enfants débordent de
-            la carte. La `ScrollView` est bornée par sa hauteur maximale, pas
-            par un `flex`. */}
         <View style={styles.picker}>
+          {/* Sans étiquette : le titre de la carte dit déjà de quoi il s'agit,
+              et la seule chose à faire ici est de taper. L'invite porte un
+              exemple, ce qui vaut mieux qu'un mode d'emploi au-dessus. */}
           <InkField
-            label={allowNew ? "Chercher ou nommer" : "Chercher"}
             value={typed}
             onChangeText={setTyped}
-            placeholder="Carolingiens"
+            placeholder="Rechercher un classeur..."
             autoFocus={all.length > ASSEZ_POUR_CHERCHER}
             autoCorrect={false}
             returnKeyType={allowNew ? "done" : "search"}
@@ -208,7 +214,7 @@ export function FolderSelector({
             />
           ) : null}
         </View>
-      </Dialog>
+      </Sheet>
     </View>
   );
 }
@@ -216,14 +222,23 @@ export function FolderSelector({
 const styles = StyleSheet.create({
   container: { gap: space.sm },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
-  /** La carte porte déjà sa gouttière ; ce bloc n'ajoute que le rythme. */
-  picker: { gap: space.md },
   /**
-   * Plafonnée et défilante : le nombre de classeurs grandit sans fin, la
-   * hauteur de la carte non. Le champ reste en vue au-dessus, et le bouton
-   * « Créer » en dessous.
+   * La gouttière des feuilles, que la feuille ne pose pas elle-même : ses
+   * sections la portent chacune, comme dans les listes et les formulaires.
+   *
+   * `flex: 1` pour que la liste en dessous puisse prendre ce qui reste —
+   * sans lui, elle n'aurait aucune hauteur à partager.
    */
-  list: { maxHeight: 220 },
+  picker: { flex: 1, paddingHorizontal: space.xl, gap: space.md },
+  /**
+   * Elle prend la hauteur qui reste et défile dedans.
+   *
+   * Elle était plafonnée à 220 points, du temps où le panneau se
+   * dimensionnait sur son contenu. Dans un panneau de hauteur fixe, un plafond
+   * laisserait un trou entre les pastilles et le pied — le champ en haut, le
+   * bouton « Créer » en bas, et du vide au milieu.
+   */
+  list: { flex: 1 },
   nothing: {
     ...type.body,
     color: palette.inkFaint,

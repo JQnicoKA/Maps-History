@@ -4,7 +4,15 @@ import { palette } from "../../theme/palette";
 import { radius, space, TOUCH, type } from "../../theme/tokens";
 
 export type InkFieldProps = TextInputProps & {
-  label: string;
+  /**
+   * The line above the box, when the field needs naming.
+   *
+   * Absent where what is above it already says so — a card titled « Mes
+   * classeurs » whose only field is the one that sifts them. An empty string
+   * would not do: it still draws a line of type and the gap under it, so the
+   * box would sit low for no reason.
+   */
+  label?: string;
 };
 
 /**
@@ -14,7 +22,9 @@ export type InkFieldProps = TextInputProps & {
 export function InkField({ label, style, ...props }: InkFieldProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      {label === undefined ? null : (
+        <Text style={styles.label}>{label}</Text>
+      )}
       <TextInput
         placeholderTextColor={palette.inkFaint}
         {...props}

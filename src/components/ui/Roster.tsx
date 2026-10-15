@@ -23,8 +23,15 @@ const STROKE = 2.5;
 export type RosterProps = {
   /** "3 arbres", "Aucun personnage" — the count, said in words. */
   count: string;
-  addLabel: string;
-  onAdd: () => void;
+  /**
+   * The empty slot at the top, when this list is a place one adds to.
+   *
+   * Absent for a list that is only a **choice** — the people a tree or an
+   * event may name. There, "make one more" is a door out of a half-finished
+   * job, and the same rows have to serve without it.
+   */
+  addLabel?: string;
+  onAdd?: () => void;
   /**
    * The other way to fill a list: what the community has already made.
    *
@@ -147,7 +154,9 @@ export function Roster({
         />
       )}
 
-      <AddSlot label={addLabel} onPress={onAdd} />
+      {onAdd === undefined ? null : (
+        <AddSlot label={addLabel ?? "Ajouter"} onPress={onAdd} />
+      )}
 
       {children}
     </View>

@@ -67,8 +67,12 @@ export type DrawTerritoryButtonProps = {
  * event to the collection, the other changes the map the collection is read
  * on. Two different kinds of making.
  *
- * Le panneau garde le nom de son premier onglet, comme celui des personnages
- * garde le sien alors qu'il porte aussi les arbres.
+ * Le panneau s'appelle « Dessiner » et non plus « Territoires », qui était le
+ * nom de son premier onglet. Deux raisons : il en porte deux, et surtout le
+ * verbe est ce qui le distingue des deux autres boutons. Le `+` ajoute une
+ * note à la collection, le second ouvre ce qu'on a déjà écrit, celui-ci
+ * **dessine sur la planche**. Nommer l'un par son contenu et les autres par
+ * leur geste laissait trois boutons sans rapport entre eux.
  */
 export function DrawTerritoryButton({
   onDraw,
@@ -91,7 +95,7 @@ export function DrawTerritoryButton({
   return (
     <>
       <GlyphButton
-        accessibilityLabel="Territoires et villes"
+        accessibilityLabel="Dessiner sur la carte"
         onPress={() => setOpen(true)}
       >
         <Image source={TERRITORIES} style={styles.glyph} resizeMode="contain" />
@@ -106,7 +110,7 @@ export function DrawTerritoryButton({
           setLeaving(null);
           deed();
         }}
-        title="Territoires"
+        title="Dessiner"
         // Two lists that grow as the reader works; a panel resizing itself
         // around them would never be still.
         tall

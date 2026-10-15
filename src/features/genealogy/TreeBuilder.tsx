@@ -889,9 +889,6 @@ export function TreeBuilder({
               setAfterPicker("new");
               setAdding(null);
             }}
-            // Jamais appelé en mode choix, mais la propriété est requise :
-            // une rangée refusée ne rend rien, une rangée libre rend `onPick`.
-            onRead={() => {}}
           />
         </Sheet>
 

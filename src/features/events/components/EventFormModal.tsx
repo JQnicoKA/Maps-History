@@ -1,13 +1,11 @@
 import { useState, type ReactNode } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { CharacterManager } from "./CharacterManager";
 import { LikelyDuplicates } from "../../community/LikelyDuplicates";
 import { whyLocked } from "../../community/copies";
 import { ShareRow } from "../../community/ShareRow";
 import { EVENT_LOOK } from "../../community/looks";
 import { CharacterSelector } from "./CharacterSelector";
-import { TreeManager } from "../../genealogy/TreeManager";
 import { FolderSelector } from "./FolderSelector";
 import { EventDateField } from "./EventDateField";
 import { PhotoPicker } from "./PhotoPicker";
@@ -15,10 +13,8 @@ import { TypePicker, typeName } from "./TypePicker";
 import {
   InkButton,
   InkField,
-  Lens,
   SegmentedControl,
   Sheet,
-  THUMB,
   useNotice,
 } from "../../../components/ui";
 import { radius, space, type } from "../../../theme/tokens";
@@ -27,7 +23,6 @@ import { usePlacement, type Point } from "../../placement";
 import { UpdateRow } from "../../community/UpdateRow";
 
 import {
-  type Character,
   type EventDraft,
   type Importance,
   type StoredPhoto,
@@ -76,14 +71,22 @@ function Section({
  *
  * What is required comes first — a name, a date, a place — and everything
  * that elaborates follows.
+ *
+ * La description et le thème étaient une seule page, « Le détail ». Les
+ * séparer tient à ce qu'ils demandent : écrire un paragraphe veut un clavier
+ * et toute la place, choisir un thème veut voir seize cases d'un coup. Et le
+ * thème est **facultatif**, ce que son titre dit maintenant : un événement
+ * sans thème se range sous « Autre », ce qui est une réponse.
  */
 const STEPS = [
   "Ce qui s'est passé",
   "Quand",
   "Où",
-  "Le détail",
+  "Description",
+  "Thème",
   "Qui",
   "Classement",
+  "Importance",
   "Images",
 ] as const;
 
@@ -92,6 +95,10 @@ const STEPS = [
  *
  * A wizard without one is a corridor with no windows: the reader cannot tell
  * whether the next tap finishes the job or opens four more pages.
+ *
+ * Les libellés de `STEPS` ne servent qu'à clé les repères : ce qui se lit à
+ * l'écran est « Étape 4 sur 8 » et le titre de la section. Nommer une page se
+ * fait donc dans son `Section title`, et non dans la liste.
  */
 function Progress({ step }: { step: number }) {
   const left = STEPS.length - step - 1;
@@ -120,32 +127,12 @@ function Progress({ step }: { step: number }) {
   );
 }
 
-/** The three things the sheet can show, in two families. */
-export type Tab = "event" | "character" | "tree";
-
-/**
- * Les familles, et ce qu'elles portent.
- *
- * Celle des événements n'en porte plus qu'un : les classeurs avaient leur
- * onglet quand ils étaient des entités à faire, à nommer et à couvrir d'une
- * photographie. Un nom se tape là où il sert, dans l'événement qu'il range,
- * donc il n'y a plus de liste à tenir. Le sélecteur ne s'affiche que là où il
- * y a un choix — voir `styles.switcher` plus bas.
- */
 /** L'échelle, telle qu'on la propose — trois crans, et pas de quatrième. */
 const IMPORTANCES: { value: Importance; label: string }[] = [
   { value: "low", label: "Faible" },
   { value: "medium", label: "Moyenne" },
   { value: "high", label: "Élevée" },
 ];
-
-const FAMILIES = {
-  event: [{ value: "event" as const, label: "Nouvel Événement" }],
-  people: [
-    { value: "character" as const, label: "Personnages" },
-    { value: "tree" as const, label: "Arbres" },
-  ],
-} as const;
 
 export type EventFormModalProps = {
   visible: boolean;
@@ -154,45 +141,29 @@ export type EventFormModalProps = {
    * it, so switching events remounts the form and the state below re-seeds.
    */
   event?: HistoricalEvent | null;
-  /** Which pair of tabs this sheet carries. Ignored when editing. */
-  family?: keyof typeof FAMILIES;
-  /**
-   * Which of the pair to open on, when it is not the first.
-   *
-   * For coming back: a reader who left this sheet from the Arbres tab should
-   * find the Arbres tab, not be handed the one next to it.
-   */
-  startOn?: Tab;
-  /**
-   * Asks for someone's page, or the form on them. The screen answers by
-   * closing this sheet and opening the panel above it — see
-   * `CharacterManager` for why neither can live inside this one.
-   */
-  onReadCharacter: (person: Character) => void;
-  onEditCharacter: (target: Character | "new") => void;
-  /** Asks for a tree to be drawn, full screen. */
-  onOpenTree: (id: string) => void;
-  /** Asks for the community catalogue — of events, of people, of trees. */
-  onSearch: () => void;
-  onSearchPeople: () => void;
-  onSearchTrees: () => void;
   onCancel: () => void;
   /** Fired once the sheet is off the screen — see `Sheet`. */
   onClosed?: () => void;
   onSaved: () => void;
 };
 
+/**
+ * Un événement, écrit ou corrigé. Rien d'autre.
+ *
+ * Cette feuille a longtemps été *la* feuille d'ajout : quatre onglets, puis
+ * deux familles de deux, et à l'intérieur une fourche demandant « comment
+ * voulez-vous l'ajouter ? ». Elle portait donc trois questions avant la
+ * première du formulaire, et il fallait ouvrir un panneau pleine hauteur pour
+ * se les entendre poser.
+ *
+ * Les trois sont remontées au `+`, où elles se posent en deux cartes — voir
+ * `NewNoteButton`. Ce qui reste ici est ce qu'une feuille sait faire de mieux :
+ * remplir. Les listes de personnages et d'arbres ont leur propre porte,
+ * `PeopleSheet`, parce que consulter n'est pas écrire.
+ */
 export function EventFormModal({
   visible,
   event,
-  family = "event",
-  startOn,
-  onReadCharacter,
-  onEditCharacter,
-  onOpenTree,
-  onSearch,
-  onSearchPeople,
-  onSearchTrees,
   onCancel,
   onClosed,
   onSaved,
@@ -209,34 +180,14 @@ export function EventFormModal({
   const { aiming, place } = usePlacement();
 
   /**
-   * Which tab of the sheet is showing.
-   *
-   * Only ever one of the ones its family holds — what happened, or who it
-   * happened to and how they are related. Editing an existing event has no
-   * second tab: there is nothing to add but the changes in front of you.
-   */
-  const [tab, setTab] = useState<Tab>(
-    startOn ?? (family === "people" ? "character" : "event"),
-  );
-  /**
-   * Which of the five questions is on screen. Only when composing: correcting
-   * an event is not a journey, it is one change, and walking a reader through
+   * Which of the questions is on screen. Only when composing: correcting an
+   * event is not a journey, it is one change, and walking a reader through
    * five pages to reach the fourth would be a punishment.
    */
   const [step, setStep] = useState(0);
 
   /** Composing walks the questions; correcting shows them all at once. */
   const stepped = !event;
-  /**
-   * Whether the reader has said which way they are adding an event.
-   *
-   * There are two, and they were on one screen: a title field to fill in and
-   * a link to the community, side by side, which asked the reader to notice
-   * the second while already answering the first. Asked plainly instead, and
-   * only when composing — correcting an event is not a fork.
-   */
-  const [writing, setWriting] = useState(false);
-  const forking = stepped && tab === "event" && !writing;
   const show = (index: number) => !stepped || index === step;
 
   const [title, setTitle] = useState(event?.title ?? "");
@@ -273,8 +224,6 @@ export function EventFormModal({
   const { say, dialog } = useNotice();
 
   const reset = () => {
-    setTab("event");
-    setWriting(false);
     setStep(0);
     setTitle("");
     setType("other");
@@ -366,158 +315,66 @@ export function EventFormModal({
       onClose={onCancel}
       // Not while it is merely standing aside for the reticle.
       onClosed={aiming ? undefined : onClosed}
-      // Six steps and two lists live in here; a panel that resized itself for
-      // each would never be still.
+      // Seven steps live in here; a panel that resized itself for each would
+      // never be still.
       tall
-      // And a panel already the height of the screen has nowhere to rise to:
-      // the keyboard simply covers its foot, and the scrolling content below
-      // brings whatever is being typed into view.
-      liftsForKeyboard={false}
-      title={
-        event
-          ? "Modifier l'événement"
-          : family === "people"
-            ? "Personnages"
-            : "Événements"
-      }
+      // Et il monte avec le clavier, comme les feuilles courtes.
+      //
+      // Il passait `liftsForKeyboard={false}`, au motif qu'un panneau déjà
+      // haut de tout l'écran n'a nulle part où monter. C'était faux : le
+      // panneau ne monte pas, il **raccourcit** — sa hauteur est un
+      // pourcentage de la boîte de contenu, que le rembourrage du clavier
+      // réduit — et il se range donc entièrement au-dessus des touches, pied
+      // compris. Ce que l'ancien réglage coûtait, c'était les deux boutons :
+      // « Annuler » et « Suivant » restaient sous le clavier, au moment précis
+      // où l'on finit de taper et où l'on veut passer à la suite.
+      title={event ? "Modifier l'événement" : "Nouvel événement"}
       footer={
-        // Les listes — personnages, arbres — écrivent au moment où on les
-        // touche : rien à enregistrer, rien à annuler, juste de quoi fermer.
-        // Nothing at the foot of the fork: it asks a question with two
-        // answers on the screen, and a third at the bottom saying "neither"
-        // is furniture. The panel already closes by the handle and by the
-        // paper around it.
-        forking ? undefined : tab !== "event" ? (
+        <>
+          {/* « Retour » remonte d'une question ; à la première il n'y a plus
+              rien derrière — la fourche qui s'y trouvait est remontée au `+` —
+              donc il dit ce qu'il fait vraiment : annuler. */}
           <InkButton
-            label="Fermer"
+            label={stepped && step > 0 ? "Retour" : "Annuler"}
             variant="tonal"
             grow
             onPress={() => {
+              if (stepped && step > 0) {
+                setStep((current) => current - 1);
+                return;
+              }
               reset();
               onCancel();
             }}
           />
-        ) : (
-          <>
+          {stepped && step < STEPS.length - 1 ? (
+            <InkButton label="Suivant" variant="solid" grow onPress={next} />
+          ) : (
             <InkButton
-              label={stepped ? "Retour" : "Annuler"}
-              variant="tonal"
+              label={saving ? "Enregistrement…" : "Enregistrer"}
+              variant="solid"
               grow
-              onPress={() => {
-                if (stepped && step > 0) {
-                  setStep((current) => current - 1);
-                  return;
-                }
-                // Back out of the first question to the fork, not off the
-                // screen: the reader may have meant the other way in.
-                if (stepped) {
-                  setWriting(false);
-                  return;
-                }
-                reset();
-                onCancel();
-              }}
+              disabled={saving}
+              onPress={() => void save()}
             />
-            {stepped && step < STEPS.length - 1 ? (
-              <InkButton label="Suivant" variant="solid" grow onPress={next} />
-            ) : (
-              <InkButton
-                label={saving ? "Enregistrement…" : "Enregistrer"}
-                variant="solid"
-                grow
-                disabled={saving}
-                onPress={() => void save()}
-              />
-            )}
-          </>
-        )
+          )}
+        </>
       }
     >
       {dialog}
 
-      {/* Un sélecteur à un seul segment ne sélectionne rien : la famille des
-          événements n'en a plus qu'un depuis que les classeurs ne sont que des
-          noms, et un bouton qui ne mène nulle part est du mobilier. */}
-      {event || FAMILIES[family].length < 2 ? null : (
-        <View style={styles.switcher}>
-          <SegmentedControl
-            segments={[...FAMILIES[family]]}
-            value={tab}
-            onChange={setTab}
-          />
-        </View>
-      )}
-
-      {forking ? (
-        <View style={styles.fork}>
-          <Text style={styles.forkAsk}>Comment voulez-vous l'ajouter ?</Text>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Chercher dans la bibliothèque"
-            onPress={onSearch}
-            style={({ pressed }) => [
-              styles.way,
-              styles.waySeek,
-              pressed && styles.wayDown,
-            ]}
-          >
-            {/* The very lens the people's list wears, and not a copy of it:
-                this one had drifted until its handle hung off the glass. */}
-            <Lens />
-            <View style={styles.wayText}>
-              <Text style={[styles.wayTitle, styles.waxed]}>
-                Chercher dans la bibliothèque
-              </Text>
-              <Text style={styles.wayDetail}>
-                Les évènements rassemblés dans la bibliothèque
-              </Text>
-            </View>
-            <Text style={[styles.wayMore, styles.waxed]}>›</Text>
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Écrire un événement"
-            onPress={() => setWriting(true)}
-            style={({ pressed }) => [styles.way, pressed && styles.wayDown]}
-          >
-            <View style={styles.quill}>
-              <Text style={styles.quillGlyph}>✎</Text>
-            </View>
-            <View style={styles.wayText}>
-              <Text style={styles.wayTitle}>Écrire un événement</Text>
-              <Text style={styles.wayDetail}>
-                Le vôtre, de la première ligne à la dernière.
-              </Text>
-            </View>
-            <Text style={styles.wayMore}>›</Text>
-          </Pressable>
-        </View>
-      ) : null}
-
-      {stepped && tab === "event" && writing ? <Progress step={step} /> : null}
-
-      {tab === "character" && !event ? (
-        <CharacterManager
-          onRead={onReadCharacter}
-          onEdit={onEditCharacter}
-          onSeek={onSearchPeople}
-        />
-      ) : null}
-      {tab === "tree" && !event ? (
-        <TreeManager onOpen={onOpenTree} onSeek={onSearchTrees} />
-      ) : null}
+      {stepped ? <Progress step={step} /> : null}
 
       <ScrollView
-        style={
-          (tab !== "event" && !event) || forking ? styles.hidden : styles.fill
-        }
+        style={styles.fill}
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
-        // What replaces lifting the panel: the list makes room underneath
-        // itself for the keys, so a focused field is never behind them.
-        automaticallyAdjustKeyboardInsets
+        // `automaticallyAdjustKeyboardInsets` était posé ici, et il est parti
+        // avec le réglage qu'il servait : la marge qu'il pose se mesure sur ce
+        // que le clavier recouvre de cette liste, et le panneau se rangeant
+        // désormais entièrement au-dessus des touches, elle valait zéro. Il
+        // est de toute façon iOS seulement — il ne couvrait donc rien sur
+        // Android, où c'est la fenêtre qui se redimensionne.
       >
         {/* En tête du formulaire, et seulement s'il y a du neuf à reprendre.
             C'est l'endroit que le lecteur ouvre pour corriger quelque chose :
@@ -611,10 +468,9 @@ export function EventFormModal({
         ) : null}
 
         {show(3) ? (
-          <Section title="Le détail" answer={typeName(type)}>
-            <TypePicker value={type} onChange={setType} />
+          <Section title="Description">
             <InkField
-              label="Description"
+              label="Ce que l'on en retient"
               value={description}
               onChangeText={setDescription}
               multiline
@@ -624,6 +480,18 @@ export function EventFormModal({
         ) : null}
 
         {show(4) ? (
+          /* La réponse n'est écrite que si le lecteur a choisi : « Autre » est
+             la valeur par défaut, et l'afficher ferait passer un champ vide
+             pour une réponse donnée. */
+          <Section
+            title="Thème"
+            answer={type === "other" ? undefined : typeName(type)}
+          >
+            <TypePicker value={type} onChange={setType} />
+          </Section>
+        ) : null}
+
+        {show(5) ? (
           <Section
             title="Qui"
             answer={
@@ -640,28 +508,38 @@ export function EventFormModal({
           </Section>
         ) : null}
 
-        {show(5) ? (
+        {show(6) ? (
           <Section
             title="Classement"
             answer={
               folders.length === 0
-                ? IMPORTANCES.find((one) => one.value === importance)?.label
+                ? undefined
                 : `${folders.length} classeur${folders.length > 1 ? "s" : ""}`
             }
           >
+            <Text style={styles.hint}>
+              Vous pouvez ranger votre évènement dans un classeur afin de par la suite utiliser ce classeur dans votre filtrage, pour observer uniquement les évènements de votre classeur "Mérovingiens" par exemple.
+            </Text>
             <FolderSelector
               known={folderNames}
               value={folders}
               onChange={setFolders}
               allowNew
             />
+          </Section>
+        ) : null}
 
-            {/* Sous les sujets et non pas dans chacun d'eux : l'importance est
-                celle de l'événement. Elle était portée par le couple
-                (événement, classeur) — « majeur ici, incident là » — ce qui
-                n'est jamais arrivé une seule fois et obligeait chaque classeur
-                à traîner sa propre échelle. */}
-            <Text style={styles.hint}>Importance</Text>
+        {/* Sur sa propre page, et sans réponse écrite à droite du titre.
+            Les deux tenaient dans « Classement » : les sujets, puis une échelle
+            sous eux. Ça lisait comme si l'importance appartenait au classeur —
+            ce qu'elle a été, par le couple (événement, classeur), et ce qui a
+            été démonté précisément parce que personne ne s'en servait. Elle est
+            celle de l'événement, donc elle a sa page. */}
+        {show(7) ? (
+          <Section title="Importance">
+            <Text style={styles.hint}>
+              L'importance d'un évènement sert également au filtrage, vous pouvez appliquer un filtre sur l'importance pour ne montrer que les évènements que vous avez jugé "Importance élevée" par exemple.
+            </Text>
             <SegmentedControl
               segments={IMPORTANCES}
               value={importance}
@@ -670,7 +548,7 @@ export function EventFormModal({
           </Section>
         ) : null}
 
-        {show(6) ? (
+        {show(8) ? (
           <Section title="Images">
             <PhotoPicker
               photos={photos}
@@ -710,64 +588,21 @@ export function EventFormModal({
 }
 
 const styles = StyleSheet.create({
-  hint: { ...type.legend, color: palette.inkFaint },
+  /**
+   * Une phrase sous un contrôle, pour dire ce qu'il fait.
+   *
+   * `type.caption` et non `type.legend` : la légende met en capitales — c'est
+   * sa définition — et une phrase entière en capitales ne se lit pas, elle se
+   * déchiffre. La légende est pour un mot d'étiquette.
+   */
+  hint: { ...type.caption, color: palette.inkSoft },
 
   /** The sections carry their own gutter; this row is not one of them. */
   sharing: { paddingHorizontal: space.xl },
 
-  /**
-   * The two ways in, asked before either is taken.
-   *
-   * They were one screen — a title to type and a link to the community
-   * beside it — which is a fork drawn as a form: it asked the reader to
-   * notice the second option while already answering the first. Two cards
-   * ask the question instead, and the answer decides what comes next.
-   */
-  fork: { paddingHorizontal: space.xl, paddingTop: space.md, gap: space.md },
-  forkAsk: { ...type.caption, color: palette.inkSoft, textAlign: "center" },
-  /**
-   * Les deux voies, aux mesures exactes du `Roster`.
-   *
-   * Elles s'en écartaient sans raison — un fond, une ombre, une marge de 12,
-   * un titre à 15,5, un chevron à 20 — et la fourche paraissait d'une autre
-   * famille que les listes, alors qu'elle pose la même question : faire le
-   * sien, ou prendre ce qui existe. Le `Roster` y répond déjà avec un
-   * emplacement pointillé et une porte en cire. On lui emprunte tout —
-   * y compris le fait de ne plus pencher.
-   */
-  way: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.md,
-    padding: space.sm,
-    paddingRight: space.md,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderStyle: "dashed",
-    borderColor: palette.paperDeep,
-  },
-  /** Pleine et en cire : une porte, et non un emplacement à remplir. */
-  waySeek: {
-    borderStyle: "solid",
-    borderColor: palette.wax,
-  },
-  wayDown: { opacity: 0.6 },
-  quill: {
-    width: THUMB,
-    height: THUMB,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  quillGlyph: { fontSize: 22, color: palette.inkSoft },
-  wayText: { flex: 1, gap: 2 },
-  wayTitle: { fontSize: 15, fontWeight: "700", color: palette.ink },
-  wayDetail: { ...type.legend, color: palette.inkSoft },
-  wayMore: { fontSize: 18, lineHeight: 20, color: palette.inkFaint },
-  waxed: { color: palette.wax },
-  switcher: {
-    paddingHorizontal: space.xl,
-    paddingBottom: space.lg,
-  },
+  /* La fourche et ses deux voies vivaient ici. Elles sont parties au `+`, où
+     elles précèdent l'ouverture de cette feuille au lieu de l'encombrer —
+     voir `NewNoteButton`, qui en a repris les mesures telles quelles. */
   progress: {
     paddingHorizontal: space.xl,
     paddingBottom: space.lg,
@@ -789,7 +624,6 @@ const styles = StyleSheet.create({
   },
   progressStep: { ...type.caption, color: palette.inkSoft, fontWeight: "600" },
   progressLeft: { ...type.caption, color: palette.inkFaint },
-  hidden: { display: "none" },
   /** The panel has a height of its own now; its contents must take it up. */
   fill: { flex: 1 },
   body: {

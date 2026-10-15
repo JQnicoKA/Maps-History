@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { SelectField } from "../../../components/ui";
+import { CharacterManager } from "./CharacterManager";
+import { InkButton, Sheet } from "../../../components/ui";
 import { lifespan } from "../lifespan";
 import type { Character } from "../types";
 import { palette } from "../../../theme/palette";
@@ -19,12 +21,21 @@ export type CharacterSelectorProps = {
  * they were entities, because a reader should not have to learn two ways of
  * attaching things to an event. Les classeurs sont descendus à la pastille
  * depuis : un nom n'a pas besoin d'une carte, une personne en a une.
+ *
+ * La fenêtre qui s'ouvre, elle, est **la liste des personnages elle-même** —
+ * `CharacterManager` en mode choix. Elle montrait avant une suite de lignes
+ * « Nom · dates » bâtie ici à la main, et c'était une ressemblance entretenue
+ * de loin : le visage manquait, le nombre d'événements manquait, et « à placer
+ * sur la carte » — qui explique pourquoi quelqu'un n'apparaît nulle part — ne
+ * se lisait que dans l'autre liste. Une seule liste, deux métiers.
  */
 export function CharacterSelector({
   characters,
   value,
   onChange,
 }: CharacterSelectorProps) {
+  const [open, setOpen] = useState(false);
+
   const toggle = (id: string) =>
     onChange(
       value.includes(id)
@@ -74,33 +85,48 @@ export function CharacterSelector({
         );
       })}
 
-      <SelectField
-        title="Personnages"
-        placeholder="Choisir un personnage…"
-        options={characters.map((person) => {
-          const dates = lifespan(person);
-          return {
-            value: person.id,
-            label: dates === "" ? person.name : `${person.name} · ${dates}`,
-          };
-        })}
-        selected={value}
-        onToggle={toggle}
-        emptyMessage="Aucun personnage. Créez-en un dans « Nouveau personnage »."
-        trigger={(open) => (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Lier un personnage"
-            onPress={open}
-            style={({ pressed }) => [styles.add, pressed && styles.pressed]}
-          >
-            <Text style={styles.addGlyph}>+</Text>
-            <Text style={styles.addLabel}>
-              {value.length === 0 ? "Lier un personnage" : "Lier quelqu'un d'autre"}
-            </Text>
-          </Pressable>
-        )}
-      />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Lier un personnage"
+        onPress={() => setOpen(true)}
+        style={({ pressed }) => [styles.add, pressed && styles.pressed]}
+      >
+        <Text style={styles.addGlyph}>+</Text>
+        <Text style={styles.addLabel}>
+          {value.length === 0 ? "Lier un personnage" : "Lier quelqu'un d'autre"}
+        </Text>
+      </Pressable>
+
+      <Sheet
+        visible={open}
+        onClose={() => setOpen(false)}
+        title="Lier un personnage"
+        // La liste grandit avec la collection ; un panneau qui se
+        // redimensionnerait autour d'elle ne tiendrait jamais en place.
+        tall
+        footer={
+          <InkButton
+            label="Fermer"
+            variant="solid"
+            grow
+            onPress={() => setOpen(false)}
+          />
+        }
+      >
+        {/* Ni crayon, ni « Nouveau personnage », ni porte vers la
+            bibliothèque : chacune serait une sortie d'un événement à
+            moitié écrit. Seules les rangées, qui rendent la personne.
+
+            Et elle reste ouverte après un choix, pour qu'on en lie
+            plusieurs d'affilée : le nom qu'on vient de prendre passe en
+            gris, « déjà lié », ce qui est la seule confirmation nécessaire. */}
+        <CharacterManager
+          onPick={(person) => toggle(person.id)}
+          unavailable={(person) =>
+            value.includes(person.id) ? "déjà lié" : null
+          }
+        />
+      </Sheet>
     </View>
   );
 }

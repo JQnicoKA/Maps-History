@@ -14,7 +14,7 @@ import {
 import { useEvents } from "../events/EventsProvider";
 import type { Tree } from "../events/types";
 import { palette } from "../../theme/palette";
-import { space } from "../../theme/tokens";
+import { space, type } from "../../theme/tokens";
 
 /**
  * The genealogies, listed.
@@ -71,6 +71,20 @@ export function TreeManager({ onOpen, onSeek }: TreeManagerProps) {
       keyboardShouldPersistTaps="handled"
     >
       {dialog}
+
+      {/* Ce qu'est un arbre, dit avant la liste.
+          Trois lignes et non un premier écran à franchir : le résumé se lit
+          une fois et la liste se consulte cent fois, donc il se pose au-dessus
+          plutôt que devant. Dans le défilement, pour qu'il s'écarte dès qu'on
+          travaille au lieu de manger une hauteur fixe. */}
+      <View style={styles.preface}>
+        <Text style={styles.prefaceText}>
+          Un arbre relie vos personnages entre eux, génération par génération :
+          les couples d'un trait, les filiations d'une équerre. Il se bâtit sur
+          une planche en pleine page, et n'existe que sur votre carte.
+        </Text>
+        <View style={styles.rule} />
+      </View>
 
       <Roster
         count={
@@ -166,6 +180,13 @@ const styles = StyleSheet.create({
     gap: space.xl,
   },
   form: { paddingHorizontal: space.xl, paddingBottom: space.lg },
+  /** Le résumé, et le filet qui le sépare de la liste. */
+  preface: { gap: space.lg },
+  prefaceText: { ...type.caption, color: palette.inkSoft },
+  rule: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: palette.line,
+  },
   /** A sprig, for want of a portrait: a tree has no face of its own. */
   glyph: { fontSize: 20, color: palette.inkFaint },
 });

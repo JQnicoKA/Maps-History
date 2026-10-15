@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
+  Animated,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -24,6 +25,17 @@ import {
 export type DialogProps = {
   visible: boolean;
   onClose: () => void;
+  /**
+   * Fired once the card has finished leaving and the modal is gone.
+   *
+   * The same promise `Sheet` makes, and for the same reason: iOS will not
+   * present a second modal from a controller that is still dismissing one, so
+   * "close this card, then open that panel" has to wait for this rather than
+   * guess at a delay. That is why the fade is driven here instead of by the
+   * modal's own `animationType` — a modal that fades itself out never says
+   * when it has finished.
+   */
+  onClosed?: () => void;
   /**
    * The heading, when the card needs one.
    *
@@ -100,9 +112,13 @@ export type DialogProps = {
  * touchable until it is answered. Those are worth interrupting for, and the
  * middle of the screen is where an interruption belongs.
  */
+/** The fade in and out, matching the dimming of a sheet. */
+const FADE = 160;
+
 export function Dialog({
   visible,
   onClose,
+  onClosed,
   title,
   hint,
   dismissLabel = "Annuler",
@@ -111,101 +127,147 @@ export function Dialog({
   veil = "full",
   children,
 }: DialogProps) {
+  // Read through a ref, like `Sheet` does: listing the callback among the
+  // effect's dependencies would replay the exit every time the caller renders.
+  const closed = useRef(onClosed);
+  closed.current = onClosed;
+
+  /** Kept mounted through the fade out, then torn down. */
+  const [mounted, setMounted] = useState(visible);
+  const fade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      fade.setValue(0);
+      Animated.timing(fade, {
+        toValue: 1,
+        duration: FADE,
+        useNativeDriver: false,
+      }).start();
+      return;
+    }
+
+    // Nothing to fade away on first render of a closed card.
+    if (!mounted) return;
+
+    Animated.timing(fade, {
+      toValue: 0,
+      duration: FADE,
+      useNativeDriver: false,
+    }).start(({ finished }) => {
+      if (!finished) return;
+      setMounted(false);
+      closed.current?.();
+    });
+    // `mounted` is read, not tracked: adding it would re-run the exit on
+    // unmount — the same reasoning as in `Sheet`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, fade]);
+
+  if (!mounted) return null;
+
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      {/* The backdrop is a sibling of the card, never its parent: a Pressable
-          wrapped round the card swallows the touches meant for the buttons.
-
-          Keyboard-aware, because some of these cards ask for a password: the
-          padding grows from the bottom and lifts the centred card clear of the
-          keyboard instead of leaving its buttons underneath. */}
-      <KeyboardAvoidingView
-        style={[styles.root, veil === "soft" ? styles.veilSoft : styles.veilFull]}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <Modal visible transparent animationType="none" onRequestClose={onClose}>
+      {/* The veil and the card fade together, driven here rather than by the
+          modal: see `onClosed` for why that matters. */}
+      <Animated.View
+        style={[
+          styles.fill,
+          veil === "soft" ? styles.veilSoft : styles.veilFull,
+          { opacity: fade },
+        ]}
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Fermer"
-          style={StyleSheet.absoluteFill}
-          onPress={onClose}
-        />
-        <View style={styles.card}>
-          <Grain />
+        {/* The backdrop is a sibling of the card, never its parent: a Pressable
+            wrapped round the card swallows the touches meant for the buttons.
 
-          <View
-            style={
-              title === undefined
-                ? styles.headerBare
-                : centred
-                  ? styles.headerCentred
-                  : styles.header
-            }
-          >
-            {title === undefined ? null : centred ? (
-              /* The sheets' own heading, not a centred imitation of this
-                 one: that is what makes the two read as the same app. Its
-                 `hint` is left to the card below, which is wider than a
-                 sheet's inset and holds a long sentence better. */
-              <JournalTitle title={title} />
-            ) : (
-              <View style={styles.heading}>
-                <Text style={styles.title}>{title}</Text>
-                <View style={styles.underline} />
-              </View>
-            )}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Fermer"
-              hitSlop={8}
-              onPress={onClose}
-              style={({ pressed }) => [
-                styles.close,
-                // Out of the row when centred: a 32-point button sharing the
-                // line would push the title's middle 16 points left of the
-                // card's, which is exactly the thing being fixed.
-                //
-                // Only with a title, though: lifted out of a header that holds
-                // nothing else, it would float over a row of no height and
-                // land on top of the content.
-                centred && title !== undefined && styles.closeFloat,
-                pressed && styles.pressed,
-              ]}
+            Keyboard-aware, because some of these cards ask for a password: the
+            padding grows from the bottom and lifts the centred card clear of
+            the keyboard instead of leaving its buttons underneath. */}
+        <KeyboardAvoidingView
+          style={styles.root}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Fermer"
+            style={StyleSheet.absoluteFill}
+            onPress={onClose}
+          />
+          <View style={styles.card}>
+            <Grain />
+
+            <View
+              style={
+                title === undefined
+                  ? styles.headerBare
+                  : centred
+                    ? styles.headerCentred
+                    : styles.header
+              }
             >
-              <Text style={styles.closeGlyph}>×</Text>
-            </Pressable>
+              {title === undefined ? null : centred ? (
+                /* The sheets' own heading, not a centred imitation of this
+                   one: that is what makes the two read as the same app. Its
+                   `hint` is left to the card below, which is wider than a
+                   sheet's inset and holds a long sentence better. */
+                <JournalTitle title={title} />
+              ) : (
+                <View style={styles.heading}>
+                  <Text style={styles.title}>{title}</Text>
+                  <View style={styles.underline} />
+                </View>
+              )}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Fermer"
+                hitSlop={8}
+                onPress={onClose}
+                style={({ pressed }) => [
+                  styles.close,
+                  // Out of the row when centred: a 32-point button sharing
+                  // the line would push the title's middle 16 points left of
+                  // the card's, which is exactly the thing being fixed.
+                  //
+                  // Only with a title, though: lifted out of a header that
+                  // holds nothing else, it would float over a row of no
+                  // height and land on top of the content.
+                  centred && title !== undefined && styles.closeFloat,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={styles.closeGlyph}>×</Text>
+              </Pressable>
+            </View>
+
+            {hint === undefined ? null : (
+              <Text style={[styles.hint, centred && styles.hintCentred]}>
+                {hint}
+              </Text>
+            )}
+
+            {/* Nothing here carries `grow`: that is `flex: 1`, meant to fill
+                a row. In a column sized by its content it gives each child a
+                basis of nothing, and they spill out of the card. Stretching
+                to the full width happens on its own. */}
+            <View style={styles.choices}>{children}</View>
+
+            {dismissLabel === null ? null : (
+              <InkButton
+                label={dismissLabel}
+                variant="quiet"
+                onPress={onDismiss ?? onClose}
+              />
+            )}
           </View>
-
-          {hint === undefined ? null : (
-            <Text style={[styles.hint, centred && styles.hintCentred]}>
-              {hint}
-            </Text>
-          )}
-
-          {/* Nothing here carries `grow`: that is `flex: 1`, meant to fill a
-              row. In a column sized by its content it gives each child a basis
-              of nothing, and they spill out of the card. Stretching to the
-              full width happens on its own. */}
-          <View style={styles.choices}>{children}</View>
-
-          {dismissLabel === null ? null : (
-            <InkButton
-              label={dismissLabel}
-              variant="quiet"
-              onPress={onDismiss ?? onClose}
-            />
-          )}
-        </View>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </Animated.View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   root: {
     flex: 1,
     alignItems: "center",

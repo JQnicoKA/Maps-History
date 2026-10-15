@@ -12,11 +12,15 @@ import { env } from "../../config/env";
 import { INITIAL_VIEW, MAP_FEATURES } from "../../config/map";
 import { useEvents } from "../../features/events/EventsProvider";
 import type { HistoricalEvent } from "../../features/events/types";
-import type { Tab } from "../../features/events/components/EventFormModal";
 import {
-  AddEventButton,
-  AddPersonButton,
-} from "../../features/events/components/AddEventButton";
+  NewNoteButton,
+  type Note,
+} from "../../features/events/components/NewNoteButton";
+import {
+  PeopleButton,
+  PeopleSheet,
+  type PeopleTab,
+} from "../../features/events/components/PeopleSheet";
 import { EventDetailModal } from "../../features/events/components/EventDetailModal";
 import { EventFormModal } from "../../features/events/components/EventFormModal";
 import { CollectionListView } from "../../features/events/components/CollectionListView";
@@ -138,19 +142,21 @@ export function MapScreen() {
   const hasFramed = useRef(false);
 
   const [view, setView] = useState<ScreenView>("map");
+  /** La feuille du formulaire d'événement : écrire, ou corriger. */
   const [composing, setComposing] = useState(false);
-  /** Which pair of tabs the sheet opens on. */
-  const [family, setFamily] = useState<"event" | "people">("event");
   /**
-   * And which of the pair, when the sheet is being brought back.
+   * Combien de fois le `+` a demandé un formulaire vierge, ce qui le clé.
    *
-   * Set at the moment of the return and never before. It feeds the sheet's
-   * key, and changing a key remounts: written while the sheet was on its way
-   * out, it tore the panel from the tree mid-slide, `onClosed` never fired,
-   * and the page it was meant to hand over to never came up — the reader was
-   * left on the map.
+   * La feuille ne se vide d'elle-même qu'à « Annuler » et à l'enregistrement.
+   * Quittée en la faisant glisser vers le bas, elle garde ce qui était tapé —
+   * et c'est heureux pour un geste accidentel. Mais `+` veut dire *nouveau* :
+   * compter les demandes change la clé, donc remonte la feuille, donc la
+   * reseme à blanc. Les deux comportements tiennent ensemble.
    */
-  const [sheetTab, setSheetTab] = useState<Tab | undefined>(undefined);
+  const [drafts, setDrafts] = useState(0);
+  /** Celle des personnages et des arbres, et laquelle de ses deux moitiés. */
+  const [peopling, setPeopling] = useState(false);
+  const [peopleTab, setPeopleTab] = useState<PeopleTab>("character");
   const [editing, setEditing] = useState<HistoricalEvent | null>(null);
   /** True from country zoom on, where the fiefs are worth drawing. */
   const [detailed, setDetailed] = useState(false);
@@ -178,12 +184,15 @@ export function MapScreen() {
   /**
    * Where to go back to when the page now showing closes.
    *
-   * A destination rather than a flag, because there are two of them: the add
-   * sheet a page was asked for from, and the tree a page was reached from.
-   * Set once at the start of a journey and honoured at its end, so reading
-   * three people in a row is three taps and not three journeys.
+   * A destination rather than a flag, because there are two of them: the
+   * people sheet a page was asked for from, and the tree a page was reached
+   * from. Set once at the start of a journey and honoured at its end, so
+   * reading three people in a row is three taps and not three journeys.
+   *
+   * La feuille du formulaire d'événement n'y figure pas : elle n'ouvre plus
+   * aucune page depuis que la fourche et les deux listes l'ont quittée.
    */
-  const [back, setBack] = useState<Page | { sheet: Tab } | null>(null);
+  const [back, setBack] = useState<Page | { sheet: PeopleTab } | null>(null);
   /**
    * How many pages have been raised, which is what keys them.
    *
@@ -211,16 +220,14 @@ export function MapScreen() {
     setPage(null);
   };
 
-  /** The same, from the add sheet, which is what has to go down first. */
-  const afterSheet = (deed: () => void, tab: Tab = "character") => {
+  /** The same, from the people sheet, which is what has to go down first. */
+  const afterSheet = (deed: () => void, tab: PeopleTab = "character") => {
     setNext(() => deed);
-    // The tab travels inside the destination rather than being written now:
-    // see `sheetTab` for what writing it now used to cost.
     setBack({ sheet: tab });
-    setComposing(false);
+    setPeopling(false);
   };
 
-  /** Called by every page and by the add sheet, once off the screen. */
+  /** Called by every page and by the people sheet, once off the screen. */
   const afterPage = () => {
     if (next) {
       const deed = next;
@@ -231,15 +238,9 @@ export function MapScreen() {
     if (back === null) return;
     setBack(null);
     if ("sheet" in back) {
-      setSheetTab(back.sheet);
-      // The tab says which pair it belongs to; the sheet must come back
-      // showing the half the reader left from, not the other one.
-      setFamily(
-        back.sheet === "character" || back.sheet === "tree"
-          ? "people"
-          : "event",
-      );
-      setComposing(true);
+      // Elle revient sur la moitié qu'on a quittée, et non sur l'autre.
+      setPeopleTab(back.sheet);
+      setPeopling(true);
       return;
     }
     raise(back);
@@ -633,25 +634,40 @@ export function MapScreen() {
               <AccountButton />
             </View>
             <FilterButton view={view} onViewChange={setView} />
+            {/* Trois boutons, trois verbes : ajouter une note, ouvrir ce
+                qu'on a déjà, dessiner sur la planche. Ils tenaient autrefois
+                chacun un genre — événements, personnages, territoires — en
+                miroir des trois calques du filtre, et c'était une parenté
+                fausse : on y créait et on y consultait à la fois, dans le même
+                panneau, sans que rien ne dise lequel des deux on faisait. */}
             <View style={styles.topRight}>
-              <AddEventButton
+              <NewNoteButton
+                onCreate={(what: Note) => {
+                  if (what === "event") {
+                    setEditing(null);
+                    setDrafts((count) => count + 1);
+                    setComposing(true);
+                    return;
+                  }
+                  // Le formulaire d'un personnage est une page et non une
+                  // feuille : placer quelqu'un donne l'écran entier au viseur.
+                  raise({ kind: "editPerson", id: null });
+                }}
+                onSeek={(what: Note) =>
+                  raise({
+                    kind:
+                      what === "event" ? "searchEvents" : "searchCharacters",
+                  })
+                }
+              />
+              <PeopleButton
                 onPress={() => {
-                  setEditing(null);
-                  setFamily("event");
-                  setSheetTab(undefined);
-                  setComposing(true);
+                  setPeopleTab("character");
+                  setPeopling(true);
                 }}
               />
-              <AddPersonButton
-                onPress={() => {
-                  setEditing(null);
-                  setFamily("people");
-                  setSheetTab(undefined);
-                  setComposing(true);
-                }}
-              />
-              {/* Under the `+`, and apart from it: one adds to the collection,
-                  the other changes the map it is read on. */}
+              {/* Sous les deux autres, et à part : elles ajoutent à la
+                  collection, celui-ci change la carte qu'on la lit sur. */}
               {MAP_FEATURES.territories ? (
                 <DrawTerritoryButton
                   onDraw={() => setDrawing(true)}
@@ -708,15 +724,29 @@ export function MapScreen() {
       )}
 
       <EventFormModal
-        // Remounting re-seeds every field — on the event being edited, and on
-        // the family, whose first tab decides what the sheet opens on.
-        key={editing?.id ?? `new-${family}-${sheetTab ?? "first"}`}
-        family={family}
-        startOn={sheetTab}
+        // Remounting re-seeds every field: on the event being edited, or on
+        // the number of blank forms asked for — see `drafts`.
+        key={editing?.id ?? `new-${drafts}`}
         visible={composing}
         event={editing}
-        // Down, then up: the panel is raised by `onClosed` below, once this
-        // sheet has actually gone.
+        onClosed={afterPage}
+        onCancel={() => {
+          setComposing(false);
+          setEditing(null);
+        }}
+        onSaved={() => {
+          setComposing(false);
+          setEditing(null);
+        }}
+      />
+
+      {/* Ce que la collection connaît déjà : les gens, et les lignées. */}
+      <PeopleSheet
+        visible={peopling}
+        tab={peopleTab}
+        onTabChange={setPeopleTab}
+        // Down, then up: the panel is raised by `onClosed`, once this sheet
+        // has actually gone.
         onReadCharacter={(person) =>
           afterSheet(() => raise({ kind: "person", id: person.id }))
         }
@@ -731,24 +761,14 @@ export function MapScreen() {
         onOpenTree={(id) =>
           afterSheet(() => raise({ kind: "tree", id }), "tree")
         }
-        onSearch={() =>
-          afterSheet(() => raise({ kind: "searchEvents" }), "event")
-        }
-        onSearchPeople={() =>
+        onSeekCharacter={() =>
           afterSheet(() => raise({ kind: "searchCharacters" }), "character")
         }
-        onSearchTrees={() =>
+        onSeekTree={() =>
           afterSheet(() => raise({ kind: "searchTrees" }), "tree")
         }
+        onClose={() => setPeopling(false)}
         onClosed={afterPage}
-        onCancel={() => {
-          setComposing(false);
-          setEditing(null);
-        }}
-        onSaved={() => {
-          setComposing(false);
-          setEditing(null);
-        }}
       />
 
       <TerritorySheet territory={touched} onClose={() => setTouched(null)} />
