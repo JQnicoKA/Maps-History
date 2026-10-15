@@ -7,7 +7,6 @@ import { whyLocked } from "../../community/copies";
 import { ShareRow } from "../../community/ShareRow";
 import { EVENT_LOOK } from "../../community/looks";
 import { CharacterSelector } from "./CharacterSelector";
-import { FolderManager } from "./FolderManager";
 import { TreeManager } from "../../genealogy/TreeManager";
 import { FolderSelector } from "./FolderSelector";
 import { EventDateField } from "./EventDateField";
@@ -30,7 +29,7 @@ import { UpdateRow } from "../../community/UpdateRow";
 import {
   type Character,
   type EventDraft,
-  type EventFolderLink,
+  type Importance,
   type StoredPhoto,
   type EventType,
   type HistoricalDate,
@@ -121,14 +120,27 @@ function Progress({ step }: { step: number }) {
   );
 }
 
-/** The four things the sheet can show, in two families of two. */
-export type Tab = "event" | "folder" | "character" | "tree";
+/** The three things the sheet can show, in two families. */
+export type Tab = "event" | "character" | "tree";
+
+/**
+ * Les familles, et ce qu'elles portent.
+ *
+ * Celle des événements n'en porte plus qu'un : les classeurs avaient leur
+ * onglet quand ils étaient des entités à faire, à nommer et à couvrir d'une
+ * photographie. Un nom se tape là où il sert, dans l'événement qu'il range,
+ * donc il n'y a plus de liste à tenir. Le sélecteur ne s'affiche que là où il
+ * y a un choix — voir `styles.switcher` plus bas.
+ */
+/** L'échelle, telle qu'on la propose — trois crans, et pas de quatrième. */
+const IMPORTANCES: { value: Importance; label: string }[] = [
+  { value: "low", label: "Faible" },
+  { value: "medium", label: "Moyenne" },
+  { value: "high", label: "Élevée" },
+];
 
 const FAMILIES = {
-  event: [
-    { value: "event" as const, label: "Nouvel Événement" },
-    { value: "folder" as const, label: "Classeurs" },
-  ],
+  event: [{ value: "event" as const, label: "Nouvel Événement" }],
   people: [
     { value: "character" as const, label: "Personnages" },
     { value: "tree" as const, label: "Arbres" },
@@ -160,10 +172,9 @@ export type EventFormModalProps = {
   onEditCharacter: (target: Character | "new") => void;
   /** Asks for a tree to be drawn, full screen. */
   onOpenTree: (id: string) => void;
-  /** Asks for the community catalogue — of events, of people, of classeurs. */
+  /** Asks for the community catalogue — of events, of people, of trees. */
   onSearch: () => void;
   onSearchPeople: () => void;
-  onSearchFolders: () => void;
   onSearchTrees: () => void;
   onCancel: () => void;
   /** Fired once the sheet is off the screen — see `Sheet`. */
@@ -181,14 +192,13 @@ export function EventFormModal({
   onOpenTree,
   onSearch,
   onSearchPeople,
-  onSearchFolders,
   onSearchTrees,
   onCancel,
   onClosed,
   onSaved,
 }: EventFormModalProps) {
   const {
-    folders,
+    folderNames,
     characters,
     addEvent,
     editEvent,
@@ -201,10 +211,9 @@ export function EventFormModal({
   /**
    * Which tab of the sheet is showing.
    *
-   * Only ever one of the two its family holds — what happened and where it is
-   * filed, or who it happened to and how they are related. Editing an
-   * existing event has no second tab: there is nothing to add but the changes
-   * in front of you.
+   * Only ever one of the ones its family holds — what happened, or who it
+   * happened to and how they are related. Editing an existing event has no
+   * second tab: there is nothing to add but the changes in front of you.
    */
   const [tab, setTab] = useState<Tab>(
     startOn ?? (family === "people" ? "character" : "event"),
@@ -240,7 +249,10 @@ export function EventFormModal({
   const [location, setLocation] = useState<Point | null>(
     event ? { longitude: event.longitude, latitude: event.latitude } : null,
   );
-  const [links, setLinks] = useState<EventFolderLink[]>(event?.folders ?? []);
+  const [folders, setFolders] = useState<string[]>(event?.folders ?? []);
+  const [importance, setImportance] = useState<Importance>(
+    event?.importance ?? "medium",
+  );
   const [cast, setCast] = useState<string[]>(event?.characters ?? []);
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
   const [keptPhotos, setKeptPhotos] = useState<StoredPhoto[]>(
@@ -270,7 +282,8 @@ export function EventFormModal({
     setStart(null);
     setEnd(null);
     setLocation(null);
-    setLinks([]);
+    setFolders([]);
+    setImportance("medium");
     setCast([]);
     setPhotos([]);
     setKeptPhotos([]);
@@ -320,7 +333,8 @@ export function EventFormModal({
       end,
       longitude: location.longitude,
       latitude: location.latitude,
-      folders: links,
+      folders,
+      importance,
       characters: cast,
       photos,
     };
@@ -367,8 +381,8 @@ export function EventFormModal({
             : "Événements"
       }
       footer={
-        // A folder is written the moment it is named, so that half of the
-        // sheet has nothing to save and nothing to cancel.
+        // Les listes — personnages, arbres — écrivent au moment où on les
+        // touche : rien à enregistrer, rien à annuler, juste de quoi fermer.
         // Nothing at the foot of the fork: it asks a question with two
         // answers on the screen, and a third at the bottom saying "neither"
         // is furniture. The panel already closes by the handle and by the
@@ -421,7 +435,10 @@ export function EventFormModal({
     >
       {dialog}
 
-      {event ? null : (
+      {/* Un sélecteur à un seul segment ne sélectionne rien : la famille des
+          événements n'en a plus qu'un depuis que les classeurs ne sont que des
+          noms, et un bouton qui ne mène nulle part est du mobilier. */}
+      {event || FAMILIES[family].length < 2 ? null : (
         <View style={styles.switcher}>
           <SegmentedControl
             segments={[...FAMILIES[family]]}
@@ -481,9 +498,6 @@ export function EventFormModal({
 
       {stepped && tab === "event" && writing ? <Progress step={step} /> : null}
 
-      {tab === "folder" && !event ? (
-        <FolderManager onSeek={onSearchFolders} />
-      ) : null}
       {tab === "character" && !event ? (
         <CharacterManager
           onRead={onReadCharacter}
@@ -630,25 +644,28 @@ export function EventFormModal({
           <Section
             title="Classement"
             answer={
-              links.length === 0
-                ? undefined
-                : `${links.length} classeur${links.length > 1 ? "s" : ""}`
+              folders.length === 0
+                ? IMPORTANCES.find((one) => one.value === importance)?.label
+                : `${folders.length} classeur${folders.length > 1 ? "s" : ""}`
             }
           >
             <FolderSelector
-              folders={folders}
-              value={links}
-              // Without "Toutes" on offer the control cannot hand back a null,
-              // but the type says it might; the fallback states the invariant
-              // rather than asserting it away.
-              onChange={(next) =>
-                setLinks(
-                  next.map((link) => ({
-                    folderId: link.folderId,
-                    importance: link.importance ?? "medium",
-                  })),
-                )
-              }
+              known={folderNames}
+              value={folders}
+              onChange={setFolders}
+              allowNew
+            />
+
+            {/* Sous les sujets et non pas dans chacun d'eux : l'importance est
+                celle de l'événement. Elle était portée par le couple
+                (événement, classeur) — « majeur ici, incident là » — ce qui
+                n'est jamais arrivé une seule fois et obligeait chaque classeur
+                à traîner sa propre échelle. */}
+            <Text style={styles.hint}>Importance</Text>
+            <SegmentedControl
+              segments={IMPORTANCES}
+              value={importance}
+              onChange={setImportance}
             />
           </Section>
         ) : null}

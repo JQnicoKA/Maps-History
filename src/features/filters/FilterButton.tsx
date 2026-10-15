@@ -43,18 +43,19 @@ export type FilterButtonProps = {
 };
 
 export function FilterButton({ view, onViewChange }: FilterButtonProps) {
-  const { filters, folders } = useEvents();
+  const { filters } = useEvents();
   const [open, setOpen] = useState(false);
 
   const selected = filters.folders;
   /**
    * What the pill says, in the fewest words that are still true.
    *
-   * Two things can narrow the map now — whole layers put away, and folders
-   * chosen within the events — and they cannot both fit on a pill. The layers
-   * win when any is off, because a missing layer is the bigger surprise: a
-   * reader who cannot find their events needs to be told the events are off,
-   * not which classeur is selected. The popup tells the whole story.
+   * Trois choses peuvent resserrer la carte — des calques rangés, des classeurs
+   * choisis, une importance demandée — et elles ne tiennent pas ensemble sur
+   * une pastille. The layers win when any is off, because a missing layer is
+   * the bigger surprise: a reader who cannot find their events needs to be told
+   * the events are off, not which classeur is selected. The popup tells the
+   * whole story.
    */
   // Les calques que cette vue propose réellement. Sur une liste, les
   // territoires n'en sont pas un : les compter ferait dire « 2 calques » à
@@ -70,7 +71,10 @@ export function FilterButton({ view, onViewChange }: FilterButtonProps) {
     .filter((layer) => layer.on)
     .map((layer) => layer.name);
 
-  const filtering = shown.length < layers.length || selected.length > 0;
+  const filtering =
+    shown.length < layers.length ||
+    selected.length > 0 ||
+    filters.importance !== null;
   const label =
     shown.length < layers.length
       ? shown.length === 0
@@ -79,9 +83,13 @@ export function FilterButton({ view, onViewChange }: FilterButtonProps) {
           ? shown[0]!
           : `${shown.length} calques`
       : selected.length === 0
-        ? "Tout"
+        ? // Une importance seule n'a pas de nom à donner : ce qu'elle
+          // resserre, c'est la collection entière.
+          filters.importance === null
+          ? "Tout"
+          : "Par importance"
         : selected.length === 1
-          ? (folders.find((f) => f.id === selected[0]!.folderId)?.name ?? "Tout")
+          ? selected[0]!
           : `${selected.length} classeurs`;
 
   return (

@@ -21,7 +21,7 @@ const GLASS = 20;
 const STROKE = 2.5;
 
 export type RosterProps = {
-  /** "3 classeurs", "Aucun personnage" — the count, said in words. */
+  /** "3 arbres", "Aucun personnage" — the count, said in words. */
   count: string;
   addLabel: string;
   onAdd: () => void;
@@ -120,10 +120,11 @@ export function AddSlot({ label, onPress }: AddSlotProps) {
 /**
  * The shape every list in the Add sheet takes.
  *
- * Folders, characters and trees were each drawing their own version of the
- * same thing — a count, a dashed slot to make one more, then rows — and the
- * three had drifted apart in spacing, in radius, in the size of a thumbnail.
- * They share it now, so a change to the way a list feels is made once.
+ * Characters and trees were each drawing their own version of the same thing
+ * — a count, a dashed slot to make one more, then rows — and they had drifted
+ * apart in spacing, in radius, in the size of a thumbnail. They share it now,
+ * so a change to the way a list feels is made once. Les classeurs en étaient
+ * le troisième usage, jusqu'à ce qu'ils cessent d'être des entités.
  */
 export function Roster({
   count,

@@ -9,7 +9,6 @@ import type {
   TreeMember,
   TreePerson,
   EventDraft,
-  Folder,
   PickedPhoto,
   HistoricalDate,
   HistoricalEvent,
@@ -40,7 +39,8 @@ type EventRow = {
   latitude: number;
   shared: boolean;
   origin_id: string | null;
-  event_folders: { folder_id: string; importance: Importance }[];
+  folders: string[];
+  importance: Importance;
   event_characters: { character_id: string }[];
   event_photos: {
     id: string;
@@ -56,7 +56,7 @@ const EVENT_COLUMNS = `
   start_year, start_month, start_day, start_approx,
   end_year, end_month, end_day, end_approx,
   longitude, latitude, shared, origin_id,
-  event_folders ( folder_id, importance ),
+  folders, importance,
   event_characters ( character_id ),
   event_photos ( id, storage_path, position, source )
 `;
@@ -67,7 +67,7 @@ const SUMMARY_COLUMNS = `
   start_year, start_month, start_day, start_approx,
   end_year, end_month, end_day, end_approx,
   longitude, latitude, shared, origin_id,
-  event_folders ( folder_id, importance ),
+  folders, importance,
   event_characters ( character_id ),
   event_photos ( id, storage_path, position, source )
 `;
@@ -112,10 +112,8 @@ function toSummary(row: EventRow): EventSummary {
         : toDate(row.end_year, row.end_month, row.end_day, row.end_approx),
     longitude: row.longitude,
     latitude: row.latitude,
-    folders: row.event_folders.map((link) => ({
-      folderId: link.folder_id,
-      importance: link.importance,
-    })),
+    folders: row.folders,
+    importance: row.importance,
     characters: row.event_characters.map((link) => link.character_id),
   };
 }
@@ -142,38 +140,15 @@ const storedPhotos = (row: EventRow): StoredPhoto[] =>
       tint: null,
     }));
 
-type FolderRow = {
-  id: string;
-  name: string;
-  photo_path: string | null;
-  shared: boolean;
-  origin_id: string | null;
-};
-
-function toFolder(row: FolderRow): Folder {
-  return {
-    id: row.id,
-    name: row.name,
-    shared: row.shared,
-    origin: row.origin_id,
-    photo:
-      row.photo_path === null
-        ? null
-        : { path: row.photo_path, url: publicUrl(row.photo_path) },
-  };
-}
-
-const FOLDER_COLUMNS = "id, name, photo_path, shared, origin_id";
-
 /**
  * Puts something into the community, or takes it out.
  *
- * One function for the four tables because it is one idea, and because the
+ * One function for the three tables because it is one idea, and because the
  * row-level security is what makes it safe: the update reaches only rows the
  * caller owns, whatever is passed here.
  */
 export async function setShared(
-  table: "events" | "folders" | "characters" | "trees",
+  table: "events" | "characters" | "trees",
   id: string,
   shared: boolean,
 ): Promise<void> {
@@ -182,36 +157,6 @@ export async function setShared(
     .update({ shared })
     .eq("id", id);
   if (error) throw new Error(error.message);
-}
-
-export async function fetchFolders(): Promise<Folder[]> {
-  const { data, error } = await supabase()
-    .from("folders")
-    .select(FOLDER_COLUMNS)
-    .order("name");
-  if (error) throw new Error(error.message);
-  return ((data ?? []) as FolderRow[]).map(toFolder);
-}
-
-export async function createFolder(name: string): Promise<Folder> {
-  const { data, error } = await supabase()
-    .from("folders")
-    .insert({ name: name.trim() })
-    .select(FOLDER_COLUMNS)
-    .single();
-  if (error) throw new Error(error.message);
-  return toFolder(data as FolderRow);
-}
-
-export async function renameFolder(id: string, name: string): Promise<Folder> {
-  const { data, error } = await supabase()
-    .from("folders")
-    .update({ name: name.trim() })
-    .eq("id", id)
-    .select(FOLDER_COLUMNS)
-    .single();
-  if (error) throw new Error(error.message);
-  return toFolder(data as FolderRow);
 }
 
 /**
@@ -248,64 +193,6 @@ export async function forget(paths: string[]): Promise<void> {
   if (free.length === 0) return;
 
   await client.storage.from(PHOTO_BUCKET).remove(free);
-}
-
-/**
- * Removes a folder.
- *
- * `event_folders.folder_id` cascades, so the events keep their existence and
- * lose only this filing — which is what the reader is being asked to confirm.
- *
- * The row goes first and the picture after, best effort: an orphaned object
- * costs a few kilobytes, a row pointing at nothing costs a broken marker.
- */
-export async function deleteFolder(folder: Folder): Promise<void> {
-  const client = supabase();
-  const { error } = await client.from("folders").delete().eq("id", folder.id);
-  if (error) throw new Error(error.message);
-
-  if (folder.photo) {
-    await forget([folder.photo.path]);
-  }
-}
-
-/**
- * Sets or clears a folder's cover picture.
- *
- * The old object is deleted only once the row points at the new one: an
- * orphaned file costs a few kilobytes, a row pointing at nothing costs the
- * reader a broken marker.
- */
-export async function setFolderPhoto(
-  folder: Folder,
-  picked: PickedPhoto | null,
-): Promise<Folder> {
-  const client = supabase();
-  let path: string | null = null;
-
-  if (picked) {
-    const extension = picked.mimeType.split("/")[1] ?? "jpg";
-    path = `${await currentUserId()}/folders/${folder.id}/${Date.now()}.${extension}`;
-    const { error } = await client.storage
-      .from(PHOTO_BUCKET)
-      .upload(path, decodeBase64(picked.base64), {
-        contentType: picked.mimeType,
-      });
-    if (error) throw new Error(error.message);
-  }
-
-  const { data, error } = await client
-    .from("folders")
-    .update({ photo_path: path })
-    .eq("id", folder.id)
-    .select(FOLDER_COLUMNS)
-    .single();
-  if (error) throw new Error(error.message);
-
-  if (folder.photo) {
-    await forget([folder.photo.path]);
-  }
-  return toFolder(data as FolderRow);
 }
 
 /**
@@ -469,6 +356,8 @@ export async function createEvent(draft: EventDraft): Promise<HistoricalEvent> {
       end_approx: draft.end?.approximate === true,
       longitude: draft.longitude,
       latitude: draft.latitude,
+      folders: draft.folders,
+      importance: draft.importance,
     })
     .select("id")
     .single();
@@ -477,19 +366,6 @@ export async function createEvent(draft: EventDraft): Promise<HistoricalEvent> {
   const eventId: string = data.id;
 
   try {
-    if (draft.folders.length > 0) {
-      const { error: linkError } = await supabase()
-        .from("event_folders")
-        .insert(
-          draft.folders.map((link) => ({
-            event_id: eventId,
-            folder_id: link.folderId,
-            importance: link.importance,
-          })),
-        );
-      if (linkError) throw new Error(linkError.message);
-    }
-
     if (draft.characters.length > 0) {
       const { error: castError } = await supabase()
         .from("event_characters")
@@ -507,8 +383,8 @@ export async function createEvent(draft: EventDraft): Promise<HistoricalEvent> {
     }
     return await fetchEvent(eventId);
   } catch (cause) {
-    // Rather than leave an event with no folders or half its photos, undo it —
-    // the foreign keys cascade, so this cleans up whatever did land.
+    // Rather than leave an event with half its cast or half its photos, undo
+    // it — the foreign keys cascade, so this cleans up whatever did land.
     await supabase().from("events").delete().eq("id", eventId);
     throw cause;
   }
@@ -529,13 +405,18 @@ function toRow(draft: EventDraft) {
     end_approx: draft.end?.approximate === true,
     longitude: draft.longitude,
     latitude: draft.latitude,
+    folders: draft.folders,
+    importance: draft.importance,
   };
 }
 
 /**
- * Saves an edit. Folder links are replaced wholesale rather than diffed — the
- * set is tiny and a replace cannot drift out of sync. Photos the reader dropped
- * are removed from both the table and the bucket.
+ * Saves an edit. The cast is replaced wholesale rather than diffed — the set is
+ * tiny and a replace cannot drift out of sync. Photos the reader dropped are
+ * removed from both the table and the bucket.
+ *
+ * Le classement, lui, n'a plus rien à remplacer : des noms sur la ligne, écrits
+ * par `toRow` comme le titre et la date.
  */
 export async function updateEvent(
   id: string,
@@ -547,23 +428,6 @@ export async function updateEvent(
 
   const { error } = await client.from("events").update(toRow(draft)).eq("id", id);
   if (error) throw new Error(error.message);
-
-  const { error: unlinkError } = await client
-    .from("event_folders")
-    .delete()
-    .eq("event_id", id);
-  if (unlinkError) throw new Error(unlinkError.message);
-
-  if (draft.folders.length > 0) {
-    const { error: linkError } = await client.from("event_folders").insert(
-      draft.folders.map((link) => ({
-        event_id: id,
-        folder_id: link.folderId,
-        importance: link.importance,
-      })),
-    );
-    if (linkError) throw new Error(linkError.message);
-  }
 
   const { error: uncastError } = await client
     .from("event_characters")
@@ -1076,8 +940,8 @@ export async function unlinkTreeMembers(
  *
  * The bucket has no notion of the row that pointed at it: deleting the event
  * cascades through `event_photos` and leaves the files behind for good. The
- * folder and the character have always swept up after themselves; the event was
- * the one that did not, and nothing ever told anybody.
+ * character has always swept up after itself; the event was the one that did
+ * not, and nothing ever told anybody.
  *
  * Row first, files after, best effort — an orphaned object costs a few
  * kilobytes, a row pointing at nothing costs the reader a broken card.
@@ -1090,24 +954,20 @@ export async function unlinkTreeMembers(
  * nothing cascades into it. Called before the account is deleted, while there
  * is still a session allowed to delete those files.
  *
- * Read through the three tables that name them rather than by listing the
+ * Read through the two tables that name them rather than by listing the
  * bucket: RLS already limits each of them to this account, and a listing would
  * have to walk a folder per event.
  */
 export async function deleteOwnPhotos(): Promise<void> {
   const client = supabase();
-  const [events, characters, folders] = await Promise.all([
+  const [events, characters] = await Promise.all([
     client.from("event_photos").select("storage_path"),
     client.from("character_photos").select("storage_path"),
-    client.from("folders").select("photo_path").not("photo_path", "is", null),
   ]);
 
   const paths = [
     ...((events.data ?? []) as { storage_path: string }[]).map((row) => row.storage_path),
     ...((characters.data ?? []) as { storage_path: string }[]).map((row) => row.storage_path),
-    ...((folders.data ?? []) as { photo_path: string | null }[]).flatMap((row) =>
-      row.photo_path === null ? [] : [row.photo_path],
-    ),
   ];
   await forget(paths);
 }

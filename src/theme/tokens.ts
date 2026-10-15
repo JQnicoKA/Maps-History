@@ -93,3 +93,14 @@ export const type = {
 } as const;
 
 export const BACKDROP = "rgba(36, 27, 16, 0.42)";
+
+/**
+ * Le voile d'une carte qui s'ouvre sur une surface déjà voilée.
+ *
+ * Le même brun, moins appuyé. Deux `BACKDROP` l'un sur l'autre font deux tiers
+ * de brun sur tout l'écran, ce qui se lit comme une panne d'affichage ; aucun
+ * voile du tout laisse du papier clair sur du papier clair, séparés par la
+ * seule ombre, et la carte ne ressort pas. Celui-ci assombrit juste assez pour
+ * que le bord de la carte se voie.
+ */
+export const BACKDROP_SOFT = "rgba(36, 27, 16, 0.18)";

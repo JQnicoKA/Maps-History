@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { effectiveImportance, matchesFilters } from "./filtering";
+import { matchesFilters } from "./filtering";
 import type { MapFilters, EventSummary, Importance } from "./types";
 
-const event = (folders: { folderId: string; importance: Importance }[]): EventSummary => ({
+const event = (
+  folders: string[],
+  importance: Importance = "medium",
+): EventSummary => ({
   id: "e",
   title: "t",
   type: "other",
@@ -12,6 +15,7 @@ const event = (folders: { folderId: string; importance: Importance }[]): EventSu
   longitude: 0,
   latitude: 0,
   folders,
+  importance,
   characters: [],
   cover: null,
   shared: true,
@@ -19,9 +23,11 @@ const event = (folders: { folderId: string; importance: Importance }[]): EventSu
 });
 
 const filters = (
-  folders: { folderId: string; importance: Importance | null }[],
+  folders: string[],
+  importance: Importance | null = null,
 ): MapFilters => ({
   folders,
+  importance,
   events: true,
   characters: true,
   territories: true,
@@ -33,52 +39,36 @@ describe("ce que le filtre laisse passer", () => {
   });
 
   it("réunit les classeurs plutôt que de les croiser", () => {
-    const shown = event([{ folderId: "renaissance", importance: "medium" }]);
-    expect(
-      matchesFilters(shown, filters([
-        { folderId: "ottomans", importance: null },
-        { folderId: "renaissance", importance: null },
-      ])),
-    ).toBe(true);
-  });
-
-  it("resserre sur l'importance demandée dans ce classeur", () => {
-    const shown = event([{ folderId: "renaissance", importance: "low" }]);
-    expect(matchesFilters(shown, filters([{ folderId: "renaissance", importance: "high" }]))).toBe(
-      false,
-    );
-    expect(matchesFilters(shown, filters([{ folderId: "renaissance", importance: "low" }]))).toBe(
+    const shown = event(["Renaissance"]);
+    expect(matchesFilters(shown, filters(["Ottomans", "Renaissance"]))).toBe(
       true,
     );
   });
 
   it("écarte un événement rangé ailleurs", () => {
-    const shown = event([{ folderId: "ottomans", importance: "high" }]);
-    expect(matchesFilters(shown, filters([{ folderId: "renaissance", importance: null }]))).toBe(
+    expect(matchesFilters(event(["Ottomans"]), filters(["Renaissance"]))).toBe(
       false,
     );
   });
-});
 
-describe("l'importance qui compte à l'écran", () => {
-  const shown = event([
-    { folderId: "ottomans", importance: "high" },
-    { folderId: "renaissance", importance: "low" },
-  ]);
-
-  it("retient la plus forte quand rien n'est filtré", () => {
-    expect(effectiveImportance(shown, filters([]))).toBe("high");
+  it("écarte un événement rangé nulle part dès qu'un sujet est demandé", () => {
+    expect(matchesFilters(event([]), filters(["Renaissance"]))).toBe(false);
   });
 
-  it("retient celle du classeur regardé", () => {
-    expect(effectiveImportance(shown, filters([{ folderId: "renaissance", importance: null }]))).toBe(
-      "low",
-    );
+  it("resserre sur l'importance demandée", () => {
+    const shown = event(["Renaissance"], "low");
+    expect(matchesFilters(shown, filters([], "high"))).toBe(false);
+    expect(matchesFilters(shown, filters([], "low"))).toBe(true);
   });
 
-  it("se rabat sur l'ensemble quand l'événement n'est dans aucun classeur filtré", () => {
-    expect(effectiveImportance(shown, filters([{ folderId: "autre", importance: null }]))).toBe(
-      "high",
-    );
+  it("croise les deux tamis : le sujet et l'importance", () => {
+    const shown = event(["Renaissance"], "high");
+    expect(matchesFilters(shown, filters(["Renaissance"], "high"))).toBe(true);
+    expect(matchesFilters(shown, filters(["Ottomans"], "high"))).toBe(false);
+    expect(matchesFilters(shown, filters(["Renaissance"], "low"))).toBe(false);
+  });
+
+  it("garde un événement non rangé quand seule l'importance est demandée", () => {
+    expect(matchesFilters(event([], "high"), filters([], "high"))).toBe(true);
   });
 });

@@ -21,9 +21,9 @@ export type ThingRowProps = {
  * One line of the catalogue: what it is, who wrote it, how many took it.
  *
  * Drawn wherever the community's work is listed, and that is the point of
- * lifting it out: a classeur's card shows the events inside it, and a list of
- * their titles said nothing a reader could judge a box by. The same row, with
- * its picture and its dates, makes the box legible.
+ * lifting it out: a tree's card shows the people inside it, and a list of
+ * their names said nothing a reader could judge a lineage by. The same row,
+ * with its face and its dates, makes it legible.
  *
  * Inert without handlers — an inventory, not a set of doors.
  */

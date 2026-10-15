@@ -9,12 +9,12 @@ import { describeType, type EventType } from "../events/types";
 /**
  * How each kind of thing reads in the catalogue.
  *
- * Everything else about the panel is the same for all five — the sieve, the
+ * Everything else about the panel is the same for all three — the sieve, the
  * paging, the reporting, the blocking — so this is where the differences are
  * kept: a glyph, a line, and the handful of sentences that name things. The
  * search field's own label and placeholder are among them, because "Nom" over
- * "Marignan, sacre, traité…" was wrong on four of the five screens. Written as
- * data rather than as five screens.
+ * "Marignan, sacre, traité…" was wrong on two of the three screens. Written as
+ * data rather than as three screens.
  */
 
 export const EVENT_LOOK: Look = {
@@ -37,54 +37,26 @@ export const EVENT_LOOK: Look = {
   castLegend: "Personnages",
   castAside: "Ils viendront avec l'événement si vous le copiez.",
   filedLegend: "Rangé dans",
-  // Nothing kind-neutral to add: whether a classeur can be opened depends on
-  // where the card is standing, so that half of the sentence belongs to the
-  // card — see `SharedCard`. The duplicate warning shows the same card with
-  // no panel behind it, and promising a way in there would be a lie.
-  filedAside: "",
-  filedDoor: "Voir le classeur",
-  filedKind: "folder",
+  /* Vrai depuis que les classeurs ne sont que des noms : le classement est
+     écrit sur l'événement, donc il part avec lui. C'était justement la raison
+     de les démonter — un classeur-entité restait chez son auteur, et qui
+     copiait trois événements recevait trois faits sans leur sujet. */
+  filedAside: "Ils viendront avec l'événement si vous le copiez.",
+  /* Fermée : un classeur n'a plus de fiche à ouvrir. Les noms s'affichent en
+     ligne — voir `SharedCard`, qui range dans `names` ce qui n'a pas de
+     porte. */
+  filedDoor: "",
   nothing:
     "Rien de tel dans la bibliothèque. Essayez d'élargir l'époque ou la région — ou écrivez-le vous-même.",
 };
 
-/** What a classeur's span reads like: two years, or one, or none at all. */
+/** What a tree's span reads like: two years, or one, or none at all. */
 const span = (one: { start: { year: number } | null; end: { year: number } | null }) => {
   const from = one.start?.year;
   const to = one.end?.year;
   if (from === undefined) return "";
   if (to === undefined || to === from) return formatYear(from);
   return `${formatYear(from)} – ${formatYear(to)}`;
-};
-
-export const FOLDER_LOOK: Look = {
-  many: "Bibliothèque",
-  one: "Un classeur",
-  take: "Copier le classeur",
-  named: "Nom du classeur",
-  /* Des sujets, pas des faits : un classeur rassemble, il ne date pas. */
-  hint: "Mérovingiens, croisades, Renaissance…",
-  ask: "Copier ce classeur ?",
-  means:
-    "Il entre dans votre collection avec tous ses événements, leurs photographies et les personnages qu'ils citent.",
-  /** No picture and no type: the initial of the subject it gathers. */
-  glyph: (one) => one.title.charAt(0).toUpperCase(),
-  /**
-   * How many events, and the reach of them.
-   *
-   * The count comes first because it is what decides whether a reader wants
-   * the whole box: "27 événements · 481 – 687" says more about a classeur
-   * than any description of it would.
-   */
-  under: (one) => [one.note, span(one)].filter(Boolean).join(" · "),
-  castLegend: "Ce qu'il contient",
-  castAside:
-    "Tous ces événements viendront avec le classeur, et les personnages qu'ils citent avec eux.",
-  filedLegend: "",
-  filedAside: "",
-  filedDoor: "",
-  nothing:
-    "Aucun classeur de ce genre dans la bibliothèque. Essayez d'élargir l'époque ou la région — ou faites le vôtre.",
 };
 
 export const CHARACTER_LOOK: Look = {
@@ -163,6 +135,5 @@ export const TREE_LOOK: Look = {
 export const LOOKS: Record<Kind, Look> = {
   event: EVENT_LOOK,
   character: CHARACTER_LOOK,
-  folder: FOLDER_LOOK,
   tree: TREE_LOOK,
 };

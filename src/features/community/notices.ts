@@ -21,7 +21,6 @@ export type NoticeSort = "admitted" | "promoted" | "stale";
 export type NoticeKind =
   | "event"
   | "character"
-  | "folder"
   | "tree"
   | "place"
   | "territory";
@@ -129,8 +128,6 @@ export function nameOf(kind: NoticeKind): string {
       return "événement";
     case "character":
       return "personnage";
-    case "folder":
-      return "classeur";
     case "tree":
       return "arbre";
     case "place":

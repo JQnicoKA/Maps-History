@@ -22,11 +22,11 @@ export const PAGE = 24;
 /**
  * Which doors each kind knocks on.
  *
- * The five kinds live in five tables with five sets of columns, so the
+ * The three kinds live in three tables with three sets of columns, so the
  * database needs a function each; the application does not. Naming them here
  * is the whole of the difference between them as far as the panel is
  * concerned — and it is what stops the same six hundred lines being written
- * five times.
+ * three times.
  */
 const DOORS: Record<
   Kind,
@@ -43,15 +43,6 @@ const DOORS: Record<
     whole: "shared_character",
     copy: "copy_character",
     alike: "characters_like",
-  },
-  folder: {
-    search: "search_folders",
-    whole: "shared_folder",
-    copy: "copy_folder",
-    // None: a classeur has no date of its own, and the year is what makes a
-    // duplicate warning worth showing — see `events_like`. Prevention for
-    // classeurs is the search slot in the list, not a warning while typing.
-    alike: null,
   },
   tree: {
     search: "search_trees",

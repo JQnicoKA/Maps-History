@@ -131,10 +131,10 @@ export function Catalogue({
   /**
    * What is being read, and what it was reached from.
    *
-   * A stack rather than one thing, because a classeur's card lists its
-   * events and those have to be openable — nobody takes twenty-seven events
-   * on the strength of their titles. "Retour" then means one step back to
-   * the classeur, not all the way out to the list.
+   * A stack rather than one thing, because a tree's card lists its people
+   * and those have to be openable — nobody takes twenty-seven lives on the
+   * strength of their names. "Retour" then means one step back to the tree,
+   * not all the way out to the list.
    */
   const [trail, setTrail] = useState<{ kind: Kind; thing: SharedThing }[]>([]);
   const reading = trail[trail.length - 1] ?? null;
@@ -144,8 +144,8 @@ export function Catalogue({
   /**
    * How far off the bottom the card being read is.
    *
-   * It rises on every step deeper — the list to a classeur, the classeur to
-   * one of its events — because that is what the gesture said: something has
+   * It rises on every step deeper — the list to a tree, the tree to one of
+   * its people — because that is what the gesture said: something has
    * come forward. Going back sends it down and only then pops the trail, so
    * the card is seen leaving rather than blinking out.
    */
@@ -164,8 +164,8 @@ export function Catalogue({
   /**
    * Whether the buttons at the foot belong to a card.
    *
-   * On the way down it looks at where the step lands: back out of an event
-   * opened inside a classeur returns to the classeur, so they stay the
+   * On the way down it looks at where the step lands: back out of a person
+   * opened inside a tree returns to the tree, so they stay the
    * card's; back out of the last one returns to the list, so "Fermer" comes
    * back — with the gesture, not after the slide.
    */
@@ -189,9 +189,9 @@ export function Catalogue({
       rose.current = 0;
       return;
     }
-    // Only a step deeper travels. Coming back to a classeur from one of its
-    // events, the classeur is already there and should not be thrown down
-    // and hauled up again.
+    // Only a step deeper travels. Coming back to a tree from one of its
+    // people, the tree is already there and should not be thrown down and
+    // hauled up again.
     const deeper = trail.length > rose.current;
     rose.current = trail.length;
     if (!deeper) {
@@ -286,8 +286,8 @@ export function Catalogue({
    * pourra pas y repartir. Un geste irréversible qui s'explique
    * après coup ne s'explique pas.
    *
-   * Le genre est porté avec la chose : une copie peut partir d'un événement
-   * ouvert depuis un classeur, donc deux genres plus loin que la liste.
+   * Le genre est porté avec la chose : une copie peut partir d'un personnage
+   * ouvert depuis un arbre, donc deux genres plus loin que la liste.
    */
   const [asking, setAsking] = useState<{
     one: SharedThing;
@@ -571,7 +571,7 @@ export function Catalogue({
        * The heading never changes while a card is read, and that is the
        * point.
        *
-       * It used to name the thing — "Un classeur" over a classeur — which
+       * It used to name the thing — "Un arbre" over a tree — which
        * said nothing the card does not say better with its own name three
        * lines down. Taking it away instead made the opening two events: the
        * title vanished, then the card rose into the gap. Left alone, it is
@@ -814,7 +814,7 @@ export function Catalogue({
                 drew, which cost the two things a step back ought to be: free
                 and unchanged. The parent had to read itself from the network
                 again, and it came back scrolled to the top — a reader who had
-                worked down a long classeur to its fortieth event lost their
+                worked down a long lineage to its fortieth name lost their
                 place by looking at one of them.
 
                 Kept mounted, each card holds what it loaded and where it was
@@ -824,8 +824,8 @@ export function Catalogue({
                 it rather than racing to rebuild it.
 
                 How many is `windowed`'s business, and its reason is memory:
-                this walk has no ceiling, since an event names its classeur
-                and that classeur holds the event.
+                this walk has no ceiling, since a person stands in a tree and
+                that tree holds the person.
 
                 Order is the whole of the paint: `risen` is opaque and
                 full-bleed, so the deeper card simply covers the one it came
@@ -861,13 +861,22 @@ export function Catalogue({
                     one={step.thing}
                     kind={step.kind}
                     look={its}
-                    // What a classeur holds is openable: nobody takes
-                    // twenty-seven events on the strength of their titles.
+                    // What a tree holds is openable: nobody takes
+                    // twenty-seven lives on the strength of their names.
+                    //
+                    // Le genre était écrit « event » en dur, pour ce qu'un
+                    // classeur contenait — et un arbre, qui tient des
+                    // personnages, menait donc à `shared_event` avec un
+                    // identifiant de personnage, c'est-à-dire à rien. Seuls
+                    // les arbres répondent `held` aujourd'hui.
                     onOpenHeld={(one) =>
-                      setTrail((was) => [...was, { kind: "event", thing: one }])
+                      setTrail((was) => [
+                        ...was,
+                        { kind: "character", thing: one },
+                      ])
                     }
-                    // And the other way up: from an event to the classeur it
-                    // was filed in, from a person to an arbre they stand in.
+                    // And the other way up: from a person to an arbre they
+                    // stand in.
                     // The trail already runs both ways, so "Retour" comes back
                     // to what was being read rather than out to the list — a
                     // reader can look at the box and decide against it without

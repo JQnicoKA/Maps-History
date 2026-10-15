@@ -50,12 +50,6 @@ export function describeType(type: EventType): { label: string; emoji: string } 
   );
 }
 
-export const IMPORTANCE_ORDER: Record<Importance, number> = {
-  low: 0,
-  medium: 1,
-  high: 2,
-};
-
 /**
  * A point in history. `year` is signed — negative years are BC — and month/day
  * are omitted when the source only pins the event down to a year or a month.
@@ -72,40 +66,6 @@ export type HistoricalDate = {
    * birth and an attested death.
    */
   approximate?: boolean;
-};
-
-export type Folder = {
-  id: string;
-  name: string;
-  /**
-   * The row this was taken from, in another account — null for an original.
-   *
-   * What it is for today is telling the truth when something is deleted: a
-   * copy's disappearance costs nothing, since the entry it was taken from
-   * still stands in the library, and saying "c'est définitif" over a copy is
-   * a lie.
-   */
-  origin: string | null;
-  /**
-   * Proposé à la bibliothèque, qui le reprendra si elle le vérifie.
-   *
-   * True unless the reader said otherwise: what is written here is history,
-   * and history nobody shares is history nobody reads. The way out exists for
-   * the reader writing their own family rather than the world's.
-   */
-  shared: boolean;
-
-  /**
-   * Cover picture. Its one use is the map marker: an event with no photograph
-   * of its own borrows its folder's before falling back to the type's emoji.
-   */
-  photo: { path: string; url: string } | null;
-};
-
-/** Importance is a property of the event/folder pair, never of the event. */
-export type EventFolderLink = {
-  folderId: string;
-  importance: Importance;
 };
 
 /**
@@ -162,7 +122,28 @@ export type EventSummary = {
   end: HistoricalDate | null;
   longitude: number;
   latitude: number;
-  folders: EventFolderLink[];
+  /**
+   * Les sujets sous lesquels il est rangé, par leur nom.
+   *
+   * Des noms et non pas des identifiants, parce qu'un classeur n'est rien de
+   * plus : il n'a ni ligne, ni photographie, ni auteur. Ce que cela gagne, en
+   * plus d'une table et de trois fonctions, c'est que le classement **part
+   * avec la copie** — qui prend trois événements carolingiens les reçoit
+   * groupés, là où un classeur-entité restait chez son auteur.
+   *
+   * La liste des noms connus se déduit de la collection ; voir
+   * `folderNames` dans `EventsProvider`.
+   */
+  folders: string[];
+  /**
+   * Combien il compte, pour celui qui l'a écrit.
+   *
+   * Portée par l'événement et non par le couple (événement, classeur) :
+   * « majeur ici, incident là » était possible, n'est jamais arrivé une fois,
+   * et la fonction écrite pour ce cas n'avait aucun appelant hors de son
+   * test.
+   */
+  importance: Importance;
   /**
    * Proposé à la bibliothèque, qui le reprendra si elle le vérifie.
    *
@@ -382,17 +363,12 @@ export type EventDraft = {
   end: HistoricalDate | null;
   longitude: number;
   latitude: number;
-  folders: EventFolderLink[];
+  /** Les noms des classeurs, nettoyés par le formulaire : ni vides, ni répétés. */
+  folders: string[];
+  importance: Importance;
   characters: string[];
   /** Pictures to upload. On an edit, only the newly added ones. */
   photos: PickedPhoto[];
-};
-
-/** One line of the filter popup: a folder, and how much it must matter there. */
-export type FolderFilter = {
-  folderId: string;
-  /** `null` means every importance — the default. */
-  importance: Importance | null;
 };
 
 /**
@@ -408,8 +384,21 @@ export type FolderFilter = {
  */
 export type MapFilters = {
   events: boolean;
-  /** Empty means no narrowing at all: every event is shown. */
-  folders: FolderFilter[];
+  /**
+   * Les classeurs retenus, par leur nom. Vide ne resserre rien.
+   *
+   * Une réunion : choisir deux sujets montre les événements de l'un **ou** de
+   * l'autre.
+   */
+  folders: string[];
+  /**
+   * L'importance demandée, ou `null` pour toutes.
+   *
+   * Un axe à part des classeurs, et c'est ce que le déménagement de
+   * l'importance a rendu vrai : elle appartient à l'événement, donc elle se
+   * demande une fois et non pas une fois par classeur.
+   */
+  importance: Importance | null;
   characters: boolean;
   territories: boolean;
 };
@@ -417,6 +406,7 @@ export type MapFilters = {
 export const NO_FILTERS: MapFilters = {
   events: true,
   folders: [],
+  importance: null,
   characters: true,
   territories: true,
 };

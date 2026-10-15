@@ -50,6 +50,7 @@ describe("écrire une période", () => {
     longitude: 0,
     latitude: 0,
     folders: [],
+    importance: "medium",
     characters: [],
     cover: null,
     shared: true,

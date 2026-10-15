@@ -25,7 +25,7 @@ export type SelectFieldProps = {
    * on its own is plainly the list, and a heading over it is furniture.
    */
   heading?: string;
-  /** Rendered under the list — where "create a new folder" lives. */
+  /** Rendered under the list, for whatever a caller wants to offer there. */
   footer?: ReactNode;
   emptyMessage?: string;
   /**
@@ -44,7 +44,7 @@ export type SelectFieldProps = {
 
 /**
  * A field that opens a scrolling list rather than spreading every option across
- * the screen: the number of folders grows without bound, the chrome does not.
+ * the screen: the number of names grows without bound, the chrome does not.
  */
 export function SelectField({
   label,

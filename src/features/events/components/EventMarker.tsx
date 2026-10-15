@@ -9,7 +9,7 @@ export type MarkerVariant = "previous" | "current" | "next";
 export type EventMarkerProps = {
   event: EventSummary;
   variant: MarkerVariant;
-  /** What `coverFor` chose; the emoji stands in when there is nothing. */
+  /** La première photographie de l'événement ; sinon l'emoji de son genre. */
   cover?: string | undefined;
   onPress: () => void;
 };
@@ -21,9 +21,8 @@ const SIZE: Record<MarkerVariant, number> = {
 };
 
 /**
- * A photograph in a parchment locket. Three things can fill it, in this order:
- * the event's own first photograph, the cover of one of its folders, and
- * failing both the emoji of its type.
+ * A photograph in a parchment locket. Two things can fill it, in this order:
+ * the event's own first photograph, and failing that the emoji of its type.
  *
  * The event being read is full size and ringed in wax; the one before it is
  * faded, the one after darkened — so the direction of travel is legible without

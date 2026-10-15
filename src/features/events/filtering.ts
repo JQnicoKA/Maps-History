@@ -1,51 +1,29 @@
-import {
-  IMPORTANCE_ORDER,
-  type MapFilters,
-  type EventSummary,
-  type Importance,
-} from "./types";
-
-function highest(links: { importance: Importance }[]): Importance {
-  return links.reduce<Importance>(
-    (best, link) =>
-      IMPORTANCE_ORDER[link.importance] > IMPORTANCE_ORDER[best]
-        ? link.importance
-        : best,
-    "low",
-  );
-}
+import type { MapFilters, EventSummary } from "./types";
 
 /**
- * How important an event is *in the current view*: the highest importance it
- * carries among the selected folders, or among all of them when nothing is
- * selected. An event major to one subject should not be drawn as minor because
- * it is incidental to another.
- */
-export function effectiveImportance(
-  event: EventSummary,
-  filters: MapFilters,
-): Importance {
-  if (filters.folders.length === 0) return highest(event.folders);
-
-  const inScope = event.folders.filter((link) =>
-    filters.folders.some((filter) => filter.folderId === link.folderId),
-  );
-  return highest(inScope.length > 0 ? inScope : event.folders);
-}
-
-/**
- * Folders are a union: picking two subjects shows the events of either. Within
- * one folder line, an importance narrows it further.
+ * Deux questions indépendantes, et il faut passer les deux.
+ *
+ * Les classeurs se réunissent : choisir deux sujets montre les événements de
+ * l'un ou de l'autre. L'importance, elle, est un seul tamis — elle appartient
+ * à l'événement, plus au couple (événement, classeur), donc elle ne se
+ * demande qu'une fois.
+ *
+ * Ce qui a disparu avec ce déménagement : `effectiveImportance`, qui retenait
+ * la plus forte des importances d'un événement parmi les classeurs regardés.
+ * Elle existait pour qu'un événement majeur d'un sujet ne soit pas dessiné
+ * comme mineur d'un autre — un cas que la base n'a jamais contenu, et qu'aucun
+ * appelant hors de son test n'a jamais demandé.
  */
 export function matchesFilters(
   event: EventSummary,
   filters: MapFilters,
 ): boolean {
-  if (filters.folders.length === 0) return true;
+  if (
+    filters.folders.length > 0 &&
+    !event.folders.some((name) => filters.folders.includes(name))
+  ) {
+    return false;
+  }
 
-  return filters.folders.some((filter) => {
-    const link = event.folders.find((l) => l.folderId === filter.folderId);
-    if (!link) return false;
-    return filter.importance === null || link.importance === filter.importance;
-  });
+  return filters.importance === null || event.importance === filters.importance;
 }

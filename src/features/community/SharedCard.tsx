@@ -47,11 +47,11 @@ export type SharedCardProps = {
    */
   onReport?: () => void;
   /**
-   * Opens one of the things this one holds — a classeur's events.
+   * Opens one of the things this one holds — a tree's people.
    *
    * Absent where nothing is held, and absent on purpose where it would be a
-   * dead end. Being told a box has twenty-seven events in it is no help if
-   * none of them can be looked at.
+   * dead end. Being told a lineage has twenty-seven people in it is no help
+   * if none of them can be looked at.
    */
   onOpenHeld?: (one: SharedThing) => void;
   /**
@@ -61,11 +61,11 @@ export type SharedCardProps = {
    */
   onShowShape?: (shape: unknown) => void;
   /**
-   * Opens one of the classeurs its author filed this in.
+   * Opens one of the trees its author placed this person in.
    *
    * Absent where it would be a dead end, like `onOpenHeld`: the card that
    * warns of a duplicate while an event is being written has no panel behind
-   * it to show a classeur in.
+   * it to show anything in.
    */
   onOpenFiled?: (one: SharedThing) => void;
 };
@@ -227,11 +227,15 @@ export function SharedCard({
         <View style={styles.section}>
           <Text style={styles.legend}>{look.filedLegend}</Text>
 
-          {/* A name was a dead end: being told an event belongs to a classeur
-              is no use without a way to reach it — and the classeur is often
-              the better thing to take than the one event the reader landed
-              on. The button says so plainly rather than making the whole row
-              a target, which would read like a list to choose from. */}
+          {/* A name was a dead end: being told somebody stands in a tree is no
+              use without a way to reach it — and the tree is often the better
+              thing to take than the one person the reader landed on. The
+              button says so plainly rather than making the whole row a
+              target, which would read like a list to choose from.
+
+              Les classeurs d'un événement, eux, n'ont plus de porte : ils
+              n'ont plus de fiche, et ils arrivent avec la copie. Ils tombent
+              donc dans `names`, juste en dessous. */}
           {doors.map((filed) => (
             <View key={filed.thing.id} style={styles.filedRow}>
               <Text style={styles.filedName} numberOfLines={2}>

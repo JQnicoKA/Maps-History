@@ -19,7 +19,7 @@ import type { HistoricalDate, Importance, TreeBond } from "../events/types";
  * lister par le compilateur tout ce qui reste à compléter, ce qui est la
  * seule manière sûre d'en ajouter un.
  */
-export type Kind = "event" | "character" | "folder" | "tree";
+export type Kind = "event" | "character" | "tree";
 
 /**
  * One line of the community catalogue.
@@ -41,9 +41,9 @@ export type SharedThing = {
   /**
    * The one extra fact a kind has to offer, or null.
    *
-   * A classeur says how many events come with it, which is what a reader
-   * needs before taking a whole subject; a tree will say how many people
-   * across how many generations. Events and people have nothing to add.
+   * A tree says how many people across how many generations, which is what
+   * tells a lineage of three from a dynasty of forty. Events and people have
+   * nothing to add.
    */
   note: string | null;
   /** Birth and death for a person, start and end for an event: one span. */
@@ -88,21 +88,21 @@ export type SharedThingDetail = SharedThing & {
   /**
    * What its author filed it under, and whichever of those can be opened.
    *
-   * For an event these are classeurs, and `thing` carries each one whole, so
-   * the card can offer a way in: a reader who arrived at one event may well
-   * want the whole box, and a list of names was a dead end. For a person
-   * these are the author's trees, and `thing` is null — a tree is read on a
-   * canvas, not in a card.
+   * For an event these are the names of its classeurs, and `thing` is null:
+   * un classeur n'est qu'un nom, il n'a pas de fiche à ouvrir — et il n'en a
+   * plus besoin, puisqu'il voyage avec l'événement qu'on copie. For a person
+   * these are the author's trees, and `thing` carries each one whole so the
+   * card can offer a way in.
    *
-   * Private filing is absent rather than named: withdrawing a classeur from
-   * the community promises it belongs to its author alone.
+   * Private filing is absent rather than named: withdrawing a tree from the
+   * community promises it belongs to its author alone.
    */
   folders: { name: string; thing: SharedThing | null }[];
   /**
    * What this one holds, in the catalogue's own row shape.
    *
-   * A classeur's events, drawn with the very line the search draws — a list
-   * of titles said nothing a reader could judge a box by. Empty for the
+   * A tree's people, drawn with the very line the search draws — a list of
+   * titles said nothing a reader could judge a lineage by. Empty for the
    * kinds that hold nothing.
    */
   held: SharedThing[];
@@ -242,8 +242,7 @@ export type Look = {
   filedLegend: string;
   filedAside: string;
   /**
-   * The button beside each thing it is filed under — "Voir le classeur",
-   * "Voir l'arbre".
+   * The button beside each thing it is filed under — "Voir l'arbre".
    *
    * Empty for the kinds whose filing leads nowhere. Blank here and a null
    * `thing` in the payload say the same thing from the two ends, and the card
@@ -252,8 +251,8 @@ export type Look = {
    */
   filedDoor: string;
   /**
-   * What kind that door leads to: a classeur from an event, an arbre from a
-   * person.
+   * What kind that door leads to: un arbre depuis un personnage, et c'est le
+   * seul aujourd'hui — un événement range sous des noms, qui n'ouvrent rien.
    *
    * Absent wherever `filedDoor` is empty. Named here rather than guessed by
    * the panel, which would otherwise hold a list of which kind files under
@@ -263,11 +262,10 @@ export type Look = {
   /**
    * The button that takes it — "Copier l'événement", not "Copier".
    *
-   * The catalogue is a place one wanders: a list, a classeur, one of its
-   * events, the classeur that event was also filed in. Four panels deep, a
-   * button saying only "Copier" leaves the reader to remember which of the
-   * four they are standing in, and a wrong guess costs them a copy they did
-   * not want. Naming the thing is the cheapest possible map. Written out per
+   * The catalogue is a place one wanders: a list, a person, one of their
+   * trees, somebody else standing in it. Four panels deep, a button saying
+   * only "Copier" leaves the reader to remember which of the four they are
+   * standing in, and a wrong guess costs them a copy they did not want. Naming the thing is the cheapest possible map. Written out per
    * kind rather than built from `one`, because the elision differs.
    */
   take: string;

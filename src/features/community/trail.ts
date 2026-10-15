@@ -1,10 +1,10 @@
 /**
  * How many steps of the reading trail are kept drawn at once.
  *
- * The trail itself has no ceiling — an event names its classeur, that
- * classeur holds the event, and a reader can walk between the two all
- * afternoon — so "keep it all mounted" is unbounded memory, and the cost is
- * not the rows but the decoded photographs on every card below.
+ * The trail itself has no ceiling — a person stands in a tree, that tree holds
+ * the person, and a reader can walk between the two all afternoon — so "keep
+ * it all mounted" is unbounded memory, and the cost is not the rows but the
+ * decoded photographs on every card below.
  *
  * Three is the top card and the two it came from, which makes two steps back
  * free; beyond that a card is rebuilt, which is a read and a scroll to the

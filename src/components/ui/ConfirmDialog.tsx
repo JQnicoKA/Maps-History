@@ -22,7 +22,7 @@ export type ConfirmDialogProps = {
    * Absent by default: in front of a deletion, "Annuler" and the cross do
    * exactly the same thing, and one of them is furniture. But a question that
    * is **not** a warning reads better with its two answers side by side —
-   * "Annuler" and "Copier le classeur" — than with one button and a cross in
+   * "Annuler" and "Copier l'arbre" — than with one button and a cross in
    * the corner.
    */
   cancelLabel?: string | null;

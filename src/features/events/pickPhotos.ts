@@ -11,9 +11,9 @@ export type Picked = { photos: PickedPhoto[]; problem: PickProblem | null };
 /**
  * Opens the photo library and hands back what was chosen, ready to upload.
  *
- * Shared by the event form, the folder cover and the character portraits, so
- * the permission prompt, the quality cap and the shape of the result are
- * decided in one place.
+ * Shared by the event form and the character portraits, so the permission
+ * prompt, the quality cap and the shape of the result are decided in one
+ * place.
  *
  * **It reports its troubles rather than showing them.** A module cannot draw a
  * dialogue, and the system alert it used to raise was the last piece of another

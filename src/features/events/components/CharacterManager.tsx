@@ -38,10 +38,10 @@ import { space } from "../../../theme/tokens";
 /**
  * The people the collection knows about.
  *
- * Same shape as the folders' half, because it is the same kind of thing: a
- * list, and one sheet behind both the slot at the top and the pencil on a
- * row. A folder is a subject an event belongs to; a character is someone it
- * was about. Both are ways of saying what an event is *of*.
+ * Same shape as the trees' half, because it is the same kind of thing: a list,
+ * and one sheet behind both the slot at the top and the pencil on a row. Les
+ * classeurs avaient cette moitié-là eux aussi, et ils l'ont perdue avec leur
+ * ligne : on ne tient pas une liste de noms, on les écrit où ils servent.
  *
  * The card itself is not opened here but asked for. A person now carries a
  * place on the map, and choosing one means handing the whole screen to the

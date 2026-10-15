@@ -15,10 +15,10 @@ export type CharacterSelectorProps = {
 /**
  * Who an event was about.
  *
- * Built like the folder picker — a card each, then a dashed slot — because a
- * reader should not have to learn two ways of attaching things to an event.
- * Simpler than folders, though: a person is either in the room or not, whereas
- * a folder also carries how much the event matters to it.
+ * A card each, then a dashed slot — the same shape the classeurs wore when
+ * they were entities, because a reader should not have to learn two ways of
+ * attaching things to an event. Les classeurs sont descendus à la pastille
+ * depuis : un nom n'a pas besoin d'une carte, une personne en a une.
  */
 export function CharacterSelector({
   characters,

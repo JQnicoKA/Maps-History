@@ -22,7 +22,6 @@ import {
   type EventDraft,
   type StoredPhoto,
   type MapFilters,
-  type Folder,
   type HistoricalEvent,
   type Move,
   type EventSummary,
@@ -30,7 +29,6 @@ import {
   type TreeBond,
   type LabelWidth,
   type TreePerson,
-  type PickedPhoto,
 } from "./types";
 
 type EventsContextValue = {
@@ -40,7 +38,13 @@ type EventsContextValue = {
    * Empty when the reader has put the events away altogether.
    */
   visibleEvents: EventSummary[];
-  folders: Folder[];
+  /**
+   * Les noms des classeurs de la collection, triés, une fois chacun.
+   *
+   * Déduits des événements : un classeur n'a plus de ligne à lui. Voir
+   * `folderNames` dans le corps du fournisseur.
+   */
+  folderNames: string[];
   /** Everyone the collection knows about, by name. */
   characters: Character[];
   /**
@@ -90,21 +94,17 @@ type EventsContextValue = {
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
-  addFolder: (name: string) => Promise<Folder>;
-  renameFolder: (id: string, name: string) => Promise<void>;
   /**
    * Puts something into the community, or takes it out.
    *
-   * One call for the four kinds: it is one idea, and the row-level security
+   * One call for the three kinds: it is one idea, and the row-level security
    * is what makes it safe — the write reaches only the caller's own rows.
    */
   share: (
-    kind: "event" | "folder" | "character" | "tree",
+    kind: "event" | "character" | "tree",
     id: string,
     shared: boolean,
   ) => Promise<void>;
-  /** Drops a folder; the events it held survive, unfiled. */
-  removeFolder: (folder: Folder) => Promise<void>;
   addCharacter: (draft: CharacterDraft) => Promise<Character>;
   editCharacter: (
     id: string,
@@ -171,8 +171,6 @@ type EventsContextValue = {
     to: string,
     linked: boolean,
   ) => Promise<void>;
-  /** Sets or clears a folder's cover picture — the map marker's fallback. */
-  setFolderPhoto: (folder: Folder, picked: PickedPhoto | null) => Promise<void>;
   addEvent: (draft: EventDraft) => Promise<void>;
   editEvent: (
     id: string,
@@ -194,7 +192,6 @@ const EventsContext = createContext<EventsContextValue | null>(null);
 
 export function EventsProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<EventSummary[]>([]);
-  const [folders, setFolders] = useState<Folder[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [trees, setTrees] = useState<Tree[]>([]);
   const [filters, setAllFilters] = useState<MapFilters>(NO_FILTERS);
@@ -206,15 +203,12 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [loadedEvents, loadedFolders, loadedCharacters, loadedTrees] =
-        await Promise.all([
-          api.fetchEvents(),
-          api.fetchFolders(),
-          api.fetchCharacters(),
-          api.fetchTrees(),
-        ]);
+      const [loadedEvents, loadedCharacters, loadedTrees] = await Promise.all([
+        api.fetchEvents(),
+        api.fetchCharacters(),
+        api.fetchTrees(),
+      ]);
       setEvents(loadedEvents);
-      setFolders(loadedFolders);
       setCharacters(loadedCharacters);
       setTrees(loadedTrees);
       setError(null);
@@ -266,6 +260,26 @@ export function EventsProvider({ children }: { children: ReactNode }) {
         ? events.filter((event) => matchesFilters(event, filters))
         : [],
     [events, filters],
+  );
+
+  /**
+   * Les classeurs de cette collection, par leur nom, une fois chacun.
+   *
+   * Déduits et non pas stockés : un classeur n'est plus une ligne, c'est un nom
+   * écrit sur un événement, donc la liste des noms *est* ce qu'on en a écrit.
+   * Ce qui s'ensuit, et qui est voulu : le dernier événement d'un sujet
+   * emporte le sujet en partant. Un classeur vide n'existe pas plus qu'une
+   * étagère sans livre.
+   *
+   * Sert à deux choses : la liste où choisir en rangeant un événement, et les
+   * cases du filtre.
+   */
+  const folderNames = useMemo(
+    () =>
+      [...new Set(events.flatMap((event) => event.folders))].sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    [events],
   );
 
   /**
@@ -348,73 +362,24 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     };
   }, [visibleEvents, selectedId, year]);
 
-  const addFolder = useCallback(async (name: string) => {
-    const folder = await api.createFolder(name);
-    setFolders((current) => [...current, folder].sort(byName));
-    return folder;
-  }, []);
-
-  /** Folders are kept sorted by name, so renaming one moves it in the list. */
-  const byName = (a: Folder, b: Folder) => a.name.localeCompare(b.name);
-
-  const renameFolder = useCallback(async (id: string, name: string) => {
-    const updated = await api.renameFolder(id, name);
-    setFolders((current) =>
-      current.map((one) => (one.id === updated.id ? updated : one)).sort(byName),
-    );
-  }, []);
-
-  const removeFolder = useCallback(async (folder: Folder) => {
-    await api.deleteFolder(folder);
-    setFolders((current) => current.filter((one) => one.id !== folder.id));
-    // The database cascades the links; mirror that here rather than reloading,
-    // and drop the filter that would otherwise hide everything.
-    setEvents((current) =>
-      current.map((event) => ({
-        ...event,
-        folders: event.folders.filter((link) => link.folderId !== folder.id),
-      })),
-    );
-    setAllFilters((current) => ({
-      ...current,
-      folders: current.folders.filter((one) => one.folderId !== folder.id),
-    }));
-  }, []);
-
   const share = useCallback(
-    async (
-      kind: "event" | "folder" | "character" | "tree",
-      id: string,
-      shared: boolean,
-    ) => {
+    async (kind: "event" | "character" | "tree", id: string, shared: boolean) => {
       const table = {
         event: "events",
-        folder: "folders",
         character: "characters",
         tree: "trees",
-      }[kind] as "events" | "folders" | "characters" | "trees";
+      }[kind] as "events" | "characters" | "trees";
 
       await api.setShared(table, id, shared);
 
       // One boolean is the whole of what changed; re-reading the collection
-      // to learn it would be four queries for one bit.
+      // to learn it would be three queries for one bit.
       const patch = <T extends { id: string; shared: boolean }>(list: T[]) =>
         list.map((one) => (one.id === id ? { ...one, shared } : one));
 
       if (kind === "event") setEvents(patch);
-      if (kind === "folder") setFolders(patch);
       if (kind === "character") setCharacters(patch);
       if (kind === "tree") setTrees(patch);
-    },
-    [],
-  );
-
-  const setFolderPhoto = useCallback(
-    async (folder: Folder, picked: PickedPhoto | null) => {
-      const updated = await api.setFolderPhoto(folder, picked);
-      setFolders((current) =>
-        current.map((one) => (one.id === updated.id ? updated : one)),
-      );
     },
     [],
   );
@@ -686,7 +651,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   const addEvent = useCallback(async (draft: EventDraft) => {
     // Placed in the list rather than fetched again with everything else: one
     // new event used to cost a re-read of the whole collection — events,
-    // folders, characters and trees — which is four queries to learn one row.
+    // characters and trees — which is three queries to learn one row.
     const created = await api.createEvent(draft);
     setEvents((current) => inOrder([...current, created]));
   }, []);
@@ -720,7 +685,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     () => ({
       events,
       visibleEvents,
-      folders,
+      folderNames,
       characters,
       visibleCharacters,
       trees,
@@ -734,9 +699,6 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       loading,
       error,
       refresh,
-      addFolder,
-      renameFolder,
-      removeFolder,
       share,
       addCharacter,
       editCharacter,
@@ -752,20 +714,19 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       orderRow,
       eraseLink,
       linkInTree,
-      setFolderPhoto,
       addEvent,
       editEvent,
       removeEvent,
       loadEvent,
     }),
     [
-      events, visibleEvents, folders, characters, visibleCharacters, trees,
+      events, visibleEvents, folderNames, characters, visibleCharacters, trees,
       filters, setFilters, year,
       selectedEvent, neighbours, selectEvent, scrubTo, loading, error, refresh,
-      addFolder, renameFolder, removeFolder, share, addCharacter, editCharacter,
+      share, addCharacter, editCharacter,
       removeCharacter, addTree, renameTree, removeTree, addToTree, addLabel,
       editLabel,
-      editTreeMember, removeFromTree, orderRow, eraseLink, linkInTree, setFolderPhoto,
+      editTreeMember, removeFromTree, orderRow, eraseLink, linkInTree,
       addEvent,
       editEvent, removeEvent, loadEvent,
     ],

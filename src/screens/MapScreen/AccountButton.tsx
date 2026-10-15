@@ -205,7 +205,7 @@ export function AccountButton() {
           face === "leaving"
             ? "Il faudra vous reconnecter."
             : face === "erasing"
-              ? "Événements, classeurs, personnages, arbres et photos seront effacés. C'est définitif."
+              ? "Événements, personnages, arbres et photos seront effacés. C'est définitif."
               : face === "proving"
                 ? "Dernière étape : tapez-le pour confirmer la suppression."
                 : undefined

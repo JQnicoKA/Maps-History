@@ -63,7 +63,7 @@ export function EventDetailModal({
   // out — and so the screen is told when it has gone and may raise the next
   // page. Re-seeding happens on the way *in*, by the caller's key.
   const event = useLingering(subject);
-  const { folders, characters, removeEvent, loadEvent } = useEvents();
+  const { characters, removeEvent, loadEvent } = useEvents();
   /**
    * The text and the pictures, which the list does not carry.
    *
@@ -251,22 +251,24 @@ export function EventDetailModal({
           </View>
         ) : null}
 
-        {event.folders.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.legend}>Classeurs</Text>
-            {event.folders.map((link) => (
-              <View key={link.folderId} style={styles.folderRow}>
-                <Text style={styles.folderName} numberOfLines={1}>
-                  {folders.find((f) => f.id === link.folderId)?.name ??
-                    "Classeur supprimé"}
-                </Text>
-                <Text style={styles.importance}>
-                  {IMPORTANCE_LABEL[link.importance]}
-                </Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
+        {/* Les sujets d'abord, l'importance ensuite et une seule fois : elle
+            est celle de l'événement, et non plus celle de son rangement dans
+            tel classeur. */}
+        <View style={styles.section}>
+          <Text style={styles.legend}>Classement</Text>
+          {event.folders.map((name) => (
+            <View key={name} style={styles.folderRow}>
+              <Text style={styles.folderName} numberOfLines={1}>
+                {name}
+              </Text>
+            </View>
+          ))}
+          <Text style={styles.importance}>
+            {event.folders.length === 0
+              ? `Rangé nulle part · importance ${IMPORTANCE_LABEL[event.importance]}`
+              : `Importance ${IMPORTANCE_LABEL[event.importance]}`}
+          </Text>
+        </View>
       </ScrollView>
 
       <PhotoViewer photo={viewing} onClose={() => setViewing(null)} />
@@ -327,10 +329,11 @@ const styles = StyleSheet.create({
   description: { ...type.body, color: palette.inkSoft },
   section: { gap: space.sm },
   legend: { ...type.legend, color: palette.inkFaint },
+  // Un seul enfant depuis que l'importance a quitté la ligne : plus rien à
+  // répartir aux deux bouts.
   folderRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     gap: space.md,
     minHeight: 40,
     paddingHorizontal: space.md,

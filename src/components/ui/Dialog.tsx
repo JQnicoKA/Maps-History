@@ -12,12 +12,27 @@ import {
 import { InkButton } from "./InkButton";
 import { Grain, JournalTitle } from "./Scrapbook";
 import { palette } from "../../theme/palette";
-import { BACKDROP, radius, shadow, space, type } from "../../theme/tokens";
+import {
+  BACKDROP,
+  BACKDROP_SOFT,
+  radius,
+  shadow,
+  space,
+  type,
+} from "../../theme/tokens";
 
 export type DialogProps = {
   visible: boolean;
   onClose: () => void;
-  title: string;
+  /**
+   * The heading, when the card needs one.
+   *
+   * Absent for a card that is **entirely its own answer** — a field and the
+   * things it sifts, where a title would only name what the reader is already
+   * looking at. The cross keeps its corner, on a line of its own: tapping
+   * beside the card also closes it, but that is not something to have to know.
+   */
+  title?: string;
   /** A line under the title, when the choice needs one. */
   hint?: string;
   /**
@@ -49,6 +64,29 @@ export type DialogProps = {
    * eye starts reading.
    */
   centred?: boolean;
+  /**
+   * How heavily this card veils what is behind it.
+   *
+   * `"full"` by default, and that is what a dialogue is for: nothing behind is
+   * touchable until it is answered, and the dimming says so.
+   *
+   * **Pass `"soft"` when it opens from inside a sheet or another card**, which
+   * has already laid the very same `BACKDROP`. Two of them is not twice as
+   * clear, it is `0.42` over `0.42` — two thirds of brown across the whole
+   * screen, which reads as a rendering fault rather than as a question. And no
+   * veil at all was tried: it leaves pale paper on pale paper with nothing but
+   * a shadow between them, and the card does not come forward. `"soft"` is the
+   * same brown, light enough to be a second layer and dark enough to show the
+   * card's edge.
+   *
+   * The pressable backdrop is there whichever is chosen, so tapping beside the
+   * card always closes it; only the paint changes.
+   *
+   * A sheet needs none of this: its panel is opaque and docked to the bottom,
+   * so a doubled veil only shows in the strip above it. A card floats in the
+   * middle, where there is nothing to hide it.
+   */
+  veil?: "full" | "soft";
   /** The choices, stacked — buttons, usually. */
   children: ReactNode;
 };
@@ -70,6 +108,7 @@ export function Dialog({
   dismissLabel = "Annuler",
   onDismiss,
   centred = false,
+  veil = "full",
   children,
 }: DialogProps) {
   return (
@@ -86,7 +125,7 @@ export function Dialog({
           padding grows from the bottom and lifts the centred card clear of the
           keyboard instead of leaving its buttons underneath. */}
       <KeyboardAvoidingView
-        style={styles.root}
+        style={[styles.root, veil === "soft" ? styles.veilSoft : styles.veilFull]}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <Pressable
@@ -98,8 +137,16 @@ export function Dialog({
         <View style={styles.card}>
           <Grain />
 
-          <View style={centred ? styles.headerCentred : styles.header}>
-            {centred ? (
+          <View
+            style={
+              title === undefined
+                ? styles.headerBare
+                : centred
+                  ? styles.headerCentred
+                  : styles.header
+            }
+          >
+            {title === undefined ? null : centred ? (
               /* The sheets' own heading, not a centred imitation of this
                  one: that is what makes the two read as the same app. Its
                  `hint` is left to the card below, which is wider than a
@@ -121,7 +168,11 @@ export function Dialog({
                 // Out of the row when centred: a 32-point button sharing the
                 // line would push the title's middle 16 points left of the
                 // card's, which is exactly the thing being fixed.
-                centred && styles.closeFloat,
+                //
+                // Only with a title, though: lifted out of a header that holds
+                // nothing else, it would float over a row of no height and
+                // land on top of the content.
+                centred && title !== undefined && styles.closeFloat,
                 pressed && styles.pressed,
               ]}
             >
@@ -160,8 +211,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: space.xl,
-    backgroundColor: BACKDROP,
   },
+  veilFull: { backgroundColor: BACKDROP },
+  veilSoft: { backgroundColor: BACKDROP_SOFT },
   card: {
     width: "100%",
     maxWidth: 380,
@@ -181,6 +233,8 @@ const styles = StyleSheet.create({
   /** No row at all: the heading takes the full width so its centre is the
       card's, and the cross is lifted out of the flow above it. */
   headerCentred: { position: "relative" },
+  /** Untitled: the cross alone, on its own line, pulled into the padding. */
+  headerBare: { flexDirection: "row", justifyContent: "flex-end" },
   heading: { flex: 1, gap: space.xs },
   title: { ...type.plate, fontSize: 22, color: palette.ink },
   /** Hand-drawn under the words, not ruled across the card. */

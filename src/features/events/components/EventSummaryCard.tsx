@@ -1,8 +1,6 @@
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Paper } from "../../../components/ui";
-import { coverFor } from "../cover";
-import { useEvents } from "../EventsProvider";
 import { formatEventPeriod } from "../historicalDate";
 import { describeType, type EventSummary } from "../types";
 import { palette } from "../../../theme/palette";
@@ -20,15 +18,14 @@ export function EventSummaryCard({
   onOpen,
   highlighted = false,
 }: EventSummaryCardProps) {
-  const { folders } = useEvents();
-  // The same picture the marker shows, chosen by the same rule: the event's
-  // own, else one of its folders', else the type's emoji.
-  const cover = coverFor(event, folders);
+  // The same picture the marker shows: the event's own first photograph, else
+  // the type's emoji. Il y avait un troisième recours — la couverture d'un de
+  // ses classeurs — et il est parti avec eux : un classeur n'est qu'un nom, il
+  // ne porte pas d'image.
+  const cover = event.cover?.url;
   const { emoji } = describeType(event.type);
 
-  const names = event.folders
-    .map((link) => folders.find((f) => f.id === link.folderId)?.name)
-    .filter((name): name is string => name !== undefined);
+  const names = event.folders;
 
   return (
     <Paper style={highlighted ? styles.highlighted : undefined}>

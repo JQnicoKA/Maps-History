@@ -6,8 +6,17 @@ import { VIEWS, type ScreenView } from "./view";
 import { useEvents } from "../events/EventsProvider";
 import { FolderSelector } from "../events/components/FolderSelector";
 import { formatYear } from "../events/historicalDate";
+import type { Importance } from "../events/types";
 import { palette } from "../../theme/palette";
 import { radius, shadow, space, type } from "../../theme/tokens";
+
+/** Les trois crans, et « Toutes » que seul le filtre propose. */
+const IMPORTANCES: { value: Importance | "all"; label: string }[] = [
+  { value: "all", label: "Toutes" },
+  { value: "low", label: "Faible" },
+  { value: "medium", label: "Moyenne" },
+  { value: "high", label: "Élevée" },
+];
 
 export type FilterModalProps = {
   visible: boolean;
@@ -66,7 +75,7 @@ export function FilterModal({
 }: FilterModalProps) {
   const {
     events,
-    folders,
+    folderNames,
     characters,
     visibleCharacters,
     filters,
@@ -111,7 +120,7 @@ export function FilterModal({
           title="Événements"
           detail={
             filters.events
-              ? filters.folders.length === 0
+              ? filters.folders.length === 0 && filters.importance === null
                 ? `toute la collection · ${events.length}`
                 : `${shown} sur ${events.length}`
               : "masqués"
@@ -119,15 +128,25 @@ export function FilterModal({
           on={filters.events}
           onToggle={() => setFilters({ events: !filters.events })}
         >
-          {/* The same control as the form's fourth step, down to the card: a
-              folder and the importance it carries are one thing to look at
-              here too, and "Toutes" is the fourth answer only filtering has. */}
+          {/* Le même contrôle qu'à l'étape « Classement » du formulaire, sans
+              le droit d'en nommer un : on ne range rien depuis un filtre. */}
           <FolderSelector
-            folders={folders}
+            known={folderNames}
             value={filters.folders}
             onChange={(next) => setFilters({ folders: next })}
-            allowAll
             emptyLabel="Filtrer par classeur"
+          />
+
+          {/* Et l'importance à part, comme sur l'événement. « Toutes » est la
+              quatrième réponse que seul le filtre a : le formulaire répond
+              toujours quelque chose, le lecteur peut ne pas demander. */}
+          <Text style={styles.note}>Importance</Text>
+          <SegmentedControl
+            segments={IMPORTANCES}
+            value={filters.importance ?? "all"}
+            onChange={(choice) =>
+              setFilters({ importance: choice === "all" ? null : choice })
+            }
           />
         </Layer>
 

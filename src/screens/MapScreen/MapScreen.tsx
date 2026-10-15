@@ -40,7 +40,6 @@ import { Catalogue } from "../../features/community/Catalogue";
 import {
   CHARACTER_LOOK,
   EVENT_LOOK,
-  FOLDER_LOOK,
   TREE_LOOK,
 } from "../../features/community/looks";
 import {
@@ -101,7 +100,6 @@ type Page =
   /** The community catalogue, which is about no one row in particular. */
   | { kind: "searchEvents" }
   | { kind: "searchCharacters" }
-  | { kind: "searchFolders" }
   | { kind: "searchTrees" };
 
 export function MapScreen() {
@@ -739,9 +737,6 @@ export function MapScreen() {
         onSearchPeople={() =>
           afterSheet(() => raise({ kind: "searchCharacters" }), "character")
         }
-        onSearchFolders={() =>
-          afterSheet(() => raise({ kind: "searchFolders" }), "folder")
-        }
         onSearchTrees={() =>
           afterSheet(() => raise({ kind: "searchTrees" }), "tree")
         }
@@ -833,15 +828,6 @@ export function MapScreen() {
         kind="tree"
         look={TREE_LOOK}
         visible={page?.kind === "searchTrees"}
-        onClose={() => setPage(null)}
-        onClosed={afterPage}
-      />
-
-      <Catalogue
-        key={`commons-folders-${raised}`}
-        kind="folder"
-        look={FOLDER_LOOK}
-        visible={page?.kind === "searchFolders"}
         onClose={() => setPage(null)}
         onClosed={afterPage}
       />

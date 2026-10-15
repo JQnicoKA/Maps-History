@@ -46,8 +46,9 @@ la curation seule y suffit.
 | | va dans | se prend comment |
 |---|---|---|
 | événements, personnages | la bibliothèque | on copie, on peut mettre à jour |
-| classeurs, arbres | plus tard | — |
+| arbres | plus tard | — |
 | territoires, villes | le fond de carte | tout le monde l'a, chacun peut le masquer |
+| classeurs | avec l'événement | ce n'est qu'un nom écrit dessus |
 
 **Les villes et les territoires sont à part**, et c'est structurel : ce sont
 les deux seuls genres qui possédaient déjà une table « vue par tout le
@@ -57,15 +58,38 @@ Pas de catalogue, pas d'étoiles, pas de ligne par lecteur. Une ville promue
 se comporte exactement comme une ville d'OpenHistoricalMap, masquage compris :
 aucun concept neuf pour le lecteur.
 
-**Les classeurs et les arbres attendent**, et la règle est écrite pour le jour
-où ils entreront : *un contenant n'entre qu'avec son contenu.* Sa composition
-est alors réécrite vers les entrées de la bibliothèque. Les deux autres
-options ont été écartées — un classeur à trous mutile le travail de son
-auteur, un classeur qui traîne son contenu en copies ordinaires fait rentrer
-la duplication par la porte de derrière. Et la propriété qui en tombe : **la
-structure se détache, les membres restent reliés.** Qui copie un arbre et le
-réarrange a *son* arbre, mais ses personnages continuent de recevoir les
-corrections.
+**Les arbres attendent**, et la règle est écrite pour le jour où ils
+entreront : *un contenant n'entre qu'avec son contenu.* Sa composition est
+alors réécrite vers les entrées de la bibliothèque. Les deux autres options
+ont été écartées — un arbre à trous mutile le travail de son auteur, un arbre
+qui traîne son contenu en copies ordinaires fait rentrer la duplication par la
+porte de derrière. Et la propriété qui en tombe : **la structure se détache,
+les membres restent reliés.** Qui copie un arbre et le réarrange a *son*
+arbre, mais ses personnages continuent de recevoir les corrections.
+
+**Les classeurs, eux, ont cessé d'être des contenants** (14 octobre 2026). Un
+classeur n'est plus qu'un nom dans `events.folders`, un `text[]`, et
+l'importance a rejoint l'événement dans `events.importance`. Ce que la table
+`folders` portait en plus de son nom : une photographie de couverture, une
+identité dans la bibliothèque, et l'importance du couple (événement,
+classeur). La première ne servait qu'au repli de la pastille ; la deuxième
+était le problème ci-dessus, avec en prime `copy_folder` et ses 200 événements
+d'un geste ; la troisième n'a jamais servi — aucun événement de la base n'a
+jamais été rangé dans deux classeurs, et `effectiveImportance`, écrite exprès
+pour ce cas, n'avait aucun appelant hors de son test.
+
+Ce qu'on y gagne, et c'est ce qui a décidé : **un nom voyage avec la copie.**
+`copy_one_event` emporte `folders` et `importance`, donc qui prend trois
+événements carolingiens les reçoit groupés. La question « comment admettre un
+classeur sans fabriquer un classeur vide » ne se pose plus : il n'y a plus
+rien à admettre.
+
+Le seul vrai défaut du modèle par étiquette est la dérive des noms —
+« Carolingiens » tapé deux fois différemment ferait deux sujets. `FolderSelector`
+s'en garde : il montre les noms déjà écrits (`folderNames`, déduit de la
+collection) et ramène ce qu'on tape à celui qui existe, à la casse et aux
+accents près. Et une contrainte, `events_folders_named`, refuse un élément nul
+ou vide.
 
 ## Le partage, et ce que la case veut dire
 
@@ -113,10 +137,11 @@ survivre.
 
 `judge` refuse d'admettre une ligne dont l'auteur a décoché la case, comme
 `promote_place` et `promote_polity` le faisaient déjà : la même décision doit
-valoir pour les six genres. Et les classeurs et les arbres lèvent une
-exception explicite — la copie d'un classeur ne reprend que les événements
-déjà publiés, donc admettre une proposition de classeur produirait un
-classeur vide, ce qui est pire que refuser.
+valoir pour les cinq genres. Et les arbres lèvent une exception explicite — la
+copie d'un arbre ne reprend que les personnages déjà publiés, donc admettre
+une proposition d'arbre produirait un arbre à trous, ce qui est pire que
+refuser. `judge` ne connaît plus `folder` du tout : un genre inconnu est
+refusé par son nom.
 
 `to_review` est la seule porte de l'application qui regarde par-dessus
 l'épaule des gens. Elle le vérifie : tout appel venu d'un autre compte que la
@@ -281,8 +306,14 @@ vérifie.
 - `profile.ts` et son test valident un pseudonyme que plus aucun champ ne
   saisit. Gardés : ils reflètent la contrainte `profiles_handle_shape`, qui
   est toujours en vigueur sur les pseudonymes engendrés.
-- Les classeurs et les arbres, quand le corpus le méritera. `judge` lève une
-  exception explicite en attendant, plutôt que de fabriquer un classeur vide.
+- Les arbres, quand le corpus le méritera. `judge` lève une exception
+  explicite en attendant, plutôt que de fabriquer un arbre à trous.
+- Un fichier orphelin dans le seau : la couverture du classeur
+  « Mérovingiens »,
+  `c91e5ef6-0c36-427d-a01c-66f5860a186c/folders/362b1a8f-d449-43d3-918b-4382c122d49d/1789391365779.jpeg`.
+  Quelques dizaines de kilooctets, et plus personne ne le réclame. À retirer
+  par l'API de stockage, pas par un `delete` dans `storage.objects` — qui
+  ôterait la ligne et laisserait le fichier.
 - Un écran de curation, quand la file le méritera. En attendant, `to_review`
   et `judge` s'appellent depuis l'éditeur SQL, précédés des deux lignes qui
   présentent la session comme la bibliothèque :
@@ -300,3 +331,32 @@ vérifie.
 - `stars` ne redescend jamais : `count_the_star` ne se déclenche qu'à
   l'insertion, et supprimer une copie laisse le compteur où il est. C'est
   donc un plus-haut-niveau-atteint, pas un nombre de détenteurs.
+
+## Le démontage des classeurs, dans l'ordre où il a eu lieu
+
+Le 14 octobre 2026. L'ordre compte, et c'est la seule chose à retenir de ce
+passage si on doit en refaire un semblable : **les colonnes et la reprise des
+données d'abord, les fonctions ensuite, les suppressions en dernier.** Une
+table qu'une fonction interroge encore ne se supprime pas, et une colonne
+remplie après coup laisse une fenêtre où l'application lit du vide.
+
+| migration | ce qu'elle fait |
+|---|---|
+| `un_classeur_n_est_qu_un_nom` | `events.folders text[]`, `events.importance` |
+| `un_nom_de_classeur_n_est_ni_nul_ni_vide` | la contrainte `events_folders_named` |
+| `reprendre_le_classement_existant` | les 39 liens deviennent des noms, l'importance la plus forte gagne |
+| `copier_un_evenement_emporte_son_classement` | `copy_one_event` emporte les deux colonnes |
+| `une_entree_porte_les_noms_de_ses_classeurs` | `shared_event` rend des noms, `thing` nul |
+| `juger_ne_connait_plus_les_classeurs` | `judge` sans la branche `folder` |
+| `la_file_ne_montre_plus_de_classeurs` | `to_review` sans l'union des classeurs |
+| `le_menage_des_photos_oublie_les_classeurs` | `erasable_by_me` sans la couverture |
+| `on_ne_signale_ni_ne_compte_un_classeur` | `block_author`, `count_the_star` |
+| `le_catalogue_n_a_plus_de_rayon_classeurs` | `shared_folder` |
+| `les_portes_des_classeurs_se_ferment` | `search_folders`, `copy_folder` |
+| `folder_n_est_plus_un_genre` | les quatre contraintes `kind` |
+| `les_classeurs_quittent_la_base` | `event_folders` puis `folders` |
+
+La fonction edge `copy` a été redéployée (version 2) **avant** les
+suppressions : son filet `mend` interrogeait encore `folders`, et un `mend`
+lancé entre les deux n'aurait ajouté qu'un `souci` au rapport, mais autant ne
+pas le provoquer.

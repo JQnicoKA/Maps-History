@@ -29,13 +29,12 @@ import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const SEAU = "event-photos";
 
-type Genre = "event" | "character" | "folder" | "tree" | "territory";
+type Genre = "event" | "character" | "tree" | "territory";
 
 /** Quelle porte SQL pour quel genre — même table que côté application. */
 const PORTE: Record<Genre, string> = {
   event: "copy_event",
   character: "copy_character",
-  folder: "copy_folder",
   tree: "copy_tree",
   territory: "copy_territory",
 };
@@ -129,29 +128,6 @@ async function emporterLesPhotos(
   return soucis;
 }
 
-/** La couverture d'un classeur, qui vit sur sa propre ligne. */
-async function emporterLaCouverture(
-  client: SupabaseClient,
-  moi: string,
-  fait: string,
-): Promise<string[]> {
-  const { data, error } = await client
-    .from("folders")
-    .select("photo_path")
-    .eq("id", fait)
-    .maybeSingle();
-  if (error) return [`classeur illisible : ${error.message}`];
-
-  const chemin = (data as { photo_path: string | null } | null)?.photo_path;
-  if (!chemin) return [];
-
-  const vers = `${moi}/folders/${fait}/cover-${Date.now()}.${extension(chemin)}`;
-  const souci = await emporter(client, moi, chemin, vers, (nouveau) =>
-    client.from("folders").update({ photo_path: nouveau }).eq("id", fait),
-  );
-  return souci ? [souci] : [];
-}
-
 /**
  * Rapatrier ce qui serait resté en arrière.
  *
@@ -192,24 +168,9 @@ async function rapatrier(
     }
   }
 
-  const { data: classeurs, error: echec } = await client
-    .from("folders")
-    .select("id, photo_path")
-    .not("photo_path", "is", null)
-    .not("photo_path", "like", `${moi}/%`);
-  if (echec) soucis.push(`classeurs illisibles : ${echec.message}`);
-  for (const classeur of (classeurs ?? []) as {
-    id: string;
-    photo_path: string;
-  }[]) {
-    const vers = `${moi}/folders/${classeur.id}/cover-${Date.now()}.${extension(classeur.photo_path)}`;
-    const souci = await emporter(client, moi, classeur.photo_path, vers, (n) =>
-      client.from("folders").update({ photo_path: n }).eq("id", classeur.id),
-    );
-    if (souci) soucis.push(souci);
-    else reparees += 1;
-  }
-
+  // Il y avait un troisième passage ici, pour les couvertures de classeurs.
+  // Un classeur n'est plus qu'un nom écrit sur l'événement : il ne porte plus
+  // d'image, et il n'y a plus de ligne à réaimer.
   return { reparees, soucis };
 }
 
@@ -257,10 +218,7 @@ Deno.serve(async (requete) => {
   if (error) return repondre({ error: error.message }, 400);
   const fait = data as string;
 
-  const soucis =
-    genre === "folder"
-      ? await emporterLaCouverture(client, moi, fait)
-      : await emporterLesPhotos(client, moi, genre, fait);
+  const soucis = await emporterLesPhotos(client, moi, genre, fait);
 
   // La copie existe ; si un fichier n'a pas suivi, on le dit sans la défaire.
   // Le filet `mend` repassera, et l'appelant sait que son image peut manquer.
