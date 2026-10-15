@@ -51,7 +51,8 @@ export type DialogProps = {
    * The way out at the foot of the card — "Annuler" unless told otherwise.
    *
    * `null` leaves only the cross in the corner, which is enough when the card
-   * holds no choice to back out of.
+   * holds no choice to back out of. Drawn as a filled, quiet-toned button:
+   * see the comment where it is rendered.
    */
   dismissLabel?: string | null;
   /**
@@ -252,10 +253,16 @@ export function Dialog({
                 to the full width happens on its own. */}
             <View style={styles.choices}>{children}</View>
 
+            {/* En plein, et non en `quiet`.
+                Il était dessiné en texte nu sur le papier de la carte, et ne
+                se lisait pas comme un bouton — « Annuler » et « Retour »
+                disparaissaient dans le fond. C'est la même étoffe que le
+                « Fermer » au pied des feuilles, qui est la même chose : la
+                sortie, offerte sans insister. */}
             {dismissLabel === null ? null : (
               <InkButton
                 label={dismissLabel}
-                variant="quiet"
+                variant="tonal"
                 onPress={onDismiss ?? onClose}
               />
             )}
