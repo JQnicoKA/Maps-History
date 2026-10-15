@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
   Dimensions,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   PanResponder,
@@ -17,6 +18,43 @@ import { palette } from "../../theme/palette";
 import { BACKDROP, radius, shadow, space } from "../../theme/tokens";
 
 const SCREEN = Dimensions.get("window").height;
+
+/**
+ * Le papier, continué sous le clavier.
+ *
+ * Le panneau s'arrête au-dessus de lui — c'est le rembourrage que pose la vue
+ * d'esquive — et ce qu'il y a dessous est le voile de la modale. On ne le
+ * verrait pas si le clavier était un rectangle, mais ses coins sont arrondis,
+ * et deux triangles sombres apparaissent aux angles.
+ *
+ * **Un composant à part, et c'est délibéré.** La mesure demande un état et un
+ * abonnement ; les poser dans `Sheet` aurait ajouté deux hooks à un panneau
+ * monté partout, ce qu'un rechargement à chaud n'applique pas proprement. Ici
+ * ils naissent avec un enfant neuf, et `Sheet` garde les siens inchangés.
+ *
+ * `Will` plutôt que `Did` : la bande doit être en place avant que le panneau
+ * ne commence à monter. Avec `Did` elle arriverait après, ce qui est
+ * exactement le clignotement qu'on cherche à supprimer.
+ */
+function Skirt() {
+  const [height, setHeight] = useState(0);
+
+  useEffect(() => {
+    const rising = Keyboard.addListener("keyboardWillShow", (event) =>
+      setHeight(event.endCoordinates.height),
+    );
+    const falling = Keyboard.addListener("keyboardWillHide", () =>
+      setHeight(0),
+    );
+    return () => {
+      rising.remove();
+      falling.remove();
+    };
+  }, []);
+
+  if (height === 0) return null;
+  return <View pointerEvents="none" style={[styles.skirt, { height }]} />;
+}
 
 /** Past this drop — or this flick — the sheet is on its way out. */
 const DISMISS_DISTANCE = 110;
@@ -221,6 +259,8 @@ export function Sheet({
           style={styles.dock}
           pointerEvents="box-none"
         >
+          {liftsForKeyboard && Platform.OS === "ios" ? <Skirt /> : null}
+
           <Animated.View
             style={[
               styles.panel,
@@ -265,6 +305,22 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   dim: { backgroundColor: BACKDROP },
   dock: { flex: 1, justifyContent: "flex-end" },
+  /**
+   * Le prolongement du papier sous le clavier. Sa hauteur est posée au vol.
+   *
+   * `bottom: 0` et non une valeur négative : en positionnement absolu,
+   * l'origine est la boîte de **rembourrage** du parent, lequel comprend le
+   * rembourrage que la vue d'esquive vient d'ajouter pour le clavier. Le bas
+   * de cette boîte est donc le bas de l'écran, pas le pied du panneau — une
+   * bande posée en dessous partait hors de vue.
+   */
+  skirt: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: palette.paperLight,
+  },
   panel: {
     maxHeight: "92%",
     backgroundColor: palette.paperLight,
