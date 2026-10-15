@@ -9,6 +9,7 @@ import {
   type Notice,
   type NoticeKind,
 } from "./notices";
+import { NoticeRow } from "./NoticeRow";
 import { ConfirmDialog, InkButton, useNotice } from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import { useMyPlaces } from "../places/MyPlacesProvider";
@@ -240,114 +241,58 @@ export function NoticeList({ notices, onChanged, onSee }: NoticeListProps) {
            une rangée qui s'enfonce sous le doigt sans rien faire est pire
            qu'une rangée inerte. */
         const opens = one.sort !== "promoted";
-        const row = (
-          <>
-            <View style={styles.face}>
-              {one.photo === null ? (
-                <Text style={styles.initial}>
-                  {one.title.charAt(0).toUpperCase()}
-                </Text>
-              ) : (
-                <Image source={{ uri: one.photo }} style={styles.image} />
-              )}
-            </View>
-
-            <View style={styles.said}>
-              <Text style={styles.title}>{heading(one)}</Text>
-              <Text style={styles.detail}>{detail(one)}</Text>
-
-              {/* Rattacher n'a pas d'autre porte que celle-ci : c'est le seul
-                  bouton qui reste, et seulement là où il mène quelque part.
-                  Sous le texte et non en troisième colonne — entre un visage,
-                  une phrase et une poubelle, il ne resterait rien de la
-                  largeur pour le mot. */}
-              {one.sort === "admitted" && one.attachable ? (
-                <View style={styles.attach}>
-                  <InkButton
-                    label="Rattacher"
-                    variant="tonal"
-                    disabled={busy}
-                    onPress={() => setAsking(one)}
-                  />
-                </View>
-              ) : null}
-            </View>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Masquer — ${one.title}`}
-              hitSlop={8}
-              disabled={busy}
-              onPress={() => setSweeping(one)}
-              style={({ pressed }) => [styles.bin, pressed && styles.down]}
-            >
-              <Image source={TRASH} style={styles.binGlyph} />
-            </Pressable>
-          </>
-        );
-
-        return opens ? (
-          <Pressable
+        return (
+          <NoticeRow
             key={`${one.sort}:${one.kind}:${one.sourceId}`}
-            accessibilityRole="button"
-            accessibilityLabel={`${heading(one)} — ${one.title}`}
+            photo={one.photo}
+            title={one.title}
+            heading={heading(one)}
+            detail={detail(one)}
             disabled={busy}
-            onPress={() => onSee(one.kind, one.entryId)}
-            style={({ pressed }) => [styles.frame, pressed && styles.down]}
-          >
-            {row}
-          </Pressable>
-        ) : (
-          <View
-            key={`${one.sort}:${one.kind}:${one.sourceId}`}
-            style={styles.frame}
-          >
-            {row}
-          </View>
+            {...(opens
+              ? { onPress: () => onSee(one.kind, one.entryId) }
+              : {})}
+            // Rattacher n'a pas d'autre porte que celle-ci : c'est le seul
+            // bouton qui reste, et seulement là où il mène quelque part. Sous
+            // le texte et non en troisième colonne — entre un visage, une
+            // phrase et une poubelle, il ne resterait rien pour le mot.
+            {...(one.sort === "admitted" && one.attachable
+              ? {
+                  under: (
+                    <InkButton
+                      label="Rattacher"
+                      variant="tonal"
+                      disabled={busy}
+                      onPress={() => setAsking(one)}
+                    />
+                  ),
+                }
+              : {})}
+            trailing={
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Masquer — ${one.title}`}
+                hitSlop={8}
+                disabled={busy}
+                onPress={() => setSweeping(one)}
+                style={({ pressed }) => [styles.bin, pressed && styles.down]}
+              >
+                <Image source={TRASH} style={styles.binGlyph} />
+              </Pressable>
+            }
+          />
         );
       })}
     </View>
   );
 }
 
-const FACE = 46;
-
 const styles = StyleSheet.create({
   all: { gap: space.sm },
-  /** Une rangée et non plus un bloc : le visage, le texte, la poubelle. */
-  frame: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.md,
-    padding: space.md,
-    borderRadius: radius.md,
-    backgroundColor: palette.sunken,
-  },
   down: { opacity: 0.6 },
-  /** Rond, comme partout où cette application montre un visage. */
-  face: {
-    width: FACE,
-    height: FACE,
-    borderRadius: FACE / 2,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: palette.paperLight,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.line,
-  },
-  image: { width: "100%", height: "100%" },
-  initial: { fontSize: 18, fontWeight: "700", color: palette.inkFaint },
-  said: { flex: 1, gap: 2 },
-  /** Aligné à gauche : sans cela il s'étirerait sur toute la colonne. */
-  attach: { alignSelf: "flex-start", marginTop: space.sm },
-  /**
-   * En cire, et c'est le ton que l'application emploie pour ce qu'elle veut
-   * montrer au lecteur maintenant. Une notification est exactement cela : la
-   * seule chose de cette liste qui soit une nouvelle.
-   */
-  title: { ...type.legend, color: palette.wax },
-  detail: { ...type.caption, color: palette.inkSoft },
+  /* Le visage, le texte et leurs mesures sont partis dans `NoticeRow` : la
+     fiche d'un élément en retard porte exactement la même rangée, et deux
+     copies auraient dérivé au premier changement. */
   /**
    * Un bouton rouge, et non une icône posée sur le papier.
    *

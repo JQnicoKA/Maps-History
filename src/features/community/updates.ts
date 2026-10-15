@@ -1,6 +1,6 @@
 import * as api from "./api";
 import type { Kind } from "./types";
-import { supabase } from "../../lib/supabase";
+import { PHOTO_BUCKET, supabase } from "../../lib/supabase";
 
 /**
  * Un exemplaire que la bibliothèque a corrigé depuis qu'on l'a pris.
@@ -30,13 +30,26 @@ export type Stale = {
    * qu'on a lu ce qu'elle contient.
    */
   entry: string;
+  /** Le visage de l'entrée, prêt à afficher — nul quand elle n'en a pas. */
+  photo: string | null;
 };
 
 /** Tout ce qui, chez ce lecteur, a pris du retard. Souvent vide. */
 export async function fetchStale(): Promise<Stale[]> {
   const { data, error } = await supabase().rpc("stale");
   if (error) throw new Error(error.message);
-  return (data ?? []) as Stale[];
+  // La base range des chemins, le seau sait en faire des adresses — comme
+  // dans `fetchNotices`, qui porte la même rangée à l'écran.
+  return ((data ?? []) as (Omit<Stale, "photo"> & { photo: string | null })[]).map(
+    (one) => ({
+      ...one,
+      photo:
+        one.photo === null
+          ? null
+          : supabase().storage.from(PHOTO_BUCKET).getPublicUrl(one.photo).data
+              .publicUrl,
+    }),
+  );
 }
 
 /**

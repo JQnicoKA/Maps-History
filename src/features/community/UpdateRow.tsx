@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
 
+import { NoticeRow } from "./NoticeRow";
 import { fetchStale, type Stale } from "./updates";
 import type { Kind } from "./types";
-import { InkButton } from "../../components/ui";
-import { palette } from "../../theme/palette";
-import { radius, space, type } from "../../theme/tokens";
 
 export type UpdateRowProps = {
   kind: Kind;
@@ -66,34 +63,17 @@ export function UpdateRow({ kind, id, onSee }: UpdateRowProps) {
 
   if (behind === null) return null;
 
+  /* Exactement la rangée des notifications, et la même phrase : c'est la même
+     nouvelle, rencontrée à un autre endroit. Elle avait ici un bloc à elle et
+     un bouton « Voir » au pied ; deux dessins pour une chose finissent par
+     diverger, et celui-là n'avait aucune raison d'être le second. */
   return (
-    <View style={styles.frame}>
-      <View style={styles.said}>
-        <Text style={styles.title}>Une nouvelle version existe</Text>
-        <Text style={styles.detail}>
-          {behind.touched
-            ? "La bibliothèque a corrigé cette entrée. La reprendre écrasera vos propres modifications."
-            : "La bibliothèque a corrigé cette entrée depuis que vous l'avez prise."}
-        </Text>
-      </View>
-
-      <InkButton
-        label="Voir"
-        variant="tonal"
-        onPress={() => onSee(behind.entry)}
-      />
-    </View>
+    <NoticeRow
+      photo={behind.photo}
+      title={behind.title}
+      heading="Une mise à jour existe"
+      detail={`Une mise à jour de l'élément « ${behind.title} » existe. Voulez-vous mettre à jour votre élément ?`}
+      onPress={() => onSee(behind.entry)}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  frame: {
-    gap: space.sm,
-    padding: space.md,
-    borderRadius: radius.md,
-    backgroundColor: palette.sunken,
-  },
-  said: { gap: 2 },
-  title: { ...type.legend, color: palette.ink },
-  detail: { ...type.caption, color: palette.inkSoft },
-});
