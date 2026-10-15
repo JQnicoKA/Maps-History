@@ -132,12 +132,9 @@ faire une entrée neuve serait le doublon que tout ceci évite. S'en inspirer
 pour corriger l'entrée dont elle vient est un autre geste — à la main, pour
 l'instant.
 
-**La conséquence à traiter** : une copie améliorée n'apparaît nulle part. Elle
-est ouverte, mais `to_review` écarte les copies en bloc, donc le conservateur
-ne saura jamais qu'elle existe. Le filtre juste serait `origin_id is not null
-and updated_at > taken_at` — les copies **retouchées depuis leur prise**, qui
-sont les seules à avoir quelque chose à dire. Non fait : la file ne distingue
-pas encore une proposition d'une suggestion de correction.
+**La conséquence, traitée dans la foulée** : une copie ouverte mais invisible
+n'aurait servi à rien. `to_review` montre désormais les copies **retouchées
+depuis leur prise** — voir « Deux choses dans la file » ci-dessous.
 
 ## La file de lecture
 
@@ -147,13 +144,41 @@ conservateur — une ligne par verdict rendu, et pas de ligne veut dire pas
 encore lu.
 
 - `to_review(want, page_size)` — ce qui n'a pas de verdict, le plus récent
-  d'abord, tous genres confondus, avec le pseudonyme de l'auteur. **Pas les
-  copies** : elles ne peuvent pas être admises — ce serait un doublon de
-  l'entrée dont elles viennent — et elles faisaient neuf lignes sur dix. Elles
-  arrivaient aussi fermées, ce qui n'est plus vrai : voir plus bas.
+  d'abord, tous genres confondus, avec le pseudonyme de l'auteur. Et les
+  copies retouchées, voir juste en dessous.
 - `judge(about, which, verdict, became, why)` — note le verdict et, pour une
   admission, **recopie la proposition dans le compte de la bibliothèque, la
   publie et coupe son `origin_id`**. Renvoie l'identifiant de l'entrée.
+
+### Deux choses dans la file, et `origin` les sépare
+
+Depuis le 15 octobre 2026, `to_review` rend une colonne de plus :
+
+- `origin` **nul** — une *proposition*. Un original sans verdict, qui peut
+  entrer dans la bibliothèque.
+- `origin` **renseigné** — une *suggestion*. Une copie que son preneur a
+  retouchée depuis sa prise, et `origin` est l'entrée qu'elle vient corriger.
+  Elle ne peut pas entrer : `judge` la refuse, et ce serait un doublon.
+
+Sans cette colonne le conservateur appellerait `judge` sur une copie et se
+ferait refuser sans comprendre pourquoi. Trois conditions pour qu'une copie se
+montre, et chacune compte : `shared` — son preneur l'autorise, c'est tout
+l'objet du virage ; `taken_at is not null` — on sait depuis quand comparer ;
+`updated_at > taken_at` — elle a bougé. Une copie intacte n'a rien à dire, et
+c'est ce qui faisait neuf lignes sur dix quand la file les prenait toutes.
+
+**`made` n'est pas la même date pour les deux** : la naissance d'une
+proposition, la dernière retouche d'une suggestion. C'est le moment où chacune
+a eu quelque chose à dire, et c'est sur lui que la file trie.
+
+**Comment on sort une suggestion de la file**, puisqu'aucun verdict ne le
+peut : `dismiss('suggestion', <genre>, <id>)`, qui a reçu une quatrième sorte
+pour l'occasion. Daté, donc une retouche postérieure la ramène — vérifié :
+dans la file, balayée, revenue après une nouvelle modification.
+
+Attention en l'essayant : dans **une seule transaction**, `now()` ne bouge pas,
+donc le balayage et la retouche portent le même instant et la comparaison
+stricte ne rattrape rien. Il faut reculer le balayage pour voir le mécanisme.
 
 `became` reste accepté pour le seul cas qui le mérite : fondre la proposition
 dans une entrée qu'on tient déjà. Mais on ne pouvait pas le fournir — les
@@ -236,11 +261,31 @@ qui renvoient `mine` passent par là.
 
 ## La mise à jour d'un exemplaire
 
-Jamais silencieuse. Un bouton **« Mettre à jour »** paraît en tête du
-formulaire de modification, et seulement s'il y a du neuf — un bouton
-permanent qui répond « vous êtes déjà à jour » apprend à ne plus vérifier.
-C'est le geste ; la notification, elle, est la découverte : personne n'ouvre
-un formulaire de modification pour voir si quelque chose a changé.
+Jamais silencieuse. Un bouton **« Voir »** paraît en tête du formulaire de
+modification, et seulement s'il y a du neuf — un bouton permanent qui répond
+« vous êtes déjà à jour » apprend à ne plus vérifier. La notification porte le
+même. C'est elle la découverte : personne n'ouvre un formulaire de
+modification pour voir si quelque chose a changé.
+
+**Le geste, lui, est une page plus loin** (15 octobre 2026). Les deux boutons
+disaient « Mettre à jour » et ouvraient une confirmation — *votre exemplaire
+sera entièrement réécrit* — sans montrer **par quoi**. On demandait donc
+d'accepter d'écraser son propre travail au nom d'un texte qu'on n'avait pas
+lu. Ils mènent désormais à la fiche de l'entrée corrigée, dans le catalogue,
+et c'est son pied qui porte la reprise : là où elle disait « Déjà copié »,
+elle dit **« Mettre à jour »** quand ce qu'on détient est en retard.
+
+Ce que cela a demandé : `stale()` rend une colonne de plus, `entry` —
+l'identifiant de l'entrée à ouvrir ; le catalogue accepte une entrée à montrer
+d'emblée (`open`) et interroge `stale()` lui-même, comme `UpdateRow` le
+faisait et pour la même raison — la question ne coûte qu'une requête et revient
+presque toujours vide.
+
+Le prix, et il est réel : partir voir **ferme le formulaire**, puisque iOS
+refuse de présenter une modale depuis une autre qui se retire. Ce qu'on y
+avait tapé sans l'enregistrer est perdu. La reprise l'écrasait de toute façon,
+mais elle le faisait après un avertissement, et ici on part avant d'en avoir
+un.
 
 Tout tient dans **une seule colonne**, `taken_at`, le moment où l'on a pris :
 
@@ -361,6 +406,10 @@ vérifie.
   select judge('event', '<la proposition>', 'admitted', null, 'relu');
   select judge('event', '<la proposition>', 'rejected', null, 'inexact');
   select promote_place('<la ville>', 'city', 'Tite-Live, I, 8');
+
+  -- Une suggestion — `origin` renseigné — ne se juge pas : on va corriger
+  -- l'entrée qu'elle désigne à la main, puis on l'écarte de la file.
+  select dismiss('suggestion', 'event', '<la copie retouchée>');
   ```
 
 - `stars` ne redescend jamais : `count_the_star` ne se déclenche qu'à

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
   attach,
@@ -7,14 +7,16 @@ import {
   fetchNotices,
   nameOf,
   type Notice,
+  type NoticeKind,
 } from "./notices";
-import { refreshFromLibrary } from "./updates";
 import { ConfirmDialog, InkButton, useNotice } from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import { useMyPlaces } from "../places/MyPlacesProvider";
 import { useHidden } from "../territories/HiddenProvider";
 import { palette } from "../../theme/palette";
 import { radius, space, type } from "../../theme/tokens";
+
+const TRASH = require("../../../assets/icons/trash.png");
 
 /**
  * Ce que ce lecteur n'a pas encore lu, et de quoi le relire.
@@ -43,7 +45,7 @@ export function useNotices() {
 
 /** Ce que la notification annonce, en une ligne de titre. */
 function heading(one: Notice): string {
-  if (one.sort === "stale") return "Une nouvelle version existe";
+  if (one.sort === "stale") return "Une mise à jour existe";
   if (one.sort === "promoted") {
     return one.kind === "place"
       ? "Votre ville est sur la carte de tous"
@@ -52,12 +54,39 @@ function heading(one: Notice): string {
   return `Votre ${nameOf(one.kind)} est entré dans la bibliothèque`;
 }
 
+/**
+ * Ce qu'on perd en masquant, et c'est différent pour chacune.
+ *
+ * Une seule phrase pour les trois aurait menti deux fois : une mise à jour se
+ * retrouve, un rattachement non, et une promotion n'a rien à retrouver. Un
+ * avertissement qui exagère sur deux cas est un avertissement qu'on apprend à
+ * ne pas lire.
+ */
+function cost(one: Notice): string {
+  if (one.sort === "stale") {
+    // `dismissed` compare les dates pour cette sorte — voir `my_notices` : une
+    // correction postérieure au masquage ramène la ligne.
+    return "La mise à jour restera disponible depuis la fiche de votre élément, et une nouvelle correction de la bibliothèque la ramènera ici.";
+  }
+  if (one.sort === "promoted") {
+    return "Il n'y a rien à retrouver : cette ligne ne faisait que vous annoncer la nouvelle, et ce qu'elle annonce reste vrai.";
+  }
+  return one.attachable
+    ? "Vous perdez l'offre de rattacher votre ligne à l'entrée publiée : elle n'est proposée qu'ici, et elle ne reviendra pas. Votre ligne et l'entrée restent, chacune de son côté."
+    : "Il n'y a rien à retrouver : votre ligne n'existe plus, et l'entrée de la bibliothèque reste.";
+}
+
 /** Et ce qu'elle dit vraiment, y compris ce qu'elle coûte. */
 function detail(one: Notice): string {
   if (one.sort === "stale") {
-    return one.touched
-      ? `La bibliothèque a corrigé « ${one.title} ». La reprendre écrasera vos propres modifications.`
-      : `La bibliothèque a corrigé « ${one.title} » depuis que vous l'avez pris.`;
+    // La question est posée, et la rangée entière y répond : la toucher mène
+    // à la version corrigée, où le geste se trouve. Plus de bouton ici — un
+    // « Mettre à jour » demandait d'accepter sans avoir rien lu.
+    //
+    // Et pas un mot de ce que la reprise écrase : la fenêtre qui la demande
+    // le dit déjà, au moment où ça compte. Le redire ici avertirait contre un
+    // geste qu'on ne fait pas en touchant cette rangée.
+    return `Une mise à jour de l'élément « ${one.title} » existe. Voulez-vous mettre à jour votre élément ?`;
   }
   if (one.sort === "promoted") {
     return `« ${one.title} » a été vérifié et ajouté au fond de carte : tous les lecteurs le voient désormais. Il a quitté votre liste, où il ferait doublon. Vous pouvez le retirer de votre carte comme n'importe quel autre.`;
@@ -71,6 +100,14 @@ export type NoticeListProps = {
   notices: Notice[];
   /** Une notification a été traitée ou balayée : la liste doit se relire. */
   onChanged: () => void;
+  /**
+   * Demande la fiche d'une entrée de la bibliothèque, dans le catalogue.
+   *
+   * Pour « Voir » : on y lit la version corrigée, et c'est elle qui porte le
+   * bouton de reprise. On ne reprend plus à l'aveugle une version dont on ne
+   * sait rien — et dont la reprise peut écraser son propre travail.
+   */
+  onSee: (kind: NoticeKind, entry: string) => void;
 };
 
 /**
@@ -80,8 +117,16 @@ export type NoticeListProps = {
  * carte de quelqu'un ne doit pas bouger pendant la nuit. Les deux fenêtres de
  * confirmation ne redisent donc pas le titre — elles disent ce qu'on perd.
  */
-export function NoticeList({ notices, onChanged }: NoticeListProps) {
+export function NoticeList({ notices, onChanged, onSee }: NoticeListProps) {
   const [asking, setAsking] = useState<Notice | null>(null);
+  /**
+   * Celle qu'on s'apprête à masquer, le temps de le confirmer.
+   *
+   * Masquer était immédiat, et c'était la seule chose irréversible de cette
+   * liste faite sans un oui — pour une notification d'admission, le
+   * rattachement part avec elle et ne revient pas.
+   */
+  const [sweeping, setSweeping] = useState<Notice | null>(null);
   const [busy, setBusy] = useState(false);
   const { say, dialog } = useNotice();
   /**
@@ -104,35 +149,33 @@ export function NoticeList({ notices, onChanged }: NoticeListProps) {
   const trouble = (what: string) => (cause: unknown) =>
     say(what, cause instanceof Error ? cause.message : String(cause));
 
-  /** Le oui, pour les deux genres qui en demandent un. */
+  /**
+   * Le oui du rattachement, et c'est le seul qui reste ici.
+   *
+   * La reprise en demandait un aussi — « votre exemplaire sera entièrement
+   * réécrit » — mais elle le demandait **à l'aveugle**, sans montrer par quoi.
+   * Elle est partie sur la fiche de l'entrée corrigée : on y lit la version
+   * qu'on va recevoir, puis on décide. Ce bouton-ci n'y mène plus que.
+   */
   const agree = () => {
     if (asking === null) return;
     const one = asking;
     setBusy(true);
-    const deed =
-      one.sort === "stale"
-        ? // Le genre est forcément un événement ou un personnage : `stale()`
-          // ne regarde que ces deux tables, les seules à avoir des
-          // exemplaires dans la bibliothèque.
-          refreshFromLibrary(
-            one.kind === "character" ? "character" : "event",
-            one.sourceId,
-          )
-        : attach(one.kind, one.sourceId);
-    void deed
+    void attach(one.kind, one.sourceId)
       .then(async () => {
         setAsking(null);
         await refresh();
         onChanged();
       })
-      .catch(
-        trouble(one.sort === "stale" ? "Reprise impossible" : "Rattachement impossible"),
-      )
+      .catch(trouble("Rattachement impossible"))
       .finally(() => setBusy(false));
   };
 
-  const sweep = (one: Notice) => {
+  const sweep = () => {
+    if (sweeping === null) return;
+    const one = sweeping;
     setBusy(true);
+    setSweeping(null);
     void dismiss(one.sort, one.kind, one.sourceId)
       .then(async () => {
         // Le moment où le lecteur prend acte : c'est là qu'on peut relire la
@@ -160,83 +203,167 @@ export function NoticeList({ notices, onChanged }: NoticeListProps) {
     <View style={styles.all}>
       {dialog}
 
+      {/* La reprise, elle, a sa fenêtre sur la fiche de l'entrée qu'elle va
+          recopier : on y décide devant le texte qu'on recevra. */}
       <ConfirmDialog
         visible={asking !== null}
-        title={
-          asking?.sort === "stale"
-            ? "Reprendre la version de la bibliothèque ?"
-            : "Rattacher à la bibliothèque ?"
-        }
-        /* Deux tons pour la reprise, et c'est une ligne de code : sans
-           modification il n'y a rien à perdre, et agiter un avertissement
-           devant quelqu'un qui ne risque rien lui apprend à les ignorer
-           tous. */
-        message={
-          asking === null
-            ? ""
-            : asking.sort === "stale"
-              ? asking.touched
-                ? "Votre exemplaire sera entièrement réécrit : le texte, les dates, le lieu, et les photographies que vous y avez ajoutées. Ce que vous avez modifié sera perdu."
-                : "Vous n'avez rien modifié sur votre exemplaire : rien ne sera perdu."
-              : "Votre ligne devient un exemplaire de l'entrée publiée. Vous recevrez ses corrections par bouton, votre case « proposer » se refermera, et la supprimer ne coûtera plus rien — l'entrée de la bibliothèque restera. Votre texte n'est pas touché aujourd'hui : la première reprise, elle, l'écrasera."
-        }
-        confirmLabel={
-          busy ? "…" : asking?.sort === "stale" ? "Reprendre" : "Rattacher"
-        }
-        tone={asking?.sort === "stale" && asking.touched ? "danger" : "ink"}
+        title="Rattacher à la bibliothèque ?"
+        message="Votre ligne devient un exemplaire de l'entrée publiée. Vous recevrez ses corrections par bouton, et la supprimer ne coûtera plus rien — l'entrée de la bibliothèque restera. Votre texte n'est pas touché aujourd'hui : la première reprise, elle, l'écrasera."
+        confirmLabel={busy ? "…" : "Rattacher"}
+        tone="ink"
         cancelLabel="Annuler"
+        veil="soft"
         onConfirm={agree}
         onClose={() => setAsking(null)}
       />
 
-      {notices.map((one) => (
-        <View key={`${one.sort}:${one.kind}:${one.sourceId}`} style={styles.frame}>
-          <View style={styles.said}>
-            <Text style={styles.title}>{heading(one)}</Text>
-            <Text style={styles.detail}>{detail(one)}</Text>
-          </View>
+      <ConfirmDialog
+        visible={sweeping !== null}
+        title="Masquer la notification ?"
+        message={sweeping === null ? "" : cost(sweeping)}
+        confirmLabel={busy ? "…" : "Masquer"}
+        /* Rouge seulement là où quelque chose se perd pour de bon. Une mise à
+           jour se retrouve, une promotion n'a rien à retrouver ; le
+           rattachement, lui, part avec la ligne. */
+        tone={sweeping?.sort === "admitted" && sweeping.attachable ? "danger" : "ink"}
+        cancelLabel="Annuler"
+        /* Elle s'ouvre depuis la feuille des notifications, qui a déjà posé
+           son voile. */
+        veil="soft"
+        onConfirm={sweep}
+        onClose={() => setSweeping(null)}
+      />
 
-          <View style={styles.answers}>
-            {one.sort === "stale" ? (
-              <InkButton
-                label="Mettre à jour"
-                variant="tonal"
-                disabled={busy}
-                onPress={() => setAsking(one)}
-              />
-            ) : one.sort === "admitted" && one.attachable ? (
-              <InkButton
-                label="Rattacher"
-                variant="tonal"
-                disabled={busy}
-                onPress={() => setAsking(one)}
-              />
-            ) : null}
+      {notices.map((one) => {
+        /* Toucher la rangée mène à l'entrée dont elle parle — sauf pour une
+           promotion, dont la ligne n'existe plus : il n'y a rien à ouvrir, et
+           une rangée qui s'enfonce sous le doigt sans rien faire est pire
+           qu'une rangée inerte. */
+        const opens = one.sort !== "promoted";
+        const row = (
+          <>
+            <View style={styles.face}>
+              {one.photo === null ? (
+                <Text style={styles.initial}>
+                  {one.title.charAt(0).toUpperCase()}
+                </Text>
+              ) : (
+                <Image source={{ uri: one.photo }} style={styles.image} />
+              )}
+            </View>
 
-            <InkButton
-              label="Masquer"
-              variant="quiet"
+            <View style={styles.said}>
+              <Text style={styles.title}>{heading(one)}</Text>
+              <Text style={styles.detail}>{detail(one)}</Text>
+
+              {/* Rattacher n'a pas d'autre porte que celle-ci : c'est le seul
+                  bouton qui reste, et seulement là où il mène quelque part.
+                  Sous le texte et non en troisième colonne — entre un visage,
+                  une phrase et une poubelle, il ne resterait rien de la
+                  largeur pour le mot. */}
+              {one.sort === "admitted" && one.attachable ? (
+                <View style={styles.attach}>
+                  <InkButton
+                    label="Rattacher"
+                    variant="tonal"
+                    disabled={busy}
+                    onPress={() => setAsking(one)}
+                  />
+                </View>
+              ) : null}
+            </View>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Masquer — ${one.title}`}
+              hitSlop={8}
               disabled={busy}
-              onPress={() => sweep(one)}
-            />
+              onPress={() => setSweeping(one)}
+              style={({ pressed }) => [styles.bin, pressed && styles.down]}
+            >
+              <Image source={TRASH} style={styles.binGlyph} />
+            </Pressable>
+          </>
+        );
+
+        return opens ? (
+          <Pressable
+            key={`${one.sort}:${one.kind}:${one.sourceId}`}
+            accessibilityRole="button"
+            accessibilityLabel={`${heading(one)} — ${one.title}`}
+            disabled={busy}
+            onPress={() => onSee(one.kind, one.entryId)}
+            style={({ pressed }) => [styles.frame, pressed && styles.down]}
+          >
+            {row}
+          </Pressable>
+        ) : (
+          <View
+            key={`${one.sort}:${one.kind}:${one.sourceId}`}
+            style={styles.frame}
+          >
+            {row}
           </View>
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 }
 
+const FACE = 46;
+
 const styles = StyleSheet.create({
   all: { gap: space.sm },
+  /** Une rangée et non plus un bloc : le visage, le texte, la poubelle. */
   frame: {
-    gap: space.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
     padding: space.md,
     borderRadius: radius.md,
     backgroundColor: palette.sunken,
   },
-  said: { gap: 2 },
-  title: { ...type.legend, color: palette.ink },
+  down: { opacity: 0.6 },
+  /** Rond, comme partout où cette application montre un visage. */
+  face: {
+    width: FACE,
+    height: FACE,
+    borderRadius: FACE / 2,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: palette.paperLight,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.line,
+  },
+  image: { width: "100%", height: "100%" },
+  initial: { fontSize: 18, fontWeight: "700", color: palette.inkFaint },
+  said: { flex: 1, gap: 2 },
+  /** Aligné à gauche : sans cela il s'étirerait sur toute la colonne. */
+  attach: { alignSelf: "flex-start", marginTop: space.sm },
+  /**
+   * En cire, et c'est le ton que l'application emploie pour ce qu'elle veut
+   * montrer au lecteur maintenant. Une notification est exactement cela : la
+   * seule chose de cette liste qui soit une nouvelle.
+   */
+  title: { ...type.legend, color: palette.wax },
   detail: { ...type.caption, color: palette.inkSoft },
-  answers: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  /**
+   * Un bouton rouge, et non une icône posée sur le papier.
+   *
+   * Toute la rangée est touchable désormais — elle mène à la mise à jour — et
+   * une poubelle en encre pâle au bout aurait eu l'air d'en faire partie. Le
+   * rouge dit que celle-ci est l'autre geste, et qu'il retire quelque chose.
+   */
+  bin: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: palette.danger,
+  },
+  /** Crème sur le rouge : le glyphe est tracé en encre dans sa source. */
+  binGlyph: { width: 17, height: 17, tintColor: palette.paperLight },
   nothing: { ...type.caption, color: palette.inkSoft },
 });

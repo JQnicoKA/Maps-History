@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { fetchStale, refreshFromLibrary, type Stale } from "./updates";
+import { fetchStale, type Stale } from "./updates";
 import type { Kind } from "./types";
-import { ConfirmDialog, InkButton, useNotice } from "../../components/ui";
+import { InkButton } from "../../components/ui";
 import { palette } from "../../theme/palette";
 import { radius, space, type } from "../../theme/tokens";
 
@@ -11,8 +11,15 @@ export type UpdateRowProps = {
   kind: Kind;
   /** La ligne du lecteur. Null quand on est en train d'en créer une. */
   id: string | null;
-  /** La reprise a eu lieu : la fiche doit se relire. */
-  onRefreshed: () => void;
+  /**
+   * Demande la fiche de l'entrée corrigée, dans le catalogue.
+   *
+   * C'est là que la reprise se fait maintenant. Ce bouton ne reprenait rien
+   * sans un oui, mais ce oui était demandé **à l'aveugle** : « votre
+   * exemplaire sera entièrement réécrit » sans montrer par quoi. On va donc
+   * lire la version de la bibliothèque, et c'est sa fiche qui porte le geste.
+   */
+  onSee: (entry: string) => void;
 };
 
 /**
@@ -31,13 +38,11 @@ export type UpdateRowProps = {
  *
  * Rien n'est repris sans un oui. La carte de quelqu'un ne doit pas bouger
  * pendant la nuit : c'était l'argument contre la propagation automatique, et
- * cette fenêtre est ce qui le respecte.
+ * il tient toujours — le oui se demande simplement une page plus loin,
+ * devant le texte qu'on va recevoir.
  */
-export function UpdateRow({ kind, id, onRefreshed }: UpdateRowProps) {
+export function UpdateRow({ kind, id, onSee }: UpdateRowProps) {
   const [behind, setBehind] = useState<Stale | null>(null);
-  const [asking, setAsking] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const { say, dialog } = useNotice();
 
   const look = useCallback(() => {
     if (id === null) return;
@@ -63,42 +68,6 @@ export function UpdateRow({ kind, id, onRefreshed }: UpdateRowProps) {
 
   return (
     <View style={styles.frame}>
-      {dialog}
-
-      <ConfirmDialog
-        visible={asking}
-        title="Reprendre la version de la bibliothèque ?"
-        /* Deux tons, pour une ligne de code. Sans modification il n'y a rien
-           à perdre, et agiter un avertissement devant quelqu'un qui ne risque
-           rien lui apprend à les ignorer tous. */
-        message={
-          behind.touched
-            ? "Votre exemplaire sera entièrement réécrit : le texte, les dates, le lieu, et les photographies que vous y avez ajoutées. Ce que vous avez modifié sera perdu."
-            : "Vous n'avez rien modifié sur votre exemplaire : rien ne sera perdu."
-        }
-        confirmLabel={busy ? "…" : "Reprendre"}
-        tone={behind.touched ? "danger" : "ink"}
-        cancelLabel="Annuler"
-        onConfirm={() => {
-          if (id === null) return;
-          setBusy(true);
-          void refreshFromLibrary(kind, id)
-            .then(() => {
-              setAsking(false);
-              setBehind(null);
-              onRefreshed();
-            })
-            .catch((cause: unknown) =>
-              say(
-                "Reprise impossible",
-                cause instanceof Error ? cause.message : String(cause),
-              ),
-            )
-            .finally(() => setBusy(false));
-        }}
-        onClose={() => setAsking(false)}
-      />
-
       <View style={styles.said}>
         <Text style={styles.title}>Une nouvelle version existe</Text>
         <Text style={styles.detail}>
@@ -109,9 +78,9 @@ export function UpdateRow({ kind, id, onRefreshed }: UpdateRowProps) {
       </View>
 
       <InkButton
-        label="Mettre à jour"
+        label="Voir"
         variant="tonal"
-        onPress={() => setAsking(true)}
+        onPress={() => onSee(behind.entry)}
       />
     </View>
   );

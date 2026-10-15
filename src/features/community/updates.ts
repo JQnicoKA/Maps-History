@@ -21,6 +21,15 @@ export type Stale = {
    * est le meilleur moyen de lui faire refuser toutes les suivantes.
    */
   touched: boolean;
+  /**
+   * L'entrée de la bibliothèque qui a pris de l'avance.
+   *
+   * Pour aller la **voir** avant de décider : on ne reprend plus à l'aveugle
+   * une version dont on ne sait rien, et dont la reprise peut écraser son
+   * propre travail. C'est la fiche du catalogue qui porte le geste, une fois
+   * qu'on a lu ce qu'elle contient.
+   */
+  entry: string;
 };
 
 /** Tout ce qui, chez ce lecteur, a pris du retard. Souvent vide. */

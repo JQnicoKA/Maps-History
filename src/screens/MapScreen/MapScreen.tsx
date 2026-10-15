@@ -104,7 +104,15 @@ type Page =
   /** The community catalogue, which is about no one row in particular. */
   | { kind: "searchEvents" }
   | { kind: "searchCharacters" }
-  | { kind: "searchTrees" };
+  | { kind: "searchTrees" }
+  /**
+   * Le catalogue ouvert d'emblée sur une entrée, carte en avant.
+   *
+   * Pour « Voir » : une notification ou le formulaire d'un exemplaire en
+   * retard mène à la version que la bibliothèque a corrigée, et c'est elle
+   * qui porte le bouton de reprise. `of` dit dans quel catalogue chercher.
+   */
+  | { kind: "entry"; of: "event" | "character"; id: string };
 
 export function MapScreen() {
   const insets = useSafeAreaInsets();
@@ -631,7 +639,17 @@ export function MapScreen() {
             pointerEvents="box-none"
           >
             <View style={styles.topLeft}>
-              <AccountButton />
+              <AccountButton
+                onSeeEntry={(of, id) =>
+                  // Déjà baissée : `AccountButton` attend son `onClosed`
+                  // avant d'appeler ceci.
+                  raise({
+                    kind: "entry",
+                    of: of === "character" ? "character" : "event",
+                    id,
+                  })
+                }
+              />
             </View>
             <FilterButton view={view} onViewChange={setView} />
             {/* Trois boutons, trois verbes : ajouter une note, ouvrir ce
@@ -729,6 +747,13 @@ export function MapScreen() {
         key={editing?.id ?? `new-${drafts}`}
         visible={composing}
         event={editing}
+        // Descendre d'abord, ouvrir ensuite : `onClosed` lève la fiche une
+        // fois cette feuille réellement partie.
+        onSeeEntry={(id) => {
+          setNext(() => () => raise({ kind: "entry", of: "event", id }));
+          setComposing(false);
+          setEditing(null);
+        }}
         onClosed={afterPage}
         onCancel={() => {
           setComposing(false);
@@ -803,6 +828,9 @@ export function MapScreen() {
       <CharacterEditModal
         key={`form-${raised}`}
         target={edited}
+        onSeeEntry={(id) =>
+          after(() => raise({ kind: "entry", of: "character", id }))
+        }
         onClose={() => setPage(null)}
         onClosed={afterPage}
       />
@@ -825,11 +853,19 @@ export function MapScreen() {
 
       {/* Everybody else's work. A page like the others, at the top of the
           screen, so what it opens is never a panel inside a panel. */}
+      {/* Les deux mêmes panneaux servent la recherche et le « Voir » d'une
+          entrée corrigée : c'est le même catalogue, ouvert sur la liste ou
+          sur une carte. En monter un second pour cela aurait fait deux
+          exemplaires du même écran à tenir en phase. */}
       <Catalogue
         key={`commons-events-${raised}`}
         kind="event"
         look={EVENT_LOOK}
-        visible={page?.kind === "searchEvents"}
+        visible={
+          page?.kind === "searchEvents" ||
+          (page?.kind === "entry" && page.of === "event")
+        }
+        open={page?.kind === "entry" && page.of === "event" ? page.id : null}
         onClose={() => setPage(null)}
         onClosed={afterPage}
       />
@@ -838,7 +874,13 @@ export function MapScreen() {
         key={`commons-people-${raised}`}
         kind="character"
         look={CHARACTER_LOOK}
-        visible={page?.kind === "searchCharacters"}
+        visible={
+          page?.kind === "searchCharacters" ||
+          (page?.kind === "entry" && page.of === "character")
+        }
+        open={
+          page?.kind === "entry" && page.of === "character" ? page.id : null
+        }
         onClose={() => setPage(null)}
         onClosed={afterPage}
       />

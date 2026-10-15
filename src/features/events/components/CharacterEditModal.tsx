@@ -40,6 +40,13 @@ const TRASH = require("../../../../assets/icons/trash.png");
 export type CharacterEditModalProps = {
   /** Someone to edit, `"new"` to invent one, `null` to stay shut. */
   target: Character | "new" | null;
+  /**
+   * Demande la fiche de l'entrée que la bibliothèque a corrigée.
+   *
+   * Seulement depuis `UpdateRow`, en tête de la fiche, et seulement quand il y
+   * a du retard à rattraper.
+   */
+  onSeeEntry: (entry: string) => void;
   onClose: () => void;
   /**
    * Fired once the panel is off the screen — see `Sheet`. Whoever opened this
@@ -59,6 +66,7 @@ export type CharacterEditModalProps = {
  */
 export function CharacterEditModal({
   target: subject,
+  onSeeEntry,
   onClose,
   onClosed,
 }: CharacterEditModalProps) {
@@ -272,10 +280,9 @@ export function CharacterEditModal({
           <UpdateRow
             kind="character"
             id={subject.id}
-            // Les champs sont semés depuis la personne qu'on nous a donnée,
-            // et celle-ci vient d'être réécrite en base : la collection se
-            // relit, puis la fiche se referme sur sa version à jour.
-            onRefreshed={() => void refresh().then(onClose)}
+            // Vers la fiche de la bibliothèque, où la reprise se demande une
+            // fois qu'on a lu ce qu'elle apporte.
+            onSee={onSeeEntry}
           />
         ) : null}
 

@@ -1,4 +1,4 @@
-import { supabase } from "../../lib/supabase";
+import { PHOTO_BUCKET, supabase } from "../../lib/supabase";
 
 /**
  * Ce qu'une notification annonce, et donc ce qu'elle propose.
@@ -44,6 +44,15 @@ export type Notice = {
   /** `admitted` seulement : sa ligne existe encore, il y a de quoi rattacher. */
   attachable: boolean;
   at: string;
+  /**
+   * Le visage de l'entrée dont il est question, prêt à afficher.
+   *
+   * Celle de la bibliothèque et non celle du lecteur : c'est la version dont
+   * la notification parle, et celle que « Voir » ouvrira. Nul pour une ville
+   * et un territoire promus, qui n'ont pas d'images — et pour tout ce qui
+   * n'en a tout simplement pas.
+   */
+  photo: string | null;
 };
 
 type Row = {
@@ -55,6 +64,7 @@ type Row = {
   touched: boolean;
   attachable: boolean;
   at: string;
+  photo: string | null;
 };
 
 /**
@@ -78,6 +88,13 @@ export async function fetchNotices(): Promise<Notice[]> {
     touched: row.touched,
     attachable: row.attachable,
     at: row.at,
+    // Le chemin devient une adresse ici : la base range des chemins, et c'est
+    // le seau qui sait en faire des URL. Voir `publicUrl` ailleurs.
+    photo:
+      row.photo === null
+        ? null
+        : supabase().storage.from(PHOTO_BUCKET).getPublicUrl(row.photo).data
+            .publicUrl,
   }));
 }
 

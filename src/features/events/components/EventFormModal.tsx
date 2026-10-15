@@ -140,6 +140,13 @@ export type EventFormModalProps = {
    * it, so switching events remounts the form and the state below re-seeds.
    */
   event?: HistoricalEvent | null;
+  /**
+   * Demande la fiche de l'entrée que la bibliothèque a corrigée.
+   *
+   * Seulement depuis `UpdateRow`, en tête du formulaire, et seulement quand il
+   * y a du retard à rattraper — c'est-à-dire presque jamais.
+   */
+  onSeeEntry: (entry: string) => void;
   onCancel: () => void;
   /** Fired once the sheet is off the screen — see `Sheet`. */
   onClosed?: () => void;
@@ -163,6 +170,7 @@ export type EventFormModalProps = {
 export function EventFormModal({
   visible,
   event,
+  onSeeEntry,
   onCancel,
   onClosed,
   onSaved,
@@ -383,9 +391,10 @@ export function EventFormModal({
           <UpdateRow
             kind="event"
             id={event.id}
-            // La fiche est semée depuis l'événement qu'on lui a donné, et
-            // celui-ci vient d'être réécrit en base. Le parent la remonte.
-            onRefreshed={onSaved}
+            // Vers la fiche de la bibliothèque, où la reprise se demande une
+            // fois qu'on a lu ce qu'elle apporte. L'écran baisse cette feuille
+            // avant d'ouvrir le catalogue.
+            onSee={onSeeEntry}
           />
         ) : null}
 

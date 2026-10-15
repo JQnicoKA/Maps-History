@@ -18,6 +18,7 @@ import {
 } from "react-native";
 
 import * as api from "./api";
+import { fetchStale, refreshFromLibrary, type Stale } from "./updates";
 import { LOOKS } from "./looks";
 import { SharedCard } from "./SharedCard";
 import { windowed } from "./trail";
@@ -91,6 +92,14 @@ export type CatalogueProps = {
   kind: Kind;
   look: Look;
   visible: boolean;
+  /**
+   * L'entrée à ouvrir d'emblée, carte en avant, sans passer par la liste.
+   *
+   * Pour « Voir » : une notification et le formulaire d'un exemplaire en
+   * retard mènent ici, sur la version que la bibliothèque a corrigée. On
+   * arrive pour lire *celle-là* et pas pour chercher.
+   */
+  open?: string | null;
   onClose: () => void;
   /** Fired once the panel is off the screen — see `Sheet`. */
   onClosed?: () => void;
@@ -116,6 +125,7 @@ export function Catalogue({
   kind,
   look,
   visible,
+  open = null,
   onClose,
   onClosed,
 }: CatalogueProps) {
@@ -344,6 +354,62 @@ export function Catalogue({
     const waiting = setTimeout(() => void fetchPage(null), 250);
     return () => clearTimeout(waiting);
   }, [visible, fetchPage]);
+
+  /**
+   * Arrivé par « Voir » : la carte demandée monte d'emblée.
+   *
+   * La liste se charge quand même derrière — c'est elle qu'on retrouve en
+   * reculant, et sans elle « Retour » laisserait un panneau vide.
+   */
+  useEffect(() => {
+    if (!visible || open === null) return;
+    let alive = true;
+    void api
+      .fetchWhole(kind, open)
+      .then((found) => {
+        if (!alive || found === null) return;
+        setTrail([{ kind, thing: found }]);
+      })
+      .catch(() => {
+        // Muette : la liste est là, et une entrée retirée entre la
+        // notification et le geste n'est pas une panne à annoncer.
+      });
+    return () => {
+      alive = false;
+    };
+  }, [visible, open, kind]);
+
+  /**
+   * Ce que ce lecteur détient et que la bibliothèque a corrigé depuis.
+   *
+   * Demandé ici plutôt que reçu du parent, pour la même raison que dans
+   * `UpdateRow` : la question ne coûte qu'une requête, elle revient presque
+   * toujours vide, et un état de plus à tenir à jour dans l'application
+   * coûterait davantage. Ce qu'elle décide est le bouton du pied — « Déjà
+   * copié » est faux quand ce qu'on détient est en retard.
+   */
+  const [behind, setBehind] = useState<Stale[]>([]);
+
+  useEffect(() => {
+    if (!visible) return;
+    let alive = true;
+    void fetchStale()
+      .then((all) => {
+        if (alive) setBehind(all);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [visible]);
+
+  /** L'exemplaire en retard de ce qu'on lit, s'il y en a un. */
+  const stale =
+    reading === null
+      ? null
+      : (behind.find((one) => one.entry === reading.thing.id) ?? null);
+  /** Celui dont on vient de demander la reprise, le temps de la confirmer. */
+  const [updating, setUpdating] = useState<Stale | null>(null);
 
   /**
    * The two filters open on what the reader is already looking at.
@@ -624,7 +690,20 @@ export function Catalogue({
                 vôtre » le disait alors sur chaque carte, sans rien
                 apprendre. La ligne de la liste n'en montre aucun depuis
                 toujours (`ThingRow`) ; la carte fait pareil. */}
-            {reading.thing.mine ? null : (
+            {reading.thing.mine ? null : stale !== null ? (
+              /* Ce qu'on détient est en retard sur ce qu'on lit : « Déjà
+                 copié » serait vrai et inutile. C'est ici que la reprise se
+                 demande, parce que c'est ici qu'on vient de lire ce qu'elle
+                 apporte — le bouton de la notification et celui du formulaire
+                 ne font plus que mener à cette page. */
+              <InkButton
+                label={taking === reading.thing.id ? "Reprise…" : "Mettre à jour"}
+                variant="solid"
+                grow
+                disabled={taking !== null}
+                onPress={() => setUpdating(stale)}
+              />
+            ) : (
               <InkButton
                 label={
                   reading.thing.copied
@@ -1179,6 +1258,43 @@ export function Catalogue({
             takeIt(one, its);
           }}
           onClose={() => setAsking(null)}
+        />
+      )}
+
+      {updating === null ? null : (
+        <ConfirmDialog
+          visible
+          title="Reprendre cette version ?"
+          /* Deux tons, pour une ligne de code. Sans modification il n'y a rien
+             à perdre, et agiter un avertissement devant quelqu'un qui ne
+             risque rien lui apprend à les ignorer tous. */
+          message={
+            updating.touched
+              ? "Votre exemplaire sera entièrement réécrit : le texte, les dates, le lieu, et les photographies que vous y avez ajoutées. Ce que vous avez modifié sera perdu."
+              : "Vous n'avez rien modifié sur votre exemplaire : rien ne sera perdu."
+          }
+          confirmLabel="Reprendre"
+          tone={updating.touched ? "danger" : "ink"}
+          cancelLabel="Annuler"
+          onConfirm={() => {
+            const mine = updating;
+            setUpdating(null);
+            setTaking(mine.entry);
+            void refreshFromLibrary(mine.kind, mine.id)
+              .then(async () => {
+                // Elle n'est plus en retard : le pied retrouve « Déjà copié ».
+                setBehind((all) => all.filter((one) => one.id !== mine.id));
+                await refresh();
+              })
+              .catch((cause: unknown) =>
+                say(
+                  "Reprise impossible",
+                  cause instanceof Error ? cause.message : String(cause),
+                ),
+              )
+              .finally(() => setTaking(null));
+          }}
+          onClose={() => setUpdating(null)}
         />
       )}
     </Sheet>

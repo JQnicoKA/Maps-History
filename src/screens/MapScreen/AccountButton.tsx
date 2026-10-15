@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from "react-native";
 
@@ -14,12 +13,14 @@ import {
   GlyphButton,
   InkButton,
   InkField,
+  Sheet,
 } from "../../components/ui";
 import { isStrong, PasswordMeter, useAuth } from "../../features/auth";
 import {
   NoticeList,
   useNotices,
 } from "../../features/community/NoticeList";
+import type { NoticeKind } from "../../features/community/notices";
 import { deleteOwnPhotos } from "../../features/events/api";
 import { palette } from "../../theme/palette";
 import { radius, space, TOUCH, type } from "../../theme/tokens";
@@ -58,23 +59,37 @@ type Face =
   | "changing"
   | "leaving"
   | "erasing"
-  | "proving"
-  | "notices";
+  | "proving";
 
-export function AccountButton() {
+export type AccountButtonProps = {
+  /**
+   * Demande la fiche d'une entrée de la bibliothèque, depuis une notification.
+   *
+   * L'écran baisse cette carte avant d'ouvrir le catalogue : iOS refuse de
+   * présenter depuis une modale qui se retire encore. C'est `onClosed` de
+   * `Dialog` qui donne le signal, et c'est pour ce genre de passage de main
+   * qu'il a été ajouté.
+   */
+  onSeeEntry: (kind: NoticeKind, entry: string) => void;
+};
+
+export function AccountButton({ onSeeEntry }: AccountButtonProps) {
   const { account, signOut, deleteAccount, changePassword } = useAuth();
   const { notices, reload } = useNotices();
-  /**
-   * De quoi plafonner la liste des notifications.
-   *
-   * La carte n'a pas de hauteur maximale et ne défile pas : elle grandit avec
-   * son contenu, et `overflow: "hidden"` coupe net ce qui dépasse. Trois
-   * notifications suffisent à sortir de l'écran, et le lecteur n'en verrait
-   * jamais la fin — ni le bouton de retour.
-   */
-  const { height } = useWindowDimensions();
   const [open, setOpen] = useState(false);
   const [face, setFace] = useState<Face>("account");
+  /** Ce qu'il faudra lever une fois cette carte partie — voir `onSeeEntry`. */
+  const [leaving, setLeaving] = useState<(() => void) | null>(null);
+  /**
+   * Les notifications, dans une feuille à elles.
+   *
+   * Elles étaient une sixième face de cette carte, défilant sous un plafond
+   * de la moitié de l'écran. Une carte centrée est pour une question à deux
+   * réponses ; une liste qu'on parcourt, qu'on ouvre et qu'on vide est
+   * exactement ce que les feuilles de cette application font, en pleine
+   * hauteur et depuis le pouce.
+   */
+  const [reading, setReading] = useState(false);
   /** The password being proved: the current one on both asking faces. */
   const [password, setPassword] = useState("");
   /** And the one being chosen, on the face that chooses one. */
@@ -186,6 +201,12 @@ export function AccountButton() {
       <Dialog
         visible={open}
         onClose={close}
+        onClosed={() => {
+          if (!leaving) return;
+          const deed = leaving;
+          setLeaving(null);
+          deed();
+        }}
         /* A panel, not a question: titled like the sheets it sits beside. */
         centred
         title={
@@ -197,9 +218,7 @@ export function AccountButton() {
               ? "Supprimer le compte ?"
               : face === "proving"
                 ? "Votre mot de passe"
-                : face === "notices"
-                  ? "Mes notifications"
-                  : "Votre compte"
+                : "Votre compte"
         }
         hint={
           face === "leaving"
@@ -352,21 +371,6 @@ export function AccountButton() {
               />
             </View>
           </>
-        ) : face === "notices" ? (
-          <>
-            <ScrollView
-              style={{ maxHeight: Math.round(height * 0.5) }}
-              contentContainerStyle={styles.scrolled}
-            >
-              <NoticeList notices={notices} onChanged={() => void reload()} />
-            </ScrollView>
-            {/* Sans `grow`, et la carte en dépendait : `grow` est `flex: 1`,
-                fait pour remplir une rangée. En enfant direct de la colonne
-                que `Dialog` empile, il donne au bouton une base nulle — et
-                la carte paraissait coupée. Les autres `grow` de ce fichier
-                sont tous dans une rangée. */}
-            <InkButton label="Retour" variant="tonal" onPress={back} />
-          </>
         ) : (
           <>
             {/* Trois champs, et rien d'autre : l'adresse, le mot de passe,
@@ -407,7 +411,12 @@ export function AccountButton() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Voir mes notifications"
-                  onPress={() => ask("notices")}
+                  onPress={() => {
+                    // Baisser la carte, puis lever la feuille : iOS refuse de
+                    // présenter depuis une modale qui se retire encore.
+                    setLeaving(() => () => setReading(true));
+                    close();
+                  }}
                   style={({ pressed }) => [styles.box, pressed && styles.down]}
                 >
                   {notices.length > 0 ? <View style={styles.dot} /> : null}
@@ -464,6 +473,42 @@ export function AccountButton() {
           </>
         )}
       </Dialog>
+
+      {/* Pleine hauteur : la liste va d'une ligne à vingt, et un panneau qui
+          se redimensionnerait autour d'elle ne tiendrait jamais en place. */}
+      <Sheet
+        visible={reading}
+        onClose={() => setReading(false)}
+        onClosed={() => {
+          if (!leaving) return;
+          const deed = leaving;
+          setLeaving(null);
+          deed();
+        }}
+        title="Mes notifications"
+        tall
+        footer={
+          <InkButton
+            label="Fermer"
+            variant="tonal"
+            grow
+            onPress={() => setReading(false)}
+          />
+        }
+      >
+        <ScrollView contentContainerStyle={styles.scrolled}>
+          <NoticeList
+            notices={notices}
+            onChanged={() => void reload()}
+            // Baisser cette feuille, puis ouvrir le catalogue : `onClosed`
+            // ci-dessus s'en charge une fois qu'elle est partie.
+            onSee={(kind, entry) => {
+              setLeaving(() => () => onSeeEntry(kind, entry));
+              setReading(false);
+            }}
+          />
+        </ScrollView>
+      </Sheet>
     </>
   );
 }
@@ -507,7 +552,18 @@ const styles = StyleSheet.create({
   answers: { flexDirection: "row", gap: space.sm },
 
   /** Le contenu défilant des notifications, à l'écart du bord de la carte. */
-  scrolled: { paddingVertical: space.xs },
+  /**
+   * La gouttière des feuilles, que la feuille ne pose pas elle-même.
+   *
+   * Elle n'avait que du rembourrage vertical du temps où cette liste vivait
+   * dans la carte du compte, qui padde ses enfants. Une feuille ne padde rien :
+   * sans cela les rangées toucheraient ses deux bords.
+   */
+  scrolled: {
+    paddingHorizontal: space.xl,
+    paddingVertical: space.xs,
+    paddingBottom: space.lg,
+  },
 
   /** Détaché du reste : quitter n'est pas un champ de plus. */
   leave: { flexDirection: "row", gap: space.sm, marginTop: space.lg },
