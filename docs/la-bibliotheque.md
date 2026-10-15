@@ -106,6 +106,39 @@ ménage** : vingt-six fonctions le lisaient au début du chantier, dont huit
 désormais supprimées, et le renommer tôt aurait voulu dire réécrire les
 vingt-six.
 
+### Une copie n'est plus muette
+
+Le 15 octobre 2026. Une copie arrivait avec `shared = false`, et deux
+contraintes — `events_copies_stay_private`, `characters_copies_stay_private` —
+lui interdisaient de jamais s'ouvrir. La case était grisée avec sa raison :
+*une copie reste chez vous, la bibliothèque a déjà l'entrée dont elle vient.*
+
+Cette règle appartenait au modèle précédent, où cocher voulait dire
+**publier** : republier ce qu'on venait de prendre n'aurait fait qu'un doublon
+de plus. Depuis que la case veut dire « la bibliothèque peut s'en inspirer »,
+elle est devenue fausse — **une copie retouchée est exactement ce dont l'entrée
+d'origine gagnerait à profiter.** Qui prend un événement, le corrige et
+l'étoffe a fait un travail, et le fermer d'office le jetait.
+
+Ce qui a changé : les deux contraintes supprimées, `copy_one_event` et
+`copy_one_character` qui ne posent plus `shared` (le défaut de colonne vaut
+`true`, comme pour tout ce qu'on écrit), `attach` qui ne referme plus la case,
+et les huit copies existantes rouvertes — leur `false` venait du système, pas
+d'un choix. Côté application, `whyLocked` et la propriété `locked` de
+`ShareRow` ont disparu, faute d'objet.
+
+Ce qui ne change pas : **`judge` refuse toujours d'admettre une copie.** En
+faire une entrée neuve serait le doublon que tout ceci évite. S'en inspirer
+pour corriger l'entrée dont elle vient est un autre geste — à la main, pour
+l'instant.
+
+**La conséquence à traiter** : une copie améliorée n'apparaît nulle part. Elle
+est ouverte, mais `to_review` écarte les copies en bloc, donc le conservateur
+ne saura jamais qu'elle existe. Le filtre juste serait `origin_id is not null
+and updated_at > taken_at` — les copies **retouchées depuis leur prise**, qui
+sont les seules à avoir quelque chose à dire. Non fait : la file ne distingue
+pas encore une proposition d'une suggestion de correction.
+
 ## La file de lecture
 
 Avec le partage ouvert par défaut, la file n'est pas un petit tas de
@@ -115,8 +148,9 @@ encore lu.
 
 - `to_review(want, page_size)` — ce qui n'a pas de verdict, le plus récent
   d'abord, tous genres confondus, avec le pseudonyme de l'auteur. **Pas les
-  copies** : elles arrivent avec `shared = false`, ne peuvent jamais être
-  admises, et faisaient neuf lignes sur dix.
+  copies** : elles ne peuvent pas être admises — ce serait un doublon de
+  l'entrée dont elles viennent — et elles faisaient neuf lignes sur dix. Elles
+  arrivaient aussi fermées, ce qui n'est plus vrai : voir plus bas.
 - `judge(about, which, verdict, became, why)` — note le verdict et, pour une
   admission, **recopie la proposition dans le compte de la bibliothèque, la
   publie et coupe son `origin_id`**. Renvoie l'identifiant de l'entrée.
@@ -182,9 +216,10 @@ supprime. Le lien ne pouvait survivre que dans `review`, et il n'y était pas.
 Admettre une proposition laisse la ligne de son auteur **indépendante**.
 `attach(about, which)` est ce qui la lie, et c'est lui qui l'appelle.
 
-Ce qu'il gagne : les corrections, par bouton. Ce qu'il perd est dicté par la
-base et non choisi — `copies_stay_private` interdit à une copie d'être
-ouverte à la bibliothèque, donc sa case se referme. Elle n'a plus d'objet.
+Ce qu'il gagne : les corrections, par bouton. Il ne perd plus rien : sa case
+restait fermée, parce que `copies_stay_private` interdisait à une copie d'être
+ouverte à la bibliothèque. Cette contrainte n'existe plus — voir « Une copie
+n'est plus muette » plus bas.
 
 `taken_at` prend **la date du jugement**, et c'est le cœur du mécanisme : à
 cet instant l'entrée valait exactement son texte, que `copy_one_event` avait

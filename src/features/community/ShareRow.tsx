@@ -20,14 +20,6 @@ export type ShareRowProps = {
   means?: string;
   shared: boolean;
   onChange: (shared: boolean) => Promise<void>;
-  /**
-   * Why there is no choice here, when there is none — see `whyLocked`.
-   *
-   * Shown in place of the usual line, with the tick out of reach. Saying
-   * nothing and simply greying the row would leave the reader guessing; the
-   * rule is defensible, so it is stated.
-   */
-  locked?: string | null;
 };
 
 /**
@@ -55,17 +47,14 @@ export type ShareRowProps = {
  * tick beside it already answers that. One sentence, and the tick carries the
  * state alone.
  *
- * The exception is `locked`, which replaces the line entirely: there the
- * reader is not choosing, so there is nothing to describe and a reason to
- * give instead.
+ * **Il n'y a plus de cas verrouillé.** Une copie portait la case grisée et une
+ * raison à la place de la phrase : « une copie reste chez vous, la
+ * bibliothèque a déjà l'entrée dont elle vient ». C'était vrai du temps où la
+ * case voulait dire *publier*. Elle veut dire « s'en inspirer », et une copie
+ * qu'on améliore est exactement ce dont l'entrée d'origine gagnerait à
+ * profiter. Le choix est donc offert partout.
  */
-export function ShareRow({
-  what,
-  means,
-  shared,
-  onChange,
-  locked = null,
-}: ShareRowProps) {
+export function ShareRow({ what, means, shared, onChange }: ShareRowProps) {
   const [busy, setBusy] = useState(false);
   const { say, dialog } = useNotice();
 
@@ -75,12 +64,11 @@ export function ShareRow({
       <TickRow
         title="Ouvert à la bibliothèque"
         detail={
-          locked ??
           means ??
-          `Autorise la bibliothèque à s'inspirer de ${what} pour ses propres entrées. Rien n'est publié tel quel, et personne d'autre ne le lit.`
+          `Autorise la bibliothèque à s'inspirer de ${what}`
         }
         on={shared}
-        disabled={busy || locked !== null}
+        disabled={busy}
         onToggle={() => {
           setBusy(true);
           void onChange(!shared)

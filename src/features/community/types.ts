@@ -283,9 +283,9 @@ export type Look = {
    * Rien d'autre, et c'est une décision : une fenêtre de confirmation répond
    * à « qu'est-ce que j'obtiens en touchant ce bouton », pas « comment cette
    * application fonctionne-t-elle ». Les règles — ce qui reste à la
-   * bibliothèque, le fait qu'une copie n'y retourne pas — ont leur place sur
-   * les fiches (`castAside`, `filedAside`) et dans `whyLocked`, où le lecteur
-   * les rencontre quand elles le concernent.
+   * bibliothèque, ce qui vient avec — ont leur place sur les fiches
+   * (`castAside`, `filedAside`), où le lecteur les rencontre quand elles le
+   * concernent.
    */
   means: string;
   nothing: string;

@@ -21,7 +21,6 @@ import {
 import { useEvents } from "../EventsProvider";
 import { usePlacement } from "../../placement";
 import { LikelyDuplicates } from "../../community/LikelyDuplicates";
-import { whyLocked } from "../../community/copies";
 import { ShareRow } from "../../community/ShareRow";
 import { COPY_IS_A_COPY } from "../../community/stakes";
 import { CHARACTER_LOOK } from "../../community/looks";
@@ -372,7 +371,6 @@ export function CharacterEditModal({
           <ShareRow
             what="ce personnage"
             shared={shared}
-            locked={whyLocked(person.origin)}
             onChange={async (next) => {
               await share("character", person.id, next);
               setShared(next);

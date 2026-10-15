@@ -2,7 +2,6 @@ import { useState, type ReactNode } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { LikelyDuplicates } from "../../community/LikelyDuplicates";
-import { whyLocked } from "../../community/copies";
 import { ShareRow } from "../../community/ShareRow";
 import { EVENT_LOOK } from "../../community/looks";
 import { CharacterSelector } from "./CharacterSelector";
@@ -574,7 +573,6 @@ export function EventFormModal({
             <ShareRow
               what="cet événement"
               shared={shared}
-              locked={whyLocked(event.origin)}
               onChange={async (next) => {
                 await share("event", event.id, next);
                 setShared(next);
