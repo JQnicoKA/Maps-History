@@ -8,7 +8,7 @@ import { radius, space, type } from "../../../theme/tokens";
 const EVENT = require("../../../../assets/icons/book.png");
 const PEOPLE = require("../../../../assets/icons/people.png");
 const EVENT_BACK = require("../../../../assets/Evenements-fond.png");
-const PEOPLE_BACK = require("../../../../assets/Personnages-fond.png");
+const PEOPLE_BACK = require("../../../../assets/Napoleon-fond.png");
 
 /** Les deux genres de note qu'on ajoute à sa collection. */
 export type Note = "event" | "character";

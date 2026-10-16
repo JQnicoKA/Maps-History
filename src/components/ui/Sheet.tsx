@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
   Dimensions,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -16,6 +17,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Grain, JournalTitle } from "./Scrapbook";
 import { palette } from "../../theme/palette";
 import { BACKDROP, radius, shadow, space } from "../../theme/tokens";
+
+const PATTERN = require("../../../assets/general-fond.png");
 
 const SCREEN = Dimensions.get("window").height;
 
@@ -271,8 +274,45 @@ export function Sheet({
             {/* Behind everything, including the header's rule. */}
             <Grain />
 
-            {/* The whole header is the handle — a 4pt bar is not a target. */}
+            {/* Le papier peint, sur les seuls panneaux de pleine hauteur.
+                `tall` *est* l'ensemble visé : ce sont les panneaux où l'on
+                travaille — écrire, choisir, parcourir — et ils ont assez de
+                place pour qu'un fond se voie sans gêner. Les fiches de détail
+                se dimensionnent sur ce qu'elles montrent et n'en sont pas :
+                une planche de motifs derrière trois lignes et une photographie
+                ferait concurrence à ce qu'on est venu lire.
+
+                En pour cent et non par ses quatre bords : le panneau est une
+                colonne, et une image absolue sans dimensions explicites
+                garderait sa taille native. */}
+            {tall ? (
+              // Enveloppé, comme `Grain` : une image ne prend pas de
+              // `pointerEvents`, et celle-ci couvre tout le panneau — elle
+              // avalerait jusqu'au glissement qui ferme la feuille.
+              <View
+                pointerEvents="none"
+                style={styles.pattern}
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              >
+                <Image
+                  source={PATTERN}
+                  style={styles.patternImage}
+                  resizeMode="cover"
+                />
+              </View>
+            ) : null}
+
+            {/* The whole header is the handle — a 4pt bar is not a target.
+
+                Opaque, et c'est ce qui arrête le papier peint : il court
+                derrière tout le panneau, et la barre du titre comme celle des
+                boutons doivent rester nettes — on y lit un nom et on y vise
+                des cibles. Chacune reprend donc le papier et son grain, sans
+                quoi elles se liraient comme deux bandes lisses collées à une
+                feuille qui ne l'est pas. */}
             <View {...pan.panHandlers} style={styles.header}>
+              <Grain />
               <View style={styles.grabZone}>
                 <View style={styles.grab} />
               </View>
@@ -289,6 +329,7 @@ export function Sheet({
               <View
                 style={[styles.footer, { paddingBottom: insets.bottom + space.lg }]}
               >
+                <Grain />
                 {footer}
               </View>
             ) : (
@@ -337,7 +378,38 @@ const styles = StyleSheet.create({
   },
   /** Both, so the panel neither shrinks below nor grows past the same mark. */
   tall: { height: "92%" },
-  header: { paddingBottom: space.xs },
+  /**
+   * Le papier peint : la place qu'il occupe, et à quel point il se voit.
+   *
+   * En pour cent et non par ses quatre bords — une image absolue sans
+   * dimensions explicites garderait sa taille native, qui est celle du
+   * fichier. À moitié effacé, parce qu'il est un fond : au-delà, les motifs
+   * se mettent à concurrencer le texte posé dessus.
+   */
+  pattern: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+  },
+  /**
+   * L'opacité est portée par l'image et non par la vue qui l'enveloppe.
+   *
+   * Une vue translucide est composée hors écran, dans un tampon dimensionné
+   * au moment de la mise en page — et ce panneau arrive en glissant, donc
+   * mesuré pendant qu'il bouge. Un tampon capturé à la mauvaise taille puis
+   * étiré, c'est précisément la forme du rectangle observé dans un coin. Sur
+   * l'image, l'opacité est appliquée par le rendu de l'image elle-même, sans
+   * calque intermédiaire.
+   */
+  patternImage: { width: "100%", height: "100%", opacity: 0.5 },
+  /** Opaques toutes les deux : voir le commentaire au-dessus du titre. */
+  header: {
+    paddingBottom: space.xs,
+    backgroundColor: palette.paperLight,
+    overflow: "hidden",
+  },
   grabZone: { alignItems: "center", paddingTop: space.md, paddingBottom: space.sm },
   grab: {
     width: 40,
@@ -353,5 +425,7 @@ const styles = StyleSheet.create({
     borderTopColor: palette.line,
     flexDirection: "row",
     gap: space.md,
+    backgroundColor: palette.paperLight,
+    overflow: "hidden",
   },
 });

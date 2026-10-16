@@ -22,7 +22,20 @@ const GRAIN = require("../../../assets/textures/paper-grain.png");
  * de l'aplomb de la page.
  */
 
-/** Paper fibre, behind a panel. The same the map wears, at a whisper. */
+/**
+ * Paper fibre, behind a panel. The same the map wears, at a whisper.
+ *
+ * **Sa taille est dite en pour cent, et c'était tout le défaut.** Avec les
+ * seuls quatre bords de `absoluteFill`, l'image gardait sa taille native —
+ * 256 points — et `repeat` n'avait rien à paver au-delà de son propre cadre :
+ * un unique carré de grain en haut à gauche, un quart de panneau environ, un
+ * peu plus sombre que le reste. Invisible tant que le panneau était nu ; la
+ * pose d'un fond lui a donné une référence et la couture s'est vue.
+ *
+ * Le même piège que les fonds des boutons de `NewNoteButton`, rencontré trois
+ * fois en un jour : une image en absolu sans dimensions explicites n'est pas
+ * dimensionnée par ses bords.
+ */
 export function Grain({ opacity = 0.22 }: { opacity?: number }) {
   // Wrapped, because an Image takes no `pointerEvents` of its own and this
   // must never intercept a touch meant for what it sits behind.
@@ -30,7 +43,7 @@ export function Grain({ opacity = 0.22 }: { opacity?: number }) {
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       <Image
         source={GRAIN}
-        style={[StyleSheet.absoluteFill, { opacity }]}
+        style={[StyleSheet.absoluteFill, styles.grain, { opacity }]}
         resizeMode="repeat"
       />
     </View>
@@ -56,6 +69,8 @@ export function JournalTitle({ title, hint }: JournalTitleProps) {
 }
 
 const styles = StyleSheet.create({
+  /** Ce qui donne au grain le cadre entier à paver — voir `Grain`. */
+  grain: { width: "100%", height: "100%" },
   heading: { alignItems: "center", paddingTop: space.sm },
   title: {
     ...type.plate,
