@@ -10,7 +10,7 @@ import {
 
 import { HISTORY } from "../../config/history";
 import { useEvents } from "../events/EventsProvider";
-import { formatYear, toSortKey } from "../events/historicalDate";
+import { formatYear } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
 import { radius, space } from "../../theme/tokens";
 
@@ -103,7 +103,7 @@ function Step({
 export function Timeline() {
   // The event being read needs no mark of its own here: magnetism has already
   // brought it under the needle, which is the mark.
-  const { visibleEvents, neighbours, selectEvent, year, scrubTo } = useEvents();
+  const { stops, steps, selectEvent, year, scrubTo } = useEvents();
   const [width, setWidth] = useState(0);
 
   /**
@@ -113,13 +113,16 @@ export function Timeline() {
    */
   const [local, setLocal] = useState<number | null>(null);
 
+  /**
+   * Les marques de la règle, et ce que l'aimant attrape.
+   *
+   * Les arrêts et non plus les seuls événements : une marque qu'on ne peut pas
+   * atteindre serait un repère menteur, et une flèche qui s'arrête là où rien
+   * n'est marqué l'est tout autant. Les deux lisent la même suite.
+   */
   const marks = useMemo(
-    () =>
-      visibleEvents.map((event) => ({
-        id: event.id,
-        key: toSortKey(event.start),
-      })),
-    [visibleEvents],
+    () => stops.map((stop) => ({ id: stop.id, key: stop.at })),
+    [stops],
   );
 
   const at = local ?? year ?? HISTORY.from;
@@ -324,13 +327,15 @@ export function Timeline() {
           en événements — et il manquait le pas d'une seule année, qu'on ne
           pouvait obtenir qu'au doigt, et au jugé. */}
       <View style={styles.head}>
+        {/* « Précédent » et non « Événement précédent » : elles s'arrêtent
+            aussi sur les personnages, à leur naissance, dès que leur calque
+            est allumé. Elles les sautaient, alors que la planche les montrait
+            — on passait devant quelqu'un sans jamais pouvoir s'y poser. */}
         <Step
           glyph="|‹"
-          label="Événement précédent"
-          disabled={neighbours.previous === null}
-          onPress={() =>
-            neighbours.previous && selectEvent(neighbours.previous.id)
-          }
+          label="Précédent"
+          disabled={steps.previous === null}
+          onPress={() => steps.previous && selectEvent(steps.previous.id)}
         />
         <Step
           glyph="‹"
@@ -349,9 +354,9 @@ export function Timeline() {
         />
         <Step
           glyph="›|"
-          label="Événement suivant"
-          disabled={neighbours.next === null}
-          onPress={() => neighbours.next && selectEvent(neighbours.next.id)}
+          label="Suivant"
+          disabled={steps.next === null}
+          onPress={() => steps.next && selectEvent(steps.next.id)}
         />
       </View>
 

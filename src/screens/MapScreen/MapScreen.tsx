@@ -29,6 +29,7 @@ import { CharacterMarkers } from "../../features/events/components/CharacterMark
 import { EventMarkers } from "../../features/events/components/EventMarkers";
 import { TreeBuilder } from "../../features/genealogy/TreeBuilder";
 import { EventSummaryCard } from "../../features/events/components/EventSummaryCard";
+import { CharacterSummaryCard } from "../../features/events/components/CharacterSummaryCard";
 import { LocationReticle } from "../../features/events/components/LocationReticle";
 import { FilterButton } from "../../features/filters/FilterButton";
 import type { ScreenView } from "../../features/filters/view";
@@ -118,6 +119,7 @@ export function MapScreen() {
   const mapRef = useRef<MapRef>(null);
   const {
     selectedEvent,
+    selectedPerson,
     error,
     refresh,
     filters,
@@ -720,12 +722,19 @@ export function MapScreen() {
                 />
               </Paper>
             ) : null}
-            {selectedEvent && view === "map" ? (
+            {/* Au pied de la planche, ce sur quoi la frise s'est arrêtée —
+                un événement, ou quelqu'un. Les flèches s'arrêtent sur les deux
+                depuis qu'elles ne sautent plus les personnages ; sans cette
+                seconde carte, s'arrêter sur quelqu'un n'aurait rien montré. */}
+            {view !== "map" ? null : selectedEvent ? (
               <EventSummaryCard
                 event={selectedEvent}
-                onOpen={() => {
-            if (selectedEvent) raise({ kind: "event", id: selectedEvent.id });
-          }}
+                onOpen={() => raise({ kind: "event", id: selectedEvent.id })}
+              />
+            ) : selectedPerson ? (
+              <CharacterSummaryCard
+                person={selectedPerson}
+                onOpen={() => raise({ kind: "person", id: selectedPerson.id })}
               />
             ) : null}
           </View>

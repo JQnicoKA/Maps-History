@@ -12,7 +12,7 @@ import * as api from "./api";
 import { mend } from "../community/api";
 import { DEFAULT_YEAR } from "../../config/history";
 import { matchesFilters } from "./filtering";
-import { compareByLife, standsAt } from "./lifespan";
+import { compareByLife, momentOf, standsAt } from "./lifespan";
 import { toSortKey } from "./historicalDate";
 import { afterRow, erasure, tidy } from "./rows";
 import {
@@ -30,6 +30,17 @@ import {
   type LabelWidth,
   type TreePerson,
 } from "./types";
+
+/**
+ * Un arrêt de la frise : quelque chose qui s'est passé, ou quelqu'un.
+ *
+ * Une union discriminée et non deux listes à tenir côte à côte : les flèches
+ * marchent sur une seule suite ordonnée, et le genre de ce sur quoi elles
+ * tombent décide de la carte qu'on montre en bas de l'écran.
+ */
+export type Stop =
+  | { kind: "event"; id: string; at: number; event: EventSummary }
+  | { kind: "person"; id: string; at: number; person: Character };
 
 type EventsContextValue = {
   events: EventSummary[];
@@ -74,17 +85,31 @@ type EventsContextValue = {
   year: number | null;
   /** The event being read, when the year has come to rest on one. */
   selectedEvent: EventSummary | null;
+  /** Celui qu'on lit, quand c'est quelqu'un plutôt qu'un événement. */
+  selectedPerson: Character | null;
   /**
    * The event being read and the ones flanking the current year. `current` is
    * null between two events; `previous` and `next` are still the ones on
    * either side.
+   *
+   * Des événements seulement : ce sont les trois marqueurs que la planche
+   * dessine, et un personnage s'y dessine autrement — voir `CharacterMarkers`.
+   * Les flèches de la frise, elles, lisent `steps`.
    */
   neighbours: {
     previous: EventSummary | null;
     current: EventSummary | null;
     next: EventSummary | null;
   };
-  /** Selects an event and moves the year onto its date. */
+  /** Tout ce sur quoi la frise peut s'arrêter, dans l'ordre du temps. */
+  stops: Stop[];
+  /** Et les deux qui encadrent l'arrêt courant, genres confondus. */
+  steps: {
+    previous: Stop | null;
+    current: Stop | null;
+    next: Stop | null;
+  };
+  /** Choisit un événement **ou** quelqu'un, et amène l'année dessus. */
   selectEvent: (id: string | null) => void;
   /**
    * Moves the year, with the event the timeline decided is close enough to
@@ -303,13 +328,44 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     [visibleEvents, selectedId],
   );
 
+  /**
+   * Celui qu'on lit, quand c'est quelqu'un.
+   *
+   * `selectedId` porte les deux genres : un identifiant est un identifiant, et
+   * tenir deux sélections exclusives aurait voulu dire les désaccorder un jour.
+   * Les deux lectures se font côte à côte, et l'une est nulle quand l'autre ne
+   * l'est pas.
+   */
+  const selectedPerson = useMemo(
+    () =>
+      !filters.characters || selectedId === null
+        ? null
+        : (characters.find((one) => one.id === selectedId) ?? null),
+    [characters, filters.characters, selectedId],
+  );
+
+  /**
+   * Choisit ce qu'on lit, et amène l'année dessus.
+   *
+   * Un événement ou quelqu'un : les flèches de la frise s'arrêtent sur les
+   * deux depuis que les personnages y ont leurs marques, et leur demander deux
+   * fonctions aurait voulu dire leur demander de savoir sur quoi elles sont
+   * tombées. Un identifiant est un identifiant ; on cherche ici.
+   */
   const selectEvent = useCallback(
     (id: string | null) => {
       setSelectedId(id);
-      const event = id === null ? null : events.find((e) => e.id === id);
-      if (event) setYear(toSortKey(event.start));
+      if (id === null) return;
+      const event = events.find((e) => e.id === id);
+      if (event) {
+        setYear(toSortKey(event.start));
+        return;
+      }
+      const person = characters.find((one) => one.id === id);
+      const at = person === undefined ? -Infinity : momentOf(person);
+      if (Number.isFinite(at)) setYear(at);
     },
-    [events],
+    [events, characters],
   );
 
   const scrubTo = useCallback((next: number, eventId: string | null) => {
@@ -319,9 +375,15 @@ export function EventsProvider({ children }: { children: ReactNode }) {
 
   // A filter change can hide the selected event; drop the stale selection but
   // stay on the year, so the map does not jump out from under the reader.
+  //
+  // Les deux lectures comptent : éteindre le calque des personnages doit
+  // lâcher celui qu'on lisait, et n'interroger que les événements l'aurait
+  // lâché dès qu'on en choisissait un.
   useEffect(() => {
-    if (selectedId !== null && selectedEvent === null) setSelectedId(null);
-  }, [selectedId, selectedEvent]);
+    if (selectedId !== null && selectedEvent === null && selectedPerson === null) {
+      setSelectedId(null);
+    }
+  }, [selectedId, selectedEvent, selectedPerson]);
 
   // The map is never blank: with nothing chosen it opens on the earliest event
   // of whatever the filters select, and on a default year when there is no
@@ -340,6 +402,58 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       setYear(DEFAULT_YEAR);
     }
   }, [year, visibleEvents, loading]);
+
+  /**
+   * Ce sur quoi la frise peut s'arrêter, dans l'ordre du temps.
+   *
+   * Les événements visibles, et **les personnages quand leur calque est
+   * allumé** — chacun au moment où il entre dans l'histoire, sa naissance,
+   * exactement comme la vue liste les y range (`momentOf`). Les flèches les
+   * sautaient : elles ne marchaient que sur les événements, alors que la carte
+   * montrait les deux. On passait devant quelqu'un sans jamais s'arrêter.
+   *
+   * Qui n'a ni naissance ni mort n'y figure pas : `momentOf` rend `-Infinity`,
+   * et un arrêt hors du temps mettrait la frise au début du monde.
+   */
+  const stops = useMemo<Stop[]>(() => {
+    const all: Stop[] = visibleEvents.map((event) => ({
+      kind: "event",
+      id: event.id,
+      at: toSortKey(event.start),
+      event,
+    }));
+
+    if (filters.characters) {
+      for (const person of characters) {
+        const at = momentOf(person);
+        if (Number.isFinite(at)) {
+          all.push({ kind: "person", id: person.id, at, person });
+        }
+      }
+    }
+
+    return all.sort((a, b) => a.at - b.at);
+  }, [visibleEvents, characters, filters.characters]);
+
+  /** Les deux arrêts qui encadrent celui qu'on lit, genres confondus. */
+  const steps = useMemo(() => {
+    const index = stops.findIndex((stop) => stop.id === selectedId);
+    if (index !== -1) {
+      return {
+        previous: stops[index - 1] ?? null,
+        current: stops[index] ?? null,
+        next: stops[index + 1] ?? null,
+      };
+    }
+    const after =
+      year === null ? -1 : stops.findIndex((stop) => stop.at > year);
+    return {
+      previous:
+        (after === -1 ? stops[stops.length - 1] : stops[after - 1]) ?? null,
+      current: null,
+      next: (after === -1 ? undefined : stops[after]) ?? null,
+    };
+  }, [stops, selectedId, year]);
 
   const neighbours = useMemo(() => {
     const index = visibleEvents.findIndex((event) => event.id === selectedId);
@@ -693,7 +807,10 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       setFilters,
       year,
       selectedEvent,
+      selectedPerson,
       neighbours,
+      stops,
+      steps,
       selectEvent,
       scrubTo,
       loading,
@@ -722,7 +839,8 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     [
       events, visibleEvents, folderNames, characters, visibleCharacters, trees,
       filters, setFilters, year,
-      selectedEvent, neighbours, selectEvent, scrubTo, loading, error, refresh,
+      selectedEvent, selectedPerson, neighbours, stops, steps,
+      selectEvent, scrubTo, loading, error, refresh,
       share, addCharacter, editCharacter,
       removeCharacter, addTree, renameTree, removeTree, addToTree, addLabel,
       editLabel,
