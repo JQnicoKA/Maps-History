@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   },
   bar: { position: "absolute", left: 16, right: 16 },
   barInner: { padding: 12, gap: 10 },
-  hint: { ...type.legend, color: palette.inkSoft, textAlign: "center" },
+  hint: { ...type.caption, color: palette.inkSoft, textAlign: "center" },
   radii: {
     flexDirection: "row",
     flexWrap: "wrap",

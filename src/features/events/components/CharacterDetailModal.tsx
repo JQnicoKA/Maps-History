@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
   headText: { flex: 1, gap: 2 },
   life: { fontSize: 14, color: palette.wax, fontWeight: "600" },
   name: { fontSize: 24, lineHeight: 30, color: palette.ink, fontWeight: "700" },
-  place: { ...type.legend, color: palette.inkFaint },
+  place: { ...type.caption, color: palette.inkFaint },
 
   bio: { ...type.body, color: palette.inkSoft },
   section: { gap: space.sm },

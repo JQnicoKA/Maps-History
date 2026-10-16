@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.sunken,
   },
   coordinates: { ...type.body, flexShrink: 1, color: palette.ink },
-  hint: { ...type.legend, color: palette.inkFaint },
+  hint: { ...type.caption, color: palette.inkFaint },
   appears: { ...type.caption, color: palette.inkFaint },
   pressed: { opacity: 0.5 },
   trash: {

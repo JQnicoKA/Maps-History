@@ -85,5 +85,5 @@ const styles = StyleSheet.create({
   },
   text: { flex: 1, gap: 1 },
   title: { fontSize: 16, fontWeight: "700", color: palette.ink },
-  detail: { ...type.legend, color: palette.inkSoft },
+  detail: { ...type.caption, color: palette.inkSoft },
 });

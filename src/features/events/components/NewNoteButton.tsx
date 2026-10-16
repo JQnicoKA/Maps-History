@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
   quillGlyph: { fontSize: 22, color: palette.inkSoft },
   wayText: { flex: 1, gap: 2 },
   wayTitle: { fontSize: 15, fontWeight: "700", color: palette.ink },
-  wayDetail: { ...type.legend, color: palette.inkSoft },
+  wayDetail: { ...type.caption, color: palette.inkSoft },
   wayMore: { fontSize: 18, lineHeight: 20, color: palette.inkFaint },
   waxed: { color: palette.wax },
 });

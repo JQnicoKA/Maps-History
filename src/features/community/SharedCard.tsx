@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
     paddingTop: space.xs,
   },
   filedName: { ...type.body, flex: 1, color: palette.ink },
-  aside: { ...type.legend, color: palette.inkFaint },
+  aside: { ...type.caption, color: palette.inkFaint },
   dim: { opacity: 0.6 },
 
   /** The two things one can do about somebody else's work. */

@@ -170,7 +170,7 @@ export function FilterModal({
           on={filters.characters}
           onToggle={() => setFilters({ characters: !filters.characters })}
         >
-          <Text style={styles.note}>
+          <Text style={styles.said}>
             {view === "list"
               ? "Mêlés aux événements, à la date de leur naissance."
               : "Chacun se tient à l'endroit où vous l'avez placé, de sa naissance à sa mort."}
@@ -217,5 +217,13 @@ const styles = StyleSheet.create({
 
   /** Indented under the tick, so what it governs is unmistakable. */
   inside: { paddingLeft: TICK + space.md, gap: space.sm },
+  /**
+   * Deux styles, parce qu'il y a deux choses.
+   *
+   * `note` étiquette un contrôle — un mot, en petites capitales, qui est la
+   * voix de l'atlas. `said` porte une phrase, et une phrase en capitales ne se
+   * lit pas, elle se déchiffre.
+   */
   note: { ...type.legend, color: palette.inkFaint },
+  said: { ...type.caption, color: palette.inkFaint },
 });

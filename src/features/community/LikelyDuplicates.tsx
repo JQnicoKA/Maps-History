@@ -255,5 +255,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.sm,
   },
   dim: { opacity: 0.6 },
-  aside: { ...type.legend, color: palette.inkFaint },
+  aside: { ...type.caption, color: palette.inkFaint },
 });

@@ -75,6 +75,15 @@ export const type = {
   title: { fontSize: 21, letterSpacing: 0.2 },
   heading: { fontSize: 17, letterSpacing: 0.2 },
   body: { fontSize: 15, lineHeight: 22 },
+  /**
+   * Une phrase secondaire : sous un contrôle, sous un titre, dans une carte.
+   *
+   * **C'est elle et non `legend` qu'il faut pour une phrase.** La légende met
+   * en capitales — c'est sa définition — et douze mots en capitales ne se
+   * lisent pas, ils se déchiffrent. La règle a été posée après coup, sur une
+   * douzaine de styles qui avaient emprunté la légende pour des phrases
+   * entières : « VOUS SOUHAITEZ CRÉER CET ÉVÉNEMENT VOUS-MÊME. »
+   */
   caption: { fontSize: 13, lineHeight: 18 },
   /**
    * The one place the atlas voice survives: small capitals.

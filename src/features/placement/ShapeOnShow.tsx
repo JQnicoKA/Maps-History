@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   bar: { position: "absolute", left: 16, right: 16 },
   inner: { padding: 12, gap: 6 },
   name: { ...type.plate, fontSize: 18, color: palette.ink },
-  said: { ...type.legend, color: palette.inkSoft },
+  said: { ...type.caption, color: palette.inkSoft },
   actions: {
     flexDirection: "row",
     justifyContent: "flex-end",

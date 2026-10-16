@@ -1490,7 +1490,7 @@ const styles = StyleSheet.create({
   },
   choiceText: { flex: 1, gap: 2 },
   choiceTitle: { fontSize: 15.5, fontWeight: "700", color: palette.ink },
-  choiceWhy: { ...type.legend, color: palette.inkSoft },
+  choiceWhy: { ...type.caption, color: palette.inkSoft },
   onWax: { color: palette.paperLight },
   onWaxSoft: { color: palette.paperLight, opacity: 0.78 },
 
@@ -1557,5 +1557,5 @@ const styles = StyleSheet.create({
   reasonLabel: { fontSize: 15, fontWeight: "600", color: palette.ink },
   reasonLabelOn: { color: palette.paperLight },
 
-  aside: { ...type.legend, color: palette.inkFaint },
+  aside: { ...type.caption, color: palette.inkFaint },
 });

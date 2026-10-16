@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
   },
   seekText: { flex: 1, gap: 2 },
   seekLabel: { fontSize: 15, fontWeight: "700", color: palette.wax },
-  seekDetail: { ...type.legend, color: palette.inkSoft },
+  seekDetail: { ...type.caption, color: palette.inkSoft },
   seekMore: { fontSize: 18, lineHeight: 20, color: palette.wax },
 
   /** A card stuck on the page: white paper, a soft shadow, square corners. */
