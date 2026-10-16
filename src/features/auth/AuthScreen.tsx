@@ -143,7 +143,7 @@ export function AuthScreen() {
         <View style={styles.brand}>
           <Image source={LOGO} style={styles.logo} resizeMode="cover" />
           <Text style={styles.name}>HistoryNote</Text>
-          <Text style={styles.motto}>L'histoire, à sa place.</Text>
+          <Text style={styles.motto}>L'histoire, dans la poche.</Text>
         </View>
 
         <View style={styles.card}>

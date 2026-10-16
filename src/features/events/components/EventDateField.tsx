@@ -396,29 +396,10 @@ export function EventDateField({
               : formatHistoricalDate(draftStart)}
           </Text>
 
-          {/* Applies to whichever of the two is under the wheels: one date can
-              be attested and the other guessed. */}
-          <View style={styles.aboutRow}>
-            <View style={styles.aboutText}>
-              <Text style={styles.aboutLabel}>Date incertaine</Text>
-              <Text style={styles.aboutHint}>
-                Elle s'écrira « {ABOUT}
-                {formatHistoricalDate({ ...draft, approximate: false })} »
-              </Text>
-            </View>
-            <Switch
-              value={draft.approximate === true}
-              onValueChange={(approximate) =>
-                setDraft((state) =>
-                  approximate
-                    ? { ...state, approximate: true }
-                    : withoutApproximate(state),
-                )
-              }
-              trackColor={{ true: palette.wax, false: palette.line }}
-            />
-          </View>
-
+          {/* La seconde date avant l'incertitude, et l'ordre dit le rapport
+              entre les deux : ajouter une fin décide **de quoi** on parle,
+              l'incertitude ne qualifie ensuite que la date sous les molettes.
+              Posée au-dessus, elle semblait porter sur l'ensemble. */}
           {draftEnd ? (
             <Pressable
               accessibilityRole="button"
@@ -457,6 +438,29 @@ export function EventDateField({
               <Text style={styles.addLabel}>{labels.addEnd}</Text>
             </Pressable>
           )}
+
+          {/* Applies to whichever of the two is under the wheels: one date can
+              be attested and the other guessed. */}
+          <View style={styles.aboutRow}>
+            <View style={styles.aboutText}>
+              <Text style={styles.aboutLabel}>Date incertaine</Text>
+              <Text style={styles.aboutHint}>
+                Elle s'écrira « {ABOUT}
+                {formatHistoricalDate({ ...draft, approximate: false })} »
+              </Text>
+            </View>
+            <Switch
+              value={draft.approximate === true}
+              onValueChange={(approximate) =>
+                setDraft((state) =>
+                  approximate
+                    ? { ...state, approximate: true }
+                    : withoutApproximate(state),
+                )
+              }
+              trackColor={{ true: palette.wax, false: palette.line }}
+            />
+          </View>
         </View>
       </Sheet>
     </View>
@@ -505,11 +509,20 @@ const styles = StyleSheet.create({
   cell: { height: ROW, alignItems: "center", justifyContent: "center" },
   cellText: { fontSize: 17, color: palette.inkFaint },
   cellCurrent: { fontSize: 19, color: palette.ink, fontWeight: "600" },
+  /**
+   * Un peu d'air sous la dernière rangée du panneau.
+   *
+   * L'écart que la feuille pose entre ses sections sépare deux choses de même
+   * nature ; ici, dessous, il y a le pied et ses boutons, qui n'en sont pas
+   * une. Le commutateur se retrouvait collé à « Enregistrer », et la rangée
+   * paraissait appartenir à la barre plutôt qu'au contenu.
+   */
   aboutRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: space.md,
+    paddingBottom: space.md,
   },
   aboutText: { flex: 1, gap: 2 },
   aboutLabel: { fontSize: 15, color: palette.ink, fontWeight: "600" },
