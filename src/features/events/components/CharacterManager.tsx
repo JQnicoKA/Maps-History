@@ -86,7 +86,7 @@ export function CharacterManager({
           ? {}
           : {
               seekLabel: "Chercher dans la bibliothèque",
-              seekDetail: "Les personnages rassemblés dans la bibliothèque",
+              seekDetail: "Les personnages de la communauté",
               onSeek,
             })}
       >

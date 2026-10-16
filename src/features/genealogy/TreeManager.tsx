@@ -79,9 +79,7 @@ export function TreeManager({ onOpen, onSeek }: TreeManagerProps) {
           travaille au lieu de manger une hauteur fixe. */}
       <View style={styles.preface}>
         <Text style={styles.prefaceText}>
-          Un arbre relie vos personnages entre eux, génération par génération :
-          les couples d'un trait, les filiations d'une équerre. Il se bâtit sur
-          une planche en pleine page, et n'existe que sur votre carte.
+          Un arbre relie vos personnages entre eux, génération par génération
         </Text>
         <View style={styles.rule} />
       </View>
@@ -94,19 +92,26 @@ export function TreeManager({ onOpen, onSeek }: TreeManagerProps) {
         }
         addLabel="Nouvel arbre"
         seekLabel="Chercher dans la bibliothèque"
-        seekDetail="Les arbres rassemblés dans la bibliothèque"
+        seekDetail="Les arbres de la communauté"
         onSeek={onSeek}
         onAdd={() => {
           setName("");
           setNaming(true);
         }}
       >
+        {/* Rien quand la liste est vide : ce qu'un arbre est, la préface
+            ci-dessus le dit déjà, et le redire sous l'emplacement vide ne
+            serait que la même phrase deux fois sur un écran.
+
+            Une exception, et c'est un renseignement et non une définition :
+            sans personnages, on ne peut rien bâtir du tout. Celui-là, la
+            préface ne le dit pas. */}
         {trees.length === 0 ? (
-          <RosterEmpty>
-            {characters.length === 0
-              ? "Créez d'abord des personnages : un arbre se bâtit avec eux."
-              : "Un arbre relie des personnages entre eux, génération par génération."}
-          </RosterEmpty>
+          characters.length === 0 ? (
+            <RosterEmpty>
+              Créez d'abord des personnages : un arbre se bâtit avec eux.
+            </RosterEmpty>
+          ) : null
         ) : (
           trees.map((tree) => (
             <RosterRow
@@ -182,7 +187,19 @@ const styles = StyleSheet.create({
   form: { paddingHorizontal: space.xl, paddingBottom: space.lg },
   /** Le résumé, et le filet qui le sépare de la liste. */
   preface: { gap: space.lg },
-  prefaceText: { ...type.caption, color: palette.inkSoft },
+  /**
+   * La même voix que le texte d'une liste vide — `RosterEmpty`.
+   *
+   * Les deux disent la même chose au même lecteur : *ce qu'est un arbre*. L'un
+   * le dit avant la liste, l'autre à la place des rangées quand il n'y en a
+   * pas, et rien ne justifiait qu'ils ne se ressemblent pas.
+   */
+  prefaceText: {
+    ...type.body,
+    color: palette.inkFaint,
+    textAlign: "center",
+    paddingHorizontal: space.md,
+  },
   rule: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: palette.line,
