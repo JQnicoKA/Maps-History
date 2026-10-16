@@ -7,6 +7,8 @@ import { radius, space, type } from "../../../theme/tokens";
 
 const EVENT = require("../../../../assets/icons/book.png");
 const PEOPLE = require("../../../../assets/icons/people.png");
+const EVENT_BACK = require("../../../../assets/Evenements-fond.png");
+const PEOPLE_BACK = require("../../../../assets/Personnages-fond.png");
 
 /** Les deux genres de note qu'on ajoute à sa collection. */
 export type Note = "event" | "character";
@@ -14,17 +16,19 @@ export type Note = "event" | "character";
 /** Ce que chaque genre s'appelle, là où la phrase a besoin de le nommer. */
 const NOTES: Record<
   Note,
-  { label: string; icon: number; une: string; un: string }
+  { label: string; icon: number; back: number; une: string; un: string }
 > = {
   event: {
     label: "Événement",
     icon: EVENT,
+    back: EVENT_BACK,
     une: "cet événement",
     un: "un événement",
   },
   character: {
     label: "Personnage",
     icon: PEOPLE,
+    back: PEOPLE_BACK,
     une: "ce personnage",
     un: "un personnage",
   },
@@ -156,6 +160,19 @@ export function NewNoteButton({ onCreate, onSeek }: NewNoteButtonProps) {
                   pressed && styles.down,
                 ]}
               >
+                {/* Le papier peint du genre, derrière tout le reste.
+                    `cover` et non `stretch` : les deux planches sont carrées
+                    comme le bouton, donc rien n'est rogné — on voit la
+                    planche entière. */}
+                <Image
+                  source={NOTES[kind].back}
+                  style={styles.back}
+                  resizeMode="cover"
+                  // Décorative : elle ne porte rien qu'un lecteur d'écran
+                  // doive annoncer, le carré se nomme déjà lui-même.
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                />
                 <Image
                   source={NOTES[kind].icon}
                   style={styles.squareGlyph}
@@ -241,10 +258,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: space.md,
     borderRadius: radius.lg,
+    // Gardée sous l'image : c'est ce qu'on voit le temps qu'elle arrive, et
+    // le carré ne doit jamais être un trou dans la carte.
     backgroundColor: palette.sunken,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.line,
+    // Le papier peint s'arrête aux coins arrondis du carré.
+    overflow: "hidden",
   },
+  /**
+   * Le papier peint, dimensionné **en pour cent** et non par ses quatre
+   * bords.
+   *
+   * `StyleSheet.absoluteFill` ne suffit pas ici : le carré centre ses
+   * enfants, et pour une image absolue sans largeur ni hauteur explicites,
+   * Yoga retient sa taille native — 1254 points — puis la centre. On voyait
+   * donc un seul motif, le reste coupé par `overflow`, alors que la planche
+   * en compte quarante. Une taille en pour cent est sans ambiguïté : c'est
+   * celle du parent.
+   */
+  back: { position: "absolute", top: 0, left: 0, width: "100%", height: "100%" },
   squareGlyph: { width: 38, height: 38 },
   squareLabel: { fontSize: 15, fontWeight: "700", color: palette.ink },
   down: { opacity: 0.6 },
