@@ -124,10 +124,15 @@ export function NewNoteButton({ onCreate, onSeek }: NewNoteButtonProps) {
           deed();
         }}
         title="Nouvelle note"
+        /* Deux questions, et la carte en pose une à la fois. La seconde était
+           un constat — « vous ajoutez un événement » — là où le lecteur a
+           deux voies devant lui et rien qui les introduise. C'est la phrase
+           qui vivait dans le formulaire d'événement avant que cette fourche
+           ne remonte ici, et elle revient avec elle. */
         hint={
           note === null
             ? "Quel type de note voulez-vous ajouter ?"
-            : `Vous ajoutez ${note.un}.`
+            : `Comment voulez-vous ajouter ${note.une} ?`
         }
         /* Rien à quitter sur la première face — la croix suffit. Sur la
            seconde, « Retour » revient à la première et non hors de l'écran :

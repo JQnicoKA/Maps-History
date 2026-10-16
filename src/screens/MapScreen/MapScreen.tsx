@@ -17,10 +17,9 @@ import {
   type Note,
 } from "../../features/events/components/NewNoteButton";
 import {
-  PeopleButton,
-  PeopleSheet,
-  type PeopleTab,
-} from "../../features/events/components/PeopleSheet";
+  TreesButton,
+  TreesSheet,
+} from "../../features/events/components/TreesSheet";
 import { EventDetailModal } from "../../features/events/components/EventDetailModal";
 import { EventFormModal } from "../../features/events/components/EventFormModal";
 import { CollectionListView } from "../../features/events/components/CollectionListView";
@@ -162,9 +161,8 @@ export function MapScreen() {
    * reseme à blanc. Les deux comportements tiennent ensemble.
    */
   const [drafts, setDrafts] = useState(0);
-  /** Celle des personnages et des arbres, et laquelle de ses deux moitiés. */
+  /** Celle des arbres. */
   const [peopling, setPeopling] = useState(false);
-  const [peopleTab, setPeopleTab] = useState<PeopleTab>("character");
   const [editing, setEditing] = useState<HistoricalEvent | null>(null);
   /** True from country zoom on, where the fiefs are worth drawing. */
   const [detailed, setDetailed] = useState(false);
@@ -193,14 +191,14 @@ export function MapScreen() {
    * Where to go back to when the page now showing closes.
    *
    * A destination rather than a flag, because there are two of them: the
-   * people sheet a page was asked for from, and the tree a page was reached
+   * trees sheet a page was asked for from, and the tree a page was reached
    * from. Set once at the start of a journey and honoured at its end, so
    * reading three people in a row is three taps and not three journeys.
    *
    * La feuille du formulaire d'événement n'y figure pas : elle n'ouvre plus
-   * aucune page depuis que la fourche et les deux listes l'ont quittée.
+   * aucune page depuis que la fourche et les listes l'ont quittée.
    */
-  const [back, setBack] = useState<Page | { sheet: PeopleTab } | null>(null);
+  const [back, setBack] = useState<Page | { sheet: true } | null>(null);
   /**
    * How many pages have been raised, which is what keys them.
    *
@@ -228,14 +226,14 @@ export function MapScreen() {
     setPage(null);
   };
 
-  /** The same, from the people sheet, which is what has to go down first. */
-  const afterSheet = (deed: () => void, tab: PeopleTab = "character") => {
+  /** The same, from the trees sheet, which is what has to go down first. */
+  const afterSheet = (deed: () => void) => {
     setNext(() => deed);
-    setBack({ sheet: tab });
+    setBack({ sheet: true });
     setPeopling(false);
   };
 
-  /** Called by every page and by the people sheet, once off the screen. */
+  /** Called by every page and by the trees sheet, once off the screen. */
   const afterPage = () => {
     if (next) {
       const deed = next;
@@ -246,8 +244,6 @@ export function MapScreen() {
     if (back === null) return;
     setBack(null);
     if ("sheet" in back) {
-      // Elle revient sur la moitié qu'on a quittée, et non sur l'autre.
-      setPeopleTab(back.sheet);
       setPeopling(true);
       return;
     }
@@ -678,12 +674,7 @@ export function MapScreen() {
                   })
                 }
               />
-              <PeopleButton
-                onPress={() => {
-                  setPeopleTab("character");
-                  setPeopling(true);
-                }}
-              />
+              <TreesButton onPress={() => setPeopling(true)} />
               {/* Sous les deux autres, et à part : elles ajoutent à la
                   collection, celui-ci change la carte qu'on la lit sur. */}
               {MAP_FEATURES.territories ? (
@@ -765,33 +756,13 @@ export function MapScreen() {
         }}
       />
 
-      {/* Ce que la collection connaît déjà : les gens, et les lignées. */}
-      <PeopleSheet
+      {/* Les lignées de la collection. */}
+      <TreesSheet
         visible={peopling}
-        tab={peopleTab}
-        onTabChange={setPeopleTab}
         // Down, then up: the panel is raised by `onClosed`, once this sheet
         // has actually gone.
-        onReadCharacter={(person) =>
-          afterSheet(() => raise({ kind: "person", id: person.id }))
-        }
-        onEditCharacter={(target) =>
-          afterSheet(() =>
-            raise({
-              kind: "editPerson",
-              id: target === "new" ? null : target.id,
-            }),
-          )
-        }
-        onOpenTree={(id) =>
-          afterSheet(() => raise({ kind: "tree", id }), "tree")
-        }
-        onSeekCharacter={() =>
-          afterSheet(() => raise({ kind: "searchCharacters" }), "character")
-        }
-        onSeekTree={() =>
-          afterSheet(() => raise({ kind: "searchTrees" }), "tree")
-        }
+        onOpen={(id) => afterSheet(() => raise({ kind: "tree", id }))}
+        onSeek={() => afterSheet(() => raise({ kind: "searchTrees" }))}
         onClose={() => setPeopling(false)}
         onClosed={afterPage}
       />
