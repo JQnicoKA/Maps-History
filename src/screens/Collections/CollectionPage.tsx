@@ -2,9 +2,9 @@ import type { ReactElement } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { AddSlot, JournalTitle, SeekRow } from "../../components/ui";
+import { AddSlot, SeekRow } from "../../components/ui";
 import { palette } from "../../theme/palette";
-import { space, type } from "../../theme/tokens";
+import { shadow, space, type } from "../../theme/tokens";
 
 export type CollectionPageProps<T> = {
   /** Le nom de la page, en tête : « Événements », « Personnages », « Arbres ». */
@@ -40,9 +40,13 @@ export type CollectionPageProps<T> = {
  * est faite pour éviter.
  *
  * En `FlatList` et non en `ScrollView` comme `Roster` : une collection compte
- * des centaines de lignes, et l'en-tête — titre, compte, porte, dalle —
- * défile avec elles plutôt que de rester collé en haut, parce que c'est le
- * début de la page et non un bandeau.
+ * des centaines de lignes.
+ *
+ * **Le titre ne défile pas, le reste si.** C'est la seule chose de cette page
+ * qui dise *où l'on est* : la perdre au premier geste du pouce laisse trois
+ * listes qui se ressemblent et rien pour les distinguer. Le compte, la porte
+ * du catalogue et la dalle de création partent, eux, avec le défilement —
+ * ils appartiennent au début de la liste, pas à la page.
  */
 export function CollectionPage<T>({
   title,
@@ -59,37 +63,74 @@ export function CollectionPage<T>({
   const insets = useSafeAreaInsets();
 
   return (
-    <FlatList
-      style={styles.page}
-      data={data}
-      keyExtractor={keyOf}
-      /* En haut la zone sûre, en bas rien de particulier : cette scène est
-         un frère de la barre d'onglets dans une colonne, donc elle s'arrête
-         à son sommet. Lui ajouter la hauteur de la barre la compterait deux
-         fois, et la liste finirait sur un vide de quatre-vingt-dix points. */
-      contentContainerStyle={[
-        styles.body,
-        { paddingTop: insets.top + space.md, paddingBottom: space.xl },
-      ]}
-      ListHeaderComponent={
-        <View style={styles.head}>
-          <JournalTitle title={title} />
-          <Text style={styles.count}>{count}</Text>
-          <SeekRow label={seekLabel} onPress={onSeek} />
-          <AddSlot label={addLabel} onPress={onAdd} />
-        </View>
-      }
-      renderItem={({ item }) => row(item)}
-      ItemSeparatorComponent={() => <View style={styles.gap} />}
-      ListEmptyComponent={<Text style={styles.empty}>{empty}</Text>}
-    />
+    <View style={styles.page}>
+      <View style={[styles.header, { paddingTop: insets.top + space.sm }]}>
+        <Text style={styles.title} numberOfLines={1}>
+          {title}
+        </Text>
+      </View>
+
+      <FlatList
+        data={data}
+        keyExtractor={keyOf}
+        /* En bas rien de particulier : cette scène est un frère de la barre
+           d'onglets dans une colonne, donc elle s'arrête à son sommet. Lui
+           ajouter la hauteur de la barre la compterait deux fois, et la
+           liste finirait sur un vide de quatre-vingt-dix points. La zone
+           sûre du haut, elle, est portée par le bandeau. */
+        contentContainerStyle={[
+          styles.body,
+          { paddingTop: space.lg, paddingBottom: space.xl },
+        ]}
+        ListHeaderComponent={
+          <View style={styles.head}>
+            <Text style={styles.count}>{count}</Text>
+            <SeekRow label={seekLabel} onPress={onSeek} />
+            <AddSlot label={addLabel} onPress={onAdd} />
+          </View>
+        }
+        renderItem={({ item }) => row(item)}
+        ItemSeparatorComponent={() => <View style={styles.gap} />}
+        ListEmptyComponent={<Text style={styles.empty}>{empty}</Text>}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: palette.paper },
+  /**
+   * Le bandeau du titre : posé sur la page, et non découpé dedans.
+   *
+   * Opaque, parce que la liste passe dessous : du papier clair sur le papier
+   * de la page, comme toute surface que cette application lève d'un cran.
+   *
+   * **`zIndex` est ce qui rend l'ombre visible.** Elle déborde du bandeau par
+   * le bas, et la `FlatList` est rendue après lui : sans cela, elle peindrait
+   * simplement par-dessus. Sur Android c'est l'`elevation` de `shadow.soft`
+   * qui joue les deux rôles à la fois, mais iOS empile les frères dans
+   * l'ordre du code.
+   */
+  header: {
+    paddingHorizontal: space.lg,
+    paddingBottom: space.md,
+    backgroundColor: palette.paperLight,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: palette.line,
+    zIndex: 1,
+    ...shadow.soft,
+  },
+  /**
+   * Le nom de la page, sans la règle tracée dessous.
+   *
+   * `JournalTitle` la portait — c'est le geste d'une page de livre, et il
+   * valait quand ce titre ouvrait une feuille. Un bandeau fixe se sépare de
+   * ce qu'il surplombe par son filet et son ombre ; une règle en plus aurait
+   * fait deux traits pour une seule séparation.
+   */
+  title: { ...type.plate, color: palette.ink, textAlign: "center" },
   body: { paddingHorizontal: space.lg },
-  /** L'écart entre l'en-tête et la première rangée est celui des rangées. */
+  /** L'écart entre la tête de liste et la première rangée est celui des rangées. */
   head: { gap: space.md, paddingBottom: space.md },
   count: { ...type.legend, color: palette.inkSoft, alignSelf: "center" },
   gap: { height: space.sm },
