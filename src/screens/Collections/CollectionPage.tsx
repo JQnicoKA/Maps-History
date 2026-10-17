@@ -22,15 +22,6 @@ export type CollectionPageProps<T> = {
   row: (one: T) => ReactElement;
   /** Ce qui s'affiche à la place des rangées quand il n'y en a aucune. */
   empty: string;
-  /**
-   * La hauteur de la barre d'onglets, que la liste doit pouvoir dépasser.
-   *
-   * Passée par la coquille plutôt que mesurée ici : la barre est dessinée
-   * par-dessus les pages, donc aucune d'elles ne la connaît par sa mise en
-   * page. Sans ce rembourrage, la dernière rangée se glisse dessous et reste
-   * inatteignable.
-   */
-  bottomInset: number;
 };
 
 /**
@@ -64,7 +55,6 @@ export function CollectionPage<T>({
   keyOf,
   row,
   empty,
-  bottomInset,
 }: CollectionPageProps<T>) {
   const insets = useSafeAreaInsets();
 
@@ -73,9 +63,13 @@ export function CollectionPage<T>({
       style={styles.page}
       data={data}
       keyExtractor={keyOf}
+      /* En haut la zone sûre, en bas rien de particulier : cette scène est
+         un frère de la barre d'onglets dans une colonne, donc elle s'arrête
+         à son sommet. Lui ajouter la hauteur de la barre la compterait deux
+         fois, et la liste finirait sur un vide de quatre-vingt-dix points. */
       contentContainerStyle={[
         styles.body,
-        { paddingTop: insets.top + space.md, paddingBottom: bottomInset + space.xl },
+        { paddingTop: insets.top + space.md, paddingBottom: space.xl },
       ]}
       ListHeaderComponent={
         <View style={styles.head}>

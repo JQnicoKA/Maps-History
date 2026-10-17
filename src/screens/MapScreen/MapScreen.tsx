@@ -60,9 +60,13 @@ import { space } from "../../theme/tokens";
  *
  * They used to float above the frieze, where they read as one more piece of
  * chrome. Under it they are a colophon: the last line on the plate, out of the
- * way of everything one actually touches. Measured from the safe area rather
- * than from the screen edge, so the line clears the home indicator on the
- * phones that have one and does not hang off the bottom on those that do not.
+ * way of everything one actually touches.
+ *
+ * **Plus de zone sûre dans la mesure.** Elle en tenait compte du temps où cet
+ * écran occupait tout l'appareil ; la barre d'onglets occupe désormais le bas
+ * et porte l'indicateur d'accueil dans son propre rembourrage. Cette scène
+ * s'arrête au sommet de la barre, et compter la zone sûre ici la compterait
+ * deux fois.
  */
 const CREDITS_STRIP = 22;
 
@@ -81,15 +85,9 @@ export type MapScreenProps = {
    * barre d'onglets, et escamoter l'arbre dessiné s'il y en avait un.
    */
   onDrawingChange: (drawing: boolean) => void;
-  /** La hauteur de la barre d'onglets, que la frise doit laisser libre. */
-  bottomInset: number;
 };
 
-export function MapScreen({
-  onRaise,
-  onDrawingChange,
-  bottomInset,
-}: MapScreenProps) {
+export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapRef>(null);
   const {
@@ -302,7 +300,11 @@ export function MapScreen({
           mapRef={mapRef}
           center={center}
           centerAnimationDuration={hasFramed.current ? 650 : 0}
-          attributionOffset={aiming || drawing ? 0 : bottomInset + 4}
+          /* Zéro des deux côtés depuis que la barre tient le bas : la ligne
+             se pose à huit points du bord de cette scène, c'est-à-dire juste
+             au-dessus de la barre, et `MapAttribution` ajoute ces huit
+             points elle-même. */
+          attributionOffset={0}
           onDetailChange={setDetailed}
           onLook={(centre, zoom) => {
             looking.current = centre;
@@ -478,7 +480,7 @@ export function MapScreen({
           <View
             style={[
               styles.frieze,
-              { bottom: bottomInset + CREDITS_STRIP },
+              { bottom: CREDITS_STRIP },
             ]}
           >
             <Timeline />
@@ -488,8 +490,7 @@ export function MapScreen({
             style={[
               styles.bottom,
               {
-                bottom:
-                  bottomInset + CREDITS_STRIP + FRIEZE_HEIGHT + space.sm,
+                bottom: CREDITS_STRIP + FRIEZE_HEIGHT + space.sm,
               },
             ]}
             pointerEvents="box-none"

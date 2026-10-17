@@ -13,7 +13,6 @@ export type EventsScreenProps = {
   onCreate: () => void;
   /** Demande le catalogue de la bibliothèque, côté événements. */
   onSeek: () => void;
-  bottomInset: number;
 };
 
 /**
@@ -35,7 +34,6 @@ export function EventsScreen({
   onOpen,
   onCreate,
   onSeek,
-  bottomInset,
 }: EventsScreenProps) {
   const { events, selectedEvent, selectEvent } = useEvents();
 
@@ -74,7 +72,6 @@ export function EventsScreen({
         />
       )}
       empty="Votre collection est vide. Écrivez un événement, ou cherchez-en un dans la bibliothèque."
-      bottomInset={bottomInset}
     />
   );
 }

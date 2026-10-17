@@ -13,7 +13,6 @@ export type CharactersScreenProps = {
   onCreate: () => void;
   /** Demande le catalogue de la bibliothèque, côté personnages. */
   onSeek: () => void;
-  bottomInset: number;
 };
 
 /**
@@ -32,7 +31,6 @@ export function CharactersScreen({
   onOpen,
   onCreate,
   onSeek,
-  bottomInset,
 }: CharactersScreenProps) {
   const { characters } = useEvents();
 
@@ -59,7 +57,6 @@ export function CharactersScreen({
         <CharacterSummaryCard person={one} onOpen={() => onOpen(one.id)} />
       )}
       empty="Aucun personnage pour l'instant. Écrivez-en un, ou cherchez-en un dans la bibliothèque."
-      bottomInset={bottomInset}
     />
   );
 }

@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CharactersScreen } from "./Collections/CharactersScreen";
 import { EventsScreen } from "./Collections/EventsScreen";
 import { TreesScreen } from "./Collections/TreesScreen";
 import { MapScreen } from "./MapScreen";
 import { usePages } from "./Pages";
-import { TabBar, TAB_BAR_HEIGHT, type TabKey } from "./TabBar";
+import { TabBar, type TabKey } from "./TabBar";
 import { usePlacement } from "../features/placement";
 import { palette } from "../theme/palette";
 
@@ -21,12 +20,17 @@ import { palette } from "../theme/palette";
  * employait déjà pour sa propre bascule carte/liste, reprise un étage plus
  * haut — `display: none` plutôt qu'un démontage.
  *
+ * **Aucune page ne connaît la barre.** Elle est leur frère dans cette
+ * colonne, pas un calque posé dessus : chaque scène s'arrête donc d'elle-même
+ * à son sommet, et aucune n'a à réserver sa hauteur. En lui passant la mesure
+ * on la comptait deux fois — quatre-vingt-dix points de vide sous la frise et
+ * au pied de chaque liste.
+ *
  * **La frise n'appartient qu'à la carte.** Elle est dessinée par `MapScreen`
  * et non ici : lire une collection n'est pas lire un instant, et les trois
  * pages recensent là où la planche montre une année.
  */
 export function Shell() {
-  const insets = useSafeAreaInsets();
   const { aiming } = usePlacement();
   const [tab, setTab] = useState<TabKey>("map");
   /**
@@ -55,8 +59,6 @@ export function Shell() {
   }, [takenOver]);
 
   const pages = usePages({ drawing });
-  /** Ce que la barre couvre, et que les pages doivent laisser libre. */
-  const bottomInset = TAB_BAR_HEIGHT + insets.bottom;
 
   return (
     <View style={styles.screen}>
@@ -64,7 +66,6 @@ export function Shell() {
         <MapScreen
           onRaise={pages.raise}
           onDrawingChange={setDrawing}
-          bottomInset={bottomInset}
         />
       </View>
 
@@ -73,7 +74,6 @@ export function Shell() {
           onOpen={(id) => pages.raise({ kind: "event", id })}
           onCreate={() => pages.compose(null)}
           onSeek={() => pages.raise({ kind: "searchEvents" })}
-          bottomInset={bottomInset}
         />
       </View>
 
@@ -84,7 +84,6 @@ export function Shell() {
              placer quelqu'un donne l'écran entier au viseur. */
           onCreate={() => pages.raise({ kind: "editPerson", id: null })}
           onSeek={() => pages.raise({ kind: "searchCharacters" })}
-          bottomInset={bottomInset}
         />
       </View>
 
@@ -92,7 +91,6 @@ export function Shell() {
         <TreesScreen
           onOpen={(id) => pages.raise({ kind: "tree", id })}
           onSeek={() => pages.raise({ kind: "searchTrees" })}
-          bottomInset={bottomInset}
         />
       </View>
 
