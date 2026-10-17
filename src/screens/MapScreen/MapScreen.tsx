@@ -510,11 +510,13 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
                 seconde carte, s'arrêter sur quelqu'un n'aurait rien montré. */}
             {selectedEvent ? (
               <EventSummaryCard
+                floating
                 event={selectedEvent}
                 onOpen={() => onRaise({ kind: "event", id: selectedEvent.id })}
               />
             ) : selectedPerson ? (
               <CharacterSummaryCard
+                floating
                 person={selectedPerson}
                 onOpen={() => onRaise({ kind: "person", id: selectedPerson.id })}
               />

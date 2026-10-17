@@ -38,6 +38,23 @@ export const shadow = {
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
+  /**
+   * Ce qui flotte au-dessus de la carte.
+   *
+   * Plus dense et plus courte que `soft`, et jetée plus bas. Une tuile posée
+   * sur une page claire se détache par son filet ; posée sur un trait de
+   * côte, un lavis de territoire et trois noms de ville, elle n'a que son
+   * ombre pour le faire — aucun bord ne tient sur un fond qui change tous
+   * les dix points. C'est la leçon que les disques flottants avaient déjà
+   * apprise.
+   */
+  plate: {
+    shadowColor: "#2A1F12",
+    shadowOpacity: 0.32,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+  },
   /** Sheets and floating controls. */
   lifted: {
     shadowColor: "#2A1F12",

@@ -4,19 +4,29 @@ import { Paper } from "../../../components/ui";
 import { formatEventPeriod } from "../historicalDate";
 import { describeType, type EventSummary } from "../types";
 import { palette } from "../../../theme/palette";
-import { radius, space, type } from "../../../theme/tokens";
+import { radius, shadow, space, type } from "../../../theme/tokens";
 
 export type EventSummaryCardProps = {
   event: EventSummary;
   onOpen: () => void;
   /** Marks the event being read when the tile sits among others in the list. */
   highlighted?: boolean;
+  /**
+   * La tuile flotte sur la planche plutôt que de vivre dans une liste.
+   *
+   * Elle y prend une ombre bien plus dense : sur un fond qui change tous les
+   * dix points, rien d'autre ne la détache. Dans une liste, la même ombre
+   * répétée trente fois ferait une page sale — c'est pourquoi c'est la
+   * situation qui la demande, et non la tuile qui la porte toujours.
+   */
+  floating?: boolean;
 };
 
 export function EventSummaryCard({
   event,
   onOpen,
   highlighted = false,
+  floating = false,
 }: EventSummaryCardProps) {
   // The same picture the marker shows: the event's own first photograph, else
   // the type's emoji. Il y avait un troisième recours — la couverture d'un de
@@ -28,7 +38,12 @@ export function EventSummaryCard({
   const names = event.folders;
 
   return (
-    <Paper style={highlighted ? styles.highlighted : undefined}>
+    <Paper
+      style={[
+        floating ? styles.floating : null,
+        highlighted ? styles.highlighted : null,
+      ]}
+    >
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Détail de ${event.title}`}
@@ -71,6 +86,7 @@ export function EventSummaryCard({
 }
 
 const styles = StyleSheet.create({
+  floating: { ...shadow.plate },
   highlighted: { borderColor: palette.wax, borderWidth: 1.5 },
   body: {
     flexDirection: "row",

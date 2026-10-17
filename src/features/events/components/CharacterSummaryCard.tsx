@@ -4,11 +4,20 @@ import { Paper } from "../../../components/ui";
 import { lifespan } from "../lifespan";
 import type { Character } from "../types";
 import { palette } from "../../../theme/palette";
-import { space } from "../../../theme/tokens";
+import { shadow, space } from "../../../theme/tokens";
 
 export type CharacterSummaryCardProps = {
   person: Character;
   onOpen: () => void;
+  /**
+   * La tuile flotte sur la planche plutôt que de vivre dans une liste.
+   *
+   * Elle y prend une ombre bien plus dense : sur un fond qui change tous les
+   * dix points, rien d'autre ne la détache. Dans une liste, la même ombre
+   * répétée trente fois ferait une page sale — c'est pourquoi c'est la
+   * situation qui la demande, et non la tuile qui la porte toujours.
+   */
+  floating?: boolean;
 };
 
 /**
@@ -26,12 +35,13 @@ export type CharacterSummaryCardProps = {
 export function CharacterSummaryCard({
   person,
   onOpen,
+  floating = false,
 }: CharacterSummaryCardProps) {
   const face = person.photos[0];
   const dates = lifespan(person);
 
   return (
-    <Paper>
+    <Paper style={floating ? styles.floating : undefined}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Détail de ${person.name}`}
@@ -66,6 +76,7 @@ export function CharacterSummaryCard({
 const PORTRAIT = 56;
 
 const styles = StyleSheet.create({
+  floating: { ...shadow.plate },
   // Les mesures de `EventSummaryCard`, au pixel : les deux tuiles se suivent
   // dans la même colonne et toute différence se lirait comme un défaut.
   body: {
