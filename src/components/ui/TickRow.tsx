@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radius.sm,
     borderWidth: 1.5,
-    borderColor: palette.paperDeep,
+    borderColor: palette.border,
     backgroundColor: palette.surfaceRaised,
   },
   boxOn: { backgroundColor: palette.wax, borderColor: palette.waxDeep },

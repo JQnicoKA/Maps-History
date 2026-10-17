@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     backgroundColor: palette.surfaceRaised,
     borderWidth: 1.5,
-    borderColor: palette.paperDeep,
+    borderColor: palette.border,
     ...shadow.lifted,
   },
   menuAbove: { bottom: NODE.height - CARD_TOP + space.sm },
@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
     color: palette.surfaceRaised,
   },
   /** Nothing to offer yet — still there, still pressable, and it says why. */
-  joinEmpty: { backgroundColor: palette.sunken, borderColor: palette.paperDeep },
+  joinEmpty: { backgroundColor: palette.sunken, borderColor: palette.border },
   joinGlyphEmpty: { color: palette.inkFaint },
   // Clipped to the circle by the parent's radius — which is why the portrait
   // is a child of the frame rather than the frame itself.

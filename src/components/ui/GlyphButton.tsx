@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
      * could only suggest.
      */
     borderWidth: 1.5,
-    borderColor: palette.paperDeep,
+    borderColor: palette.border,
     /**
      * Deeper and softer than the app's `shadow.soft`, and cast further down.
      *

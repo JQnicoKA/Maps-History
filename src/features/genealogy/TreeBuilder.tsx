@@ -1169,7 +1169,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderStyle: "dashed",
     borderColor: palette.wax,
-    backgroundColor: palette.paperDeep,
+    backgroundColor: palette.border,
   },
   slot: {
     position: "absolute",

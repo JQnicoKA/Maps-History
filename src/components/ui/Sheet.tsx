@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
     // A hairline along the top edge: the sheet is a sheet of paper laid on
     // the plate, and paper has an edge.
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.paperDeep,
+    borderColor: palette.border,
     ...shadow.lifted,
   },
   /** Both, so the panel neither shrinks below nor grows past the same mark. */

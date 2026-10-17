@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     height: 3,
     borderRadius: radius.pill,
     alignSelf: "center",
-    backgroundColor: palette.paperDeep,
+    backgroundColor: palette.border,
     marginTop: 4,
     paddingHorizontal: space.xl,
     minWidth: 64,

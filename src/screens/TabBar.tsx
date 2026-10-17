@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: palette.surfaceRaised,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: palette.paperDeep,
+    borderTopColor: palette.border,
   },
   tab: {
     flex: 1,

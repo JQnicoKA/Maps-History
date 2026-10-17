@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     // card reads as a sheet of paper rather than a floating rectangle.
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.paperDeep,
+    borderColor: palette.border,
     ...shadow.lifted,
   },
   /** The cross sits level with the title, whatever the title wraps to. */
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     minWidth: 56,
     marginTop: 3,
     borderRadius: radius.pill,
-    backgroundColor: palette.paperDeep,
+    backgroundColor: palette.border,
   },
   hint: { ...type.caption, color: palette.inkSoft, marginTop: space.xs },
   hintCentred: { textAlign: "center" },

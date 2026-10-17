@@ -1359,7 +1359,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: palette.surfaceRaised,
     borderWidth: 1.5,
-    borderColor: palette.paperDeep,
+    borderColor: palette.border,
   },
   /** Wax once it is doing something, so a narrowed list says so. */
   toolOn: { backgroundColor: palette.wax, borderColor: palette.waxDeep },
@@ -1444,7 +1444,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     backgroundColor: palette.surfaceRaised,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.paperDeep,
+    borderColor: palette.border,
     ...shadow.lifted,
   },
   cardHead: { flexDirection: "row", alignItems: "flex-start", gap: space.sm },
@@ -1456,7 +1456,7 @@ const styles = StyleSheet.create({
     width: "42%",
     minWidth: 48,
     borderRadius: radius.pill,
-    backgroundColor: palette.paperDeep,
+    backgroundColor: palette.border,
   },
   cardClose: {
     fontSize: 26,

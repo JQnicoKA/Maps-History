@@ -64,6 +64,27 @@ export const palette = {
   surface: "#FAF6EC",
   surfaceRaised: "#FFFFFF",
 
+  /**
+   * Le bord d'une surface d'interface : un filet de feuille, le pointillé
+   * d'une dalle vide, le liseré d'une case à cocher.
+   *
+   * **Il valait `paperDeep`, et c'était un couplage silencieux.** Ce ton-là
+   * appartient à la planche — il y peint deux nuances de relief — et il
+   * servait en même temps à border la chrome. Éclaircir la carte de vingt
+   * points a donc pâli ces bords au passage, sans que personne l'ait
+   * demandé. Rien n'a cassé cette fois ; la prochaine, un réglage de la
+   * carte redéplacerait encore des traits d'interface.
+   *
+   * La valeur est exactement celle que les bords portaient à l'issue de cet
+   * éclaircissement : rien ne change à l'écran, seule la dépendance est
+   * coupée. Elle est désormais un choix et non un effet de bord.
+   *
+   * `line` est son voisin et reste distinct : plus marqué (1,61 sur le blanc
+   * contre 1,31), il sépare deux choses de même nature — deux rangées d'une
+   * liste — là où celui-ci cerne une surface.
+   */
+  border: "#F1DFB9",
+
   /** Sepia printing ink, from heavy plate lines to faded engraving. */
   ink: "#4A3927",
   inkSoft: "#6E5940",
@@ -118,8 +139,21 @@ export const palette = {
 
   /** Hairlines and dividers: ink at a whisper, for modern chrome. */
   line: "#D8CBAE",
-  /** Recessed surfaces — inputs, tracks, unselected segments. */
-  sunken: "#E3D6B8",
+  /**
+   * Recessed surfaces — inputs, tracks, unselected segments.
+   *
+   * **Éclairci avec les surfaces, et il avait été oublié.** Il valait
+   * `#E3D6B8`, réglé pour creuser un panneau de parchemin : 1,14 contre son
+   * fond, le temps qu'il faut pour voir un champ sans qu'il fasse un trou.
+   * Les panneaux sont passés au blanc et lui n'a pas bougé — le même creux
+   * y pesait 1,44, soit trois fois le pas d'origine, et chaque champ se
+   * lisait comme une tache.
+   *
+   * À 1,24 sur le blanc, le champ se trouve sans se jeter dessus. Il garde
+   * 1,15 contre le fond des pages, ce qui compte autant : un champ ne vit
+   * pas toujours dans une feuille, et à peine plus pâle il y aurait disparu.
+   */
+  sunken: "#F3E6C8",
 
   /**
    * Deletion, and nothing else.

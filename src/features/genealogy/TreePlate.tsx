@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
     /* Une plaque posée sur la page, pas une zone de la page : le liseré la
        détache du parchemin, qui est de la même famille de couleur. */
     borderWidth: 1.5,
-    borderColor: palette.paperDeep,
+    borderColor: palette.border,
     ...shadow.soft,
   },
   /** Encre, comme sur une carte de personnage : c'est le même état. */

@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     width: "38%",
     minWidth: 48,
     borderRadius: radius.pill,
-    backgroundColor: palette.paperDeep,
+    backgroundColor: palette.border,
   },
   said: { ...type.caption, color: palette.inkSoft, marginTop: 2 },
 
