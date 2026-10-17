@@ -163,7 +163,8 @@ export type EventFormModalProps = {
  * se les entendre poser.
  *
  * Les trois sont remontées au `+`, où elles se posent en deux cartes — voir
- * `NewNoteButton`. Ce qui reste ici est ce qu'une feuille sait faire de mieux :
+ * la fourche de l'ancien bouton « + ». Ce qui reste ici est ce qu'une feuille
+ * sait faire de mieux :
  * remplir. Les listes de personnages et d'arbres ont leur propre porte,
  * `PeopleSheet`, parce que consulter n'est pas écrire.
  */
@@ -609,7 +610,7 @@ const styles = StyleSheet.create({
 
   /* La fourche et ses deux voies vivaient ici. Elles sont parties au `+`, où
      elles précèdent l'ouverture de cette feuille au lieu de l'encombrer —
-     voir `NewNoteButton`, qui en a repris les mesures telles quelles. */
+     ces mesures furent un temps partagées avec la fourche du « + ». */
   progress: {
     paddingHorizontal: space.xl,
     paddingBottom: space.lg,

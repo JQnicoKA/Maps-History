@@ -32,7 +32,8 @@ const GRAIN = require("../../../assets/textures/paper-grain.png");
  * peu plus sombre que le reste. Invisible tant que le panneau était nu ; la
  * pose d'un fond lui a donné une référence et la couture s'est vue.
  *
- * Le même piège que les fonds des boutons de `NewNoteButton`, rencontré trois
+ * Le même piège que les fonds des deux carrés de l'ancienne « Nouvelle note »,
+ * rencontré trois
  * fois en un jour : une image en absolu sans dimensions explicites n'est pas
  * dimensionnée par ses bords.
  */

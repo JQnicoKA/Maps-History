@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Dialog, SegmentedControl, TICK, TickRow } from "../../components/ui";
-import { VIEWS, type ScreenView } from "./view";
 import { useEvents } from "../events/EventsProvider";
 import { FolderSelector } from "../events/components/FolderSelector";
 import { formatYear } from "../events/historicalDate";
@@ -22,8 +21,6 @@ export type FilterModalProps = {
   visible: boolean;
   onClose: () => void;
   /** Ce que l'écran montre : la carte, ou la liste des événements. */
-  view: ScreenView;
-  onViewChange: (view: ScreenView) => void;
 };
 
 type LayerProps = {
@@ -70,8 +67,6 @@ function Layer({ title, detail, on, onToggle, children }: LayerProps) {
 export function FilterModal({
   visible,
   onClose,
-  view,
-  onViewChange,
 }: FilterModalProps) {
   const {
     events,
@@ -102,19 +97,13 @@ export function FilterModal({
     >
       {/* Bounded and scrolling: the events card grows with every classeur
           opened, and the whole thing would otherwise run off both ends of
-          the screen. */}
-      {/* Avant les calques, parce qu'elle les gouverne : sur une liste, un
-          territoire n'a nulle part où s'afficher. Hors du défilement, pour
-          rester en vue quand les classeurs allongent la carte des
-          événements. */}
-      <View style={styles.vue}>
-        <SegmentedControl
-          segments={VIEWS}
-          value={view}
-          onChange={onViewChange}
-        />
-      </View>
+          the screen.
 
+          La bascule carte/liste vivait ici, au-dessus des calques, parce
+          qu'elle les gouvernait : sur une liste, un territoire n'avait nulle
+          part où s'afficher. Elle est partie avec la vue liste, devenue un
+          onglet à part entière — et ce panneau ne règle plus qu'une seule
+          chose, la planche. */}
       <ScrollView style={styles.body} contentContainerStyle={styles.content}>
         <Layer
           title="Événements"
@@ -150,54 +139,44 @@ export function FilterModal({
           />
         </Layer>
 
-        {/* Le même calque gouverne les deux vues, mais il ne dit pas la même
-            chose : la carte ne montre que les vivants de l'année lue et que
-            ceux qui ont un point, la liste les recense tous. Compter les uns
-            en parlant de l'autre serait un chiffre faux. */}
+        {/* Ce calque ne parle plus que de la planche : elle ne montre que
+            les vivants de l'année lue, et que ceux à qui l'on a donné un
+            point. La page des personnages, elle, les recense tous et ne
+            dépend d'aucun filtre. */}
         <Layer
           title="Personnages"
           detail={
             !filters.characters
               ? "masqués"
-              : view === "list"
-                ? `${characters.length} dans la liste`
-                : placed === 0
-                  ? "aucun n'est placé sur la carte"
-                  : `${visibleCharacters.length} présent${visibleCharacters.length > 1 ? "s" : ""}${
-                      year === null ? "" : ` en ${formatYear(Math.trunc(year))}`
-                    }`
+              : placed === 0
+                ? "aucun n'est placé sur la carte"
+                : `${visibleCharacters.length} présent${visibleCharacters.length > 1 ? "s" : ""}${
+                    year === null ? "" : ` en ${formatYear(Math.trunc(year))}`
+                  }`
           }
           on={filters.characters}
           onToggle={() => setFilters({ characters: !filters.characters })}
         >
           <Text style={styles.said}>
-            {view === "list"
-              ? "Mêlés aux événements, à la date de leur naissance."
-              : "Chacun se tient à l'endroit où vous l'avez placé, de sa naissance à sa mort."}
+            Chacun se tient à l'endroit où vous l'avez placé, de sa naissance
+            à sa mort.
           </Text>
         </Layer>
 
-        {/* Rien à cocher en vue liste : les frontières se dessinent sur la
-            carte et nulle part ailleurs. Le réglage lui-même n'est pas
-            touché — il retrouve sa valeur en revenant à la carte. */}
-        {view === "map" ? (
-          <Layer
-            title="Territoires"
-            detail={
-              filters.territories ? "les frontières de l'année lue" : "masqués"
-            }
-            on={filters.territories}
-            onToggle={() => setFilters({ territories: !filters.territories })}
-          />
-        ) : null}
+        <Layer
+          title="Territoires"
+          detail={
+            filters.territories ? "les frontières de l'année lue" : "masqués"
+          }
+          on={filters.territories}
+          onToggle={() => setFilters({ territories: !filters.territories })}
+        />
       </ScrollView>
     </Dialog>
   );
 }
 
 const styles = StyleSheet.create({
-  /** Détaché des calques : il change de quoi on parle, eux de ce qu'on voit. */
-  vue: { paddingBottom: space.md },
 
   /** Tall enough for the three cards, short enough to stay a card itself. */
   body: { maxHeight: 420 },

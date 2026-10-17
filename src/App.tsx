@@ -14,7 +14,7 @@ import { HiddenProvider } from "./features/territories/HiddenProvider";
 import { MyPlacesProvider } from "./features/places/MyPlacesProvider";
 import { PlacementProvider } from "./features/placement";
 import { holdMoreTiles } from "./map/cache";
-import { MapScreen } from "./screens/MapScreen";
+import { Shell } from "./screens/Shell";
 import { palette } from "./theme/palette";
 
 export default function App() {
@@ -78,7 +78,7 @@ function Gate() {
           {/* Not keyed on the account: it holds a question in flight, not
               anything belonging to a reader. */}
           <PlacementProvider>
-            <MapScreen />
+            <Shell />
           </PlacementProvider>
         </MyPlacesProvider>
       </HiddenProvider>

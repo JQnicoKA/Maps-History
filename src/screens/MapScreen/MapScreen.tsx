@@ -7,32 +7,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MissingConfigNotice } from "./MissingConfigNotice";
 import { AccountButton } from "./AccountButton";
 import { InkButton, Paper, useNotice } from "../../components/ui";
-import { ParchmentOverlay, WorldMap } from "../../components/WorldMap";
+import { WorldMap } from "../../components/WorldMap";
 import { env } from "../../config/env";
 import { INITIAL_VIEW, MAP_FEATURES } from "../../config/map";
 import { useEvents } from "../../features/events/EventsProvider";
-import type { HistoricalEvent } from "../../features/events/types";
-import {
-  NewNoteButton,
-  type Note,
-} from "../../features/events/components/NewNoteButton";
-import {
-  TreesButton,
-  TreesSheet,
-} from "../../features/events/components/TreesSheet";
-import { EventDetailModal } from "../../features/events/components/EventDetailModal";
-import { EventFormModal } from "../../features/events/components/EventFormModal";
-import { CollectionListView } from "../../features/events/components/CollectionListView";
-import { CharacterDetailModal } from "../../features/events/components/CharacterDetailModal";
-import { CharacterEditModal } from "../../features/events/components/CharacterEditModal";
 import { CharacterMarkers } from "../../features/events/components/CharacterMarkers";
 import { EventMarkers } from "../../features/events/components/EventMarkers";
-import { TreeBuilder } from "../../features/genealogy/TreeBuilder";
 import { EventSummaryCard } from "../../features/events/components/EventSummaryCard";
 import { CharacterSummaryCard } from "../../features/events/components/CharacterSummaryCard";
 import { LocationReticle } from "../../features/events/components/LocationReticle";
 import { FilterButton } from "../../features/filters/FilterButton";
-import type { ScreenView } from "../../features/filters/view";
 import {
   RegionReticle,
   ShapeBar,
@@ -40,12 +24,6 @@ import {
   usePlacement,
   type Point,
 } from "../../features/placement";
-import { Catalogue } from "../../features/community/Catalogue";
-import {
-  CHARACTER_LOOK,
-  EVENT_LOOK,
-  TREE_LOOK,
-} from "../../features/community/looks";
 import {
   PlaceLayers,
   type TouchedPlace,
@@ -73,6 +51,7 @@ import {
 } from "../../features/territories/NamePolityDialog";
 import type { Stroke } from "../../features/territories/drawn";
 import { FRIEZE_HEIGHT, Timeline } from "../../features/timeline/Timeline";
+import type { Page } from "../Pages";
 import { palette } from "../../theme/palette";
 import { space } from "../../theme/tokens";
 
@@ -87,34 +66,30 @@ import { space } from "../../theme/tokens";
  */
 const CREDITS_STRIP = 22;
 
-/**
- * A page open over the map: an event, a person, the form on a person, a tree.
- *
- * One state rather than four flags, because only one is ever up — and four
- * independent flags would have allowed the pairs iOS refuses to present at
- * once. Everything is held by id and looked up as it is drawn, so a page does
- * not go stale behind an edit made on top of it.
- */
-type Page =
-  | { kind: "event"; id: string }
-  | { kind: "person"; id: string }
-  /** `null` invents one. */
-  | { kind: "editPerson"; id: string | null }
-  | { kind: "tree"; id: string }
-  /** The community catalogue, which is about no one row in particular. */
-  | { kind: "searchEvents" }
-  | { kind: "searchCharacters" }
-  | { kind: "searchTrees" }
+export type MapScreenProps = {
   /**
-   * Le catalogue ouvert d'emblée sur une entrée, carte en avant.
+   * Demande qu'une page se lève par-dessus les onglets.
    *
-   * Pour « Voir » : une notification ou le formulaire d'un exemplaire en
-   * retard mène à la version que la bibliothèque a corrigée, et c'est elle
-   * qui porte le bouton de reprise. `of` dit dans quel catalogue chercher.
+   * La carte ne les tient plus : elle en ouvre, comme les trois autres
+   * onglets, et c'est la coquille qui les monte — voir `usePages`.
    */
-  | { kind: "entry"; of: "event" | "character"; id: string };
+  onRaise: (target: Page) => void;
+  /**
+   * Dit à la coquille que le crayon a pris la planche.
+   *
+   * Elle en a besoin pour deux choses qu'elle seule peut faire : effacer la
+   * barre d'onglets, et escamoter l'arbre dessiné s'il y en avait un.
+   */
+  onDrawingChange: (drawing: boolean) => void;
+  /** La hauteur de la barre d'onglets, que la frise doit laisser libre. */
+  bottomInset: number;
+};
 
-export function MapScreen() {
+export function MapScreen({
+  onRaise,
+  onDrawingChange,
+  bottomInset,
+}: MapScreenProps) {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapRef>(null);
   const {
@@ -123,10 +98,6 @@ export function MapScreen() {
     error,
     refresh,
     filters,
-    events,
-    characters,
-    trees,
-    selectEvent,
   } = useEvents();
   const { aiming, asking, place, settle, looking } = usePlacement();
   /**
@@ -150,164 +121,12 @@ export function MapScreen() {
   // The opening shot should not fly across the world; every later move should.
   const hasFramed = useRef(false);
 
-  const [view, setView] = useState<ScreenView>("map");
-  /** La feuille du formulaire d'événement : écrire, ou corriger. */
-  const [composing, setComposing] = useState(false);
-  /**
-   * Combien de fois le `+` a demandé un formulaire vierge, ce qui le clé.
-   *
-   * La feuille ne se vide d'elle-même qu'à « Annuler » et à l'enregistrement.
-   * Quittée en la faisant glisser vers le bas, elle garde ce qui était tapé —
-   * et c'est heureux pour un geste accidentel. Mais `+` veut dire *nouveau* :
-   * compter les demandes change la clé, donc remonte la feuille, donc la
-   * reseme à blanc. Les deux comportements tiennent ensemble.
-   */
-  const [drafts, setDrafts] = useState(0);
-  /** Celle des arbres. */
-  const [peopling, setPeopling] = useState(false);
-  const [editing, setEditing] = useState<HistoricalEvent | null>(null);
   /** True from country zoom on, where the fiefs are worth drawing. */
   const [detailed, setDetailed] = useState(false);
   /** The territory the finger last landed on, if its card is open. */
   const [touched, setTouched] = useState<TouchedTerritory | null>(null);
   /** La ville sur laquelle le doigt est tombé, si sa fiche est ouverte. */
   const [touchedPlace, setTouchedPlace] = useState<TouchedPlace | null>(null);
-  /**
-   * Which page is open, if any.
-   *
-   * They live here, at the top of the screen and never inside one another:
-   * the person form hands the whole screen to the reticle when someone is
-   * placed, and a panel nested in another would be torn down along with it.
-   */
-  const [page, setPage] = useState<Page | null>(null);
-  /**
-   * What to do once the page now leaving is off the screen.
-   *
-   * iOS refuses to present from a controller that is still dismissing, so
-   * every hand-over — a name on an event, an event on a person's page, the
-   * pencil in a list — lowers one page, waits for `onClosed`, and only then
-   * raises the next. Guessing at a delay is what this replaces.
-   */
-  const [next, setNext] = useState<(() => void) | null>(null);
-  /**
-   * Where to go back to when the page now showing closes.
-   *
-   * A destination rather than a flag, because there are two of them: the
-   * trees sheet a page was asked for from, and the tree a page was reached
-   * from. Set once at the start of a journey and honoured at its end, so
-   * reading three people in a row is three taps and not three journeys.
-   *
-   * La feuille du formulaire d'événement n'y figure pas : elle n'ouvre plus
-   * aucune page depuis que la fourche et les listes l'ont quittée.
-   */
-  const [back, setBack] = useState<Page | { sheet: true } | null>(null);
-  /**
-   * How many pages have been raised, which is what keys them.
-   *
-   * Not the subject's id: that falls away the moment a page is dismissed, and
-   * a remount there would tear the sheet out mid-slide — the very thing
-   * `useLingering` holds it together for. Counting the raisings keys a page
-   * on the one event that should re-seed it, and on nothing else.
-   */
-  const [raised, setRaised] = useState(0);
-
-  /** Puts a page up over whatever is showing. */
-  const raise = (target: Page) => {
-    setPage(target);
-    setRaised((count) => count + 1);
-  };
-
-  /**
-   * Lowers the page that is up and does this once it has gone.
-   *
-   * `setNext` is handed a function that *returns* the deed: React would
-   * otherwise call a function given to a setter as an updater.
-   */
-  const after = (deed: () => void) => {
-    setNext(() => deed);
-    setPage(null);
-  };
-
-  /** The same, from the trees sheet, which is what has to go down first. */
-  const afterSheet = (deed: () => void) => {
-    setNext(() => deed);
-    setBack({ sheet: true });
-    setPeopling(false);
-  };
-
-  /** Called by every page and by the trees sheet, once off the screen. */
-  const afterPage = () => {
-    if (next) {
-      const deed = next;
-      setNext(null);
-      deed();
-      return;
-    }
-    if (back === null) return;
-    setBack(null);
-    if ("sheet" in back) {
-      setPeopling(true);
-      return;
-    }
-    raise(back);
-  };
-
-  /**
-   * Takes the drawing off the screen and does this, told which one it was.
-   *
-   * No waiting: the tree is a plain view over the map, so it is gone as soon
-   * as the state says so. The card that asked for this has already finished
-   * leaving — that one *is* a panel, and `TreeBuilder` waits for it.
-   */
-  const leaveTree = (deed: (treeId: string) => void) => {
-    const treeId = page?.kind === "tree" ? page.id : null;
-    if (treeId === null) return;
-    setPage(null);
-    deed(treeId);
-  };
-
-  /** What each page is about, looked up fresh rather than held. */
-  const shownEvent =
-    page?.kind === "event"
-      ? (events.find((one) => one.id === page.id) ?? null)
-      : null;
-  const shownPerson =
-    page?.kind === "person"
-      ? (characters.find((one) => one.id === page.id) ?? null)
-      : null;
-  const edited =
-    page?.kind !== "editPerson"
-      ? null
-      : page.id === null
-        ? ("new" as const)
-        : (characters.find((one) => one.id === page.id) ?? null);
-  /**
-   * L'arbre à dessiner — celui qu'on lit, ou celui qu'on vient de quitter.
-   *
-   * La seconde moitié compte autant que la première. Quitter l'arbre pour une
-   * page suspendait son dessin, et le temps que la modale monte on voyait la
-   * carte derrière : l'impression que l'arbre s'était refermé alors qu'on
-   * allait y revenir.
-   *
-   * Il n'avait pourtant aucune raison de partir. Un arbre est une vue opaque
-   * posée sur la carte, pas une modale ; les pages, elles, en sont, et une
-   * modale se lève par-dessus tout. Le laisser dessiné ne viole donc pas la
-   * règle d'iOS — c'est le `page` unique qui l'escamotait, faute de pouvoir
-   * tenir deux choses à la fois.
-   *
-   * `back` tient exactement l'information manquante : il vaut cet arbre quand
-   * et seulement quand on compte y revenir. Ouvrir *un autre* arbre ne pose
-   * pas de retour, et l'ancien s'efface bien.
-   */
-  const treeId =
-    page?.kind === "tree"
-      ? page.id
-      : back !== null && "kind" in back && back.kind === "tree"
-        ? back.id
-        : null;
-  const shownTree =
-    treeId === null ? null : (trees.find((one) => one.id === treeId) ?? null);
-
   const { draw } = useHidden();
   const { add: addPlace } = useMyPlaces();
   /**
@@ -449,8 +268,8 @@ export function MapScreen() {
    * here rather than at each of the places that start them.
    */
   useEffect(() => {
-    if (aiming || drawing) setView("map");
-  }, [aiming, drawing]);
+    onDrawingChange(drawing);
+  }, [drawing, onDrawingChange]);
 
   // The reticle opens on the reach the filter already had, and on the plate
   // the reader is looking at when it has none.
@@ -478,14 +297,12 @@ export function MapScreen() {
     <View style={styles.screen}>
       <StatusBar style="dark" />
 
-      {/* Both stages stay mounted: unmounting the map would throw away the
-          camera the reader had set up, and reloading its tiles on every switch. */}
-      <View style={[styles.stage, view === "map" ? null : styles.hidden]}>
+      <View style={styles.stage}>
         <WorldMap
           mapRef={mapRef}
           center={center}
           centerAnimationDuration={hasFramed.current ? 650 : 0}
-          attributionOffset={aiming || drawing ? 0 : insets.bottom + 4}
+          attributionOffset={aiming || drawing ? 0 : bottomInset + 4}
           onDetailChange={setDetailed}
           onLook={(centre, zoom) => {
             looking.current = centre;
@@ -535,24 +352,10 @@ export function MapScreen() {
               the finger can see is the one the finger should get. */}
           {drawing ? null : (
             <CharacterMarkers
-              onOpen={(person) => raise({ kind: "person", id: person.id })}
+              onOpen={(person) => onRaise({ kind: "person", id: person.id })}
             />
           )}
         </WorldMap>
-      </View>
-
-      <View style={[styles.stage, view === "list" ? null : styles.hidden]}>
-        <CollectionListView
-          onOpenEvent={() => {
-            if (selectedEvent) raise({ kind: "event", id: selectedEvent.id });
-          }}
-          onOpenPerson={(id) => raise({ kind: "person", id })}
-          contentPadding={{
-            top: insets.top + 62,
-            bottom: insets.bottom + 82,
-          }}
-        />
-        <ParchmentOverlay />
       </View>
 
       {mapDialog}
@@ -641,7 +444,7 @@ export function MapScreen() {
                 onSeeEntry={(of, id) =>
                   // Déjà baissée : `AccountButton` attend son `onClosed`
                   // avant d'appeler ceci.
-                  raise({
+                  onRaise({
                     kind: "entry",
                     of: of === "character" ? "character" : "event",
                     id,
@@ -649,36 +452,18 @@ export function MapScreen() {
                 }
               />
             </View>
-            <FilterButton view={view} onViewChange={setView} />
-            {/* Trois boutons, trois verbes : ajouter une note, ouvrir ce
-                qu'on a déjà, dessiner sur la planche. Ils tenaient autrefois
-                chacun un genre — événements, personnages, territoires — en
-                miroir des trois calques du filtre, et c'était une parenté
-                fausse : on y créait et on y consultait à la fois, dans le même
-                panneau, sans que rien ne dise lequel des deux on faisait. */}
+            <FilterButton />
+            {/* Un seul bouton reste de ce côté, et c'est un verbe : dessiner
+                sur la planche. Les deux autres — ajouter une note, ouvrir ce
+                qu'on a déjà — sont devenus des onglets : ils ne portaient pas
+                sur la carte mais sur la collection, et une carte n'est pas
+                l'endroit où l'on tient l'inventaire de ce qu'on a écrit. */}
             <View style={styles.topRight}>
-              <NewNoteButton
-                onCreate={(what: Note) => {
-                  if (what === "event") {
-                    setEditing(null);
-                    setDrafts((count) => count + 1);
-                    setComposing(true);
-                    return;
-                  }
-                  // Le formulaire d'un personnage est une page et non une
-                  // feuille : placer quelqu'un donne l'écran entier au viseur.
-                  raise({ kind: "editPerson", id: null });
-                }}
-                onSeek={(what: Note) =>
-                  raise({
-                    kind:
-                      what === "event" ? "searchEvents" : "searchCharacters",
-                  })
-                }
-              />
-              <TreesButton onPress={() => setPeopling(true)} />
-              {/* Sous les deux autres, et à part : elles ajoutent à la
-                  collection, celui-ci change la carte qu'on la lit sur. */}
+              {/* Le seul bouton de cette colonne depuis que les deux autres
+                  sont devenus des onglets. Il est resté parce qu'il est le
+                  seul des trois à porter sur la **planche** : les deux autres
+                  ajoutaient à la collection, celui-ci change la carte sur
+                  laquelle on la lit. */}
               {MAP_FEATURES.territories ? (
                 <DrawTerritoryButton
                   onDraw={() => setDrawing(true)}
@@ -693,7 +478,7 @@ export function MapScreen() {
           <View
             style={[
               styles.frieze,
-              { bottom: insets.bottom + CREDITS_STRIP },
+              { bottom: bottomInset + CREDITS_STRIP },
             ]}
           >
             <Timeline />
@@ -704,7 +489,7 @@ export function MapScreen() {
               styles.bottom,
               {
                 bottom:
-                  insets.bottom + CREDITS_STRIP + FRIEZE_HEIGHT + space.sm,
+                  bottomInset + CREDITS_STRIP + FRIEZE_HEIGHT + space.sm,
               },
             ]}
             pointerEvents="box-none"
@@ -726,223 +511,27 @@ export function MapScreen() {
                 un événement, ou quelqu'un. Les flèches s'arrêtent sur les deux
                 depuis qu'elles ne sautent plus les personnages ; sans cette
                 seconde carte, s'arrêter sur quelqu'un n'aurait rien montré. */}
-            {view !== "map" ? null : selectedEvent ? (
+            {selectedEvent ? (
               <EventSummaryCard
                 event={selectedEvent}
-                onOpen={() => raise({ kind: "event", id: selectedEvent.id })}
+                onOpen={() => onRaise({ kind: "event", id: selectedEvent.id })}
               />
             ) : selectedPerson ? (
               <CharacterSummaryCard
                 person={selectedPerson}
-                onOpen={() => raise({ kind: "person", id: selectedPerson.id })}
+                onOpen={() => onRaise({ kind: "person", id: selectedPerson.id })}
               />
             ) : null}
           </View>
         </>
       )}
 
-      <EventFormModal
-        // Remounting re-seeds every field: on the event being edited, or on
-        // the number of blank forms asked for — see `drafts`.
-        key={editing?.id ?? `new-${drafts}`}
-        visible={composing}
-        event={editing}
-        // Descendre d'abord, ouvrir ensuite : `onClosed` lève la fiche une
-        // fois cette feuille réellement partie.
-        onSeeEntry={(id) => {
-          setNext(() => () => raise({ kind: "entry", of: "event", id }));
-          setComposing(false);
-          setEditing(null);
-        }}
-        onClosed={afterPage}
-        onCancel={() => {
-          setComposing(false);
-          setEditing(null);
-        }}
-        onSaved={() => {
-          setComposing(false);
-          setEditing(null);
-        }}
-      />
-
-      {/* Les lignées de la collection. */}
-      <TreesSheet
-        visible={peopling}
-        // Down, then up: the panel is raised by `onClosed`, once this sheet
-        // has actually gone.
-        onOpen={(id) => afterSheet(() => raise({ kind: "tree", id }))}
-        onSeek={() => afterSheet(() => raise({ kind: "searchTrees" }))}
-        onClose={() => setPeopling(false)}
-        onClosed={afterPage}
-      />
-
+      {/* Les deux fiches que la planche elle-même ouvre : ce que le doigt a
+          trouvé dessus. Elles appartiennent à la carte et non à la coquille,
+          puisque rien d'autre qu'une touche sur la planche ne les lève. */}
       <TerritorySheet territory={touched} onClose={() => setTouched(null)} />
 
       <PlaceSheet place={touchedPlace} onClose={() => setTouchedPlace(null)} />
-
-      {/* Someone's page: what a tap asks for, on the plate, on a row, and on
-          a name in an event's cast. Every way in leads here, so a face on the
-          map is a way into the collection and not a dead end. */}
-      <CharacterDetailModal
-        key={`page-${raised}`}
-        person={shownPerson}
-        onEdit={(person) =>
-          after(() => raise({ kind: "editPerson", id: person.id }))
-        }
-        onOpenEvent={(id) =>
-          after(() => {
-            // The map follows what is being read: the frieze, the markers and
-            // the card at the foot of the screen would otherwise all be
-            // showing a different year from the page on top of them.
-            selectEvent(id);
-            raise({ kind: "event", id });
-          })
-        }
-        onOpenTree={(id) => after(() => raise({ kind: "tree", id }))}
-        onClose={() => setPage(null)}
-        onClosed={afterPage}
-      />
-
-      {/* The form, reached by the pencil in the list or "Modifier" on the
-          page. Keyed on the raising, whose details seed its fields. */}
-      <CharacterEditModal
-        key={`form-${raised}`}
-        target={edited}
-        onSeeEntry={(id) =>
-          after(() => raise({ kind: "entry", of: "character", id }))
-        }
-        onClose={() => setPage(null)}
-        onClosed={afterPage}
-      />
-
-      <EventDetailModal
-        key={`event-${raised}`}
-        event={shownEvent}
-        // The sheet hands over the event it has read whole; the form is
-        // never seeded from the summary the map holds.
-        onEdit={(whole) =>
-          after(() => {
-            setEditing(whole);
-            setComposing(true);
-          })
-        }
-        onOpenCharacter={(id) => after(() => raise({ kind: "person", id }))}
-        onClose={() => setPage(null)}
-        onClosed={afterPage}
-      />
-
-      {/* Everybody else's work. A page like the others, at the top of the
-          screen, so what it opens is never a panel inside a panel. */}
-      {/* Les deux mêmes panneaux servent la recherche et le « Voir » d'une
-          entrée corrigée : c'est le même catalogue, ouvert sur la liste ou
-          sur une carte. En monter un second pour cela aurait fait deux
-          exemplaires du même écran à tenir en phase. */}
-      <Catalogue
-        key={`commons-events-${raised}`}
-        kind="event"
-        look={EVENT_LOOK}
-        visible={
-          page?.kind === "searchEvents" ||
-          (page?.kind === "entry" && page.of === "event")
-        }
-        open={page?.kind === "entry" && page.of === "event" ? page.id : null}
-        onClose={() => setPage(null)}
-        onClosed={afterPage}
-      />
-
-      <Catalogue
-        key={`commons-people-${raised}`}
-        kind="character"
-        look={CHARACTER_LOOK}
-        visible={
-          page?.kind === "searchCharacters" ||
-          (page?.kind === "entry" && page.of === "character")
-        }
-        open={
-          page?.kind === "entry" && page.of === "character" ? page.id : null
-        }
-        onClose={() => setPage(null)}
-        onClosed={afterPage}
-      />
-
-      <Catalogue
-        key={`commons-trees-${raised}`}
-        kind="tree"
-        look={TREE_LOOK}
-        visible={page?.kind === "searchTrees"}
-        onClose={() => setPage(null)}
-        onClosed={afterPage}
-      />
-
-      {/* The one drawing, wherever it was asked for: the tree list in the
-          people sheet, or someone's page saying they stand in it. Mounted
-          here because it carries pages of its own, which cannot be panels
-          inside a panel inside a panel. */}
-      <TreeBuilder
-        // Sur l'arbre lui-même, et non sur le compteur de levées : celui-ci
-        // sert à re-semer un *panneau* à chaque fois qu'on le lève, ce qui
-        // n'a pas de sens pour une vue qui doit rester en place pendant
-        // qu'une page la survole. Changer d'arbre remonte le dessin ;
-        // revenir au même le retrouve où on l'avait laissé, panoramique et
-        // échelle compris.
-        key={`tree-${shownTree?.id ?? "none"}`}
-        tree={shownTree}
-        // Le dessin s'ôte quand la carte redevient le contrôle. Sans quoi,
-        // créer quelqu'un depuis un arbre menait à viser un point sur une
-        // carte que l'arbre recouvrait — il fallait fermer l'arbre pour
-        // l'atteindre, ce qui défaisait tout l'intérêt de l'avoir gardé.
-        hidden={aiming || drawing}
-        // L'arbre reste dessiné pendant qu'une page le survole, donc il ne
-        // peut pas savoir seul qu'on lui est revenu. Ceci le lui dit, et il
-        // en profite pour rouvrir la fenêtre d'ajout là où on l'avait
-        // laissée — le détour avait un but, on le reprend où il s'arrêtait.
-        active={page?.kind === "tree"}
-        // A screen rather than a panel, so there is no dismissal to wait for:
-        // it is gone the moment the state says so, and whatever is owed —
-        // the sheet it was opened from, the page it was left for — may be
-        // raised in the same breath.
-        onClose={() => {
-          setPage(null);
-          afterPage();
-        }}
-        // Each of these leaves the tree. The tree is remembered as the way
-        // back, so closing the page it opens brings the drawing up again
-        // where the reader left it.
-        onOpenEvent={(id) =>
-          leaveTree((treeId) => {
-            selectEvent(id);
-            setBack({ kind: "tree", id: treeId });
-            raise({ kind: "event", id });
-          })
-        }
-        onOpenTree={(id) =>
-          // No way back here: the reader asked for another tree, not for a
-          // detour out of this one.
-          leaveTree(() => raise({ kind: "tree", id }))
-        }
-        onEditPerson={(id) =>
-          leaveTree((treeId) => {
-            setBack({ kind: "tree", id: treeId });
-            raise({ kind: "editPerson", id });
-          })
-        }
-        // Les deux portes de la fenêtre « Ajouter à cette génération ». Même
-        // aller-retour que les trois au-dessus : l'arbre se referme, la page
-        // s'ouvre, et refermer la page relève l'arbre là où on l'avait
-        // laissé — avec le nouveau venu désormais dans la liste.
-        onNewPerson={() =>
-          leaveTree((treeId) => {
-            setBack({ kind: "tree", id: treeId });
-            raise({ kind: "editPerson", id: null });
-          })
-        }
-        onSeekPerson={() =>
-          leaveTree((treeId) => {
-            setBack({ kind: "tree", id: treeId });
-            raise({ kind: "searchCharacters" });
-          })
-        }
-      />
     </View>
   );
 }
@@ -958,7 +547,6 @@ const styles = StyleSheet.create({
   topLeft: { position: "absolute", left: 0, top: 0 },
   topRight: { position: "absolute", right: 0, top: 0, gap: space.sm },
   stage: { flex: 1 },
-  hidden: { display: "none" },
   bottom: { position: "absolute", left: 10, right: 10, gap: 8 },
   frieze: { position: "absolute", left: 0, right: 0 },
   errorCard: { padding: space.md, gap: space.sm },

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { FilterModal } from "./FilterModal";
-import type { ScreenView } from "./view";
 import { useEvents } from "../events/EventsProvider";
 import { palette } from "../../theme/palette";
 import { radius, space, TOUCH } from "../../theme/tokens";
@@ -37,12 +36,7 @@ function Funnel() {
  * is actually filtered — a wax dot, because a map showing less than everything
  * should never look like a map showing everything.
  */
-export type FilterButtonProps = {
-  view: ScreenView;
-  onViewChange: (view: ScreenView) => void;
-};
-
-export function FilterButton({ view, onViewChange }: FilterButtonProps) {
+export function FilterButton() {
   const { filters } = useEvents();
   const [open, setOpen] = useState(false);
 
@@ -57,15 +51,13 @@ export function FilterButton({ view, onViewChange }: FilterButtonProps) {
    * the events are off, not which classeur is selected. The popup tells the
    * whole story.
    */
-  // Les calques que cette vue propose réellement. Sur une liste, les
-  // territoires n'en sont pas un : les compter ferait dire « 2 calques » à
-  // une carte qui montre tout ce qu'elle peut montrer.
+  // Les trois calques de la planche. Il y en eut un nombre variable, du
+  // temps où ce bouton servait aussi une vue liste à qui les territoires ne
+  // disaient rien.
   const layers = [
     { on: filters.events, name: "Événements" },
     { on: filters.characters, name: "Personnages" },
-    ...(view === "map"
-      ? [{ on: filters.territories, name: "Territoires" }]
-      : []),
+    { on: filters.territories, name: "Territoires" },
   ];
   const shown = layers
     .filter((layer) => layer.on)
@@ -109,12 +101,7 @@ export function FilterButton({ view, onViewChange }: FilterButtonProps) {
         {filtering ? <View style={styles.dot} /> : null}
       </Pressable>
 
-      <FilterModal
-        visible={open}
-        onClose={() => setOpen(false)}
-        view={view}
-        onViewChange={onViewChange}
-      />
+      <FilterModal visible={open} onClose={() => setOpen(false)} />
     </>
   );
 }
