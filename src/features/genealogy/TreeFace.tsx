@@ -163,10 +163,10 @@ const styles = StyleSheet.create({
     overflow: "visible",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     // Cream, because this ring crosses two grounds: paper above, wax below.
     borderWidth: 3,
-    borderColor: palette.paperLight,
+    borderColor: palette.surfaceRaised,
     ...shadow.soft,
   },
   // Clipped to the circle by the parent's radius — which is why the portrait
@@ -186,13 +186,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 20,
     fontWeight: "700",
-    color: palette.paperLight,
+    color: palette.surfaceRaised,
     textAlign: "center",
   },
   dates: {
     fontSize: 13,
     lineHeight: 16,
-    color: palette.paperLight,
+    color: palette.surfaceRaised,
     opacity: 0.78,
     textAlign: "center",
   },

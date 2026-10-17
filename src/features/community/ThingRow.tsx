@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     gap: space.md,
     padding: space.sm,
     borderRadius: radius.md,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.line,
     ...shadow.soft,
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     lineHeight: 23,
     fontWeight: "700",
-    color: palette.paperLight,
+    color: palette.surfaceRaised,
   },
   taken: { fontSize: 18, color: palette.forest, paddingHorizontal: space.sm },
 });

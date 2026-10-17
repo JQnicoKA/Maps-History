@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: palette.wax,
     borderWidth: 1.5,
-    borderColor: palette.paperLight,
+    borderColor: palette.surfaceRaised,
   },
 
   /** Who you are on the left, what proves it on the right. */

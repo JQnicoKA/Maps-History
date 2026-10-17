@@ -96,7 +96,7 @@ export function TabBar({ value, onChange }: TabBarProps) {
 const styles = StyleSheet.create({
   bar: {
     flexDirection: "row",
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: palette.paperDeep,
   },

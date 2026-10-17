@@ -18,7 +18,7 @@ export function Paper({ style, children, ...props }: ViewProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.line,

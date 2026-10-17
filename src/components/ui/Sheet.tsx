@@ -360,11 +360,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
   },
   panel: {
     maxHeight: "92%",
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     // Clipped, so the grain stops where the rounded corners do rather than
@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
   /** Opaques toutes les deux : voir le commentaire au-dessus du titre. */
   header: {
     paddingBottom: space.xs,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     overflow: "hidden",
   },
   grabZone: { alignItems: "center", paddingTop: space.md, paddingBottom: space.sm },
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
     borderTopColor: palette.line,
     flexDirection: "row",
     gap: space.md,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     overflow: "hidden",
   },
 });

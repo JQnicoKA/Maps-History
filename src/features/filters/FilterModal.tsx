@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     gap: space.md,
     padding: space.md,
     borderRadius: radius.lg,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.line,
     ...shadow.soft,

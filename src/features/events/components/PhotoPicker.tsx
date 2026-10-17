@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: radius.pill,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderWidth: 1.5,
     borderColor: palette.wax,
   },

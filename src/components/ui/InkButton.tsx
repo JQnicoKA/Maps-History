@@ -70,5 +70,5 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.65 },
   disabled: { opacity: 0.4 },
   label: { fontSize: 15, letterSpacing: 0.2, fontWeight: "600" },
-  onSolid: { color: palette.paperLight },
+  onSolid: { color: palette.surfaceRaised },
 });

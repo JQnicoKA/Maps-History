@@ -538,7 +538,7 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: palette.paper },
+  screen: { flex: 1, backgroundColor: palette.surface },
   top: {
     position: "absolute",
     left: 10,

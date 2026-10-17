@@ -79,7 +79,7 @@ export function SharePill({ shared, small = false }: SharePillProps) {
           style={{
             width: size.width,
             height: size.width * RATIO,
-            tintColor: shared ? palette.paperLight : palette.inkFaint,
+            tintColor: shared ? palette.surfaceRaised : palette.inkFaint,
           }}
         />
       </View>

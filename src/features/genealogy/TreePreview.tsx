@@ -123,7 +123,7 @@ export function TreePreview({
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: palette.paper },
+  root: { backgroundColor: palette.surface },
   line: { position: "absolute", backgroundColor: palette.inkSoft },
   holder: { position: "absolute" },
 
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.xl,
     paddingBottom: space.lg,
     gap: space.xs,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: palette.line,
   },
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     gap: space.sm,
     paddingHorizontal: space.xl,
     paddingTop: space.lg,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: palette.line,
     borderTopLeftRadius: radius.xl,

@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   icon: { width: 16, height: 16 },
   /** The chosen one sits proud of the groove, as a card would. */
   active: {
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     shadowColor: "#2A1F12",
     shadowOpacity: 0.1,
     shadowRadius: 4,

@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     gap: space.md,
     padding: space.sm,
     borderRadius: radius.sm,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
   },
   text: { flex: 1, gap: 1 },
   title: { fontSize: 14.5, fontWeight: "700", color: palette.ink },
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: palette.wax,
   },
-  takeLabel: { ...type.legend, fontWeight: "700", color: palette.paperLight },
+  takeLabel: { ...type.legend, fontWeight: "700", color: palette.surfaceRaised },
   already: {
     ...type.legend,
     color: palette.inkFaint,

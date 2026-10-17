@@ -309,6 +309,6 @@ const styles = StyleSheet.create({
     backgroundColor: palette.danger,
   },
   /** Crème sur le rouge : le glyphe est tracé en encre dans sa source. */
-  binGlyph: { width: 17, height: 17, tintColor: palette.paperLight },
+  binGlyph: { width: 17, height: 17, tintColor: palette.surfaceRaised },
   nothing: { ...type.caption, color: palette.inkSoft },
 });

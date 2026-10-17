@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   bar: {
     height: 2.5,
     borderRadius: radius.pill,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
   },
   barWide: { width: 15 },
   barMid: { width: 10 },
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     letterSpacing: 0.2,
-    color: palette.paperLight,
+    color: palette.surfaceRaised,
   },
   /**
    * The one mark left saying something is filtered.
@@ -159,6 +159,6 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: radius.pill,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
   },
 });

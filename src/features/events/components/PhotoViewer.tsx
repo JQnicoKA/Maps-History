@@ -198,7 +198,7 @@ export function PhotoViewer({ photo, onClose }: PhotoViewerProps) {
 
         {loaded ? null : (
           <View pointerEvents="none" style={styles.waiting}>
-            <ActivityIndicator size="large" color={palette.paperLight} />
+            <ActivityIndicator size="large" color={palette.surfaceRaised} />
           </View>
         )}
 
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   closeGlyph: {
     fontSize: 26,
     lineHeight: 30,
-    color: palette.paperLight,
+    color: palette.surfaceRaised,
     marginTop: -2,
   },
   stage: { flex: 1, justifyContent: "center" },
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     padding: MOUNT,
     alignItems: "center",
     borderRadius: radius.xl,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     ...shadow.lifted,
   },
   // Sized exactly, so the rounding belongs to the picture itself. A tighter

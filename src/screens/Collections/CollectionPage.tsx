@@ -98,7 +98,7 @@ export function CollectionPage<T>({
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: palette.paper },
+  page: { flex: 1, backgroundColor: palette.surface },
   /**
    * Le bandeau du titre : posé sur la page, et non découpé dedans.
    *
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: space.lg,
     paddingBottom: space.md,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: palette.line,
     zIndex: 1,

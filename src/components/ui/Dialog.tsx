@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
     gap: space.sm,
     padding: space.xl,
     borderRadius: radius.xl,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     // Clipped so the grain keeps to the rounded corners, and edged so the
     // card reads as a sheet of paper rather than a floating rectangle.
     overflow: "hidden",

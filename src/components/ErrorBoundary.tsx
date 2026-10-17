@@ -80,7 +80,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  screen: { flex: 1, backgroundColor: palette.paper },
+  screen: { flex: 1, backgroundColor: palette.surface },
   body: {
     flexGrow: 1,
     justifyContent: "center",

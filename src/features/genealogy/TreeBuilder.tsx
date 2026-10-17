@@ -1154,7 +1154,7 @@ function Opener({ open, when }: { open: () => void; when: boolean }) {
 const SLOT = 72;
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.paper },
+  root: { flex: 1, backgroundColor: palette.surface },
   /** Hors de vue, toujours en mémoire — voir la propriété `hidden`. */
   away: { display: "none" },
   line: { position: "absolute", backgroundColor: palette.inkSoft },
@@ -1196,7 +1196,7 @@ const styles = StyleSheet.create({
     gap: space.md,
     paddingHorizontal: space.lg,
     paddingBottom: space.sm,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: palette.line,
   },
@@ -1255,7 +1255,7 @@ const styles = StyleSheet.create({
     ...type.plate,
     fontSize: 15,
     lineHeight: 18,
-    color: palette.paperLight,
+    color: palette.surfaceRaised,
   },
 
 });

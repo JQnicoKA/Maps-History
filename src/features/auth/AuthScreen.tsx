@@ -296,7 +296,7 @@ export function AuthScreen() {
 const LOGO_SIZE = 148;
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: palette.paper },
+  screen: { flex: 1, backgroundColor: palette.surface },
   middle: { alignItems: "center", justifyContent: "center", padding: space.xl },
   body: {
     flexGrow: 1,
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     gap: space.lg,
     padding: space.xl,
     borderRadius: radius.xl,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.line,
     ...shadow.soft,
@@ -365,10 +365,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     borderWidth: 1.5,
     borderColor: palette.paperDeep,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
   },
   boxOn: { backgroundColor: palette.wax, borderColor: palette.waxDeep },
-  tick: { fontSize: 14, lineHeight: 16, fontWeight: "900", color: palette.paperLight },
+  tick: { fontSize: 14, lineHeight: 16, fontWeight: "900", color: palette.surfaceRaised },
   dim: { opacity: 0.6 },
   pactText: { ...type.caption, flex: 1, color: palette.inkSoft },
   link: { color: palette.wax, fontWeight: "700", textDecorationLine: "underline" },

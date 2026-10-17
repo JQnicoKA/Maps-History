@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: palette.sunken,
     borderWidth: 3,
-    borderColor: palette.paperLight,
+    borderColor: palette.surfaceRaised,
     shadowColor: palette.ink,
     shadowOpacity: 0.3,
     shadowRadius: 5,

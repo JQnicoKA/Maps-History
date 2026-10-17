@@ -155,7 +155,7 @@ function summarise(tree: Tree): string {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: palette.paper },
+  page: { flex: 1, backgroundColor: palette.surface },
   /** A sprig, for want of a portrait: a tree has no face of its own. */
   glyph: { fontSize: 20, color: palette.inkFaint },
   form: { paddingHorizontal: space.xl, paddingBottom: space.lg },

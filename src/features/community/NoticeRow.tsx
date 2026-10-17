@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.line,
   },

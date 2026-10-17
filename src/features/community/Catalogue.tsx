@@ -1357,14 +1357,14 @@ const styles = StyleSheet.create({
     minHeight: 34,
     paddingHorizontal: space.md,
     borderRadius: radius.pill,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderWidth: 1.5,
     borderColor: palette.paperDeep,
   },
   /** Wax once it is doing something, so a narrowed list says so. */
   toolOn: { backgroundColor: palette.wax, borderColor: palette.waxDeep },
   toolLabel: { ...type.legend, fontWeight: "700", color: palette.ink },
-  toolLabelOn: { color: palette.paperLight },
+  toolLabelOn: { color: palette.surfaceRaised },
   toolMore: { ...type.legend, color: palette.inkFaint },
 
   /** The drawing, over everything the sheet holds. */
@@ -1410,7 +1410,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 5,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
   },
 
   over: {
@@ -1442,7 +1442,7 @@ const styles = StyleSheet.create({
     gap: space.md,
     padding: space.lg,
     borderRadius: radius.xl,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.paperDeep,
     ...shadow.lifted,
@@ -1491,8 +1491,8 @@ const styles = StyleSheet.create({
   choiceText: { flex: 1, gap: 2 },
   choiceTitle: { fontSize: 15.5, fontWeight: "700", color: palette.ink },
   choiceWhy: { ...type.caption, color: palette.inkSoft },
-  onWax: { color: palette.paperLight },
-  onWaxSoft: { color: palette.paperLight, opacity: 0.78 },
+  onWax: { color: palette.surfaceRaised },
+  onWaxSoft: { color: palette.surfaceRaised, opacity: 0.78 },
 
   /** A rule between the two questions, drawn rather than ruled across. */
   siftRule: {
@@ -1555,7 +1555,7 @@ const styles = StyleSheet.create({
   },
   reasonOn: { backgroundColor: palette.wax },
   reasonLabel: { fontSize: 15, fontWeight: "600", color: palette.ink },
-  reasonLabelOn: { color: palette.paperLight },
+  reasonLabelOn: { color: palette.surfaceRaised },
 
   aside: { ...type.caption, color: palette.inkFaint },
 });

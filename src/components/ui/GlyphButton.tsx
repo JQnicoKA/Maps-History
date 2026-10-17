@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   button: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderRadius: radius.pill,
     /**
      * A drawn edge, not a hairline.

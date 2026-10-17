@@ -124,7 +124,7 @@ export function NewPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: palette.paper },
+  screen: { flex: 1, backgroundColor: palette.surface },
   body: {
     flexGrow: 1,
     justifyContent: "center",
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     gap: space.lg,
     padding: space.xl,
     borderRadius: radius.xl,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.line,
     ...shadow.soft,

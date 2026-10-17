@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     gap: space.sm,
     paddingHorizontal: space.lg,
     paddingTop: space.md,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: palette.line,
     ...shadow.lifted,

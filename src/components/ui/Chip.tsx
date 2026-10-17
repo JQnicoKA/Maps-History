@@ -71,5 +71,5 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.65 },
   label: { fontSize: 14, color: palette.inkSoft, fontWeight: "500" },
   /** Le crème des deux fonds pleins : la cire et l'encre le portent aussi bien. */
-  filledLabel: { color: palette.paperLight },
+  filledLabel: { color: palette.surfaceRaised },
 });

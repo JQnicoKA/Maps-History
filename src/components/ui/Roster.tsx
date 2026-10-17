@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: palette.paperDeep,
   },
-  plusGlyph: { fontSize: 25, lineHeight: 29, color: palette.paperLight },
+  plusGlyph: { fontSize: 25, lineHeight: 29, color: palette.surfaceRaised },
   addLabel: { flex: 1, fontSize: 15, fontWeight: "600", color: palette.inkSoft },
 
   /**
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
     minHeight: THUMB + 2 * space.sm,
     padding: space.sm,
     borderRadius: radius.md,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.line,
     ...shadow.soft,
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: palette.sunken,
     borderWidth: 3,
-    borderColor: palette.paperLight,
+    borderColor: palette.surfaceRaised,
     ...shadow.soft,
   },
   text: { flex: 1, gap: 2 },

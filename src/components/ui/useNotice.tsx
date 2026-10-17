@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     ...type.plate,
     fontSize: 17,
     lineHeight: 21,
-    color: palette.paperLight,
+    color: palette.surfaceRaised,
   },
   reason: { ...type.body, flex: 1, color: palette.ink },
 });

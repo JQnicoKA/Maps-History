@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: space.md,
     borderRadius: radius.lg,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     /* Une plaque posée sur la page, pas une zone de la page : le liseré la
        détache du parchemin, qui est de la même famille de couleur. */
     borderWidth: 1.5,

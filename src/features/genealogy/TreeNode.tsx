@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     gap: space.sm,
     padding: space.md,
     borderRadius: radius.lg,
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderWidth: 1.5,
     borderColor: palette.paperDeep,
     ...shadow.lifted,
@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
   choiceOn: { backgroundColor: palette.wax },
   choicePressed: { opacity: 0.6 },
   choiceLabel: { fontSize: 12, fontWeight: "700", color: palette.inkSoft },
-  choiceLabelOn: { color: palette.paperLight },
+  choiceLabelOn: { color: palette.surfaceRaised },
   remove: { alignItems: "center", paddingVertical: 5 },
   removeLabel: { fontSize: 12, fontWeight: "600", color: palette.danger },
 
@@ -481,7 +481,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: palette.wax,
     borderWidth: 2,
-    borderColor: palette.paperLight,
+    borderColor: palette.surfaceRaised,
     ...shadow.soft,
   },
   /** On the axis the faces hang from, which is where a marriage bar runs. */
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     lineHeight: 23,
     fontWeight: "700",
-    color: palette.paperLight,
+    color: palette.surfaceRaised,
   },
   /** Nothing to offer yet — still there, still pressable, and it says why. */
   joinEmpty: { backgroundColor: palette.sunken, borderColor: palette.paperDeep },

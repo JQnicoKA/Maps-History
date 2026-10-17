@@ -105,7 +105,7 @@ export function Shell() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: palette.paper },
+  screen: { flex: 1, backgroundColor: palette.surface },
   stage: { flex: 1 },
   /**
    * Masqué, et non démonté — voir le commentaire du composant.

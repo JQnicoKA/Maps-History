@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   },
   /** Choisi : le papier clair et le liseré de cire, comme partout ailleurs. */
   blockOn: {
-    backgroundColor: palette.paperLight,
+    backgroundColor: palette.surfaceRaised,
     borderColor: palette.wax,
   },
   pressed: { opacity: 0.6 },
