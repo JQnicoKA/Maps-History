@@ -6,6 +6,28 @@ export const palette = {
   /**
    * Land base — the parchment the map is printed on.
    *
+   * **La planche a été éclaircie de vingt points par canal**, le jour où
+   * l'interface est passée au blanc : à côté d'elle, le parchemin tirait au
+   * brun. Douze d'abord, puis huit de plus. Un décalage additif et non une fraction vers le blanc, parce qu'il
+   * **préserve les écarts** — le désert se détache de la terre exactement
+   * comme avant (1,072 contre 1,069), tandis qu'un éclaircissement
+   * proportionnel les aurait tous resserrés et aurait fondu le sable dans le
+   * sol.
+   *
+   * Seules les **surfaces** ont monté : les fonds, les lavis, l'eau, la
+   * lumière du relief et les neuf teintes de territoire. L'encre, les
+   * rivières, l'ombre du relief et le liseré des frontières n'ont pas
+   * bougé — on éclaircit le papier, pas le dessin, et la lisibilité y gagne
+   * (l'encre sur la terre passe de 7,8:1 à 8,8:1).
+   *
+   * Plusieurs tons ont pris moins que leur dû, faute de place avant le
+   * blanc : écrêter un canal aurait déplacé la teinte au lieu de
+   * l'éclaircir. `ice` et `reliefHighlight` sont au plafond, et `sand` n'a
+   * pris que six points au second passage — c'est tout le prix de ce
+   * réglage, et il se paie sur le désert, qui se détache un peu moins de la
+   * terre nue (1,07 à 1,05). Le sable *est* de la terre nue ; la forêt et la
+   * mer, qui portent la structure de la planche, n'ont rien perdu.
+   *
    * **Ces trois-là appartiennent à la planche**, et plus à l'interface. Ils
    * peignent le fond de terre, le halo des étiquettes et les deux nuances de
    * relief ; la chrome, elle, a pris `surface` et `surfaceRaised`.
@@ -17,9 +39,9 @@ export const palette = {
    * aurait porté un liseré blanc pur sur du sépia. Une carte ancienne et une
    * interface contemporaine ne veulent pas le même blanc.
    */
-  paper: "#E7D8B8",
-  paperLight: "#F0E4CA",
-  paperDeep: "#DDCBA5",
+  paper: "#FBECCC",
+  paperLight: "#FFF3D9",
+  paperDeep: "#F1DFB9",
 
   /**
    * Les deux surfaces de l'interface, et rien de la carte.
@@ -48,21 +70,21 @@ export const palette = {
   inkFaint: "#8C7A5F",
 
   /** Hand-applied washes over the base colour. */
-  forest: "#C9BC90",
-  scrub: "#DCCFA3",
-  sand: "#EDE0BC",
-  ice: "#F4EFE2",
-  wetland: "#C6C3A0",
+  forest: "#DDD0A4",
+  scrub: "#F0E3B7",
+  sand: "#FFF2CE",
+  ice: "#FFFAED",
+  wetland: "#DAD7B4",
 
   /** Hydrography. */
-  ocean: "#A9C0C2",
-  oceanDeep: "#8CA9AD",
-  lake: "#B3C8C9",
+  ocean: "#BDD4D6",
+  oceanDeep: "#A0BDC1",
+  lake: "#C7DCDD",
   river: "#7F9DA1",
   waterInk: "#5C787D",
 
   /** Relief shading. */
-  reliefHighlight: "#FBF3DF",
+  reliefHighlight: "#FFF7E3",
   reliefShadow: "#7A6242",
 
   /** Border wash printed under the plate line. */
@@ -83,15 +105,15 @@ export const palette = {
    * other eight left between slate and mauve.
    */
   washes: [
-    "#B0885E", // terre cuite
-    "#8FA07A", // vert-de-gris
-    "#A8807E", // vieux rose
-    "#7E9098", // bleu ardoise
-    "#B39A63", // ocre
-    "#94867F", // taupe
-    "#7F8F6E", // olive
-    "#A78A96", // mauve
-    "#8E8EAE", // pervenche
+    "#C49C72", // terre cuite
+    "#A3B48E", // vert-de-gris
+    "#BC9492", // vieux rose
+    "#92A4AC", // bleu ardoise
+    "#C7AE77", // ocre
+    "#A89A93", // taupe
+    "#93A382", // olive
+    "#BB9EAA", // mauve
+    "#A2A2C2", // pervenche
   ],
 
   /** Hairlines and dividers: ink at a whisper, for modern chrome. */

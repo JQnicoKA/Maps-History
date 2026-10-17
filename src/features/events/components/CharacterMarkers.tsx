@@ -3,13 +3,6 @@ import { Marker } from "@maplibre/maplibre-react-native";
 import { CharacterMarker } from "./CharacterMarker";
 import { useEvents } from "../EventsProvider";
 import { placeOfPerson } from "../lifespan";
-import type { Character } from "../types";
-
-export type CharacterMarkersProps = {
-  /** Opens someone's card. */
-  onOpen: (person: Character) => void;
-};
-
 /**
  * Everyone alive in the year the reader is looking at.
  *
@@ -19,9 +12,20 @@ export type CharacterMarkersProps = {
  * alive in any one year are a handful, and leaving one out would be leaving
  * out the answer to "who was around then" — which is the whole question this
  * layer is here to answer.
+ *
+ * **Une touche sélectionne, elle n'ouvre pas** — et c'est maintenant le même
+ * geste que sur un événement. Elle levait la fiche du personnage d'emblée,
+ * là où un marqueur d'événement pose d'abord sa tuile au pied de la planche
+ * et laisse la fiche à une seconde touche. Deux marqueurs voisins qui ne
+ * répondent pas pareil au même doigt, c'est une grammaire à apprendre deux
+ * fois ; et la première touche est souvent une question — *qui est-ce ?* —
+ * à laquelle la tuile répond sans couvrir la carte.
+ *
+ * `selectEvent` prend l'un comme l'autre : un identifiant est un
+ * identifiant, et la frise s'arrête déjà sur les deux.
  */
-export function CharacterMarkers({ onOpen }: CharacterMarkersProps) {
-  const { visibleCharacters } = useEvents();
+export function CharacterMarkers() {
+  const { visibleCharacters, selectEvent } = useEvents();
 
   return (
     <>
@@ -34,7 +38,10 @@ export function CharacterMarkers({ onOpen }: CharacterMarkersProps) {
           <Marker
             key={person.id}
             lngLat={[at.longitude, at.latitude]}>
-            <CharacterMarker person={person} onPress={() => onOpen(person)} />
+            <CharacterMarker
+              person={person}
+              onPress={() => selectEvent(person.id)}
+            />
           </Marker>
         );
       })}

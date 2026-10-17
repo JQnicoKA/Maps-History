@@ -352,11 +352,7 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
           {drawing ? null : <EventMarkers />}
           {/* People last, so a cameo is never buried under a locket: the one
               the finger can see is the one the finger should get. */}
-          {drawing ? null : (
-            <CharacterMarkers
-              onOpen={(person) => onRaise({ kind: "person", id: person.id })}
-            />
-          )}
+          {drawing ? null : <CharacterMarkers />}
         </WorldMap>
       </View>
 
