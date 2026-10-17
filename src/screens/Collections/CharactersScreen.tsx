@@ -42,11 +42,8 @@ export function CharactersScreen({
   return (
     <CollectionPage
       title="Personnages"
-      count={
-        characters.length === 0
-          ? "Aucun personnage"
-          : `${characters.length} personnage${characters.length > 1 ? "s" : ""}`
-      }
+      owned="Vos personnages"
+      count={characters.length}
       seekLabel="Rechercher un personnage"
       onSeek={onSeek}
       addLabel="Créer un personnage"

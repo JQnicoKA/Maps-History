@@ -9,8 +9,17 @@ import { shadow, space, type } from "../../theme/tokens";
 export type CollectionPageProps<T> = {
   /** Le nom de la page, en tête : « Événements », « Personnages », « Arbres ». */
   title: string;
-  /** « 3 arbres », « Aucun personnage » — le compte, dit en mots. */
-  count: string;
+  /**
+   * Le titre de la liste elle-même : « Vos événements », « Vos arbres ».
+   *
+   * Rendu avec son compte entre parenthèses, et posé **sous** les deux
+   * portes plutôt qu'au-dessus. Le compte vivait seul en haut de page, en
+   * petites capitales sous le titre, et il y annonçait une liste qu'on ne
+   * voyait pas encore — deux écrans de boutons plus haut qu'elle. Ici il est
+   * ce qu'il a toujours été : l'en-tête de la liste.
+   */
+  owned: string;
+  count: number;
   /** La porte du catalogue de la bibliothèque. */
   seekLabel: string;
   onSeek: () => void;
@@ -50,6 +59,7 @@ export type CollectionPageProps<T> = {
  */
 export function CollectionPage<T>({
   title,
+  owned,
   count,
   seekLabel,
   onSeek,
@@ -84,9 +94,11 @@ export function CollectionPage<T>({
         ]}
         ListHeaderComponent={
           <View style={styles.head}>
-            <Text style={styles.count}>{count}</Text>
             <SeekRow label={seekLabel} onPress={onSeek} />
             <AddSlot label={addLabel} onPress={onAdd} />
+            <Text style={styles.owned}>
+              {owned} <Text style={styles.count}>({count})</Text>
+            </Text>
           </View>
         }
         renderItem={({ item }) => row(item)}
@@ -132,7 +144,28 @@ const styles = StyleSheet.create({
   body: { paddingHorizontal: space.lg },
   /** L'écart entre la tête de liste et la première rangée est celui des rangées. */
   head: { gap: space.md, paddingBottom: space.md },
-  count: { ...type.legend, color: palette.inkSoft, alignSelf: "center" },
+  /**
+   * L'en-tête de la liste, aligné à gauche où l'œil commence sa colonne.
+   *
+   * Un peu d'air au-dessus : il ferme la série des deux portes et ouvre
+   * celle des rangées, et sans cela les trois se liraient comme une seule
+   * pile de quatre choses.
+   */
+  owned: {
+    ...type.heading,
+    fontWeight: "700",
+    color: palette.ink,
+    paddingTop: space.sm,
+  },
+  /**
+   * Le compte, en encre plus pâle : c'est une précision, pas le titre.
+   *
+   * Il ne redit pas la graisse, il l'hérite — `type.heading` ne nomme pas de
+   * `fontWeight`, donc ce style-ci n'en impose aucun et le gras du parent
+   * passe au travers. Seule la couleur change, ce qui est tout ce qu'on
+   * voulait.
+   */
+  count: { ...type.heading, color: palette.inkFaint },
   gap: { height: space.sm },
   empty: {
     ...type.body,

@@ -48,11 +48,8 @@ export function EventsScreen({
   return (
     <CollectionPage
       title="Événements"
-      count={
-        events.length === 0
-          ? "Aucun événement"
-          : `${events.length} événement${events.length > 1 ? "s" : ""}`
-      }
+      owned="Vos événements"
+      count={events.length}
       seekLabel="Rechercher un événement"
       onSeek={onSeek}
       addLabel="Créer un événement"

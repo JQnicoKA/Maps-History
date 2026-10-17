@@ -69,11 +69,8 @@ export function TreesScreen({ onOpen, onSeek }: TreesScreenProps) {
 
       <CollectionPage
         title="Arbres"
-        count={
-          trees.length === 0
-            ? "Aucun arbre"
-            : `${trees.length} arbre${trees.length > 1 ? "s" : ""}`
-        }
+        owned="Vos arbres"
+        count={trees.length}
         seekLabel="Rechercher un arbre"
         onSeek={onSeek}
         addLabel="Créer un arbre"
