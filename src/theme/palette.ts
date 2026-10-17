@@ -152,8 +152,18 @@ export const palette = {
    * À 1,24 sur le blanc, le champ se trouve sans se jeter dessus. Il garde
    * 1,15 contre le fond des pages, ce qui compte autant : un champ ne vit
    * pas toujours dans une feuille, et à peine plus pâle il y aurait disparu.
+   *
+   * **Puis il a été désaturé, à clarté rigoureusement égale.** Éclairci, il
+   * valait `#F3E6C8` et paraissait jaune : à cette hauteur, 43 points
+   * d'écart entre le rouge et le bleu ne se lisent plus comme du parchemin
+   * mais comme une couleur. Le fond des pages n'en a que 14. Celui-ci en a
+   * 15 — la même température que ce sur quoi il se pose, simplement un cran
+   * plus sombre, ce qui est tout ce qu'un creux doit être.
+   *
+   * La profondeur est inchangée : désaturer ne touche pas à la luminance,
+   * et les deux rapports valent au point près ce qu'ils valaient.
    */
-  sunken: "#F3E6C8",
+  sunken: "#EBE7DC",
 
   /**
    * Deletion, and nothing else.
