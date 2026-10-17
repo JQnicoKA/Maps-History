@@ -280,6 +280,20 @@ const styles = StyleSheet.create({
    * is a gap in the page rather than a thing on it, and the difference is
    * what makes it read as an invitation.
    */
+  /**
+   * La dalle vide, en cire elle aussi — mais en pointillé.
+   *
+   * Elle était cernée d'un filet de bord et portait un carré de la même
+   * teinte : sur un fond devenu presque blanc, le pointillé pesait 1,22 et
+   * le `+` **blanc sur un carré pâle** valait 1,31 — il avait tout
+   * simplement disparu. La porte la moins visible de la page était celle qui
+   * sert à écrire.
+   *
+   * Elle prend donc la cire, comme sa voisine, et c'est le **trait** qui les
+   * sépare désormais : plein pour un lieu qui existe déjà, pointillé pour
+   * une place qu'on va remplir. Les deux se voient, et elles ne disent
+   * toujours pas la même chose.
+   */
   add: {
     flexDirection: "row",
     alignItems: "center",
@@ -288,27 +302,44 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: palette.border,
+    borderColor: palette.wax,
   },
+  /**
+   * Le carré du `+`, plein, en écho à la loupe blanche de la porte voisine.
+   *
+   * C'est le seul aplat de cire de cette rangée : il donne au geste un point
+   * d'appui sans que la dalle entière pèse autant que la porte pleine.
+   */
   plus: {
     width: THUMB,
     height: THUMB,
     borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: palette.border,
+    backgroundColor: palette.wax,
   },
   plusGlyph: { fontSize: 25, lineHeight: 29, color: palette.surfaceRaised },
-  addLabel: { flex: 1, fontSize: 15, fontWeight: "600", color: palette.inkSoft },
+  /** En cire et au même poids que « Rechercher » : deux portes, deux mots. */
+  addLabel: { flex: 1, fontSize: 15, fontWeight: "700", color: palette.wax },
 
   /**
    * The other way to fill a list.
    *
    * In wax rather than dashed: the slot above is an empty space waiting to be
-   * filled, this is a door to somewhere that is already full. Both sat at a
-   * slight angle until someone read it as misalignment rather than as a hand
-   * — the tilt stays on the rows below, where a leaning card reads as a
-   * photograph stuck on a page; on a button it read as a defect.
+   * filled, this is a door to somewhere that is already full.
+   *
+   * **Pleine, et plus seulement cernée.** Elle n'était qu'un contour de cire
+   * sur du papier, du temps où le papier était du parchemin : le contraste
+   * suffisait. Les surfaces ont passé au blanc et un simple filet y pesait
+   * moins qu'avant, alors que c'est la porte la plus utile de la page —
+   * celle qui mène à ce qui existe déjà, et qui évite le doublon que toute
+   * la bibliothèque est faite pour prévenir. Elle est donc en cire pleine,
+   * et la dalle de création garde son pointillé : l'une est un lieu, l'autre
+   * une place vide.
+   *
+   * Le bord reste, en cire sombre : c'est le bord taillé des objets de cire
+   * de cette application — voir `GlyphButton` — et il donne au rectangle une
+   * épaisseur que l'aplat seul ne suggère pas.
    */
   seek: {
     flexDirection: "row",
@@ -317,8 +348,9 @@ const styles = StyleSheet.create({
     padding: space.sm,
     paddingRight: space.md,
     borderRadius: radius.lg,
+    backgroundColor: palette.wax,
     borderWidth: 1.5,
-    borderColor: palette.wax,
+    borderColor: palette.waxDeep,
   },
   /** A lens, drawn: a ring and a handle. */
   lens: {
@@ -332,7 +364,7 @@ const styles = StyleSheet.create({
     height: GLASS,
     borderRadius: GLASS / 2,
     borderWidth: STROKE,
-    borderColor: palette.wax,
+    borderColor: palette.surfaceRaised,
   },
   /**
    * Two points inside the ring's own corner, so the handle starts *under* the
@@ -351,13 +383,26 @@ const styles = StyleSheet.create({
     width: 9,
     height: STROKE,
     borderRadius: radius.pill,
-    backgroundColor: palette.wax,
+    backgroundColor: palette.surfaceRaised,
     transform: [{ rotate: "45deg" }],
   },
   seekText: { flex: 1, gap: 2 },
-  seekLabel: { fontSize: 15, fontWeight: "700", color: palette.wax },
-  seekDetail: { ...type.caption, color: palette.inkSoft },
-  seekMore: { fontSize: 18, lineHeight: 20, color: palette.wax },
+  /** Blanc sur la cire : 7,6:1, et le mot porte le poids de la porte. */
+  seekLabel: { fontSize: 15, fontWeight: "700", color: palette.surfaceRaised },
+  /**
+   * La seconde ligne, voilée plutôt qu'en encre pâle.
+   *
+   * Elle était en `inkSoft`, ce qui marchait sur du papier et disparaît sur
+   * la cire. Du blanc à quatre-vingts pour cent la met un cran sous le
+   * libellé sans lui donner une couleur à elle, ce qui ferait trois tons sur
+   * un objet qui n'en veut qu'un.
+   */
+  seekDetail: { ...type.caption, color: "rgba(255, 255, 255, 0.8)" },
+  seekMore: {
+    fontSize: 18,
+    lineHeight: 20,
+    color: "rgba(255, 255, 255, 0.8)",
+  },
 
   /** A card stuck on the page: white paper, a soft shadow, square corners. */
   row: {
