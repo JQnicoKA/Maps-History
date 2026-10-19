@@ -3,6 +3,7 @@ import { FlatList, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AddSlot, SeekRow } from "../../components/ui";
+import { ProfileButton } from "../Account/ProfileButton";
 import { palette } from "../../theme/palette";
 import { shadow, space, type } from "../../theme/tokens";
 
@@ -31,6 +32,15 @@ export type CollectionPageProps<T> = {
   row: (one: T) => ReactElement;
   /** Ce qui s'affiche à la place des rangées quand il n'y en a aucune. */
   empty: string;
+  /**
+   * La porte du compte, au bord du bandeau.
+   *
+   * Elle est ici et non sur la carte, qui n'a plus de bouton de compte : un
+   * compte n'est pas une chose de la planche, et le bandeau de ces trois
+   * pages est le seul endroit fixe que l'application ait.
+   */
+  unread: number;
+  onProfile: () => void;
 };
 
 /**
@@ -69,6 +79,8 @@ export function CollectionPage<T>({
   keyOf,
   row,
   empty,
+  unread,
+  onProfile,
 }: CollectionPageProps<T>) {
   const insets = useSafeAreaInsets();
 
@@ -78,6 +90,18 @@ export function CollectionPage<T>({
         <Text style={styles.title} numberOfLines={1}>
           {title}
         </Text>
+        {/* Posée en absolu, du haut du titre à son bas : le titre reste
+            centré sur la page et non sur ce que la porte lui laisse, et le
+            glyphe se centre sur la bande du titre plutôt que de pendre à
+            son bord haut. */}
+        <View
+          style={[
+            styles.profile,
+            { top: insets.top + space.sm, bottom: space.md },
+          ]}
+        >
+          <ProfileButton unread={unread} onPress={onProfile} />
+        </View>
       </View>
 
       <FlatList
@@ -141,6 +165,7 @@ const styles = StyleSheet.create({
    * fait deux traits pour une seule séparation.
    */
   title: { ...type.plate, color: palette.ink, textAlign: "center" },
+  profile: { position: "absolute", right: space.md, justifyContent: "center" },
   body: { paddingHorizontal: space.lg },
   /** L'écart entre la tête de liste et la première rangée est celui des rangées. */
   head: { gap: space.md, paddingBottom: space.md },

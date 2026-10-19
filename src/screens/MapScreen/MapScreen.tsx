@@ -5,7 +5,6 @@ import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MissingConfigNotice } from "./MissingConfigNotice";
-import { AccountButton } from "./AccountButton";
 import { InkButton, Paper, useNotice } from "../../components/ui";
 import { WorldMap } from "../../components/WorldMap";
 import { env } from "../../config/env";
@@ -437,9 +436,6 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
             style={[styles.top, { top: insets.top + 8 }]}
             pointerEvents="box-none"
           >
-            <View style={styles.topLeft}>
-              <AccountButton onPress={() => onRaise({ kind: "account" })} />
-            </View>
             <FilterButton />
             {/* Un seul bouton reste de ce côté, et c'est un verbe : dessiner
                 sur la planche. Les deux autres — ajouter une note, ouvrir ce
@@ -533,7 +529,6 @@ const styles = StyleSheet.create({
     right: 10,
     alignItems: "center",
   },
-  topLeft: { position: "absolute", left: 0, top: 0 },
   topRight: { position: "absolute", right: 0, top: 0, gap: space.sm },
   stage: { flex: 1 },
   bottom: { position: "absolute", left: 10, right: 10, gap: 8 },

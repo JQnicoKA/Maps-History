@@ -20,6 +20,9 @@ export type TreesScreenProps = {
   onOpen: (id: string) => void;
   /** Demande le catalogue de la bibliothèque, côté arbres. */
   onSeek: () => void;
+  /** La porte du compte, au bord du bandeau — voir `CollectionPage`. */
+  unread: number;
+  onProfile: () => void;
 };
 
 /**
@@ -35,7 +38,7 @@ export type TreesScreenProps = {
  * donc il appartient au sommet de l'application, là où rien de ce qu'il ouvre
  * n'a besoin d'être un panneau dans un panneau.
  */
-export function TreesScreen({ onOpen, onSeek }: TreesScreenProps) {
+export function TreesScreen({ onOpen, onSeek, unread, onProfile }: TreesScreenProps) {
   const { trees, characters, addTree } = useEvents();
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
@@ -96,6 +99,8 @@ export function TreesScreen({ onOpen, onSeek }: TreesScreenProps) {
             ? "Créez d'abord des personnages : un arbre se bâtit avec eux."
             : "Aucun arbre pour l'instant. Un arbre relie vos personnages entre eux, génération par génération."
         }
+        unread={unread}
+        onProfile={onProfile}
       />
 
       <Sheet

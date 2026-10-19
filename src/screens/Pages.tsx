@@ -14,6 +14,7 @@ import { useEvents } from "../features/events/EventsProvider";
 import type { HistoricalEvent } from "../features/events/types";
 import { TreeBuilder } from "../features/genealogy/TreeBuilder";
 import { AccountScreen } from "./Account/AccountScreen";
+import type { useNotices } from "../features/community/NoticeList";
 import { usePlacement } from "../features/placement";
 
 /**
@@ -73,7 +74,20 @@ export type PagesHandle = {
  * le crayon d'une liste — baisse une page, attend son `onClosed`, et lève la
  * suivante seulement après. Deviner un délai est ce que cela remplace.
  */
-export function usePages({ drawing }: { drawing: boolean }): PagesHandle {
+export function usePages({
+  drawing,
+  notices,
+}: {
+  drawing: boolean;
+  /**
+   * Les notifications, lues une fois par la coquille — voir `Shell`.
+   *
+   * Passées plutôt que relues : la page du compte est la seule à pouvoir les
+   * effacer, et la porte qui l'ouvre, dans les bandeaux, doit en montrer le
+   * compte dans le même souffle.
+   */
+  notices: ReturnType<typeof useNotices>;
+}): PagesHandle {
   const { events, characters, trees, selectEvent } = useEvents();
   const { aiming } = usePlacement();
 
@@ -292,6 +306,8 @@ export function usePages({ drawing }: { drawing: boolean }): PagesHandle {
         />
 
         <AccountScreen
+          notices={notices.notices}
+          onNoticesChanged={() => void notices.reload()}
           visible={page?.kind === "account"}
           onClose={() => {
             setPage(null);

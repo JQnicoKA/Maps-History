@@ -16,7 +16,8 @@ import {
   Sheet,
 } from "../../components/ui";
 import { isStrong, PasswordMeter, useAuth } from "../../features/auth";
-import { NoticeList, useNotices } from "../../features/community/NoticeList";
+import { NoticeList } from "../../features/community/NoticeList";
+import type { Notice } from "../../features/community/notices";
 import type { NoticeKind } from "../../features/community/notices";
 import { deleteOwnPhotos } from "../../features/events/api";
 import { palette } from "../../theme/palette";
@@ -44,6 +45,10 @@ const TRASH = require("../../../assets/icons/trash.png");
 type Face = "proving" | null;
 
 export type AccountScreenProps = {
+  /** Lues par la coquille, pour que l'application n'en tienne qu'un compte. */
+  notices: Notice[];
+  /** À appeler quand on en efface une : la porte du bandeau doit suivre. */
+  onNoticesChanged: () => void;
   visible: boolean;
   onClose: () => void;
   /** Demande la fiche d'une entrée de la bibliothèque, depuis une notification. */
@@ -64,13 +69,14 @@ export type AccountScreenProps = {
  * défilement.
  */
 export function AccountScreen({
+  notices,
+  onNoticesChanged,
   visible,
   onClose,
   onSeeEntry,
 }: AccountScreenProps) {
   const insets = useSafeAreaInsets();
   const { account, signOut, deleteAccount, changePassword } = useAuth();
-  const { notices, reload } = useNotices();
   const [face, setFace] = useState<Face>(null);
   /** Les deux champs du mot de passe, dépliés sous leur rangée. */
   const [changing, setChanging] = useState(false);
@@ -458,7 +464,7 @@ export function AccountScreen({
            n'avait pas encore dit qu'il le voulait — et faisait lire le champ
            comme la question plutôt que comme la confirmation d'une réponse
            déjà donnée. */
-        message="Tout ce que vous avez écrit sera effacé. On vous demandera votre mot de passe à l'étape suivante."
+        message="Cette action est définitive. Vos données seront supprimées et il sera impossible de les récupérer"
         confirmLabel="Continuer"
         cancelLabel="Annuler"
         onConfirm={() => {
@@ -494,7 +500,7 @@ export function AccountScreen({
         <ScrollView contentContainerStyle={styles.scrolled}>
           <NoticeList
             notices={notices}
-            onChanged={() => void reload()}
+            onChanged={onNoticesChanged}
             // Baisser cette feuille, puis ouvrir le catalogue : `onClosed`
             // ci-dessus s'en charge une fois qu'elle est partie.
             onSee={(kind, entry) => {

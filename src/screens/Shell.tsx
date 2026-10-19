@@ -7,6 +7,7 @@ import { TreesScreen } from "./Collections/TreesScreen";
 import { MapScreen } from "./MapScreen";
 import { usePages } from "./Pages";
 import { TabBar, type TabKey } from "./TabBar";
+import { useNotices } from "../features/community/NoticeList";
 import { usePlacement } from "../features/placement";
 import { palette } from "../theme/palette";
 
@@ -41,6 +42,16 @@ export function Shell() {
    * dessiné de s'escamoter.
    */
   const [drawing, setDrawing] = useState(false);
+  /**
+   * Les notifications, lues **une fois** pour toute l'application.
+   *
+   * `useNotices` interroge le serveur à chaque montage, et les quatre pages
+   * restent montées en permanence : une par page aurait fait quatre requêtes
+   * au lancement et quatre compteurs qui dérivent dès qu'on en efface une.
+   * Elles sont lues ici et passées — à la porte du compte dans les bandeaux,
+   * et à la page du compte, qui est la seule à pouvoir les changer.
+   */
+  const notices = useNotices();
 
   /**
    * Le viseur et le crayon prennent l'écran entier.
@@ -58,7 +69,7 @@ export function Shell() {
     if (takenOver) setTab("map");
   }, [takenOver]);
 
-  const pages = usePages({ drawing });
+  const pages = usePages({ drawing, notices });
 
   return (
     <View style={styles.screen}>
@@ -74,6 +85,8 @@ export function Shell() {
           onOpen={(id) => pages.raise({ kind: "event", id })}
           onCreate={() => pages.compose(null)}
           onSeek={() => pages.raise({ kind: "searchEvents" })}
+          unread={notices.notices.length}
+          onProfile={() => pages.raise({ kind: "account" })}
         />
       </View>
 
@@ -84,6 +97,8 @@ export function Shell() {
              placer quelqu'un donne l'écran entier au viseur. */
           onCreate={() => pages.raise({ kind: "editPerson", id: null })}
           onSeek={() => pages.raise({ kind: "searchCharacters" })}
+          unread={notices.notices.length}
+          onProfile={() => pages.raise({ kind: "account" })}
         />
       </View>
 
@@ -91,6 +106,8 @@ export function Shell() {
         <TreesScreen
           onOpen={(id) => pages.raise({ kind: "tree", id })}
           onSeek={() => pages.raise({ kind: "searchTrees" })}
+          unread={notices.notices.length}
+          onProfile={() => pages.raise({ kind: "account" })}
         />
       </View>
 

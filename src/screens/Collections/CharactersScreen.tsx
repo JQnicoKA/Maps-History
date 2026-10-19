@@ -13,6 +13,9 @@ export type CharactersScreenProps = {
   onCreate: () => void;
   /** Demande le catalogue de la bibliothèque, côté personnages. */
   onSeek: () => void;
+  /** La porte du compte, au bord du bandeau — voir `CollectionPage`. */
+  unread: number;
+  onProfile: () => void;
 };
 
 /**
@@ -31,6 +34,8 @@ export function CharactersScreen({
   onOpen,
   onCreate,
   onSeek,
+  unread,
+  onProfile,
 }: CharactersScreenProps) {
   const { characters } = useEvents();
 
@@ -54,6 +59,8 @@ export function CharactersScreen({
         <CharacterSummaryCard person={one} onOpen={() => onOpen(one.id)} />
       )}
       empty="Aucun personnage pour l'instant. Écrivez-en un, ou cherchez-en un dans la bibliothèque."
+      unread={unread}
+      onProfile={onProfile}
     />
   );
 }

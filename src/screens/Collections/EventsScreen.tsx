@@ -13,6 +13,9 @@ export type EventsScreenProps = {
   onCreate: () => void;
   /** Demande le catalogue de la bibliothèque, côté événements. */
   onSeek: () => void;
+  /** La porte du compte, au bord du bandeau — voir `CollectionPage`. */
+  unread: number;
+  onProfile: () => void;
 };
 
 /**
@@ -34,6 +37,8 @@ export function EventsScreen({
   onOpen,
   onCreate,
   onSeek,
+  unread,
+  onProfile,
 }: EventsScreenProps) {
   const { events, selectedEvent, selectEvent } = useEvents();
 
@@ -69,6 +74,8 @@ export function EventsScreen({
         />
       )}
       empty="Votre collection est vide. Écrivez un événement, ou cherchez-en un dans la bibliothèque."
+      unread={unread}
+      onProfile={onProfile}
     />
   );
 }
