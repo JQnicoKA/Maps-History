@@ -1,6 +1,7 @@
 export { Chip, type ChipProps } from "./Chip";
 export { ConfirmDialog, type ConfirmDialogProps } from "./ConfirmDialog";
 export { Dialog, type DialogProps } from "./Dialog";
+export { Failure, type FailureProps } from "./Failure";
 export { GlyphButton, type GlyphButtonProps } from "./GlyphButton";
 export { InkButton, type InkButtonProps } from "./InkButton";
 export { InkField, type InkFieldProps } from "./InkField";

@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { AddSlot, SeekRow } from "../../components/ui";
+import { AddSlot, Failure, SeekRow } from "../../components/ui";
 import { ProfileButton } from "../Account/ProfileButton";
 import { palette } from "../../theme/palette";
 import { shadow, space, type } from "../../theme/tokens";
@@ -30,8 +30,21 @@ export type CollectionPageProps<T> = {
   data: readonly T[];
   keyOf: (one: T) => string;
   row: (one: T) => ReactElement;
-  /** Ce qui s'affiche à la place des rangées quand il n'y en a aucune. */
+  /**
+   * Ce qui s'affiche à la place des rangées quand il n'y en a aucune.
+   *
+   * **Et seulement quand elle est vraiment vide.** Trois états se cachaient
+   * derrière « aucune rangée » : la lecture en cours, la lecture échouée, et
+   * la collection réellement vide. Les trois disaient « Écrivez un
+   * événement », ce qui annonçait à un lecteur hors réseau que son travail
+   * avait disparu.
+   */
   empty: string;
+  /** La première lecture est en cours : rien à dire encore. */
+  loading: boolean;
+  /** Elle a échoué, et voici pourquoi. */
+  failed: string | null;
+  onRetry: () => void;
   /**
    * La porte du compte, au bord du bandeau.
    *
@@ -81,6 +94,9 @@ export function CollectionPage<T>({
   empty,
   unread,
   onProfile,
+  loading,
+  failed,
+  onRetry,
 }: CollectionPageProps<T>) {
   const insets = useSafeAreaInsets();
 
@@ -120,14 +136,29 @@ export function CollectionPage<T>({
           <View style={styles.head}>
             <SeekRow label={seekLabel} onPress={onSeek} />
             <AddSlot label={addLabel} onPress={onAdd} />
+            {/* Le compte se tait tant qu'on ne le connaît pas. « Vos
+                événements (0) » au-dessus d'un échec de lecture serait un
+                chiffre faux posé à côté de la raison pour laquelle on ne
+                l'a pas. */}
             <Text style={styles.owned}>
-              {owned} <Text style={styles.count}>({count})</Text>
+              {owned}
+              {failed === null && !loading ? (
+                <Text style={styles.count}> ({count})</Text>
+              ) : null}
             </Text>
           </View>
         }
         renderItem={({ item }) => row(item)}
         ItemSeparatorComponent={() => <View style={styles.gap} />}
-        ListEmptyComponent={<Text style={styles.empty}>{empty}</Text>}
+        ListEmptyComponent={
+          failed !== null ? (
+            <Failure reason={failed} onRetry={onRetry} retrying={loading} />
+          ) : loading ? (
+            <Text style={styles.empty}>Chargement…</Text>
+          ) : (
+            <Text style={styles.empty}>{empty}</Text>
+          )
+        }
       />
     </View>
   );

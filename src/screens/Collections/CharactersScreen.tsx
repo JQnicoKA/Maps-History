@@ -37,7 +37,7 @@ export function CharactersScreen({
   unread,
   onProfile,
 }: CharactersScreenProps) {
-  const { characters } = useEvents();
+  const { characters, loading, error, refresh } = useEvents();
 
   const ordered = useMemo<Character[]>(
     () => [...characters].sort((a, b) => momentOf(a) - momentOf(b)),
@@ -59,6 +59,9 @@ export function CharactersScreen({
         <CharacterSummaryCard person={one} onOpen={() => onOpen(one.id)} />
       )}
       empty="Aucun personnage pour l'instant. Écrivez-en un, ou cherchez-en un dans la bibliothèque."
+      loading={loading}
+      failed={error}
+      onRetry={() => void refresh()}
       unread={unread}
       onProfile={onProfile}
     />

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -10,6 +10,8 @@ import {
   useAuth,
 } from "./features/auth";
 import { EventsProvider } from "./features/events/EventsProvider";
+import { NetworkProvider } from "./features/network/NetworkProvider";
+import { OfflineBar } from "./features/network/OfflineBar";
 import { HiddenProvider } from "./features/territories/HiddenProvider";
 import { MyPlacesProvider } from "./features/places/MyPlacesProvider";
 import { PlacementProvider } from "./features/placement";
@@ -30,9 +32,14 @@ export default function App() {
           collection is caught too — those are the ones that leave no screen at
           all behind them. */}
       <ErrorBoundary>
-        <AuthProvider>
-          <Gate />
-        </AuthProvider>
+        {/* Au-dessus de tout le reste : la session elle-même se lit par le
+            réseau, donc l'écran d'attente du lancement doit déjà pouvoir
+            dire qu'il n'y en a pas. */}
+        <NetworkProvider>
+          <AuthProvider>
+            <Gate />
+          </AuthProvider>
+        </NetworkProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
   );
@@ -57,17 +64,31 @@ function Gate() {
 
   if (account === undefined) {
     return (
-      <View style={styles.waiting}>
-        <ActivityIndicator color={palette.inkSoft} />
-      </View>
+      <Outside>
+        <View style={styles.waiting}>
+          <ActivityIndicator color={palette.inkSoft} />
+        </View>
+      </Outside>
     );
   }
 
-  if (account === null) return <AuthScreen />;
+  if (account === null) {
+    return (
+      <Outside>
+        <AuthScreen />
+      </Outside>
+    );
+  }
 
   // Signed in by a recovery link, which proves who they are but leaves them
   // with a password nobody knows. One screen, until they have chosen one.
-  if (recovering) return <NewPasswordScreen />;
+  if (recovering) {
+    return (
+      <Outside>
+        <NewPasswordScreen />
+      </Outside>
+    );
+  }
 
   return (
     <EventsProvider key={account.id}>
@@ -86,7 +107,26 @@ function Gate() {
   );
 }
 
+/**
+ * Les écrans d'avant la session, avec la bande du réseau.
+ *
+ * `Shell` porte la sienne au-dessus des onglets ; ces trois-là sont hors de
+ * la coquille et n'en avaient aucune. C'est pourtant là qu'elle manque le
+ * plus : un jeton expiré renvoie à la connexion, et sans réseau on y taperait
+ * son mot de passe pour recevoir une trace de pile d'Expo en guise de
+ * réponse.
+ */
+function Outside({ children }: { children: ReactNode }) {
+  return (
+    <View style={styles.outside}>
+      {children}
+      <OfflineBar />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  outside: { flex: 1 },
   waiting: {
     flex: 1,
     alignItems: "center",

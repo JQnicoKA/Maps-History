@@ -1,17 +1,10 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import * as api from "./api";
 import { mend } from "../community/api";
 import { DEFAULT_YEAR } from "../../config/history";
 import { matchesFilters, matchesFolders } from "./filtering";
+import { useNetwork, useReconnected } from "../network/NetworkProvider";
 import { compareByLife, momentOf, standsAt } from "./lifespan";
 import { toSortKey } from "./historicalDate";
 import { afterRow, erasure, tidy } from "./rows";
@@ -225,6 +218,17 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * L'état du réseau, lu par une référence et non par une dépendance.
+   *
+   * `refresh` est passé à un effet qui le suit : lui donner `online` dans
+   * ses dépendances le reconstruirait à chaque bascule, et rechargerait la
+   * collection à chaque fois qu'on entre dans un tunnel.
+   */
+  const { online } = useNetwork();
+  const reachable = useRef(online);
+  reachable.current = online;
+
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
@@ -238,7 +242,21 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       setTrees(loadedTrees);
       setError(null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      /**
+       * Hors ligne, on dit la panne plutôt que le symptôme.
+       *
+       * Un appel mort rend « Network request failed », ou pire une trace de
+       * pile d'Expo. Le lecteur n'a pas à traduire : s'il n'y a pas de
+       * réseau, la phrase le dit, et elle annonce que la reprise se fera
+       * d'elle-même — ce qui est vrai, voir juste en dessous.
+       */
+      setError(
+        reachable.current === false
+          ? "Pas de connexion. Votre collection se chargera dès que le réseau revient."
+          : cause instanceof Error
+            ? cause.message
+            : String(cause),
+      );
     } finally {
       setLoading(false);
     }
@@ -247,6 +265,18 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  /**
+   * Le réseau revient : on reprend, mais seulement s'il y avait quelque
+   * chose à reprendre.
+   *
+   * Sans la condition, chaque passage sous un tunnel rechargerait la
+   * collection entière au retour, alors qu'elle est déjà en mémoire et
+   * qu'aucune lecture n'a manqué.
+   */
+  useReconnected(() => {
+    if (error !== null) void refresh();
+  });
 
   /**
    * Le filet des copies, une fois par démarrage.

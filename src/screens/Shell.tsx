@@ -8,6 +8,7 @@ import { MapScreen } from "./MapScreen";
 import { usePages } from "./Pages";
 import { TabBar, type TabKey } from "./TabBar";
 import { useNotices } from "../features/community/NoticeList";
+import { OfflineBar } from "../features/network/OfflineBar";
 import { usePlacement } from "../features/placement";
 import { palette } from "../theme/palette";
 
@@ -110,6 +111,12 @@ export function Shell() {
           onProfile={() => pages.raise({ kind: "account" })}
         />
       </View>
+
+      {/* Au-dessus des onglets et dans la même colonne : elle rétrécit la
+          scène plutôt que de la recouvrir — voir `OfflineBar`. Elle reste
+          quand le viseur prend l'écran : viser un point sans réseau est
+          exactement le moment où il faut le savoir. */}
+      <OfflineBar />
 
       {takenOver ? null : <TabBar value={tab} onChange={setTab} />}
 

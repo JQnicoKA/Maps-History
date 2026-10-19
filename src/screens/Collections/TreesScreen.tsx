@@ -39,7 +39,7 @@ export type TreesScreenProps = {
  * n'a besoin d'être un panneau dans un panneau.
  */
 export function TreesScreen({ onOpen, onSeek, unread, onProfile }: TreesScreenProps) {
-  const { trees, characters, addTree } = useEvents();
+  const { trees, characters, addTree, loading, error, refresh } = useEvents();
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -99,6 +99,9 @@ export function TreesScreen({ onOpen, onSeek, unread, onProfile }: TreesScreenPr
             ? "Créez d'abord des personnages : un arbre se bâtit avec eux."
             : "Aucun arbre pour l'instant. Un arbre relie vos personnages entre eux, génération par génération."
         }
+        loading={loading}
+        failed={error}
+        onRetry={() => void refresh()}
         unread={unread}
         onProfile={onProfile}
       />

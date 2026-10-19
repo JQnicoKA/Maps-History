@@ -120,6 +120,14 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
 
   /** True from country zoom on, where the fiefs are worth drawing. */
   const [detailed, setDetailed] = useState(false);
+  /**
+   * La planche n'a pas pu charger son style — voir `WorldMap`.
+   *
+   * Distinct de l'erreur de la collection : l'une laisse une carte sans
+   * fond, l'autre un fond sans rien dessus, et le lecteur a besoin de savoir
+   * laquelle des deux il regarde.
+   */
+  const [styleFailed, setStyleFailed] = useState(false);
   /** The territory the finger last landed on, if its card is open. */
   const [touched, setTouched] = useState<TouchedTerritory | null>(null);
   /** La ville sur laquelle le doigt est tombé, si sa fiche est ouverte. */
@@ -305,6 +313,7 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
              points elle-même. */
           attributionOffset={0}
           onDetailChange={setDetailed}
+          onStyleFailed={setStyleFailed}
           onLook={(centre, zoom) => {
             looking.current = centre;
             setZoom(zoom);
@@ -477,6 +486,24 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
             ]}
             pointerEvents="box-none"
           >
+            {/* Deux pannes et deux phrases : le fond de carte qui manque,
+                et la collection qui n'a pas chargé. Elles se lisent l'une
+                au-dessus de l'autre quand elles arrivent ensemble — c'est
+                le cas hors ligne — parce qu'elles ne se réparent pas de la
+                même façon.
+
+                Le fond n'a pas de bouton : MapLibre réessaie de lui-même et
+                `onStyleFailed` efface la phrase dès qu'il y parvient. Un
+                « Réessayer » qui ne ferait que doubler ce que le système
+                fait déjà promettrait une prise que le lecteur n'a pas. */}
+            {styleFailed ? (
+              <Paper style={styles.errorCard}>
+                <Text style={styles.error}>
+                  Le fond de carte n'a pas pu se charger.
+                </Text>
+              </Paper>
+            ) : null}
+
             {error ? (
               // A way back, not just a complaint: the collection is loaded once
               // at launch, so a network that was down at that moment used to

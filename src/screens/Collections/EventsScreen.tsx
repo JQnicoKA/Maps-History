@@ -40,7 +40,8 @@ export function EventsScreen({
   unread,
   onProfile,
 }: EventsScreenProps) {
-  const { events, selectedEvent, selectEvent } = useEvents();
+  const { events, selectedEvent, selectEvent, loading, error, refresh } =
+    useEvents();
 
   const ordered = useMemo<EventSummary[]>(
     /* Une copie avant de trier : `events` vient du fournisseur, et le trier
@@ -74,6 +75,9 @@ export function EventsScreen({
         />
       )}
       empty="Votre collection est vide. Écrivez un événement, ou cherchez-en un dans la bibliothèque."
+      loading={loading}
+      failed={error}
+      onRetry={() => void refresh()}
       unread={unread}
       onProfile={onProfile}
     />

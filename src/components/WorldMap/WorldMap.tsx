@@ -29,6 +29,17 @@ export type WorldMapProps = {
   /** Lifts the credit line clear of whatever chrome sits at the bottom. */
   attributionOffset?: number;
   /**
+   * La planche n'a pas pu charger son style, ou l'a retrouvé.
+   *
+   * **C'est le seul échec de carte que MapLibre nous dise.** Une tuile qui
+   * revient en 502 est journalisée côté natif et réessayée sans qu'aucun
+   * événement ne remonte ici — et c'est raisonnable : elles se comptent par
+   * centaines et la plupart des échecs sont passagers. Ce qui remonte, c'est
+   * la panne entière : le style lui-même introuvable, auquel cas il n'y a
+   * pas de carte du tout.
+   */
+  onStyleFailed?: (failed: boolean) => void;
+  /**
    * Fires when the plate crosses into — or back out of — country zoom, and
    * only then. Overlays that carry a lot of geometry use it to hold their
    * detail back until it can actually be read.
@@ -61,6 +72,7 @@ export function WorldMap({
   onPress,
   centerAnimationDuration = 650,
   attributionOffset,
+  onStyleFailed,
   onDetailChange,
   onLook,
   frozen = false,
@@ -101,6 +113,15 @@ export function WorldMap({
         onPress={onPress}
         onRegionDidChange={
           onDetailChange || onLook ? handleRegionDidChange : undefined
+        }
+        onDidFailLoadingMap={
+          onStyleFailed ? () => onStyleFailed(true) : undefined
+        }
+        /* Et le retour : MapLibre réessaie de lui-même, donc il faut écouter
+           la réussite autant que l'échec, sinon le message resterait affiché
+           sur une carte redevenue parfaitement lisible. */
+        onDidFinishLoadingMap={
+          onStyleFailed ? () => onStyleFailed(false) : undefined
         }
         // An atlas plate is read flat and square to the page: pan and zoom only.
         touchRotate={false}
