@@ -74,11 +74,8 @@ export function CharacterManager({
       keyboardShouldPersistTaps="handled"
     >
       <Roster
-        count={
-          characters.length === 0
-            ? "Aucun personnage"
-            : `${characters.length} personnage${characters.length > 1 ? "s" : ""}`
-        }
+        owned="Vos personnages"
+        count={characters.length}
         {...(onEdit === undefined
           ? {}
           : { addLabel: "Nouveau personnage", onAdd: () => onEdit("new") })}

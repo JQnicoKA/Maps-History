@@ -6,12 +6,13 @@ import {
   ConfirmDialog,
   Roster,
   RosterEmpty,
+  RosterLegend,
   RosterRow,
   useNotice,
 } from "../../components/ui";
 import { formatYear } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
-import { space, type } from "../../theme/tokens";
+import { space } from "../../theme/tokens";
 
 const TRASH = require("../../../assets/icons/trash.png");
 /** Remettre une ville, c'est exactement « la remontrer sur la carte ». */
@@ -78,19 +79,15 @@ export function PlaceList({ onPose }: PlaceListProps) {
       />
 
       <Roster
-        count={
-          mine.length === 0
-            ? "Aucune ville posée"
-            : `${mine.length} ville${mine.length > 1 ? "s" : ""} posée${mine.length > 1 ? "s" : ""}`
-        }
+        owned="Vos villes"
+        count={mine.length}
         addLabel="Poser une ville"
         onAdd={onPose}
       >
         {mine.length === 0 ? (
-          <RosterEmpty>
-            Une ville posée est à vous seul : elle paraît sur votre carte à
-            partir de l'année que vous lui donnez, et nulle part ailleurs.
-          </RosterEmpty>
+          /* Voir la liste des territoires : une invitation, pas une
+             explication. */
+          <RosterEmpty>Posez votre première ville.</RosterEmpty>
         ) : (
           mine.map((one) => (
             <RosterRow
@@ -119,11 +116,9 @@ export function PlaceList({ onPose }: PlaceListProps) {
           lecteur n'a pas utilisée. */}
       {masked.length === 0 ? null : (
         <View style={styles.section}>
-          <Text style={styles.legend}>
-            {masked.length === 1
-              ? "1 ville retirée de votre carte"
-              : `${masked.length} villes retirées de votre carte`}
-          </Text>
+          {/* Le même titre que celui de la liste du dessus — voir la liste
+              des territoires, qui porte le raisonnement. */}
+          <RosterLegend label="Villes retirées" count={masked.length} />
           {masked.map((one) => (
             <RosterRow
               key={one.ohm}
@@ -157,7 +152,6 @@ export function PlaceList({ onPose }: PlaceListProps) {
 
 const styles = StyleSheet.create({
   section: { gap: space.md },
-  legend: { ...type.legend, color: palette.inkSoft, alignSelf: "center" },
   initial: { fontSize: 18, fontWeight: "700", color: palette.inkFaint },
   initialFaded: { fontSize: 18, fontWeight: "700", color: palette.line },
 });

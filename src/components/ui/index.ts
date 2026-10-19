@@ -16,6 +16,7 @@ export {
   Lens,
   Roster,
   RosterEmpty,
+  RosterLegend,
   RosterRow,
   SeekRow,
   THUMB,

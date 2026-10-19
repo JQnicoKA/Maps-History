@@ -10,6 +10,7 @@ import {
   InkButton,
   Roster,
   RosterEmpty,
+  RosterLegend,
   RosterRow,
   SegmentedControl,
   Sheet,
@@ -18,7 +19,7 @@ import {
 } from "../../components/ui";
 import { formatYear } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
-import { space, type } from "../../theme/tokens";
+import { space } from "../../theme/tokens";
 
 /**
  * Un crayon, et c'est un renversement.
@@ -188,19 +189,19 @@ function TerritoryList({ onDraw }: { onDraw: () => void }) {
       />
 
       <Roster
-        count={
-          drawn.length === 0
-            ? "Aucun territoire dessiné"
-            : `${drawn.length} territoire${drawn.length > 1 ? "s" : ""} dessiné${drawn.length > 1 ? "s" : ""}`
-        }
+        owned="Vos territoires"
+        count={drawn.length}
         addLabel="Dessiner un territoire"
         onAdd={onDraw}
       >
         {drawn.length === 0 ? (
-          <RosterEmpty>
-            Un territoire dessiné est à vous seul : il apparaît sur votre
-            carte aux années que vous lui donnez, et nulle part ailleurs.
-          </RosterEmpty>
+          /* Une invitation, et rien de plus.
+             Il y avait ici une explication — « un territoire dessiné est à
+             vous seul, il apparaît aux années que vous lui donnez, et nulle
+             part ailleurs ». Trois lignes sous un bouton qui dit déjà
+             « Dessiner un territoire » : le lecteur apprend cela en le
+             faisant, pas en lisant qu'il pourrait le faire. */
+          <RosterEmpty>Dessinez votre premier territoire.</RosterEmpty>
         ) : (
           drawn.map((one) => (
             <RosterRow
@@ -234,15 +235,17 @@ function TerritoryList({ onDraw }: { onDraw: () => void }) {
       </Roster>
 
       {/* Only when there is something to say. An empty half-panel headed
-          "retirés de votre carte" would be a promise of a feature the
-          reader has not used. */}
+          "Territoires retirés" would be a promise of a feature the reader
+          has not used.
+
+          Le même titre que celui de la liste du dessus, et sans porte ni
+          dalle : on ne retire pas un territoire depuis ici, on l'y retrouve.
+          La phrase comptée qui s'y trouvait — « 3 territoires retirés de
+          votre carte » — disait son contenu au lieu de le nommer, et les
+          deux moitiés de la feuille ne se lisaient plus de la même façon. */}
       {hidden.length === 0 ? null : (
         <View style={styles.section}>
-          <Text style={styles.legend}>
-            {hidden.length === 1
-              ? "1 territoire retiré de votre carte"
-              : `${hidden.length} territoires retirés de votre carte`}
-          </Text>
+          <RosterLegend label="Territoires retirés" count={hidden.length} />
           {hidden.map((name) => (
             <RosterRow
               key={name}
@@ -325,7 +328,6 @@ const styles = StyleSheet.create({
     gap: space.xl,
   },
   section: { gap: space.md },
-  legend: { ...type.legend, color: palette.inkSoft, alignSelf: "center" },
   initial: { fontSize: 18, fontWeight: "700", color: palette.inkFaint },
   initialFaded: { fontSize: 18, fontWeight: "700", color: palette.line },
 });

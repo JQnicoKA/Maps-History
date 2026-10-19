@@ -21,8 +21,17 @@ const GLASS = 20;
 const STROKE = 2.5;
 
 export type RosterProps = {
-  /** "3 arbres", "Aucun personnage" — the count, said in words. */
-  count: string;
+  /**
+   * Le titre de la liste, rendu avec son compte entre parenthèses.
+   *
+   * **Sous les deux portes et non au-dessus d'elles.** Le compte vivait en
+   * tête, en petites capitales, et il y annonçait une liste qu'on ne voyait
+   * pas encore — deux portes plus bas. Il est redevenu ce qu'il a toujours
+   * été : l'en-tête des rangées qu'il compte. C'est le même geste que les
+   * trois pages de collection, et pour la même raison.
+   */
+  owned: string;
+  count: number;
   /**
    * The empty slot at the top, when this list is a place one adds to.
    *
@@ -134,6 +143,7 @@ export function AddSlot({ label, onPress }: AddSlotProps) {
  * le troisième usage, jusqu'à ce qu'ils cessent d'être des entités.
  */
 export function Roster({
+  owned,
   count,
   addLabel,
   onAdd,
@@ -144,8 +154,6 @@ export function Roster({
 }: RosterProps) {
   return (
     <View style={styles.list}>
-      <Text style={styles.count}>{count}</Text>
-
       {onSeek === undefined ? null : (
         <SeekRow
           label={seekLabel ?? "Rechercher"}
@@ -158,8 +166,31 @@ export function Roster({
         <AddSlot label={addLabel ?? "Ajouter"} onPress={onAdd} />
       )}
 
+      <RosterLegend label={owned} count={count} />
+
       {children}
     </View>
+  );
+}
+
+/**
+ * Le titre d'une liste, avec son compte.
+ *
+ * Exporté parce qu'une feuille en porte parfois deux — les territoires
+ * dessinés, puis ceux qu'on a retirés de la carte — et que la seconde n'a
+ * ni porte ni dalle à sa tête : elle n'est qu'un titre et des rangées.
+ */
+export function RosterLegend({
+  label,
+  count,
+}: {
+  label: string;
+  count: number;
+}) {
+  return (
+    <Text style={styles.owned}>
+      {label} <Text style={styles.count}>({count})</Text>
+    </Text>
   );
 }
 
@@ -259,12 +290,16 @@ const EDIT = 36;
 
 const styles = StyleSheet.create({
   list: { gap: space.md },
-  count: {
-    ...type.legend,
-    color: palette.inkSoft,
-    alignSelf: "center",
-    paddingBottom: space.xs,
+  /** En gras : c'est un titre. Un peu d'air au-dessus, pour fermer la série
+      des portes et ouvrir celle des rangées. */
+  owned: {
+    ...type.heading,
+    fontWeight: "700",
+    color: palette.ink,
+    paddingTop: space.sm,
   },
+  /** Le compte hérite la graisse et change d'encre : c'est une précision. */
+  count: { ...type.heading, color: palette.inkFaint },
   empty: {
     ...type.body,
     color: palette.inkFaint,
