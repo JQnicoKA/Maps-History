@@ -165,6 +165,7 @@ export async function fetchWhole(
     photos: { path: string; source: string | null }[];
     cast: string[];
     folders: { name: string; thing: Row | null }[];
+    filing?: string[];
     held?: Row[];
     shape?: unknown;
     members?: {
@@ -205,6 +206,9 @@ export async function fetchWhole(
       name: filed.name,
       thing: filed.thing === null ? null : toThing(filed.thing),
     })),
+    /* Facultatif à la lecture : un client plus vieux que la fonction verrait
+       la clé manquer plutôt que de tomber. */
+    filing: whole.filing ?? [],
     held: (whole.held ?? []).map(toThing),
     shape: whole.shape ?? null,
     // A genealogy arrives flat and is reassembled here, dates included: the

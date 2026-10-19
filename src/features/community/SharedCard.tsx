@@ -223,6 +223,19 @@ export function SharedCard({
         </View>
       ) : null}
 
+      {/* Le classement, avant les contenants : il dit sous quel sujet son
+          auteur range cette entrée, ce qui est une lecture de l'entrée
+          elle-même. Les arbres, en dessous, sont une relation à autre chose.
+
+          Une légende fixe et non celle du genre : ici ce sont des classeurs
+          des deux côtés, et le même mot doit les nommer. */}
+      {(whole?.filing ?? []).length > 0 ? (
+        <View style={styles.section}>
+          <Text style={styles.legend}>Classement</Text>
+          <Text style={styles.names}>{(whole?.filing ?? []).join(" · ")}</Text>
+        </View>
+      ) : null}
+
       {doors.length + names.length > 0 ? (
         <View style={styles.section}>
           <Text style={styles.legend}>{look.filedLegend}</Text>

@@ -465,6 +465,7 @@ type CharacterRow = {
   latitude: number | null;
   shared: boolean;
   origin_id: string | null;
+  folders: string[];
   character_photos: {
     id: string;
     storage_path: string;
@@ -479,6 +480,7 @@ const CHARACTER_COLUMNS = `
   birth_year, birth_month, birth_day, birth_approx,
   death_year, death_month, death_day, death_approx,
   longitude, latitude, shared, origin_id,
+  folders,
   character_photos ( id, storage_path, position, source, tint )
 `;
 
@@ -511,6 +513,7 @@ function toCharacter(row: CharacterRow): Character {
     ),
     longitude: row.longitude,
     latitude: row.latitude,
+    folders: row.folders,
     shared: row.shared,
     origin: row.origin_id,
     photos: [...row.character_photos]
@@ -546,6 +549,7 @@ function characterRow(draft: CharacterDraft) {
     death_approx: draft.death?.approximate === true,
     longitude: draft.longitude,
     latitude: draft.latitude,
+    folders: draft.folders,
   };
 }
 

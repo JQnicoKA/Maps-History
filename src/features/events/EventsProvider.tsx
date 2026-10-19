@@ -11,7 +11,7 @@ import {
 import * as api from "./api";
 import { mend } from "../community/api";
 import { DEFAULT_YEAR } from "../../config/history";
-import { matchesFilters } from "./filtering";
+import { matchesFilters, matchesFolders } from "./filtering";
 import { compareByLife, momentOf, standsAt } from "./lifespan";
 import { toSortKey } from "./historicalDate";
 import { afterRow, erasure, tidy } from "./rows";
@@ -299,12 +299,22 @@ export function EventsProvider({ children }: { children: ReactNode }) {
    * Sert à deux choses : la liste où choisir en rangeant un événement, et les
    * cases du filtre.
    */
+  /**
+   * Les sujets que la collection connaît, tirés des **deux** genres.
+   *
+   * Un classeur n'est qu'un nom : rien ne distingue celui d'un événement de
+   * celui d'un personnage, et les tenir séparés aurait donné au lecteur deux
+   * listes qui se ressemblent et qu'il faudrait accorder à la main.
+   */
   const folderNames = useMemo(
     () =>
-      [...new Set(events.flatMap((event) => event.folders))].sort((a, b) =>
-        a.localeCompare(b),
-      ),
-    [events],
+      [
+        ...new Set([
+          ...events.flatMap((event) => event.folders),
+          ...characters.flatMap((person) => person.folders),
+        ]),
+      ].sort((a, b) => a.localeCompare(b)),
+    [events, characters],
   );
 
   /**
@@ -318,9 +328,12 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   const visibleCharacters = useMemo(
     () =>
       filters.characters && year !== null
-        ? characters.filter((person) => standsAt(person, year))
+        ? characters.filter(
+            (person) =>
+              standsAt(person, year) && matchesFolders(person, filters),
+          )
         : [],
-    [characters, filters.characters, year],
+    [characters, filters, year],
   );
 
   const selectedEvent = useMemo(

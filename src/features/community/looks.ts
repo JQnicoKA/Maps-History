@@ -36,6 +36,14 @@ export const EVENT_LOOK: Look = {
         } as Parameters<typeof formatEventPeriod>[0]),
   castLegend: "Personnages",
   castAside: "Ils viendront avec l'événement si vous le copiez.",
+  /**
+   * Inemployé depuis que les classeurs ont leur propre clé.
+   *
+   * `shared_event` rend `folders` vide : un événement n'est contenu dans
+   * rien qu'on puisse ouvrir, et son classement passe par `filing`, que la
+   * fiche coiffe d'une légende fixe. Le mot reste pour la forme commune des
+   * trois regards.
+   */
   filedLegend: "Rangé dans",
   /* Vrai depuis que les classeurs ne sont que des noms : le classement est
      écrit sur l'événement, donc il part avec lui. C'était justement la raison

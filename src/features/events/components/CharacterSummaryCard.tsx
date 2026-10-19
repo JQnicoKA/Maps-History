@@ -4,7 +4,7 @@ import { Paper } from "../../../components/ui";
 import { lifespan } from "../lifespan";
 import type { Character } from "../types";
 import { palette } from "../../../theme/palette";
-import { shadow, space } from "../../../theme/tokens";
+import { radius, shadow, space, type } from "../../../theme/tokens";
 
 export type CharacterSummaryCardProps = {
   person: Character;
@@ -65,6 +65,27 @@ export function CharacterSummaryCard({
           <Text style={styles.name} numberOfLines={2}>
             {person.name}
           </Text>
+          {/* Les mêmes étiquettes que la tuile d'un événement, et aux mêmes
+              mesures : ce sont les mêmes classeurs, et une tuile de la liste
+              des personnages se lit à côté d'une tuile d'événement dans la
+              bibliothèque comme au pied de la carte.
+
+              Deux au plus, puis un compte : au-delà, les noms se disputent
+              une ligne qui en porte déjà deux autres. */}
+          {person.folders.length > 0 ? (
+            <View style={styles.tags}>
+              {person.folders.slice(0, 2).map((name) => (
+                <View key={name} style={styles.tag}>
+                  <Text style={styles.tagLabel} numberOfLines={1}>
+                    {name}
+                  </Text>
+                </View>
+              ))}
+              {person.folders.length > 2 ? (
+                <Text style={styles.more}>+{person.folders.length - 2}</Text>
+              ) : null}
+            </View>
+          ) : null}
         </View>
 
         <Text style={styles.chevron}>›</Text>
@@ -76,6 +97,21 @@ export function CharacterSummaryCard({
 const PORTRAIT = 56;
 
 const styles = StyleSheet.create({
+  tags: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.xs,
+    marginTop: 2,
+  },
+  tag: {
+    maxWidth: 130,
+    paddingHorizontal: space.sm,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    backgroundColor: palette.sunken,
+  },
+  tagLabel: { ...type.caption, color: palette.inkSoft },
+  more: { ...type.caption, color: palette.inkFaint },
   floating: { ...shadow.plate },
   // Les mesures de `EventSummaryCard`, au pixel : les deux tuiles se suivent
   // dans la même colonne et toute différence se lirait comme un défaut.

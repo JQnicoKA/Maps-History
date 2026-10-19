@@ -12,6 +12,7 @@ import { PhotoViewer } from "./PhotoViewer";
 import { SharePill } from "../../community/SharePill";
 import { COPY_IS_A_COPY } from "../../community/stakes";
 import {
+  Chip,
   ConfirmDialog,
   InkButton,
   Sheet,
@@ -229,6 +230,23 @@ export function CharacterDetailModal({
           </ScrollView>
         ) : null}
 
+        {/* Le classement, avant ce qu'il a fait : il dit sous quel sujet son
+            auteur le range, et c'est une lecture du personnage lui-même. */}
+        <View style={styles.section}>
+          <Text style={styles.legend}>Classement</Text>
+          {person.folders.length === 0 ? (
+            <Text style={styles.none}>Rangé nulle part</Text>
+          ) : (
+            <View style={styles.chips}>
+              {/* Les mêmes pastilles que le formulaire, sans le geste : il n'y
+                  a rien à cocher sur la fiche de ce qu'on lit. */}
+              {person.folders.map((name) => (
+                <Chip key={name} label={name} selected tone="wax" />
+              ))}
+            </View>
+          )}
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.legend}>Événements</Text>
           {appears.length === 0 ? (
@@ -283,6 +301,7 @@ export function CharacterDetailModal({
 const PORTRAIT = 84;
 
 const styles = StyleSheet.create({
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
   body: {
     paddingHorizontal: space.xl,
     paddingBottom: space.lg,

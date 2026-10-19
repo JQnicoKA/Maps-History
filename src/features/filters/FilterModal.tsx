@@ -105,6 +105,29 @@ export function FilterModal({
           onglet à part entière — et ce panneau ne règle plus qu'une seule
           chose, la planche. */}
       <ScrollView style={styles.body} contentContainerStyle={styles.content}>
+        {/* Au-dessus des calques, et non dedans.
+            Il a vécu sous « Événements », du temps où eux seuls se rangeaient.
+            Les personnages ont pris les mêmes classeurs : un tamis logé dans
+            un calque passerait pour une propriété de ce calque, et on
+            chercherait en vain le second. Il les traverse, donc il les
+            précède. */}
+        <View style={styles.filing}>
+          <Text style={styles.note}>Classement</Text>
+          {/* Le même contrôle qu'à l'étape « Classement » des formulaires,
+              sans le droit d'en nommer un : on ne range rien depuis un
+              filtre. */}
+          <FolderSelector
+            known={folderNames}
+            value={filters.folders}
+            onChange={(next) => setFilters({ folders: next })}
+            emptyLabel="Filtrer par classeur"
+          />
+          <Text style={styles.said}>
+            Les évènements et les personnages se rangent sous les mêmes
+            sujets : choisir un classeur tamise les deux à la fois.
+          </Text>
+        </View>
+
         <Layer
           title="Événements"
           detail={
@@ -117,18 +140,11 @@ export function FilterModal({
           on={filters.events}
           onToggle={() => setFilters({ events: !filters.events })}
         >
-          {/* Le même contrôle qu'à l'étape « Classement » du formulaire, sans
-              le droit d'en nommer un : on ne range rien depuis un filtre. */}
-          <FolderSelector
-            known={folderNames}
-            value={filters.folders}
-            onChange={(next) => setFilters({ folders: next })}
-            emptyLabel="Filtrer par classeur"
-          />
-
-          {/* Et l'importance à part, comme sur l'événement. « Toutes » est la
-              quatrième réponse que seul le filtre a : le formulaire répond
-              toujours quelque chose, le lecteur peut ne pas demander. */}
+          {/* L'importance reste ici, elle : elle appartient à ce qui s'est
+              passé et non à qui l'a fait, donc les personnages n'en ont pas.
+              « Toutes » est la quatrième réponse que seul le filtre a — le
+              formulaire répond toujours quelque chose, le lecteur peut ne
+              pas demander. */}
           <Text style={styles.note}>Importance</Text>
           <SegmentedControl
             segments={IMPORTANCES}
@@ -177,6 +193,8 @@ export function FilterModal({
 }
 
 const styles = StyleSheet.create({
+  /** Le tamis qui traverse les calques, détaché d'eux par son propre air. */
+  filing: { gap: space.sm, paddingBottom: space.xs },
 
   /** Tall enough for the three cards, short enough to stay a card itself. */
   body: { maxHeight: 420 },

@@ -99,6 +99,21 @@ export type SharedThingDetail = SharedThing & {
    */
   folders: { name: string; thing: SharedThing | null }[];
   /**
+   * Les classeurs : des noms, et rien de plus.
+   *
+   * **Séparé de `folders` le jour où les personnages ont pris les mêmes
+   * classeurs que les événements.** Les deux notions tenaient dans une seule
+   * clé tant qu'aucun genre ne portait les deux : « rangé dans » pour un
+   * événement voulait dire ses classeurs, « se tient dans » pour un
+   * personnage voulait dire ses arbres. Un personnage a désormais les deux,
+   * et les mêler aurait fait lire « Se tient dans · Empire ».
+   *
+   * La ligne de partage n'est plus le genre mais la nature : `folders` est
+   * un contenant qu'on peut **ouvrir**, celui-ci est une étiquette. Un
+   * événement rend donc `folders` vide.
+   */
+  filing: string[];
+  /**
    * What this one holds, in the catalogue's own row shape.
    *
    * A tree's people, drawn with the very line the search draws — a list of

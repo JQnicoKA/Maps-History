@@ -9,6 +9,7 @@ import {
 } from "react-native";
 
 import { EventDateField, LIFE_LABELS } from "./EventDateField";
+import { FolderSelector } from "./FolderSelector";
 import { PhotoPicker } from "./PhotoPicker";
 import {
   ConfirmDialog,
@@ -73,6 +74,7 @@ export function CharacterEditModal({
   const {
     characters,
     events,
+    folderNames,
     addCharacter,
     editCharacter,
     removeCharacter,
@@ -103,6 +105,8 @@ export function CharacterEditModal({
       : null,
   );
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
+  /** Les sujets sous lesquels on le range — les mêmes que les événements. */
+  const [folders, setFolders] = useState<string[]>(person?.folders ?? []);
   const [keptPhotos, setKeptPhotos] = useState<StoredPhoto[]>(
     person?.photos ?? [],
   );
@@ -196,6 +200,7 @@ export function CharacterEditModal({
       death,
       longitude: where.longitude,
       latitude: where.latitude,
+      folders,
       photos,
     };
 
@@ -352,6 +357,20 @@ export function CharacterEditModal({
           multiline
           placeholder="Quelques lignes…"
         />
+
+        {/* Après le lieu et avant les portraits, à la même place que dans le
+            formulaire d'un événement : le classement vient quand on sait de
+            qui l'on parle, et avant l'illustration. */}
+        <View style={styles.section}>
+          <Text style={styles.legend}>Classement</Text>
+          <FolderSelector
+            known={folderNames}
+            value={folders}
+            onChange={setFolders}
+            allowNew
+            emptyLabel="Ranger dans un classeur"
+          />
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.legend}>Portraits</Text>

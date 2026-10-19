@@ -205,6 +205,19 @@ export type Character = {
   longitude: number | null;
   latitude: number | null;
   /**
+   * Les sujets sous lesquels il est rangé, par leur nom.
+   *
+   * **Les mêmes classeurs que les événements**, et c'est le point : un sujet
+   * n'est qu'un nom, donc rien n'empêche une bataille et le général qui l'a
+   * menée de partager « Révolution française ». Les ranger séparément aurait
+   * demandé à l'un des deux de porter une table, et au lecteur de tenir deux
+   * listes de sujets qui se ressemblent.
+   *
+   * La liste des noms connus se déduit des deux collections à la fois ; voir
+   * `folderNames` dans `EventsProvider`.
+   */
+  folders: string[];
+  /**
    * Proposé à la bibliothèque, qui le reprendra si elle le vérifie.
    *
    * True unless the reader said otherwise: what is written here is history,
@@ -351,6 +364,8 @@ export type CharacterDraft = {
   death: HistoricalDate | null;
   longitude: number | null;
   latitude: number | null;
+  /** Les sujets sous lesquels on le range — les mêmes que les événements. */
+  folders: string[];
   /** Pictures to upload. On an edit, only the newly added ones. */
   photos: PickedPhoto[];
 };
