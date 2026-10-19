@@ -313,13 +313,14 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   /**
-   * Blanc sur la cire, et large dans son disque.
+   * Blanc sur la cire, et large dans son disque sans le remplir.
    *
-   * Trente-quatre points sur cinquante-huit : il reste douze points de cire
-   * de chaque côté, ce qui suffit à ce que le cercle se lise encore comme un
-   * cercle. Plus petit, le crayon flottait au milieu d'un aplat.
+   * Vingt-six points sur cinquante-huit : il reste seize points de cire de
+   * chaque côté, soit un peu moins de la moitié du disque pour le glyphe.
+   * Au-delà, il touchait presque le bord et le disque cessait de se lire
+   * comme un disque pour devenir un cadre.
    */
-  glyph: { width: 34, height: 34, tintColor: palette.surfaceRaised },
+  glyph: { width: 26, height: 26, tintColor: palette.surfaceRaised },
   fill: { flex: 1 },
   switcher: { paddingHorizontal: space.xl, paddingBottom: space.md },
   body: {
