@@ -209,6 +209,20 @@ export function AccountScreen({
                tapant un mot de passe. iOS seulement ; sur Android c'est la
                fenêtre qui se redimensionne, et la liste suit d'elle-même. */
             automaticallyAdjustKeyboardInsets
+            /**
+             * Pas de rebond tant qu'il n'y a rien à faire défiler.
+             *
+             * Repliée, cette page tient dans un écran : deux cartes et un
+             * pied. Elle tressautait quand même sous le doigt, et un écran
+             * qui rebondit sur rien annonce un contenu qu'on n'a pas.
+             *
+             * `alwaysBounceVertical` et non `bounces` : l'une n'ôte le
+             * rebond que lorsqu'il est faux, l'autre l'ôterait aussi quand
+             * la page défile vraiment — ce qui arrive dès que le tiroir du
+             * mot de passe s'ouvre, car les deux champs, la jauge et les
+             * boutons débordent du plus petit des téléphones.
+             */
+            alwaysBounceVertical={false}
           >
             {done === null ? null : (
               <View style={[styles.note, styles.noteGood]}>
@@ -380,6 +394,8 @@ export function AccountScreen({
             { paddingBottom: insets.bottom + space.xxl },
           ]}
           keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
+          alwaysBounceVertical={false}
         >
           <Text style={styles.lead}>
             Événements, personnages, arbres et photos seront effacés.
