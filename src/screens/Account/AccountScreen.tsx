@@ -187,9 +187,14 @@ export function AccountScreen({
           hitSlop={10}
           disabled={busy}
           onPress={face === null ? close : back}
+          /* Du haut du titre à son bas : la bande qu'il occupe est celle du
+             titre, et `justifyContent` l'y centre. L'accrocher par son seul
+             bord haut le posait quatre points trop bas — sa boîte de ligne
+             fait 34 points contre 30 au titre, et son rembourrage ajoutait
+             le reste. */
           style={({ pressed }) => [
             styles.back,
-            { top: insets.top + space.sm },
+            { top: insets.top + space.sm, bottom: space.md },
             pressed && styles.down,
           ]}
         >
@@ -605,8 +610,36 @@ const styles = StyleSheet.create({
     ...shadow.soft,
   },
   title: { ...type.plate, color: palette.ink, textAlign: "center" },
-  back: { position: "absolute", left: space.sm, padding: space.xs },
-  backGlyph: { fontSize: 30, lineHeight: 34, color: palette.inkSoft },
+  /**
+   * Le chevron, aligné sur le titre et non sur le haut du bandeau.
+   *
+   * Ses bords haut et bas sont posés au rendu, à la mesure du rembourrage du
+   * bandeau : il couvre exactement la bande du titre. Le rembourrage est
+   * horizontal seulement — un rembourrage vertical le décentrerait de ce
+   * qu'on vient d'aligner, et c'est le `hitSlop` qui donne la cible.
+   */
+  back: {
+    position: "absolute",
+    left: space.sm,
+    justifyContent: "center",
+    paddingHorizontal: space.xs,
+  },
+  /**
+   * Trois points vers le haut, et c'est une correction **optique**.
+   *
+   * Sa boîte est centrée sur celle du titre au point près — mais un glyphe
+   * qui ne remplit pas sa boîte n'est pas centré pour autant : le « ‹ » est
+   * dessiné sur la ligne de base, et l'espace réservé à l'ascendante
+   * au-dessus de lui le fait reposer dans le bas de sa propre ligne. Aucune
+   * mise en page ne corrige cela ; seul l'œil le voit, et c'est lui qui
+   * décide. La croix des cartes porte le même décalage, pour la même raison.
+   */
+  backGlyph: {
+    fontSize: 30,
+    lineHeight: 32,
+    marginTop: -3,
+    color: palette.inkSoft,
+  },
   down: { opacity: 0.55 },
 
   body: {
