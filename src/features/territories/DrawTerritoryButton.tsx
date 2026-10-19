@@ -21,14 +21,20 @@ import { palette } from "../../theme/palette";
 import { space, type } from "../../theme/tokens";
 
 /**
- * Une carte pliée, et non le crayon de la barre de dessin.
+ * Un crayon, et c'est un renversement.
  *
- * Ce bouton ouvre la liste des territoires ; le crayon, lui, appartient au
- * moment où l'on peint — voir `DrawPolityBar`, qui le garde. Les deux
- * partageaient la même image, ce qui faisait dire « dessiner » à un bouton
- * qui dit « voir ».
+ * Ce bouton portait une **carte pliée** : il ouvre la liste des territoires,
+ * et le crayon appartenait au moment où l'on peint — `DrawPolityBar` le
+ * garde. La distinction était juste et elle a cessé de l'être le jour où ce
+ * bouton est devenu le seul de la planche : il ne se lit plus à côté de deux
+ * voisins qui ajoutent à la collection, il se lit seul, et son nom est
+ * « Dessiner ».
+ *
+ * Les deux crayons restent distincts — celui-ci droit, celui de la barre de
+ * dessin couché à quarante-cinq degrés — donc on ne confond pas la porte
+ * avec l'outil qu'elle ouvre.
  */
-const TERRITORIES = require("../../../assets/icons/map-folded.png");
+const TERRITORIES = require("../../../assets/icons/pencil.png");
 const TRASH = require("../../../assets/icons/trash.png");
 /** Putting a territory back is exactly "show it on the map again". */
 const BACK_ON_MAP = require("../../../assets/icons/view-map.png");
@@ -96,6 +102,8 @@ export function DrawTerritoryButton({
     <>
       <GlyphButton
         accessibilityLabel="Dessiner sur la carte"
+        size={DISC}
+        style={styles.disc}
         onPress={() => setOpen(true)}
       >
         <Image source={TERRITORIES} style={styles.glyph} resizeMode="contain" />
@@ -256,8 +264,59 @@ function TerritoryList({ onDraw }: { onDraw: () => void }) {
   );
 }
 
+/**
+ * Plus large que la cible tactile ordinaire, et c'est voulu.
+ *
+ * Il fut un disque de quarante-quatre points parmi trois. Il est seul
+ * désormais — les deux autres sont devenus des onglets —, et un unique
+ * bouton à la taille minimale sur une planche entière se lit comme un oubli
+ * plutôt que comme une invitation.
+ */
+const DISC = 58;
+
 const styles = StyleSheet.create({
-  glyph: { width: 22, height: 22 },
+  /**
+   * Plein, en cire, et sans le bord taillé des disques de parchemin.
+   *
+   * `GlyphButton` reste générique — un disque flottant, sa forme et son
+   * ombre — et c'est ici que ce bouton-ci prend sa couleur : il n'y a pas de
+   * « disque de cire » dans le système, il y a ce bouton, qui agit sur la
+   * planche et le dit.
+   *
+   * Le liseré clair du composant passe en cire sombre : clair, il aurait
+   * cerné l'aplat d'un anneau pâle au lieu de lui donner l'épaisseur d'un
+   * disque taillé.
+   */
+  disc: {
+    backgroundColor: palette.wax,
+    borderColor: palette.waxDeep,
+    /**
+     * Le relief, et il se fait **par-dessous**.
+     *
+     * `GlyphButton` porte déjà une ombre de disque flottant — opacité 0,26,
+     * rayon 9, jetée quatre points plus bas. Celle-ci est plus dense, plus
+     * étalée et tombe plus loin : le disque cesse de reposer sur la planche
+     * pour s'en détacher franchement.
+     *
+     * Aucun reflet sur le haut, et c'est une leçon déjà apprise —
+     * `GlyphButton` la garde écrite : un dégradé assez fort pour se lire
+     * comme de la lumière se lit d'abord comme une seconde couleur, et le
+     * disque paraît coupé en deux. Ce qui lève un objet, c'est le sombre
+     * dessous, pas le clair dessus.
+     */
+    shadowOpacity: 0.38,
+    shadowRadius: 13,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 12,
+  },
+  /**
+   * Blanc sur la cire, et large dans son disque.
+   *
+   * Trente-quatre points sur cinquante-huit : il reste douze points de cire
+   * de chaque côté, ce qui suffit à ce que le cercle se lise encore comme un
+   * cercle. Plus petit, le crayon flottait au milieu d'un aplat.
+   */
+  glyph: { width: 34, height: 34, tintColor: palette.surfaceRaised },
   fill: { flex: 1 },
   switcher: { paddingHorizontal: space.xl, paddingBottom: space.md },
   body: {
