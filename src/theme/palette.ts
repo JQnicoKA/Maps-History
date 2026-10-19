@@ -166,6 +166,24 @@ export const palette = {
   sunken: "#EBE7DC",
 
   /**
+   * Ce qui a abouti, et rien d'autre.
+   *
+   * **Il a manqué d'exister, et ça s'est vu.** Trois endroits employaient
+   * `forest` — un **lavis de la carte** — comme encre de réussite : la jauge
+   * d'un mot de passe complet, la coche d'une entrée déjà copiée, la phrase
+   * qui dit qu'un mot de passe a changé. Le jour où la planche a été
+   * éclaircie de vingt points, ce lavis est passé à 1,54 sur le blanc : les
+   * trois ont disparu sans que rien ne le signale, parce qu'un lavis n'a
+   * aucune raison d'être lisible — il est fait pour couvrir des pays, pas
+   * pour écrire.
+   *
+   * Celui-ci est une encre : 5,7:1 sur le blanc, 4,6 sur un champ creusé.
+   * Vert franc et un peu sourd, pour tenir à côté de la cire sans lui
+   * disputer l'attention.
+   */
+  good: "#44704A",
+
+  /**
    * Deletion, and nothing else.
    *
    * A true red rather than the wax: the wax means "here is what you are

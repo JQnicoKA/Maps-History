@@ -131,5 +131,5 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: palette.surfaceRaised,
   },
-  taken: { fontSize: 18, color: palette.forest, paddingHorizontal: space.sm },
+  taken: { fontSize: 18, color: palette.good, paddingHorizontal: space.sm },
 });

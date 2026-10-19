@@ -438,17 +438,7 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
             pointerEvents="box-none"
           >
             <View style={styles.topLeft}>
-              <AccountButton
-                onSeeEntry={(of, id) =>
-                  // Déjà baissée : `AccountButton` attend son `onClosed`
-                  // avant d'appeler ceci.
-                  onRaise({
-                    kind: "entry",
-                    of: of === "character" ? "character" : "event",
-                    id,
-                  })
-                }
-              />
+              <AccountButton onPress={() => onRaise({ kind: "account" })} />
             </View>
             <FilterButton />
             {/* Un seul bouton reste de ce côté, et c'est un verbe : dessiner

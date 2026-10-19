@@ -13,6 +13,7 @@ import { EventFormModal } from "../features/events/components/EventFormModal";
 import { useEvents } from "../features/events/EventsProvider";
 import type { HistoricalEvent } from "../features/events/types";
 import { TreeBuilder } from "../features/genealogy/TreeBuilder";
+import { AccountScreen } from "./Account/AccountScreen";
 import { usePlacement } from "../features/placement";
 
 /**
@@ -30,6 +31,8 @@ export type Page =
   /** `null` invents one. */
   | { kind: "editPerson"; id: string | null }
   | { kind: "tree"; id: string }
+  /** Votre compte, en pleine page : un détour, pas une destination. */
+  | { kind: "account" }
   /** The community catalogue, which is about no one row in particular. */
   | { kind: "searchEvents" }
   | { kind: "searchCharacters" }
@@ -286,6 +289,24 @@ export function usePages({ drawing }: { drawing: boolean }): PagesHandle {
           visible={page?.kind === "searchTrees"}
           onClose={() => setPage(null)}
           onClosed={afterPage}
+        />
+
+        <AccountScreen
+          visible={page?.kind === "account"}
+          onClose={() => {
+            setPage(null);
+            afterPage();
+          }}
+          /* Rien à attendre : cette page est une vue et non une modale, donc
+             elle est partie à l'instant où l'état le dit, et le catalogue
+             peut se lever dans le même souffle. */
+          onSeeEntry={(of, id) =>
+            raise({
+              kind: "entry",
+              of: of === "character" ? "character" : "event",
+              id,
+            })
+          }
         />
 
         {/* The one drawing, wherever it was asked for. Mounted here because

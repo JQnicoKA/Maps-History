@@ -207,7 +207,7 @@ export function AuthScreen() {
                     styles.gaugeFill,
                     {
                       width: `${Math.round(strength(password) * 100)}%`,
-                      backgroundColor: missing.length === 0 ? palette.forest : palette.wax,
+                      backgroundColor: missing.length === 0 ? palette.good : palette.wax,
                     },
                   ]}
                 />
