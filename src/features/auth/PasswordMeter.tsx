@@ -4,7 +4,18 @@ import { failures, strength } from "./password";
 import { palette } from "../../theme/palette";
 import { radius, space, type } from "../../theme/tokens";
 
-export type PasswordMeterProps = { password: string };
+export type PasswordMeterProps = {
+  password: string;
+  /**
+   * Le rail de la jauge, quand le fond n'est pas celui qu'elle attend.
+   *
+   * Elle se creuse dans une surface claire, donc son rail porte `sunken` —
+   * et il disparaît sur un fond qui porte déjà `sunken`, comme le tiroir du
+   * mot de passe dans la page du compte. La règle s'y inverse : sur un fond
+   * creusé, c'est le blanc qui creuse.
+   */
+  track?: string;
+};
 
 /**
  * How good the password being typed is, in a bar and a sentence.
@@ -17,12 +28,15 @@ export type PasswordMeterProps = { password: string };
  * four lines, three of them green, is a puzzle; "il manque une majuscule" is
  * an instruction.
  */
-export function PasswordMeter({ password }: PasswordMeterProps) {
+export function PasswordMeter({
+  password,
+  track = palette.sunken,
+}: PasswordMeterProps) {
   const missing = failures(password);
 
   return (
     <View style={styles.rules}>
-      <View style={styles.gauge}>
+      <View style={[styles.gauge, { backgroundColor: track }]}>
         <View
           style={[
             styles.gaugeFill,
@@ -46,12 +60,7 @@ export function PasswordMeter({ password }: PasswordMeterProps) {
 
 const styles = StyleSheet.create({
   rules: { gap: space.sm },
-  gauge: {
-    height: 4,
-    borderRadius: radius.pill,
-    backgroundColor: palette.sunken,
-    overflow: "hidden",
-  },
+  gauge: { height: 4, borderRadius: radius.pill, overflow: "hidden" },
   gaugeFill: { height: "100%", borderRadius: radius.pill },
   rulesText: { ...type.caption, color: palette.inkSoft },
 });
