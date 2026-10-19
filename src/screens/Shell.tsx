@@ -1,16 +1,23 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CharactersScreen } from "./Collections/CharactersScreen";
 import { EventsScreen } from "./Collections/EventsScreen";
 import { TreesScreen } from "./Collections/TreesScreen";
 import { MapScreen } from "./MapScreen";
 import { usePages } from "./Pages";
-import { TabBar, type TabKey } from "./TabBar";
+import {
+  TabBar,
+  TAB_BAR_HEIGHT,
+  TAB_BAR_MARGIN,
+  type TabKey,
+} from "./TabBar";
 import { useNotices } from "../features/community/NoticeList";
 import { OfflineBar } from "../features/network/OfflineBar";
 import { usePlacement } from "../features/placement";
 import { palette } from "../theme/palette";
+import { space } from "../theme/tokens";
 
 /**
  * Les quatre onglets de l'application, et ce qui se lève par-dessus.
@@ -22,17 +29,19 @@ import { palette } from "../theme/palette";
  * employait déjà pour sa propre bascule carte/liste, reprise un étage plus
  * haut — `display: none` plutôt qu'un démontage.
  *
- * **Aucune page ne connaît la barre.** Elle est leur frère dans cette
- * colonne, pas un calque posé dessus : chaque scène s'arrête donc d'elle-même
- * à son sommet, et aucune n'a à réserver sa hauteur. En lui passant la mesure
- * on la comptait deux fois — quatre-vingt-dix points de vide sous la frise et
- * au pied de chaque liste.
+ * **Chaque page réserve la hauteur du pied, et c'est le prix d'une barre
+ * flottante.** Elle fut un frère dans cette colonne : les scènes s'arrêtaient
+ * d'elles-mêmes à son sommet et aucune n'avait à la connaître. Détachée du
+ * bord, elle ne prend plus de place — le contenu passe dessous, ce qui est
+ * tout l'intérêt du genre, et chaque scène doit donc savoir ce qu'elle
+ * couvre. La mesure est calculée ici, une fois, et descendue.
  *
  * **La frise n'appartient qu'à la carte.** Elle est dessinée par `MapScreen`
  * et non ici : lire une collection n'est pas lire un instant, et les trois
  * pages recensent là où la planche montre une année.
  */
 export function Shell() {
+  const insets = useSafeAreaInsets();
   const { aiming } = usePlacement();
   const [tab, setTab] = useState<TabKey>("map");
   /**
@@ -71,6 +80,16 @@ export function Shell() {
   }, [takenOver]);
 
   const pages = usePages({ drawing, notices });
+  /**
+   * Ce que le pied flottant recouvre, et que les pages laissent libre.
+   *
+   * La gélule, la marge qui la détache du bord, et la zone sûre de
+   * l'appareil. La bande « hors ligne » n'y figure pas : elle est
+   * exceptionnelle et passagère, et réserver en permanence la hauteur d'une
+   * chose qu'on ne voit presque jamais laisserait un vide sous chaque liste
+   * pour rien.
+   */
+  const bottomInset = insets.bottom + TAB_BAR_MARGIN + TAB_BAR_HEIGHT;
 
   return (
     <View style={styles.screen}>
@@ -78,6 +97,7 @@ export function Shell() {
         <MapScreen
           onRaise={pages.raise}
           onDrawingChange={setDrawing}
+          bottomInset={bottomInset}
         />
       </View>
 
@@ -88,6 +108,7 @@ export function Shell() {
           onSeek={() => pages.raise({ kind: "searchEvents" })}
           unread={notices.notices.length}
           onProfile={() => pages.raise({ kind: "account" })}
+          bottomInset={bottomInset}
         />
       </View>
 
@@ -100,6 +121,7 @@ export function Shell() {
           onSeek={() => pages.raise({ kind: "searchCharacters" })}
           unread={notices.notices.length}
           onProfile={() => pages.raise({ kind: "account" })}
+          bottomInset={bottomInset}
         />
       </View>
 
@@ -109,16 +131,28 @@ export function Shell() {
           onSeek={() => pages.raise({ kind: "searchTrees" })}
           unread={notices.notices.length}
           onProfile={() => pages.raise({ kind: "account" })}
+          bottomInset={bottomInset}
         />
       </View>
 
-      {/* Au-dessus des onglets et dans la même colonne : elle rétrécit la
-          scène plutôt que de la recouvrir — voir `OfflineBar`. Elle reste
-          quand le viseur prend l'écran : viser un point sans réseau est
-          exactement le moment où il faut le savoir. */}
-      <OfflineBar />
+      {/* Tout ce qui vit au pied de l'écran, dans un même quai flottant.
+          `box-none` pour que le quai laisse passer les touches entre ses
+          deux gélules — sans quoi il intercepterait toute la largeur de
+          l'écran sur sa hauteur.
 
-      {takenOver ? null : <TabBar value={tab} onChange={setTab} />}
+          La bande « hors ligne » reste quand le viseur prend l'écran :
+          viser un point sans réseau est exactement le moment où il faut le
+          savoir. */}
+      <View
+        pointerEvents="box-none"
+        style={[
+          styles.dock,
+          { paddingBottom: insets.bottom + TAB_BAR_MARGIN },
+        ]}
+      >
+        <OfflineBar />
+        {takenOver ? null : <TabBar value={tab} onChange={setTab} />}
+      </View>
 
       {/* Après la barre, donc par-dessus : l'arbre dessiné est une vue et
           non une modale, et il doit couvrir les onglets comme il couvre
@@ -139,4 +173,13 @@ const styles = StyleSheet.create({
    * place sans que les trois autres n'en réclament.
    */
   hidden: { display: "none" },
+  /** Le quai du bas : la gélule des onglets, et la bande du réseau dessus. */
+  dock: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    gap: space.sm,
+    paddingHorizontal: TAB_BAR_MARGIN,
+  },
 });

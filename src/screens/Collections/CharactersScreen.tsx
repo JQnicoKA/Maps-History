@@ -16,6 +16,14 @@ export type CharactersScreenProps = {
   /** La porte du compte, au bord du bandeau — voir `CollectionPage`. */
   unread: number;
   onProfile: () => void;
+  /**
+   * Ce que le pied flottant recouvre — voir `Shell`.
+   *
+   * La barre d'onglets ne prend plus sa place dans la colonne : le contenu
+   * passe dessous, et sans ce rembourrage la dernière rangée resterait
+   * inatteignable sous la gélule.
+   */
+  bottomInset: number;
 };
 
 /**
@@ -36,6 +44,7 @@ export function CharactersScreen({
   onSeek,
   unread,
   onProfile,
+  bottomInset,
 }: CharactersScreenProps) {
   const { characters, loading, error, refresh } = useEvents();
 
@@ -64,6 +73,7 @@ export function CharactersScreen({
       onRetry={() => void refresh()}
       unread={unread}
       onProfile={onProfile}
+      bottomInset={bottomInset}
     />
   );
 }

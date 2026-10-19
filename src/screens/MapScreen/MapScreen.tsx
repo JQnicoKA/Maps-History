@@ -61,11 +61,11 @@ import { space } from "../../theme/tokens";
  * chrome. Under it they are a colophon: the last line on the plate, out of the
  * way of everything one actually touches.
  *
- * **Plus de zone sûre dans la mesure.** Elle en tenait compte du temps où cet
- * écran occupait tout l'appareil ; la barre d'onglets occupe désormais le bas
- * et porte l'indicateur d'accueil dans son propre rembourrage. Cette scène
- * s'arrête au sommet de la barre, et compter la zone sûre ici la compterait
- * deux fois.
+ * **La mesure vient de la coquille.** Cette scène occupe tout l'écran, et le
+ * pied — gélule des onglets, marge, zone sûre — flotte par-dessus elle. Il
+ * fut un temps un frère dans la colonne : la scène s'arrêtait alors à son
+ * sommet et n'avait rien à compter. Ce n'est plus le cas, et la mesure est
+ * calculée une fois en haut plutôt que devinée ici.
  */
 const CREDITS_STRIP = 22;
 
@@ -84,9 +84,22 @@ export type MapScreenProps = {
    * barre d'onglets, et escamoter l'arbre dessiné s'il y en avait un.
    */
   onDrawingChange: (drawing: boolean) => void;
+  /**
+   * Ce que le pied flottant recouvre — voir `Shell`.
+   *
+   * La barre d'onglets ne prend plus sa place dans la colonne : elle survole
+   * la planche. La frise, les crédits et la carte de résumé doivent donc
+   * s'en écarter, alors qu'ils s'arrêtaient d'eux-mêmes au sommet d'une
+   * barre ancrée.
+   */
+  bottomInset: number;
 };
 
-export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
+export function MapScreen({
+  onRaise,
+  onDrawingChange,
+  bottomInset,
+}: MapScreenProps) {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapRef>(null);
   const {
@@ -307,11 +320,9 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
           mapRef={mapRef}
           center={center}
           centerAnimationDuration={hasFramed.current ? 650 : 0}
-          /* Zéro des deux côtés depuis que la barre tient le bas : la ligne
-             se pose à huit points du bord de cette scène, c'est-à-dire juste
-             au-dessus de la barre, et `MapAttribution` ajoute ces huit
-             points elle-même. */
-          attributionOffset={0}
+          /* Au-dessus du pied flottant, et à ras du bord quand il s'efface
+             pour laisser le viseur travailler. */
+          attributionOffset={aiming || drawing ? 0 : bottomInset}
           onDetailChange={setDetailed}
           onStyleFailed={setStyleFailed}
           onLook={(centre, zoom) => {
@@ -471,7 +482,7 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
           <View
             style={[
               styles.frieze,
-              { bottom: CREDITS_STRIP },
+              { bottom: bottomInset + CREDITS_STRIP },
             ]}
           >
             <Timeline />
@@ -481,7 +492,8 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
             style={[
               styles.bottom,
               {
-                bottom: CREDITS_STRIP + FRIEZE_HEIGHT + space.sm,
+                bottom:
+                  bottomInset + CREDITS_STRIP + FRIEZE_HEIGHT + space.sm,
               },
             ]}
             pointerEvents="box-none"

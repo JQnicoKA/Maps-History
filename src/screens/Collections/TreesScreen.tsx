@@ -23,6 +23,14 @@ export type TreesScreenProps = {
   /** La porte du compte, au bord du bandeau — voir `CollectionPage`. */
   unread: number;
   onProfile: () => void;
+  /**
+   * Ce que le pied flottant recouvre — voir `Shell`.
+   *
+   * La barre d'onglets ne prend plus sa place dans la colonne : le contenu
+   * passe dessous, et sans ce rembourrage la dernière rangée resterait
+   * inatteignable sous la gélule.
+   */
+  bottomInset: number;
 };
 
 /**
@@ -38,7 +46,7 @@ export type TreesScreenProps = {
  * donc il appartient au sommet de l'application, là où rien de ce qu'il ouvre
  * n'a besoin d'être un panneau dans un panneau.
  */
-export function TreesScreen({ onOpen, onSeek, unread, onProfile }: TreesScreenProps) {
+export function TreesScreen({ onOpen, onSeek, unread, onProfile, bottomInset }: TreesScreenProps) {
   const { trees, characters, addTree, loading, error, refresh } = useEvents();
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
@@ -104,6 +112,7 @@ export function TreesScreen({ onOpen, onSeek, unread, onProfile }: TreesScreenPr
         onRetry={() => void refresh()}
         unread={unread}
         onProfile={onProfile}
+        bottomInset={bottomInset}
       />
 
       <Sheet
