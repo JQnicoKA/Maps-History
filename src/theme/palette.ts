@@ -90,18 +90,21 @@ export const palette = {
   /**
    * Le cuir d'une reliure : l'aplat de la porte qui mène à la bibliothèque.
    *
-   * Un brun chaud, plus clair et plus roux que l'encre du texte — il s'en
-   * distingue par une clarté de 0,375 contre 0,358 et une saturation de
-   * 0,047 contre 0,038. L'écart est petit et c'est voulu : cette couleur
-   * est de la même famille que l'encre dont l'atlas est imprimé, elle n'est
+   * Un brun chaud, plus clair et plus roux que l'encre du texte — `#543B27`
+   * contre `#4A3927`. L'écart est petit et c'est voulu : cette couleur est
+   * de la même famille que l'encre dont l'atlas est imprimé, elle n'est
    * simplement pas celle avec laquelle on écrit.
    *
-   * `bindingDeep` lui donne son bord taillé, et il est construit sur la
-   * cire : **même écart de clarté** (0,073 en OKLab) et **même retrait de
-   * saturation** (0,84) que `waxDeep` par rapport à `wax`. Un objet plein
-   * se borde donc selon une seule recette, quelle que soit sa couleur.
+   * **Pleine, et c'est un retour en arrière assumé.** Elle a été voilée un
+   * temps, pour qu'elle pèse moins en tête de liste. Le voile traitait le
+   * symptôme : ce qui gênait n'était pas qu'elle soit sombre, c'est qu'elle
+   * était le seul grand bloc de la page à ne porter aucune ombre — collée
+   * au papier là où chaque rangée y est posée. Elle a maintenant l'ombre
+   * des autres cartes, et un objet qui porte une ombre ne se voit pas au
+   * travers : la densité lui est rendue.
    */
   binding: "#543B27",
+  /** Son bord taillé : 1,33 contre l'aplat, la proportion de `waxDeep`. */
   bindingDeep: "#3D2919",
   inkSoft: "#6E5940",
   inkFaint: "#8C7A5F",

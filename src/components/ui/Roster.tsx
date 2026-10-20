@@ -388,10 +388,33 @@ const styles = StyleSheet.create({
     gap: space.md,
     padding: space.sm,
     paddingRight: space.md,
+    /* Plus rond que les cartes de la liste, qui portent `md`. L'alignement
+       a été essayé et il n'a pas plu : cette porte n'est pas une rangée de
+       plus, et son coin plus ouvert est ce qui le dit. */
     borderRadius: radius.lg,
     backgroundColor: palette.binding,
     borderWidth: 1.5,
     borderColor: palette.bindingDeep,
+    /**
+     * L'ombre, qui manquait — et c'est elle qui faisait tout.
+     *
+     * Chaque rangée de ces pages est une carte posée sur le papier, avec
+     * son ombre ; cette porte était le seul grand bloc à n'en avoir
+     * aucune. Elle ne reposait pas sur la page, elle y était collée, et
+     * aucun réglage de couleur ne pouvait corriger ça — on avait essayé
+     * de l'éclaircir, ce qui ne faisait qu'une tache plus pâle.
+     *
+     * Plus dense que `shadow.soft` des rangées — 0,22 contre 0,12 — parce
+     * qu'une ombre se lit par son écart au fond qu'elle assombrit, et
+     * qu'un objet sombre en réclame davantage pour que l'œil la distingue
+     * de l'objet lui-même. Plus courte aussi, et jetée moins loin : elle
+     * lève la porte d'un cran au-dessus des cartes, pas d'un étage.
+     */
+    shadowColor: "#2A1F12",
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
   /** A lens, drawn: a ring and a handle. */
   lens: {
@@ -436,7 +459,7 @@ const styles = StyleSheet.create({
    * Elle était en `inkSoft`, ce qui marchait sur du papier et disparaît sur
    * un aplat sombre. Du blanc à quatre-vingts pour cent la met un cran sous
    * le libellé sans lui donner une couleur à elle, ce qui ferait trois tons
-   * sur un objet qui n'en veut qu'un.
+   * sur un objet qui n'en veut qu'un. 7,3:1.
    */
   seekDetail: { ...type.caption, color: "rgba(255, 255, 255, 0.8)" },
   seekMore: {
