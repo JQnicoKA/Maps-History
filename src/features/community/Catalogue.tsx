@@ -58,6 +58,15 @@ import { widthsFor } from "./period";
 import { usePlacement } from "../placement";
 import { ANSWER_WITHIN, CONTACT } from "../../config/contact";
 import { palette } from "../../theme/palette";
+
+/**
+ * Le bandeau du panneau, comme ceux des trois feuilles d'écriture.
+ *
+ * Elle se termine par une vague blanche qui rend la page au papier du
+ * panneau — c'est pour cela qu'elle vit en haut d'un panneau blanc et nulle
+ * part ailleurs.
+ */
+const BANNER = require("../../../assets/banniere_bibliotheque.png");
 import { BACKDROP, radius, shadow, space, type } from "../../theme/tokens";
 
 /** Where a rising card starts from: below the panel, whatever its height. */
@@ -645,6 +654,10 @@ export function Catalogue({
        * beneath it, and nothing flickers.
        */
       title={face === "report" ? "Signaler" : look.many}
+      /* Elle suit le titre, et pour la même raison que lui : elle reste en
+         place pendant qu'une fiche monte, et ne cède qu'au signalement, qui
+         n'est pas la bibliothèque mais une lettre qu'on y écrit. */
+      banner={face === "report" ? undefined : BANNER}
       footer={
         face === "report" ? (
           <>
