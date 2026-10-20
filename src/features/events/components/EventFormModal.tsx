@@ -33,6 +33,15 @@ import {
 import { palette } from "../../../theme/palette";
 
 /**
+ * Le bandeau du panneau, comme celui de « Dessiner ».
+ *
+ * Elle se termine par une vague blanche qui rend la page au papier du
+ * panneau — c'est pour cela qu'elle vit en haut d'un panneau blanc et nulle
+ * part ailleurs.
+ */
+const BANNER = require("../../../../assets/banniere_evenement.png");
+
+/**
  * A heading and, optionally, the current answer beside it.
  *
  * The form used to be a single column of identical grey slabs with a small
@@ -337,6 +346,10 @@ export function EventFormModal({
       // « Annuler » et « Suivant » restaient sous le clavier, au moment précis
       // où l'on finit de taper et où l'on veut passer à la suite.
       title={event ? "Modifier l'événement" : "Nouvel événement"}
+      /* À la création seulement. Écrire un événement est le geste qu'on
+         accueille ; le corriger est un aller-retour, et on y vient pour une
+         ligne à reprendre, pas pour être accueilli. */
+      banner={event ? undefined : BANNER}
       footer={
         <>
           {/* « Retour » remonte d'une question ; à la première il n'y a plus

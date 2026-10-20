@@ -34,6 +34,15 @@ import type {
 } from "../types";
 import { UpdateRow } from "../../community/UpdateRow";
 import { palette } from "../../../theme/palette";
+
+/**
+ * Le bandeau du panneau, comme ceux de « Dessiner » et d'un nouvel événement.
+ *
+ * Elle se termine par une vague blanche qui rend la page au papier du
+ * panneau — c'est pour cela qu'elle vit en haut d'un panneau blanc et nulle
+ * part ailleurs.
+ */
+const BANNER = require("../../../../assets/banniere_personnage.png");
 import { radius, space, TOUCH, type } from "../../../theme/tokens";
 
 const TRASH = require("../../../../assets/icons/trash.png");
@@ -236,6 +245,10 @@ export function CharacterEditModal({
       // aside for the reticle.
       onClosed={aiming ? undefined : onClosed}
       title={creating ? "Nouveau personnage" : "Modifier le personnage"}
+      /* À la création seulement, comme pour un événement : on accueille celui
+         qui écrit quelqu'un de neuf ; on ne rhabille pas la page de celui qui
+         vient corriger une ligne. */
+      banner={creating ? BANNER : undefined}
       footer={
         <>
           {person ? (
