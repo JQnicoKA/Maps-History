@@ -61,11 +61,12 @@ import { space } from "../../theme/tokens";
  * chrome. Under it they are a colophon: the last line on the plate, out of the
  * way of everything one actually touches.
  *
- * **La mesure vient de la coquille.** Cette scène occupe tout l'écran, et le
- * pied — gélule des onglets, marge, zone sûre — flotte par-dessus elle. Il
- * fut un temps un frère dans la colonne : la scène s'arrêtait alors à son
- * sommet et n'avait rien à compter. Ce n'est plus le cas, et la mesure est
- * calculée une fois en haut plutôt que devinée ici.
+ * **Vingt-deux points, et rien de plus.** La barre d'onglets est ancrée sous
+ * cette scène et prend sa place dans la colonne : la planche s'arrête d'elle-
+ * même à son sommet, et il n'y a donc que la ligne de crédits à mesurer ici.
+ * La barre a flotté un temps, et il fallait alors y ajouter sa hauteur, sa
+ * marge et la zone sûre — une mesure calculée dans la coquille et descendue
+ * jusqu'ici, que la frise a payée deux fois avant qu'on la retire.
  */
 const CREDITS_STRIP = 22;
 
@@ -84,22 +85,9 @@ export type MapScreenProps = {
    * barre d'onglets, et escamoter l'arbre dessiné s'il y en avait un.
    */
   onDrawingChange: (drawing: boolean) => void;
-  /**
-   * Ce que le pied flottant recouvre — voir `Shell`.
-   *
-   * La barre d'onglets ne prend plus sa place dans la colonne : elle survole
-   * la planche. La frise, les crédits et la carte de résumé doivent donc
-   * s'en écarter, alors qu'ils s'arrêtaient d'eux-mêmes au sommet d'une
-   * barre ancrée.
-   */
-  bottomInset: number;
 };
 
-export function MapScreen({
-  onRaise,
-  onDrawingChange,
-  bottomInset,
-}: MapScreenProps) {
+export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapRef>(null);
   const {
@@ -320,9 +308,12 @@ export function MapScreen({
           mapRef={mapRef}
           center={center}
           centerAnimationDuration={hasFramed.current ? 650 : 0}
-          /* Au-dessus du pied flottant, et à ras du bord quand il s'efface
-             pour laisser le viseur travailler. */
-          attributionOffset={aiming || drawing ? 0 : bottomInset}
+          /* Rien à ajouter tant que la barre d'onglets est là : elle est
+             ancrée sous cette planche et porte déjà la zone sûre de
+             l'appareil. Elle s'efface pour laisser le viseur travailler, et
+             la planche descend alors jusqu'au bord — la ligne de crédits
+             reprend donc à son compte ce que la barre portait. */
+          attributionOffset={aiming || drawing ? insets.bottom : 0}
           onDetailChange={setDetailed}
           onStyleFailed={setStyleFailed}
           onLook={(centre, zoom) => {
@@ -479,22 +470,14 @@ export function MapScreen({
 
           {/* Full width, outside the padded column: the strokes have to reach
               the edges of the screen to fade out against them. */}
-          <View
-            style={[
-              styles.frieze,
-              { bottom: bottomInset + CREDITS_STRIP },
-            ]}
-          >
+          <View style={[styles.frieze, { bottom: CREDITS_STRIP }]}>
             <Timeline />
           </View>
 
           <View
             style={[
               styles.bottom,
-              {
-                bottom:
-                  bottomInset + CREDITS_STRIP + FRIEZE_HEIGHT + space.sm,
-              },
+              { bottom: CREDITS_STRIP + FRIEZE_HEIGHT + space.sm },
             ]}
             pointerEvents="box-none"
           >

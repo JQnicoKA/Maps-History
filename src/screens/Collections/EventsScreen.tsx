@@ -16,14 +16,6 @@ export type EventsScreenProps = {
   /** La porte du compte, au bord du bandeau — voir `CollectionPage`. */
   unread: number;
   onProfile: () => void;
-  /**
-   * Ce que le pied flottant recouvre — voir `Shell`.
-   *
-   * La barre d'onglets ne prend plus sa place dans la colonne : le contenu
-   * passe dessous, et sans ce rembourrage la dernière rangée resterait
-   * inatteignable sous la gélule.
-   */
-  bottomInset: number;
 };
 
 /**
@@ -47,7 +39,6 @@ export function EventsScreen({
   onSeek,
   unread,
   onProfile,
-  bottomInset,
 }: EventsScreenProps) {
   const { events, selectedEvent, selectEvent, loading, error, refresh } =
     useEvents();
@@ -89,7 +80,6 @@ export function EventsScreen({
       onRetry={() => void refresh()}
       unread={unread}
       onProfile={onProfile}
-      bottomInset={bottomInset}
     />
   );
 }

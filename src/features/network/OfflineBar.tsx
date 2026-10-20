@@ -2,17 +2,20 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { useNetwork } from "./NetworkProvider";
 import { palette } from "../../theme/palette";
-import { radius, space, type } from "../../theme/tokens";
+import { space, type } from "../../theme/tokens";
 
 /**
- * Une gélule qui dit qu'on est hors ligne, sur tous les onglets.
+ * Une bande qui dit qu'on est hors ligne, sur tous les onglets.
  *
- * **Elle flotte, comme la barre d'onglets au-dessus de laquelle elle se
- * pose.** Elle prenait sa place dans la colonne, ce qui était juste quand la
- * barre faisait de même ; la barre s'est détachée du bord, et une bande
- * ancrée coincée sous une gélule flottante aurait fait deux grammaires au
- * même endroit. Tout ce qui vit au pied de l'écran flotte désormais, et les
- * pages réservent la hauteur de l'ensemble.
+ * **Ancrée, juste au-dessus de la barre d'onglets, et prenant sa place dans
+ * la colonne.** Elle a flotté le temps que la barre flotte — une gélule
+ * posée sur une autre — et c'est revenu à sa forme première en même temps
+ * qu'elle : une bande pleine largeur se lit comme une condition de
+ * l'écran entier, ce qu'elle est, là où une gélule se lit comme un objet
+ * qu'on peut toucher, ce qu'elle n'est pas.
+ *
+ * Qu'elle pousse le contenu de sa hauteur est juste ici : elle est rare et
+ * passagère, et elle rend le peu qu'elle prend dès que le réseau revient.
  *
  * Discrète, et c'est délibéré : ce n'est pas une panne de l'application mais
  * une condition du monde, et le lecteur peut continuer de lire ce qu'il a
@@ -38,6 +41,10 @@ export function OfflineBar() {
 }
 
 const styles = StyleSheet.create({
+  /**
+   * Un filet en haut et rien en bas : la barre d'onglets porte déjà le sien,
+   * et deux traits collés auraient fait un double rail.
+   */
   bar: {
     flexDirection: "row",
     alignItems: "center",
@@ -45,17 +52,9 @@ const styles = StyleSheet.create({
     gap: space.sm,
     paddingVertical: space.sm,
     paddingHorizontal: space.lg,
-    borderRadius: radius.pill,
-    backgroundColor: palette.surfaceRaised,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.line,
-    /* Moins levée que la barre d'onglets : elle se pose sur elle, pas à côté
-       d'elle, et deux ombres de même force au même endroit font une tache. */
-    shadowColor: "#2A1F12",
-    shadowOpacity: 0.14,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    backgroundColor: palette.sunken,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: palette.border,
   },
   dot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: palette.wax },
   said: { ...type.caption, color: palette.inkSoft },

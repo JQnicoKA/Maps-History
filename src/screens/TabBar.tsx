@@ -7,9 +7,10 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { palette } from "../theme/palette";
-import { radius, space, type } from "../theme/tokens";
+import { space, type } from "../theme/tokens";
 
 const MAP = require("../../assets/icons/view-map.png");
 const BOOK = require("../../assets/icons/book.png");
@@ -24,7 +25,7 @@ export type TabKey = "map" | "events" | "people" | "trees";
  * La carte d'abord, parce qu'elle est ce que l'application est ; puis les
  * trois collections, dans l'ordre où elles se bâtissent — on écrit des
  * événements, on nomme les gens qui y figurent, et on relie ces gens en
- * arbres.
+ * arbres. Un arbre sans personnages ne se bâtit pas ; l'ordre le dit.
  */
 const TABS: { key: TabKey; label: string; icon: number }[] = [
   { key: "map", label: "Carte", icon: MAP },
@@ -33,11 +34,8 @@ const TABS: { key: TabKey; label: string; icon: number }[] = [
   { key: "trees", label: "Arbres", icon: TREE },
 ];
 
-/** La hauteur de la gélule, sans la marge qui la détache du bord. */
-export const TAB_BAR_HEIGHT = 64;
-
-/** Ce qui la sépare des bords de l'écran, et du bas. */
-export const TAB_BAR_MARGIN = 14;
+/** La hauteur de la rangée, sans la zone sûre que la barre porte en plus. */
+const ROW_HEIGHT = 58;
 
 export type TabBarProps = {
   value: TabKey;
@@ -45,21 +43,28 @@ export type TabBarProps = {
 };
 
 /**
- * La barre de navigation : une gélule qui flotte au-dessus de la page.
+ * La barre de navigation, au bas de l'écran.
  *
- * **Flottante et non ancrée**, ce qui change sa géométrie autant que son
- * dessin : elle ne prend plus sa place dans la colonne de la coquille, donc
- * le contenu passe dessous et chaque page doit lui réserver sa hauteur —
- * voir `Shell`.
+ * **Ancrée, et c'est ce qui la rend simple.** Elle a flotté un temps : une
+ * gélule détachée des bords, en verre teinté, avec un lavis qui marquait
+ * l'onglet retenu. Tout cela coûtait cher à la mise en page — une barre qui
+ * flotte ne prend plus sa place dans la colonne, donc chaque page devait lui
+ * réserver sa hauteur, et le contenu passait dessous. Ancrée, elle est le
+ * frère des scènes : chacune s'arrête d'elle-même à son sommet et aucune n'a
+ * à la connaître.
  *
- * **Rien ne glisse d'un onglet à l'autre.** Une pastille de cire voyageait
- * sous l'onglet retenu ; elle disait la même chose que l'encre des mots, en
- * plus gros et en mouvement, et sur quatre onglets serrés elle faisait un
- * bloc de couleur qui se remarquait avant les noms. Ce qui marque
- * l'onglet courant est maintenant sa seule **encre**, et le mouvement
- * appartient au doigt : le glyphe se creuse sous la touche et revient.
+ * Ce qui marque l'onglet courant est son **encre**, et rien d'autre. Il n'y
+ * a ni pastille, ni lavis, ni rien qui voyage : un fond sous un onglet
+ * raconte le trajet plutôt que l'arrivée, et la cire est depuis toujours la
+ * couleur par laquelle cette application dit « voici ce que vous avez sous
+ * les yeux ».
+ *
+ * Le seul mouvement est celui du doigt : le glyphe se creuse sous la touche
+ * et revient. Il accuse réception, y compris sur l'onglet déjà ouvert.
  */
 export function TabBar({ value, onChange }: TabBarProps) {
+  const insets = useSafeAreaInsets();
+
   /**
    * Une échelle par onglet, créées une fois pour toutes.
    *
@@ -98,7 +103,7 @@ export function TabBar({ value, onChange }: TabBarProps) {
   };
 
   return (
-    <View style={styles.bar}>
+    <View style={[styles.bar, { paddingBottom: insets.bottom }]}>
       {TABS.map((tab, index) => {
         const active = tab.key === value;
         return (
@@ -140,55 +145,36 @@ export function TabBar({ value, onChange }: TabBarProps) {
 
 const styles = StyleSheet.create({
   /**
-   * La gélule : blanche, cernée d'un filet, et franchement levée.
+   * Opaque et bordée d'un filet.
    *
-   * L'ombre est plus dense que celle d'une carte posée sur une page, parce
-   * qu'elle ne se pose justement sur rien — elle survole la planche aussi
-   * bien qu'une liste, et sur la planche aucun filet ne tient contre un
-   * trait de côte.
+   * Translucide, elle laisserait passer la carte, qui est une planche
+   * chargée : les quatre mots y deviendraient illisibles au-dessus d'un
+   * trait de côte. Et elle porte la zone sûre de l'appareil dans son propre
+   * rembourrage, de sorte qu'aucune page n'ait à la compter.
    */
   bar: {
     flexDirection: "row",
-    height: TAB_BAR_HEIGHT,
-    borderRadius: radius.pill,
     backgroundColor: palette.surfaceRaised,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.line,
-    shadowColor: "#2A1F12",
-    shadowOpacity: 0.22,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: palette.border,
   },
   tab: {
     flex: 1,
+    height: ROW_HEIGHT,
     alignItems: "center",
     justifyContent: "center",
-    /**
-     * Un point entre le glyphe et son mot, et c'est ce qui paie le reste.
-     *
-     * Il y en avait trois. Les rendre au glyphe plutôt qu'au vide est le
-     * seul moyen de le grossir sans toucher à la gélule — et l'écart ne
-     * manque pas : le mot est en petites capitales sous une image, deux
-     * choses qu'on ne confond pas même collées.
-     */
+    /* Un point entre le glyphe et son mot : rendre l'écart au glyphe plutôt
+       qu'au vide est ce qui permet de le dessiner grand sans grandir la
+       rangée. Il ne manque pas — le mot est en petites capitales sous une
+       image, deux choses qu'on ne confond pas même collées. */
     gap: 1,
     paddingHorizontal: space.xs,
   },
-  /**
-   * Trente points, et la gélule en fait toujours soixante-quatre.
-   *
-   * Le compte est serré et il tient : trente pour le glyphe, un d'écart,
-   * treize pour le mot — quarante-quatre en tout, donc dix points de
-   * respiration au-dessus et au-dessous. C'est ce qu'il faut pour que la
-   * rangée ne vienne pas toucher les bords arrondis, et c'est à peu près la
-   * limite : au-delà, il faudra monter la gélule avec.
-   */
   glyph: { width: 30, height: 30 },
   label: {
     ...type.legend,
-    /* Dite plutôt que laissée à la fonte : sans elle, l'interligne dépend du
-       caractère et le compte de la gélule cesse d'être vérifiable. */
+    /* Dit plutôt que laissé à la fonte : sans lui, l'interligne dépend du
+       caractère et le compte de la rangée cesse d'être vérifiable. */
     lineHeight: 13,
     textTransform: "none",
     fontWeight: "600",

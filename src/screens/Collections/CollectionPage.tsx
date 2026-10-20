@@ -42,8 +42,6 @@ export type CollectionPageProps<T> = {
   empty: string;
   /** La première lecture est en cours : rien à dire encore. */
   loading: boolean;
-  /** Ce que le pied flottant recouvre — voir `Shell`. */
-  bottomInset: number;
   /** Elle a échoué, et voici pourquoi. */
   failed: string | null;
   onRetry: () => void;
@@ -97,7 +95,6 @@ export function CollectionPage<T>({
   unread,
   onProfile,
   loading,
-  bottomInset,
   failed,
   onRetry,
 }: CollectionPageProps<T>) {
@@ -126,13 +123,13 @@ export function CollectionPage<T>({
       <FlatList
         data={data}
         keyExtractor={keyOf}
-        /* En bas, de quoi passer sous la gélule des onglets : elle flotte
-           par-dessus cette liste et n'en rétrécit plus le cadre, donc la
-           dernière rangée se glisserait dessous sans ce rembourrage. La zone
-           sûre du haut, elle, est portée par le bandeau. */
+        /* Rien à réserver en bas : la barre d'onglets est ancrée et prend
+           sa place dans la colonne, donc cette liste s'arrête déjà à son
+           sommet. Un rembourrage de sa hauteur l'aurait comptée deux fois.
+           La zone sûre du haut, elle, est portée par le bandeau. */
         contentContainerStyle={[
           styles.body,
-          { paddingTop: space.lg, paddingBottom: bottomInset + space.md },
+          { paddingTop: space.lg, paddingBottom: space.xxl },
         ]}
         ListHeaderComponent={
           <View style={styles.head}>
