@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
   Dimensions,
+  Image,
+  type ImageSourcePropType,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -18,6 +20,23 @@ import { palette } from "../../theme/palette";
 import { BACKDROP, radius, shadow, space } from "../../theme/tokens";
 
 const SCREEN = Dimensions.get("window").height;
+/** La largeur du panneau : il court d'un bord à l'autre de l'écran. */
+const SCREEN_WIDTH = Dimensions.get("window").width;
+
+/**
+ * La part de l'écran qu'un panneau occupe au plus — et exactement, s'il est
+ * `tall`.
+ *
+ * Un nombre plutôt que deux chaînes : la hauteur maximale, la hauteur des
+ * panneaux hauts et la bannière s'y réfèrent toutes les trois, et trois
+ * « 92 % » écrits séparément auraient fini par diverger.
+ */
+const PANEL_PERCENT = 92;
+const PANEL_MAX = `${PANEL_PERCENT}%` as const;
+
+/** Ce que la bannière prend du panneau : un peu moins d'un cinquième. */
+const BANNER_SHARE = 0.18;
+const BANNER_HEIGHT = SCREEN * (PANEL_PERCENT / 100) * BANNER_SHARE;
 
 /**
  * Le papier, continué sous le clavier.
@@ -82,6 +101,23 @@ export type SheetProps = {
    */
   onClosed?: () => void;
   title?: string;
+  /**
+   * Une image en bandeau, tout en haut du panneau, de bord à bord.
+   *
+   * Décorative et rien d'autre : elle ne porte pas le titre, qui reste sous
+   * elle, et aucun panneau n'en a besoin pour se lire. Elle est donc une
+   * option — un panneau qui n'en donne pas s'ouvre exactement comme avant,
+   * sur sa poignée et son titre.
+   *
+   * **Toute sa largeur, un dixième de la hauteur du panneau, et c'est le
+   * haut qui est coupé.** L'image garde son rapport et prend la largeur
+   * entière : rien n'est rogné sur les côtés ni écrasé. Elle est plus haute
+   * que la bande qu'on lui donne, donc elle déborde — par le haut, puisqu'on
+   * l'accroche par le bas. Ce qui survit est le bas de l'image, ce qui est
+   * bien l'endroit où une bannière faite pour un panneau range ce qui doit
+   * rejoindre la page.
+   */
+  banner?: ImageSourcePropType;
   /** Pinned below the scrolling content — where the actions live. */
   footer?: ReactNode;
   /**
@@ -134,12 +170,37 @@ export function Sheet({
   onClose,
   onClosed,
   title,
+  banner,
   footer,
   tall = false,
   liftsForKeyboard = true,
   children,
 }: SheetProps) {
   const insets = useSafeAreaInsets();
+
+  /**
+   * Le rapport de la bannière, demandé à l'asset plutôt qu'écrit à la main.
+   *
+   * `undefined` pour une source distante, dont les dimensions ne sont pas
+   * connues avant le chargement : l'image prend alors la hauteur que son
+   * style lui donne, et aucune mise en page ne s'effondre.
+   */
+  const shape = banner ? Image.resolveAssetSource(banner) : null;
+  const ratio =
+    shape && shape.height > 0 ? shape.width / shape.height : undefined;
+  /** Ce que l'image mesure une fois réduite à la largeur du panneau. */
+  const natural = ratio ? SCREEN_WIDTH / ratio : undefined;
+  /**
+   * La bande, sans jamais dépasser ce que l'image peut remplir.
+   *
+   * Une bande plus haute que l'image ne montrerait pas davantage d'image :
+   * elle ajouterait du vide au-dessus, et ce vide serait un filet blanc
+   * coincé entre le bord arrondi du panneau et la bannière. Le plafond est
+   * donc la hauteur naturelle, et demander plus revient simplement à tout
+   * voir.
+   */
+  const band =
+    natural === undefined ? BANNER_HEIGHT : Math.min(BANNER_HEIGHT, natural);
 
   // Read through a ref: listing the callback among the effect's dependencies
   // would replay the exit animation every time the caller re-renders.
@@ -265,6 +326,7 @@ export function Sheet({
             style={[
               styles.panel,
               tall && styles.tall,
+              banner ? styles.edgeless : null,
               { transform: [{ translateY }] },
             ]}
           >
@@ -281,9 +343,38 @@ export function Sheet({
                 feuille qui ne l'est pas. */}
             <View {...pan.panHandlers} style={styles.header}>
               <Grain />
-              <View style={styles.grabZone}>
-                <View style={styles.grab} />
-              </View>
+              {banner ? (
+                /* La poignée se pose **sur** la bannière, et non au-dessus :
+                   l'image commence au bord haut du panneau, et lui ménager
+                   une bande au-dessus aurait mis un ruban blanc entre le bord
+                   arrondi et elle. En clair plutôt qu'en `line`, puisqu'elle
+                   se lit désormais sur une couleur dense. */
+                <View style={[styles.banner, { height: band }]}>
+                  <Image
+                    source={banner}
+                    style={[
+                      styles.bannerImage,
+                      /* Les deux dimensions, toujours : voir `bannerImage`.
+                         Sans rapport connu — une source distante —, l'image
+                         remplit la bande et c'est `cover` qui la recadre :
+                         moins fidèle, mais rien ne s'effondre. */
+                      {
+                        width: SCREEN_WIDTH,
+                        height: natural ?? band,
+                      },
+                    ]}
+                    resizeMode="cover"
+                    accessible={false}
+                  />
+                  <View style={styles.grabOverBanner} pointerEvents="none">
+                    <View style={[styles.grab, styles.grabLight]} />
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.grabZone}>
+                  <View style={styles.grab} />
+                </View>
+              )}
               {title ? (
                 <View style={styles.titleBlock}>
                   <JournalTitle title={title} />
@@ -331,7 +422,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.surfaceRaised,
   },
   panel: {
-    maxHeight: "92%",
+    maxHeight: PANEL_MAX,
     backgroundColor: palette.surfaceRaised,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
@@ -339,13 +430,24 @@ const styles = StyleSheet.create({
     // squaring them off.
     overflow: "hidden",
     // A hairline along the top edge: the sheet is a sheet of paper laid on
-    // the plate, and paper has an edge.
+    // the plate, and paper has an edge. Sauf sous une bannière — voir
+    // `edgeless`.
     borderTopWidth: StyleSheet.hairlineWidth,
     borderColor: palette.border,
     ...shadow.lifted,
   },
   /** Both, so the panel neither shrinks below nor grows past the same mark. */
-  tall: { height: "92%" },
+  tall: { height: PANEL_MAX },
+  /**
+   * Sans liseré, parce qu'une bannière en fait un meilleur.
+   *
+   * Le filet du panneau est tracé **dedans**, donc par-dessus le haut de la
+   * bannière : un trait crème d'un demi-point en travers de la cire, tout en
+   * haut de la modale. Il est là pour donner un bord à une feuille de
+   * papier ; une bande de couleur dense se détache d'elle-même du voile, et
+   * n'a pas besoin qu'on lui en dessine un.
+   */
+  edgeless: { borderTopWidth: 0 },
   /** Opaques toutes les deux : voir le commentaire au-dessus du titre. */
   header: {
     paddingBottom: space.xs,
@@ -353,6 +455,51 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   grabZone: { alignItems: "center", paddingTop: space.md, paddingBottom: space.sm },
+  /**
+   * La bande, dont la hauteur est décidée ici et non par l'image.
+   *
+   * `overflow: hidden` est ce qui fait le recadrage : l'image dedans est plus
+   * haute que la bande, et c'est cette ligne qui en coupe le surplus. Le
+   * panneau la découpe en plus à ses coins arrondis — il porte le même
+   * `overflow` —, donc l'image n'a pas à connaître leur rayon.
+   *
+   * Sa hauteur est posée au vol, car elle dépend de l'image — voir `band`.
+   */
+  banner: { overflow: "hidden" },
+  /**
+   * Accrochée en bas à gauche, à une taille entièrement dictée.
+   *
+   * **Les deux dimensions sont écrites, et c'est une leçon, pas une
+   * précaution.** `Image` compose son style ainsi :
+   *
+   *     style = [{width, height}, styles.base, props.style]
+   *
+   * — les dimensions intrinsèques de l'asset d'abord, le style du programme
+   * ensuite. Celui-ci gagne, mais **seulement sur ce qu'il nomme** : toute
+   * dimension laissée de côté garde celle de l'image, ses pixels comptés en
+   * points. Une bannière de mille trois cent douze pixels de large se posait
+   * donc large de mille trois cent douze points, et il n'en restait à
+   * l'écran que la gauche ; `left`/`right`, `aspectRatio` et les
+   * pourcentages n'y pouvaient rien, puisqu'une largeur explicite les bat
+   * tous dans Yoga.
+   *
+   * La largeur est donc celle de l'écran — le panneau court d'un bord à
+   * l'autre — et la hauteur celle que l'image prend à cette largeur : elle
+   * n'est ni rognée sur les côtés ni écrasée, elle est seulement plus haute
+   * que la bande. `bottom: 0` décide alors quel bord déborde — le haut — et
+   * donc quel bord survit.
+   */
+  bannerImage: { position: "absolute", left: 0, bottom: 0 },
+  /** Posée sur la bannière, à la place qu'elle occupe d'ordinaire. */
+  grabOverBanner: {
+    position: "absolute",
+    top: space.md,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  /** Sur une couleur dense, c'est le clair qui se voit. */
+  grabLight: { backgroundColor: "rgba(255, 255, 255, 0.55)" },
   grab: {
     width: 40,
     height: 4,

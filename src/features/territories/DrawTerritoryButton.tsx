@@ -36,6 +36,14 @@ import { space } from "../../theme/tokens";
  * avec l'outil qu'elle ouvre.
  */
 const TERRITORIES = require("../../../assets/icons/pencil.png");
+/**
+ * Le bandeau du panneau : ce que la planche contient, peint à la main.
+ *
+ * Elle se termine par une vague blanche qui rend la page au papier du
+ * panneau — c'est pour cela qu'elle vit en haut d'un panneau blanc et nulle
+ * part ailleurs.
+ */
+const BANNER = require("../../../assets/banniere_dessiner.png");
 const TRASH = require("../../../assets/icons/trash.png");
 /** Putting a territory back is exactly "show it on the map again". */
 const BACK_ON_MAP = require("../../../assets/icons/view-map.png");
@@ -120,6 +128,7 @@ export function DrawTerritoryButton({
           deed();
         }}
         title="Dessiner"
+        banner={BANNER}
         // Two lists that grow as the reader works; a panel resizing itself
         // around them would never be still.
         tall
