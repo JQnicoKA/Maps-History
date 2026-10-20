@@ -105,6 +105,18 @@ type EventsContextValue = {
   /** Choisit un événement **ou** quelqu'un, et amène l'année dessus. */
   selectEvent: (id: string | null) => void;
   /**
+   * Replie la tuile de ce qu'on lit, sur une touche dans le vide.
+   *
+   * **Elle ne quitte pas l'élément**, et c'est toute la différence avec
+   * `selectEvent(null)` : la planche reste sur lui, son marqueur reste le
+   * marqueur courant, la frise reste à son arrêt. Seule la tuile se replie.
+   * Rien d'autre que cette fonction ne doit porter ce geste — elle décline
+   * quand le choix vient d'être fait, pour la raison dite plus bas.
+   */
+  dismissTile: () => void;
+  /** La tuile a été repliée à la main : l'élément reste, sa tuile est rangée. */
+  tileDismissed: boolean;
+  /**
    * Moves the year, with the event the timeline decided is close enough to
    * count as read — null when the finger has come to rest between two.
    */
@@ -214,6 +226,16 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   const [trees, setTrees] = useState<Tree[]>([]);
   const [filters, setAllFilters] = useState<MapFilters>(NO_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  /**
+   * La tuile est-elle repliée, sans que l'élément soit quitté.
+   *
+   * Deux choses que `selectedId` confondait : **ce que la planche montre** et
+   * **si on en lit la tuile**. Les confondre voulait dire qu'une touche dans
+   * le vide, pour ranger la tuile, faisait aussi quitter l'élément — son
+   * marqueur perdait son rang de courant et la planche se retrouvait à
+   * montrer les deux voisins de ce qu'on venait de lire.
+   */
+  const [tileDismissed, setTileDismissed] = useState(false);
   const [year, setYear] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -395,9 +417,32 @@ export function EventsProvider({ children }: { children: ReactNode }) {
    * fonctions aurait voulu dire leur demander de savoir sur quoi elles sont
    * tombées. Un identifiant est un identifiant ; on cherche ici.
    */
+  /**
+   * Quand un choix a été fait pour la dernière fois, et pourquoi on le note.
+   *
+   * Un appui sur un marqueur et un appui sur la planche sont, côté natif,
+   * deux reconnaisseurs de geste distincts arbitrés sur la même touche : le
+   * marqueur est une vue React posée sur la carte, la planche a son propre
+   * `UITapGestureRecognizer`. Rien ne garantit l'ordre dans lequel les deux
+   * arrivent. S'ils arrivent dans le mauvais, replier sans condition
+   * rangerait la tuile que la même touche vient de déplier, et toucher un
+   * marqueur paraîtrait sans effet.
+   *
+   * Dans l'autre ordre il n'y a rien à faire : la planche replie d'abord, le
+   * marqueur choisit ensuite et déplie, et l'état final est juste. Seul le
+   * mauvais ordre a besoin d'être couvert, et il l'est par cette horloge.
+   */
+  const chosenAt = useRef(0);
+
   const selectEvent = useCallback(
     (id: string | null) => {
+      if (id !== null) chosenAt.current = Date.now();
       setSelectedId(id);
+      /* Choisir déplie, toujours — y compris le même élément qu'avant, et
+         c'est ce qui permet de rouvrir d'une seconde touche la tuile qu'on
+         vient de replier : `selectedId` ne change pas, donc rien ne se
+         rouvrirait si cela dépendait de lui. */
+      setTileDismissed(false);
       if (id === null) return;
       const event = events.find((e) => e.id === id);
       if (event) {
@@ -414,6 +459,26 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   const scrubTo = useCallback((next: number, eventId: string | null) => {
     setYear(next);
     setSelectedId(eventId);
+    // Faire glisser la frise jusqu'à un élément, c'est le choisir : sa tuile
+    // se déplie comme elle le ferait sous le doigt sur son marqueur.
+    setTileDismissed(false);
+  }, []);
+
+  /**
+   * Replie la tuile, sauf si la même touche vient de la déplier.
+   *
+   * Rien d'autre ne bouge : ni l'année, ni la sélection, ni la planche. On
+   * range une tuile, on ne quitte pas ce qu'on lisait — et `center` continue
+   * donc de désigner le même point, au lieu de disparaître.
+   *
+   * Un quart de seconde de sourde oreille : c'est long devant l'arbitrage de
+   * deux gestes nés de la même touche, et court devant deux touches voulues
+   * — on ne pose pas le doigt sur un marqueur puis sur la carte en moins de
+   * ça.
+   */
+  const dismissTile = useCallback(() => {
+    if (Date.now() - chosenAt.current < 250) return;
+    setTileDismissed(true);
   }, []);
 
   // A filter change can hide the selected event; drop the stale selection but
@@ -855,6 +920,8 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       stops,
       steps,
       selectEvent,
+      dismissTile,
+      tileDismissed,
       scrubTo,
       loading,
       error,
@@ -883,7 +950,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       events, visibleEvents, folderNames, characters, visibleCharacters, trees,
       filters, setFilters, year,
       selectedEvent, selectedPerson, neighbours, stops, steps,
-      selectEvent, scrubTo, loading, error, refresh,
+      selectEvent, dismissTile, tileDismissed, scrubTo, loading, error, refresh,
       share, addCharacter, editCharacter,
       removeCharacter, addTree, renameTree, removeTree, addToTree, addLabel,
       editLabel,

@@ -93,6 +93,8 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
   const {
     selectedEvent,
     selectedPerson,
+    dismissTile,
+    tileDismissed,
     error,
     refresh,
     filters,
@@ -316,6 +318,17 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
           attributionOffset={aiming || drawing ? insets.bottom : 0}
           onDetailChange={setDetailed}
           onStyleFailed={setStyleFailed}
+          /* Une touche dans le vide replie la tuile, sans quitter ce qu'on
+             lit : le marqueur reste le marqueur courant et la frise reste à
+             son arrêt — seule la tuile se range.
+             « Dans le vide » est tenu par le natif et non par nous : un appui
+             qui tombe sur un territoire ou sur une ville part à son calque et
+             s'arrête là, sans jamais arriver ici — la fiche du territoire
+             s'ouvre donc sans que la tuile s'efface sous elle.
+             Rien pendant qu'on vise ou qu'on peint, comme pour les deux
+             calques au-dessous : il n'y a alors pas de tuile à refermer, et
+             chaque touche appartient au geste en cours. */
+          onPress={aiming || drawing ? undefined : () => dismissTile()}
           onLook={(centre, zoom) => {
             looking.current = centre;
             setZoom(zoom);
@@ -516,7 +529,7 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
                 un événement, ou quelqu'un. Les flèches s'arrêtent sur les deux
                 depuis qu'elles ne sautent plus les personnages ; sans cette
                 seconde carte, s'arrêter sur quelqu'un n'aurait rien montré. */}
-            {selectedEvent ? (
+            {tileDismissed ? null : selectedEvent ? (
               <EventSummaryCard
                 floating
                 event={selectedEvent}
