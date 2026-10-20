@@ -372,9 +372,15 @@ const styles = StyleSheet.create({
    * et la dalle de création garde son pointillé : l'une est un lieu, l'autre
    * une place vide.
    *
-   * Le bord reste, en cire sombre : c'est le bord taillé des objets de cire
-   * de cette application — voir `GlyphButton` — et il donne au rectangle une
+   * Le bord reste, assombri : c'est le bord taillé des objets pleins de
+   * cette application — voir `GlyphButton` — et il donne au rectangle une
    * épaisseur que l'aplat seul ne suggère pas.
+   *
+   * **L'aplat est passé de la cire au cuir de reliure.** La cire veut dire
+   * « voici ce que vous lisez » — elle marque l'élément sous l'œil sur la
+   * planche, et l'onglet ouvert dans la barre. Cette porte-ci ne marque
+   * rien : elle mène ailleurs, à ce que d'autres ont écrit. Un brun de
+   * reliure appartient à la page sans y prétendre au rang de la cire.
    */
   seek: {
     flexDirection: "row",
@@ -383,9 +389,9 @@ const styles = StyleSheet.create({
     padding: space.sm,
     paddingRight: space.md,
     borderRadius: radius.lg,
-    backgroundColor: palette.wax,
+    backgroundColor: palette.binding,
     borderWidth: 1.5,
-    borderColor: palette.waxDeep,
+    borderColor: palette.bindingDeep,
   },
   /** A lens, drawn: a ring and a handle. */
   lens: {
@@ -422,15 +428,15 @@ const styles = StyleSheet.create({
     transform: [{ rotate: "45deg" }],
   },
   seekText: { flex: 1, gap: 2 },
-  /** Blanc sur la cire : 7,6:1, et le mot porte le poids de la porte. */
+  /** Blanc sur le cuir : 10,3:1, et le mot porte le poids de la porte. */
   seekLabel: { fontSize: 15, fontWeight: "700", color: palette.surfaceRaised },
   /**
    * La seconde ligne, voilée plutôt qu'en encre pâle.
    *
    * Elle était en `inkSoft`, ce qui marchait sur du papier et disparaît sur
-   * la cire. Du blanc à quatre-vingts pour cent la met un cran sous le
-   * libellé sans lui donner une couleur à elle, ce qui ferait trois tons sur
-   * un objet qui n'en veut qu'un.
+   * un aplat sombre. Du blanc à quatre-vingts pour cent la met un cran sous
+   * le libellé sans lui donner une couleur à elle, ce qui ferait trois tons
+   * sur un objet qui n'en veut qu'un.
    */
   seekDetail: { ...type.caption, color: "rgba(255, 255, 255, 0.8)" },
   seekMore: {

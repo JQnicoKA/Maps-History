@@ -87,6 +87,22 @@ export const palette = {
 
   /** Sepia printing ink, from heavy plate lines to faded engraving. */
   ink: "#4A3927",
+  /**
+   * Le cuir d'une reliure : l'aplat de la porte qui mène à la bibliothèque.
+   *
+   * Un brun chaud, plus clair et plus roux que l'encre du texte — il s'en
+   * distingue par une clarté de 0,375 contre 0,358 et une saturation de
+   * 0,047 contre 0,038. L'écart est petit et c'est voulu : cette couleur
+   * est de la même famille que l'encre dont l'atlas est imprimé, elle n'est
+   * simplement pas celle avec laquelle on écrit.
+   *
+   * `bindingDeep` lui donne son bord taillé, et il est construit sur la
+   * cire : **même écart de clarté** (0,073 en OKLab) et **même retrait de
+   * saturation** (0,84) que `waxDeep` par rapport à `wax`. Un objet plein
+   * se borde donc selon une seule recette, quelle que soit sa couleur.
+   */
+  binding: "#543B27",
+  bindingDeep: "#3D2919",
   inkSoft: "#6E5940",
   inkFaint: "#8C7A5F",
 
