@@ -1556,12 +1556,27 @@ const styles = StyleSheet.create({
     padding: space.lg,
     backgroundColor: BACKDROP,
   },
+  /**
+   * Les mêmes nombres que la carte de `Dialog`, et ce n'est pas une
+   * coïncidence à entretenir.
+   *
+   * Cette carte-ci est écrite à la main parce qu'elle doit vivre **dans** une
+   * feuille sans être une modale — iOS refuse d'en présenter une depuis un
+   * panneau qui s'ouvre — et non parce qu'elle voudrait un autre style. Elle
+   * en avait pourtant pris un : titre d'un point plus petit, trait à 42 % au
+   * lieu de 58, quatre points de marge en moins, croix de deux points plus
+   * grosse. On croisait donc deux gabarits dans le même panneau, la carte de
+   * tri étant manuscrite quand le « Reprendre cette version ? » juste après
+   * est un `Dialog`.
+   *
+   * Toute divergence retrouvée ici est un défaut, pas une intention.
+   */
   card: {
     width: "100%",
     maxWidth: 380,
     maxHeight: "94%",
     gap: space.md,
-    padding: space.lg,
+    padding: space.xl,
     borderRadius: radius.xl,
     backgroundColor: palette.surfaceRaised,
     borderWidth: StyleSheet.hairlineWidth,
@@ -1570,17 +1585,28 @@ const styles = StyleSheet.create({
   },
   cardHead: { flexDirection: "row", alignItems: "flex-start", gap: space.sm },
   cardHeading: { flex: 1, gap: space.xs },
-  cardTitle: { ...type.plate, fontSize: 21, color: palette.ink },
+  cardTitle: { ...type.plate, fontSize: 22, color: palette.ink },
   /** Drawn under the word, the way every heading in this app is. */
   cardRule: {
     height: 3,
-    width: "42%",
-    minWidth: 48,
+    width: "58%",
+    minWidth: 56,
+    marginTop: 3,
     borderRadius: radius.pill,
     backgroundColor: palette.border,
   },
+  /**
+   * La croix de `Dialog`, moins son décalage.
+   *
+   * Sa taille et son interligne sont les mêmes ; le `marginTop`, non, et le
+   * recopier l'aurait décalée. Là-bas le glyphe est centré dans un bouton de
+   * trente-deux points qui porte lui-même un retrait de quatre ; ici il est
+   * seul dans sa touche. Les deux chemins mènent au même endroit — le centre
+   * du glyphe à dix points du haut de la ligne, soit la hauteur de la
+   * première ligne du titre — par deux arithmétiques différentes.
+   */
   cardClose: {
-    fontSize: 26,
+    fontSize: 24,
     lineHeight: 28,
     color: palette.inkFaint,
     marginTop: -4,
