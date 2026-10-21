@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Image,
   Pressable,
@@ -14,6 +14,26 @@ import { radius, shadow, space, TOUCH, type } from "../../theme/tokens";
 const PENCIL = require("../../../assets/icons/pencil.png");
 
 /** Round, like the marker a face or a cover may end up in. */
+/**
+ * Le fond de la porte qui mène à la bibliothèque.
+ *
+ * Opaque, et il recouvre donc entièrement le cuir posé dessous. Celui-ci
+ * reste malgré tout : il tient la place le temps que l'image arrive, sans
+ * quoi la porte s'ouvrirait blanche une fraction de seconde.
+ *
+ * Il a remplacé le papier peint du panneau, qui servait à meubler un aplat.
+ * Une image composée n'a pas besoin qu'on lui pose une seconde texture
+ * par-dessus.
+ */
+const BACKDROP = require("../../../assets/fond_bouton_rechercher.png");
+
+/** Son rapport, demandé à l'asset plutôt qu'écrit à la main. */
+const BACKDROP_SHAPE = Image.resolveAssetSource(BACKDROP);
+const BACKDROP_RATIO =
+  BACKDROP_SHAPE && BACKDROP_SHAPE.height > 0
+    ? BACKDROP_SHAPE.width / BACKDROP_SHAPE.height
+    : undefined;
+
 export const THUMB = 46;
 
 /** The lens's ring, and the stroke both it and its handle are drawn with. */
@@ -73,6 +93,19 @@ export type SeekRowProps = {
  * time one of them was touched.
  */
 export function SeekRow({ label, detail, onPress }: SeekRowProps) {
+  /**
+   * La largeur de la porte, mesurée plutôt que devinée.
+   *
+   * Elle dépend de l'écran et des marges de la page qui porte ce bouton, et
+   * c'est d'elle que se déduit la hauteur de l'image. `resizeMode="cover"`
+   * aurait suffi tant que l'image est plus haute, en proportion, que la
+   * boîte — c'est le cas sur tous les téléphones d'aujourd'hui, à deux pour
+   * cent près sur le plus étroit. Deux pour cent ne sont pas une règle : à
+   * la première porte un peu plus haute — ce bouton sait afficher une
+   * seconde ligne —, `cover` se mettrait à rogner les côtés.
+   */
+  const [width, setWidth] = useState(0);
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -80,6 +113,28 @@ export function SeekRow({ label, detail, onPress }: SeekRowProps) {
       onPress={onPress}
       style={({ pressed }) => [styles.seek, pressed && styles.pressed]}
     >
+      {/* Posé en premier, donc derrière le reste. Clipé par sa propre vue et
+          non par le bouton : `overflow: hidden` découpe l'ombre de la vue qui
+          le porte, et c'est l'ombre qui pose cette porte sur le papier. */}
+      <View
+        pointerEvents="none"
+        style={styles.seekBack}
+        onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      >
+        {width > 0 && BACKDROP_RATIO ? (
+          <Image
+            source={BACKDROP}
+            /* Les deux dimensions dites, et aucune déduite : `Image` pose
+               celles de l'asset dans le style avant les vôtres, et toute
+               dimension qu'on ne nomme pas reste celle du fichier. */
+            style={{ width, height: width / BACKDROP_RATIO }}
+            resizeMode="cover"
+          />
+        ) : null}
+      </View>
+
       <Lens />
       <View style={styles.seekText}>
         <Text style={styles.seekLabel}>{label}</Text>
@@ -415,6 +470,32 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
+  },
+  /**
+   * Le fond du bouton : l'aire qu'il couvre, et comment il la coupe.
+   *
+   * **L'image est plus haute que cette boîte, et c'est `justifyContent` qui
+   * décide du recadrage.** Centrée sur l'axe vertical, elle déborde d'autant
+   * en haut qu'en bas : la largeur est donc intégralement conservée — elle
+   * est posée à la mesure de la boîte — et ce qui se perd se perd par
+   * moitiés égales, de sorte que le centre de l'image soit toujours ce qu'on
+   * voit.
+   *
+   * Un rayon d'un point et demi plus serré que celui du bouton —
+   * l'épaisseur de son bord — parce qu'il s'arrête à l'intérieur de ce
+   * bord : posé en absolu, il naît sur la boîte de rembourrage, c'est-à-dire
+   * juste en deçà du trait taillé. Au même rayon que le bouton, il aurait
+   * mordu dessus dans les angles.
+   */
+  seekBack: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: radius.lg - 1.5,
+    overflow: "hidden",
+    justifyContent: "center",
   },
   /** A lens, drawn: a ring and a handle. */
   lens: {
