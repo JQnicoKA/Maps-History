@@ -34,6 +34,8 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 const PANEL_PERCENT = 92;
 const PANEL_MAX = `${PANEL_PERCENT}%` as const;
 
+const PATTERN = require("../../../assets/general-fond.png");
+
 /** Ce que la bannière prend du panneau : un peu moins d'un cinquième. */
 const BANNER_SHARE = 0.18;
 const BANNER_HEIGHT = SCREEN * (PANEL_PERCENT / 100) * BANNER_SHARE;
@@ -149,6 +151,20 @@ export type SheetProps = {
    * either way, and the window resizes instead.
    */
   liftsForKeyboard?: boolean;
+  /**
+   * Le papier peint à motifs, derrière tout le panneau.
+   *
+   * **Éteint partout sauf là où on le demande**, et il n'est demandé que par
+   * la bibliothèque. Il a valu un temps pour tout panneau haut ; l'exception
+   * s'est renversée, et c'est la règle qui est devenue l'exception.
+   *
+   * Le papier nu reste donc la mise par défaut : un panneau où l'on écrit
+   * veut une page, et des motifs derrière un formulaire disputent l'œil à ce
+   * qu'on y inscrit. La bibliothèque ne demande rien à son lecteur — on y
+   * parcourt ce que d'autres ont fait — et c'est le seul endroit où un fond
+   * a de la place pour se voir.
+   */
+  pattern?: boolean;
   children: ReactNode;
 };
 
@@ -173,6 +189,7 @@ export function Sheet({
   banner,
   footer,
   tall = false,
+  pattern = false,
   liftsForKeyboard = true,
   children,
 }: SheetProps) {
@@ -333,6 +350,27 @@ export function Sheet({
             {/* Behind everything, including the header's rule. */}
             <Grain />
 
+            {/* En pour cent et non par ses quatre bords : le panneau est une
+                colonne, et une image absolue sans dimensions explicites
+                garderait sa taille native. */}
+            {pattern ? (
+              // Enveloppé, comme `Grain` : une image ne prend pas de
+              // `pointerEvents`, et celle-ci couvre tout le panneau — elle
+              // avalerait jusqu'au glissement qui ferme la feuille.
+              <View
+                pointerEvents="none"
+                style={styles.pattern}
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              >
+                <Image
+                  source={PATTERN}
+                  style={styles.patternImage}
+                  resizeMode="cover"
+                />
+              </View>
+            ) : null}
+
             {/* The whole header is the handle — a 4pt bar is not a target.
 
                 Opaque, et c'est ce qui arrête le papier peint : il court
@@ -341,8 +379,15 @@ export function Sheet({
                 des cibles. Chacune reprend donc le papier et son grain, sans
                 quoi elles se liraient comme deux bandes lisses collées à une
                 feuille qui ne l'est pas. */}
-            <View {...pan.panHandlers} style={styles.header}>
-              <Grain />
+            <View
+              {...pan.panHandlers}
+              style={[styles.header, pattern ? styles.headerClear : null]}
+            >
+              {/* Pas de grain à soi quand le bandeau est transparent : celui
+                  du panneau passe déjà au travers, et deux couches de 0,22
+                  l'une sur l'autre en font 0,39 — le bandeau se lirait comme
+                  une bande plus rugueuse que le reste de la feuille. */}
+              {pattern ? null : <Grain />}
               {banner ? (
                 /* La poignée se pose **sur** la bannière, et non au-dessus :
                    l'image commence au bord haut du panneau, et lui ménager
@@ -439,6 +484,36 @@ const styles = StyleSheet.create({
   /** Both, so the panel neither shrinks below nor grows past the same mark. */
   tall: { height: PANEL_MAX },
   /**
+   * Le papier peint : la place qu'il occupe, et à quel point il se voit.
+   *
+   * En pour cent et non par ses quatre bords — une image absolue sans
+   * dimensions explicites garderait sa taille native, qui est celle du
+   * fichier. C'est la même règle que la bannière a réapprise à ses dépens :
+   * `Image` pose les dimensions de l'asset dans le style avant les vôtres,
+   * et toute dimension que vous ne nommez pas reste celle du fichier.
+   */
+  pattern: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+  },
+  /**
+   * L'opacité est portée par l'image et non par la vue qui l'enveloppe.
+   *
+   * Une vue translucide est composée hors écran, dans un tampon dimensionné
+   * au moment de la mise en page — et ce panneau arrive en glissant, donc
+   * mesuré pendant qu'il bouge. Un tampon capturé à la mauvaise taille puis
+   * étiré, c'est précisément la forme du rectangle observé dans un coin. Sur
+   * l'image, l'opacité est appliquée par le rendu de l'image elle-même, sans
+   * calque intermédiaire.
+   *
+   * À moitié effacé, parce qu'il est un fond : au-delà, les motifs se
+   * mettent à concurrencer le texte posé dessus.
+   */
+  patternImage: { width: "100%", height: "100%", opacity: 0.5 },
+  /**
    * Sans liseré, parce qu'une bannière en fait un meilleur.
    *
    * Le filet du panneau est tracé **dedans**, donc par-dessus le haut de la
@@ -448,6 +523,20 @@ const styles = StyleSheet.create({
    * n'a pas besoin qu'on lui en dessine un.
    */
   edgeless: { borderTopWidth: 0 },
+  /**
+   * Transparent, pour que le papier peint traverse la zone du titre.
+   *
+   * Le bandeau est opaque par défaut, et c'est lui qui arrêtait net les
+   * motifs à sa limite basse : le fond paraissait coupé en travers, juste
+   * sous le nom du panneau. Effacé, il laisse l'image courir d'un bout à
+   * l'autre de la feuille.
+   *
+   * Ce que l'opacité protégeait — un titre net — n'est pas perdu : ce fond
+   * est clairsemé, à peine deux pour cent et demi de ses pixels passant la
+   * demi-opacité, et l'encre du titre y tient 8,0:1 au pire endroit contre
+   * 11,0 sur le papier nu.
+   */
+  headerClear: { backgroundColor: "transparent" },
   /** Opaques toutes les deux : voir le commentaire au-dessus du titre. */
   header: {
     paddingBottom: space.xs,

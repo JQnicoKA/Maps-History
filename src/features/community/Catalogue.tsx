@@ -658,6 +658,12 @@ export function Catalogue({
          place pendant qu'une fiche monte, et ne cède qu'au signalement, qui
          n'est pas la bibliothèque mais une lettre qu'on y écrit. */
       banner={face === "report" ? undefined : BANNER}
+      /* Le seul panneau à motifs de l'application. Il ne demande rien à son
+         lecteur — on y parcourt ce que d'autres ont fait — donc un fond y a
+         la place de se voir, là où il disputerait l'œil à un formulaire.
+         Gardé jusque sous le signalement : c'est le fond du panneau, et le
+         voir disparaître en changeant de face serait un clignotement. */
+      pattern
       footer={
         face === "report" ? (
           <>
