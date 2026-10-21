@@ -301,6 +301,7 @@ function TerritoryList({
               }
               editLabel={`Effacer ${one.name}`}
               editIcon={TRASH}
+              editTone="danger"
             />
           ))
         )}

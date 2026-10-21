@@ -120,6 +120,7 @@ export function PlaceList({ onPose }: PlaceListProps) {
               }
               editLabel={`Effacer ${one.name}`}
               editIcon={TRASH}
+              editTone="danger"
             />
           ))
         )}

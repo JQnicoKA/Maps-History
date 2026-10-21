@@ -271,6 +271,15 @@ export type RosterRowProps = {
    */
   editIcon?: ImageSourcePropType;
   /**
+   * Le rouge, pour une action qui détruit.
+   *
+   * Encre par défaut. `danger` n'est pas une insistance mais un
+   * avertissement : sur une rangée qui porte deux boutons, c'est ce qui
+   * distingue d'un coup d'œil celui qu'on vise exprès de celui qu'on peut
+   * toucher sans conséquence.
+   */
+  editTone?: "ink" | "danger";
+  /**
    * Une seconde action, posée avant la première.
    *
    * Une rangée n'en portait qu'une, ce qui suffisait tant que chaque liste
@@ -305,6 +314,7 @@ export function RosterRow({
   onEdit,
   editLabel,
   editIcon = PENCIL,
+  editTone = "ink",
   onAside,
   asideLabel,
   asideIcon = PENCIL,
@@ -341,9 +351,23 @@ export function RosterRow({
           accessibilityLabel={editLabel ?? "Modifier"}
           hitSlop={8}
           onPress={onEdit}
-          style={({ pressed }) => [styles.edit, pressed && styles.editPressed]}
+          style={({ pressed }) => [
+            styles.edit,
+            editTone === "danger" && styles.editDanger,
+            pressed &&
+              (editTone === "danger"
+                ? styles.editDangerPressed
+                : styles.editPressed),
+          ]}
         >
-          <Image source={editIcon} style={styles.pencil} resizeMode="contain" />
+          <Image
+            source={editIcon}
+            style={[
+              styles.pencil,
+              editTone === "danger" && styles.pencilDanger,
+            ]}
+            resizeMode="contain"
+          />
         </Pressable>
       ) : null}
       {onPress && !onEdit && !onAside ? (
@@ -623,7 +647,29 @@ const styles = StyleSheet.create({
     backgroundColor: palette.sunken,
   },
   editPressed: { backgroundColor: palette.border },
+  /**
+   * Le carré lui-même en rouge, et non son glyphe.
+   *
+   * Un dessin rouge dans un carré gris se lit comme un glyphe qui a changé
+   * de couleur ; un carré rouge se lit comme un bouton dont on sait ce
+   * qu'il fait avant de l'avoir lu. C'est la différence entre colorier et
+   * signaler.
+   */
+  editDanger: { backgroundColor: palette.danger },
+  /**
+   * Enfoncé, il s'assombrit — la recette de `waxDeep` sur la cire, appliquée
+   * au rouge : moins 0,073 de clarté, moins un sixième de saturation.
+   */
+  editDangerPressed: { backgroundColor: "#901F18" },
   pencil: { width: 16, height: 16, opacity: 0.75 },
+  /**
+   * Blanc sur le rouge, et à pleine opacité.
+   *
+   * 6,5:1. Le voile de trois quarts qui adoucit les glyphes d'encre sur leur
+   * carré pâle n'a rien à faire ici : il ramènerait le blanc vers le rouge,
+   * c'est-à-dire vers le rose.
+   */
+  pencilDanger: { tintColor: palette.surfaceRaised, opacity: 1 },
   chevron: { fontSize: 22, color: palette.inkFaint, paddingRight: space.xs },
   pressed: { opacity: 0.55 },
   /** Assez pâle pour qu'on n'essaie pas, assez lisible pour qu'on lise. */
