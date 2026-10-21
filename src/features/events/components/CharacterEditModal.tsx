@@ -449,13 +449,27 @@ const styles = StyleSheet.create({
   hint: { ...type.caption, color: palette.inkFaint },
   appears: { ...type.caption, color: palette.inkFaint },
   pressed: { opacity: 0.5 },
+  /**
+   * Le rouge posé sur le papier, et le dessin plein par-dessus.
+   *
+   * `dangerWash` est écrit dans la palette pour ce rôle — « le fond d'un
+   * panneau d'avertissement, là où un rouge plein crierait et un gris ne
+   * dirait rien ». Il tombe à la même profondeur que le gris creusé qu'il
+   * remplace — 1,29 contre le papier, où le gris valait 1,24 —, donc le
+   * bouton ne change ni de poids ni de relief : seulement de nature.
+   *
+   * Opaque et non translucide : un lavis transparent se poserait autrement
+   * sur chaque fond, et la même poubelle n'aurait pas deux fois la même
+   * couleur d'un écran à l'autre.
+   */
   trash: {
     width: TOUCH,
     height: TOUCH,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.md,
-    backgroundColor: palette.sunken,
+    backgroundColor: palette.dangerWash,
   },
-  trashGlyph: { width: 20, height: 20 },
+  /** 5,1:1 sur son lavis, et à pleine opacité. */
+  trashGlyph: { width: 20, height: 20, tintColor: palette.danger },
 });

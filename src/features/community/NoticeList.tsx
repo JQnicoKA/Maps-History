@@ -300,15 +300,28 @@ const styles = StyleSheet.create({
    * une poubelle en encre pâle au bout aurait eu l'air d'en faire partie. Le
    * rouge dit que celle-ci est l'autre geste, et qu'il retire quelque chose.
    */
+  /**
+   * Le rouge posé sur le papier, et le dessin plein par-dessus.
+   *
+   * `dangerWash` est écrit dans la palette pour ce rôle — « le fond d'un
+   * panneau d'avertissement, là où un rouge plein crierait et un gris ne
+   * dirait rien ». Celui-ci portait le rouge **plein**, et il criait : balayer
+   * une notification n'efface rien qu'on regrette.
+   *
+   * Opaque et non translucide : un lavis transparent se poserait autrement
+   * sur chaque fond, et la même poubelle n'aurait pas deux fois la même
+   * couleur d'un écran à l'autre.
+   */
   bin: {
     width: 34,
     height: 34,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
-    backgroundColor: palette.danger,
+    backgroundColor: palette.dangerWash,
   },
   /** Crème sur le rouge : le glyphe est tracé en encre dans sa source. */
-  binGlyph: { width: 17, height: 17, tintColor: palette.surfaceRaised },
+  /** 5,1:1 sur son lavis, et à pleine opacité. */
+  binGlyph: { width: 17, height: 17, tintColor: palette.danger },
   nothing: { ...type.caption, color: palette.inkSoft },
 });

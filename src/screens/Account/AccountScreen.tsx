@@ -806,16 +806,28 @@ const styles = StyleSheet.create({
     backgroundColor: palette.surface,
   },
   /** Square, so it takes only the width the sign-out button gives up. */
+  /**
+   * Le rouge posé sur le papier, et le dessin plein par-dessus.
+   *
+   * `dangerWash` est écrit dans la palette pour ce rôle — « le fond d'un
+   * panneau d'avertissement, là où un rouge plein crierait et un gris ne
+   * dirait rien ». Le filet qui cernait celui-ci est parti avec son fond
+   * blanc : un liseré crème autour d'un lavis rouge aurait fait deux bords
+   * pour une seule forme, et le lavis se détache déjà seul.
+   *
+   * Opaque et non translucide : un lavis transparent se poserait autrement
+   * sur chaque fond, et la même poubelle n'aurait pas deux fois la même
+   * couleur d'un écran à l'autre.
+   */
   bin: {
     width: TOUCH,
     height: TOUCH,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.lg,
-    backgroundColor: palette.surfaceRaised,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.line,
+    backgroundColor: palette.dangerWash,
   },
+  /** Déjà rouge, et il le reste : 5,1:1 sur son lavis. */
   binGlyph: { width: 19, height: 19, tintColor: palette.danger },
 
   /** La gouttière des feuilles, que la feuille ne pose pas elle-même. */
