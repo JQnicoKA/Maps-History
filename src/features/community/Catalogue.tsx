@@ -95,6 +95,16 @@ const SORTS: {
     why: "Les derniers éléments ajoutés à la bibliothèque",
     mark: "◷",
   },
+  {
+    value: "oldest",
+    label: "Ordre chronologique",
+    said: "chronologique",
+    /* Le temps du récit, et non celui de l'écriture — c'est tout ce qui le
+       sépare du tri au-dessus, et il faut le dire, les deux étant des
+       dates. */
+    why: "Les éléments du plus ancien au plus récent",
+    mark: "↑",
+  },
 ];
 
 export type CatalogueProps = {

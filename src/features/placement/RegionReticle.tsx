@@ -74,7 +74,7 @@ export function RegionReticle({
       <Paper style={[styles.bar, { bottom: bottomInset + 16 }]}>
         <View style={styles.barInner}>
           <Text style={styles.hint}>
-            Amenez le centre sous le réticule, puis choisissez la portée.
+            Choisissez l'endroit , puis la portée.
           </Text>
           <View style={styles.radii}>
             {RADII.map((one) => (

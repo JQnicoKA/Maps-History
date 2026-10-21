@@ -162,12 +162,22 @@ export type SharedThingDetail = SharedThing & {
 /**
  * How the catalogue is ordered.
  *
- * Two, and the database knows a third — by nearness — which the panel does
+ * Three, and the database knows a fourth — by nearness — which the panel does
  * not offer. Ordering by distance and *filtering* by region answer the same
  * wish, and the filter answers it better: "what is there, around here" is a
  * question about what to show, not about what to show first.
+ *
+ * `oldest` est le temps lui-même, du plus ancien au plus récent — à ne pas
+ * confondre avec `recent`, qui est celui de l'écriture. Les deux sont des
+ * dates et elles n'ont rien à voir : l'une est dans le récit, l'autre dans le
+ * geste de celui qui l'a écrit.
+ *
+ * Les trois sont portées par le même `rank` que les portes calculent, et le
+ * classement y est toujours décroissant — l'ordre chronologique s'obtient
+ * donc en niant la clé de date. Ce qui n'a pas de date ferme la marche : un
+ * personnage sans naissance, un arbre vide.
  */
-export type Ordering = "stars" | "recent";
+export type Ordering = "stars" | "recent" | "oldest";
 
 export type Search = {
   words: string;
