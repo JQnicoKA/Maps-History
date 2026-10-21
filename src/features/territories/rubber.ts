@@ -1,4 +1,4 @@
-import type { Stroke } from "./drawn";
+import type { Daub, Stroke } from "./drawn";
 
 /**
  * La gomme : des ciseaux sur les traits, et non une gomme sur le papier.
@@ -110,21 +110,26 @@ function edge(kept: Flat, cut: Flat, path: Flat[], reach: number): Flat {
  * qui est le reste légitime d'un trait raccourci jusqu'à son dernier pas.
  */
 export function rub(
-  strokes: Stroke[],
+  strokes: Daub[],
   eraser: Stroke,
   reach: number,
-): Stroke[] {
+): Daub[] {
   if (eraser.length === 0 || reach <= 0) return strokes;
   const path = eraser.map(project);
 
-  const left: Stroke[] = [];
+  const left: Daub[] = [];
   for (const stroke of strokes) {
-    const here = stroke.map(project);
+    const here = stroke.points.map(project);
     const near = here.map((point) => toPath(point, path) < reach);
 
     let run: Flat[] = [];
+    /* Chaque morceau garde la largeur du trait dont il vient : couper un
+       coup de pinceau en deux donne deux coups du même pinceau, et non deux
+       traits qui auraient oublié leur épaisseur. */
     const close = () => {
-      if (run.length > 0) left.push(run.map(unproject));
+      if (run.length > 0) {
+        left.push({ points: run.map(unproject), metres: stroke.metres });
+      }
       run = [];
     };
 

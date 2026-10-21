@@ -6,6 +6,22 @@ import { supabase } from "../../lib/supabase";
 /** A brush stroke: where the finger went, in longitude and latitude. */
 export type Stroke = [number, number][];
 
+/**
+ * Un coup de pinceau posé : le chemin, et la largeur qu'il avait.
+ *
+ * **La largeur est portée par le coup et non par le dessin**, parce qu'elle
+ * dépend du zoom au moment où la main l'a tracé. Peindre une côte de près
+ * puis s'éloigner pour peindre un golfe doit donner deux largeurs au sol,
+ * comme deux pinceaux différents.
+ *
+ * Elle l'était par le dessin entier, un seul rayon valant pour tous les
+ * coups : celui du zoom au moment d'appuyer sur « Terminer ». Personne ne
+ * s'en apercevait tant qu'une session durait une minute ; rouvrir un dessin
+ * à une autre échelle l'aurait rendu criant, le territoire changeant de
+ * forme sans qu'on y touche.
+ */
+export type Daub = { points: Stroke; metres: number };
+
 export type DrawnPolity = {
   id: string;
   name: string;
@@ -32,6 +48,14 @@ export type DrawnPolity = {
    * tirer une entrée. Voir `promote_polity`.
    */
   shared: boolean;
+  /**
+   * Son tracé a été gardé, donc on peut reprendre le dessin.
+   *
+   * Faux pour les territoires peints avant que la base ne garde les traits :
+   * leur polygone est intact, mais on ne remonte pas d'un polygone à ce qui
+   * l'a produit — épaissir une ligne n'a pas d'inverse.
+   */
+  editable: boolean;
 };
 
 /**
@@ -43,25 +67,45 @@ export type DrawnPolity = {
  * phone has no geometry library, needs none, and the work is the same for one
  * stroke as for forty.
  *
- * `brushMetres` is the brush's radius on the ground, not on the screen. The
- * two differ by the zoom, which is why the caller converts before calling.
+ * Chaque coup porte sa propre largeur au sol — voir `Daub` —, et le tracé
+ * est rangé avec le territoire : c'est ce qui permet de le reprendre, un
+ * polygone ne se défaisant pas en traits.
+ *
+ * `existing` reprend un territoire au lieu d'en créer un. La base refuse
+ * alors d'y toucher s'il n'est pas le vôtre.
  */
 export async function drawPolity(options: {
-  strokes: Stroke[];
-  brushMetres: number;
+  strokes: Daub[];
   name: string;
   from: number;
   to: number;
+  existing?: string | null;
 }): Promise<string> {
   const { data, error } = await supabase().rpc("draw_polity", {
     strokes: options.strokes,
-    brush_metres: options.brushMetres,
     polity_name: options.name.trim(),
     from_year: options.from,
     to_year: options.to,
+    existing: options.existing ?? null,
   });
   if (error) throw new Error(error.message);
   return data as string;
+}
+
+/**
+ * Le tracé d'un territoire, pour le reprendre au pinceau.
+ *
+ * Lu à la demande et non avec la liste : quelques kilo-octets par territoire
+ * dont la liste n'a aucun usage, elle qui montre un nom, des années et une
+ * silhouette. `null` pour un territoire peint avant que la base ne garde les
+ * traits — voir `editable`.
+ */
+export async function fetchStrokes(id: string): Promise<Daub[] | null> {
+  const { data, error } = await supabase().rpc("territory_strokes", {
+    wanted: id,
+  });
+  if (error) throw new Error(error.message);
+  return (data as Daub[] | null) ?? null;
 }
 
 /**
@@ -124,6 +168,7 @@ export async function fetchDrawn(): Promise<DrawnPolity[]> {
       area: number | null;
       shape: unknown | null;
       shared: boolean;
+      editable: boolean;
     }[]
   ).map((row) => ({
     id: row.id,
@@ -133,6 +178,7 @@ export async function fetchDrawn(): Promise<DrawnPolity[]> {
     area: row.area,
     shape: row.shape,
     shared: row.shared,
+    editable: row.editable,
   }));
 }
 

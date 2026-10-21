@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { rub } from "./rubber";
-import type { Stroke } from "./drawn";
+import type { Daub, Stroke } from "./drawn";
+
+/** La largeur importe peu à ces essais ; elle doit seulement survivre. */
+const WIDTH = 5000;
+const daub = (points: Stroke): Daub => ({ points, metres: WIDTH });
 
 /**
  * Un trait horizontal régulier, à l'équateur.
@@ -20,18 +24,21 @@ const line = (from: number, to: number, step = 0.1): Stroke => {
 };
 
 /** La longitude du premier et du dernier point de chaque morceau. */
-const spans = (strokes: Stroke[]) =>
-  strokes.map((one) => [one[0]![0], one[one.length - 1]![0]]);
+const spans = (strokes: Daub[]) =>
+  strokes.map((one) => [
+    one.points[0]![0],
+    one.points[one.points.length - 1]![0],
+  ]);
 
 describe("la gomme", () => {
   it("ne touche à rien quand elle passe loin", () => {
-    const left = rub([line(0, 1)], [[5, 0]], DEGREE * 0.2);
+    const left = rub([daub(line(0, 1))], [[5, 0]], DEGREE * 0.2);
     expect(left).toHaveLength(1);
-    expect(left[0]).toHaveLength(11);
+    expect(left[0]!.points).toHaveLength(11);
   });
 
   it("coupe un trait en deux quand elle le traverse au milieu", () => {
-    const left = rub([line(0, 1)], [[0.5, 0]], DEGREE * 0.2);
+    const left = rub([daub(line(0, 1))], [[0.5, 0]], DEGREE * 0.2);
     expect(left).toHaveLength(2);
     const [first, second] = spans(left);
     expect(first![0]).toBeCloseTo(0, 6);
@@ -41,7 +48,7 @@ describe("la gomme", () => {
   });
 
   it("raccourcit un trait quand elle frotte son bout", () => {
-    const left = rub([line(0, 1)], [[1, 0]], DEGREE * 0.25);
+    const left = rub([daub(line(0, 1))], [[1, 0]], DEGREE * 0.25);
     expect(left).toHaveLength(1);
     const [only] = spans(left);
     expect(only![0]).toBeCloseTo(0, 6);
@@ -49,21 +56,24 @@ describe("la gomme", () => {
   });
 
   it("fait disparaître un trait qu'elle recouvre entièrement", () => {
-    const left = rub([line(0, 1)], [[0, 0], [1, 0]], DEGREE * 0.2);
+    const left = rub([daub(line(0, 1))], [[0, 0], [1, 0]], DEGREE * 0.2);
     expect(left).toHaveLength(0);
   });
 
   it("coupe le bord à l'endroit touché, et non au point le plus proche", () => {
     // Les points sont espacés de 0,1° ; la coupe doit tomber à 0,37 et non
     // sur 0,3 ou 0,4. C'est l'interpolation qui le permet.
-    const left = rub([line(0, 1)], [[0.5, 0]], DEGREE * 0.13);
+    const left = rub([daub(line(0, 1))], [[0.5, 0]], DEGREE * 0.13);
     const [first] = spans(left);
     expect(first![1]).toBeCloseTo(0.37, 2);
   });
 
   it("passe sur plusieurs traits d'un coup", () => {
     const left = rub(
-      [line(0, 1), line(0, 1).map(([x]) => [x!, 0.05] as [number, number])],
+      [
+        daub(line(0, 1)),
+        daub(line(0, 1).map(([x]) => [x!, 0.05] as [number, number])),
+      ],
       [[0.5, 0], [0.5, 0.05]],
       DEGREE * 0.2,
     );
@@ -74,7 +84,7 @@ describe("la gomme", () => {
     // Une gomme en L : son coude doit couper, bien qu'il soit loin des deux
     // extrémités du chemin.
     const left = rub(
-      [line(0, 1)],
+      [daub(line(0, 1))],
       [[0.5, 1], [0.5, 0], [1.5, 0]],
       DEGREE * 0.15,
     );
@@ -85,20 +95,26 @@ describe("la gomme", () => {
   });
 
   it("rend les traits inchangés quand la gomme est vide", () => {
-    const one = [line(0, 1)];
+    const one = [daub(line(0, 1))];
     expect(rub(one, [], DEGREE)).toBe(one);
   });
 
   it("garde un point isolé, dont la base fait un disque", () => {
-    const left = rub([[[0, 0], [1, 0]]], [[1, 0]], DEGREE * 0.5);
+    const left = rub([daub([[0, 0], [1, 0]])], [[1, 0]], DEGREE * 0.5);
     expect(left).toHaveLength(1);
-    expect(left[0]!.length).toBeGreaterThanOrEqual(1);
+    expect(left[0]!.points.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("garde la largeur de chaque morceau coupé", () => {
+    const left = rub([daub(line(0, 1))], [[0.5, 0]], DEGREE * 0.2);
+    expect(left).toHaveLength(2);
+    for (const piece of left) expect(piece.metres).toBe(WIDTH);
   });
 
   it("n'invente pas de latitude en chemin", () => {
-    const left = rub([line(0, 1)], [[0.5, 0]], DEGREE * 0.2);
+    const left = rub([daub(line(0, 1))], [[0.5, 0]], DEGREE * 0.2);
     for (const stroke of left) {
-      for (const [, lat] of stroke) expect(lat).toBeCloseTo(0, 9);
+      for (const [, lat] of stroke.points) expect(lat).toBeCloseTo(0, 9);
     }
   });
 });

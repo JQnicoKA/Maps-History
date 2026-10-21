@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useHidden } from "./HiddenProvider";
+import type { DrawnPolity } from "./drawn";
 import { Silhouette } from "./Silhouette";
 import { PlaceList } from "../places/PlaceList";
 import {
@@ -58,6 +59,8 @@ const TERRITORIES = require("../../../assets/icons/pencil_bouton.png");
  */
 const BANNER = require("../../../assets/banniere_dessiner.png");
 const TRASH = require("../../../assets/icons/trash.png");
+/** Le crayon des rangées : reprendre le dessin d'un territoire. */
+const PENCIL_ROW = require("../../../assets/icons/pencil.png");
 /** Putting a territory back is exactly "show it on the map again". */
 const BACK_ON_MAP = require("../../../assets/icons/view-map.png");
 
@@ -78,6 +81,14 @@ type Part = (typeof PARTS)[number]["value"];
 export type DrawTerritoryButtonProps = {
   /** Hands the map over to the brush. */
   onDraw: () => void;
+  /**
+   * Rend la carte au pinceau, sur un territoire déjà peint.
+   *
+   * Le même geste que `onDraw` à deux choses près : le tracé de départ, et
+   * la destination de l'enregistrement. C'est pour cela que la carte n'a pas
+   * deux modes mais un seul, qui sait d'où il vient.
+   */
+  onEditShape: (territory: DrawnPolity) => void;
   /** Donne la carte au viseur, pour y poser une ville. */
   onPose: () => void;
 };
@@ -104,6 +115,7 @@ export type DrawTerritoryButtonProps = {
  */
 export function DrawTerritoryButton({
   onDraw,
+  onEditShape,
   onPose,
 }: DrawTerritoryButtonProps) {
   const [open, setOpen] = useState(false);
@@ -160,7 +172,10 @@ export function DrawTerritoryButton({
 
         <ScrollView style={styles.fill} contentContainerStyle={styles.body}>
           {part === "territory" ? (
-            <TerritoryList onDraw={() => after(onDraw)} />
+            <TerritoryList
+              onDraw={() => after(onDraw)}
+              onEditShape={(territory) => after(() => onEditShape(territory))}
+            />
           ) : (
             <PlaceList onPose={() => after(onPose)} />
           )}
@@ -171,7 +186,13 @@ export function DrawTerritoryButton({
 }
 
 /** L'onglet Territoires : ce que le lecteur a peint, et ce qu'il a ôté. */
-function TerritoryList({ onDraw }: { onDraw: () => void }) {
+function TerritoryList({
+  onDraw,
+  onEditShape,
+}: {
+  onDraw: () => void;
+  onEditShape: (territory: DrawnPolity) => void;
+}) {
   const { hidden, show, drawn, erase } = useHidden();
   const [busy, setBusy] = useState<string | null>(null);
   /** The drawn territory awaiting a "yes" before it is rubbed out. */
@@ -263,6 +284,18 @@ function TerritoryList({ onDraw }: { onDraw: () => void }) {
                   ? "Suppression…"
                   : `${formatYear(one.from)} – ${formatYear(one.to)}`
               }
+              /* Le crayon ne paraît que si le tracé a été gardé. Les
+                 territoires peints avant que la base ne le fasse n'ont
+                 que leur polygone, et un polygone ne se défait pas en
+                 traits : offrir un crayon qui ne peut pas tenir sa
+                 promesse serait pire que ne rien offrir. */
+              {...(one.editable
+                ? {
+                    onAside: () => onEditShape(one),
+                    asideLabel: `Reprendre le dessin de ${one.name}`,
+                    asideIcon: PENCIL_ROW,
+                  }
+                : {})}
               onEdit={() =>
                 setAsking({ id: one.id, name: one.name })
               }

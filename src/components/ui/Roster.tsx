@@ -270,6 +270,21 @@ export type RosterRowProps = {
    * a deletion is worse than no icon at all.
    */
   editIcon?: ImageSourcePropType;
+  /**
+   * Une seconde action, posée avant la première.
+   *
+   * Une rangée n'en portait qu'une, ce qui suffisait tant que chaque liste
+   * n'offrait qu'un geste. Les territoires en ont deux — reprendre le
+   * dessin, l'effacer — et les mettre dans un menu pour deux boutons aurait
+   * coûté une touche de plus à chacun des deux.
+   *
+   * Avant, parce que l'ordre des listes de cette application va du plus
+   * anodin au plus définitif : on lit de gauche à droite, et la poubelle est
+   * ce qu'on doit viser exprès.
+   */
+  onAside?: () => void;
+  asideLabel?: string;
+  asideIcon?: ImageSourcePropType;
   /** The whole row, when the row itself opens something. */
   onPress?: () => void;
   /**
@@ -290,6 +305,9 @@ export function RosterRow({
   onEdit,
   editLabel,
   editIcon = PENCIL,
+  onAside,
+  asideLabel,
+  asideIcon = PENCIL,
   onPress,
   muted = false,
 }: RosterRowProps) {
@@ -306,6 +324,17 @@ export function RosterRow({
           </Text>
         )}
       </View>
+      {onAside ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={asideLabel ?? "Modifier"}
+          hitSlop={8}
+          onPress={onAside}
+          style={({ pressed }) => [styles.edit, pressed && styles.editPressed]}
+        >
+          <Image source={asideIcon} style={styles.pencil} resizeMode="contain" />
+        </Pressable>
+      ) : null}
       {onEdit ? (
         <Pressable
           accessibilityRole="button"
@@ -317,7 +346,9 @@ export function RosterRow({
           <Image source={editIcon} style={styles.pencil} resizeMode="contain" />
         </Pressable>
       ) : null}
-      {onPress && !onEdit ? <Text style={styles.chevron}>›</Text> : null}
+      {onPress && !onEdit && !onAside ? (
+        <Text style={styles.chevron}>›</Text>
+      ) : null}
     </>
   );
 

@@ -29,7 +29,18 @@ describe("le pinceau sur le terrain", () => {
   });
 
   it("mesure bien un rayon, soit la moitié du trait", () => {
-    // À zoom 0 sur l'équateur, un point vaut EQUATOR mètres.
-    expect(brushMetres(0, 0)).toBeCloseTo((BRUSH_POINTS / 2) * 156543.03392, 3);
+    /**
+     * Un point d'écran vaut, au zoom 0 sur l'équateur, la circonférence de
+     * la Terre divisée par la largeur d'une tuile.
+     *
+     * **Cinq cent douze, et non deux cent cinquante-six.** C'est la
+     * convention de MapLibre, et l'écrire ici est le but de cet essai :
+     * la constante a longtemps été celle des tuiles de 256, ce qui faisait
+     * enregistrer des territoires deux fois plus larges que ce qu'on
+     * peignait. Rien ne le disait, et personne ne pouvait le voir avant
+     * qu'on puisse rouvrir un dessin.
+     */
+    const parPoint = 40075016.686 / 512;
+    expect(brushMetres(0, 0)).toBeCloseTo((BRUSH_POINTS / 2) * parPoint, 3);
   });
 });

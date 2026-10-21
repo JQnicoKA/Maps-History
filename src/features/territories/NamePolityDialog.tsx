@@ -11,6 +11,13 @@ export type NamedPolity = { name: string; from: number; to: number };
 export type NamePolityDialogProps = {
   visible: boolean;
   busy: boolean;
+  /**
+   * Le territoire qu'on reprend : son nom et ses années, déjà écrits.
+   *
+   * Rien quand on en peint un neuf. Reprendre un dessin et devoir renommer
+   * ce qu'on reprend serait une façon de perdre le nom à chaque retouche.
+   */
+  known?: NamedPolity | null;
   onConfirm: (polity: NamedPolity) => void;
   onClose: () => void;
 };
@@ -35,12 +42,15 @@ function readYear(text: string): number | null {
 export function NamePolityDialog({
   visible,
   busy,
+  known = null,
   onConfirm,
   onClose,
 }: NamePolityDialogProps) {
-  const [name, setName] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [name, setName] = useState(known?.name ?? "");
+  const [from, setFrom] = useState(
+    known ? String(known.from) : "",
+  );
+  const [to, setTo] = useState(known ? String(known.to) : "");
 
   const start = readYear(from);
   const end = readYear(to);
@@ -51,7 +61,7 @@ export function NamePolityDialog({
     <Dialog
       visible={visible}
       onClose={onClose}
-      title="Votre territoire"
+      title={known ? "Reprendre ce territoire" : "Votre territoire"}
       hint="Il apparaîtra sur la carte entre ces deux dates."
       dismissLabel="Annuler"
     >

@@ -1,12 +1,13 @@
 import type { FeatureCollection, LineString } from "geojson";
 import { GeoJSONSource, Layer } from "@maplibre/maplibre-react-native";
 
-import type { Stroke } from "./drawn";
+import { brushAtZoomZero } from "./brush";
+import type { Daub, Stroke } from "./drawn";
 import { palette } from "../../theme/palette";
 
 export type BrushLayersProps = {
   /** Strokes already laid down, and the one under the finger. */
-  strokes: Stroke[];
+  strokes: Daub[];
   trail: Stroke;
   /**
    * Ce que le trait en cours fera : ajouter de la peinture, ou en ôter.
@@ -58,9 +59,31 @@ export function BrushLayers({
       })),
   });
 
+  /**
+   * La peinture, chaque coup portant sa largeur au zoom zéro.
+   *
+   * La carte la multipliera par deux puissance le zoom — voir `laid` — ce
+   * qui rend une largeur constante **au sol** plutôt qu'à l'écran. C'est ce
+   * qui permet de rouvrir un dessin à n'importe quelle échelle : un trait
+   * peint de près reste fin quand on s'éloigne, comme le territoire qu'il
+   * deviendra.
+   */
+  const painted: FeatureCollection<LineString> = {
+    type: "FeatureCollection",
+    features: strokes
+      .filter((daub) => daub.points.length >= 2)
+      .map((daub) => ({
+        type: "Feature",
+        properties: {
+          w0: brushAtZoomZero(daub.metres, daub.points[0]![1]),
+        },
+        geometry: { type: "LineString", coordinates: daub.points },
+      })),
+  };
+
   return (
     <>
-    <GeoJSONSource id="brush" data={lines(strokes)}>
+    <GeoJSONSource id="brush" data={painted}>
       <Layer
         id="brush-paint"
         type="line"
@@ -68,7 +91,26 @@ export function BrushLayers({
         layout={{ "line-cap": "round", "line-join": "round" }}
         paint={{
           "line-color": palette.wax,
-          "line-width": width,
+          /**
+           * Doublée à chaque niveau de zoom, ce qui fait une largeur
+           * constante au sol.
+           *
+           * Écrit en `interpolate` plutôt qu'en multiplication directe parce
+           * que la grammaire des styles l'exige : `["zoom"]` ne peut être
+           * que l'entrée d'un `interpolate` ou d'un `step`, jamais un terme
+           * au milieu d'un calcul. Entre le zoom zéro et le vingt-quatrième,
+           * une interpolation exponentielle de base deux donne exactement la
+           * largeur multipliée par deux puissance le zoom.
+           */
+          "line-width": [
+            "interpolate",
+            ["exponential", 2],
+            ["zoom"],
+            0,
+            ["get", "w0"],
+            24,
+            ["*", ["get", "w0"], 2 ** 24],
+          ],
           /**
            * Flat, and that is the point.
            *

@@ -14,8 +14,8 @@ import {
   eraseDrawn,
   shareDrawn,
   fetchDrawn,
+  type Daub,
   type DrawnPolity,
-  type Stroke,
 } from "./drawn";
 
 type HiddenContextValue = {
@@ -37,11 +37,12 @@ type HiddenContextValue = {
   drawn: DrawnPolity[];
   /** Paints one and keeps it. Returns once the map can show it. */
   draw: (options: {
-    strokes: Stroke[];
-    brushMetres: number;
+    strokes: Daub[];
     name: string;
     from: number;
     to: number;
+    /** Le territoire à reprendre, ou rien pour en créer un. */
+    existing?: string | null;
   }) => Promise<void>;
   erase: (id: string) => Promise<void>;
   /** Ouvre un territoire à la bibliothèque, ou l'en soustrait. */
@@ -103,11 +104,11 @@ export function HiddenProvider({ children }: { children: ReactNode }) {
 
   const draw = useCallback(
     async (options: {
-      strokes: Stroke[];
-      brushMetres: number;
+      strokes: Daub[];
       name: string;
       from: number;
       to: number;
+      existing?: string | null;
     }) => {
       await drawPolity(options);
       // Re-read rather than splice in what we sent: the colour and the label

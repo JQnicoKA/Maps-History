@@ -44,6 +44,7 @@ import {
   BRUSH_POINTS,
   brushMercator,
   brushMetres,
+  metresPerPoint,
 } from "../../features/territories/brush";
 import {
   DrawPolityBar,
@@ -56,7 +57,12 @@ import {
   NamePolityDialog,
   type NamedPolity,
 } from "../../features/territories/NamePolityDialog";
-import type { Stroke } from "../../features/territories/drawn";
+import {
+  fetchStrokes,
+  type Daub,
+  type DrawnPolity,
+  type Stroke,
+} from "../../features/territories/drawn";
 import { FRIEZE_HEIGHT, Timeline } from "../../features/timeline/Timeline";
 import type { Page } from "../Pages";
 import { palette } from "../../theme/palette";
@@ -94,6 +100,30 @@ export type MapScreenProps = {
    */
   onDrawingChange: (drawing: boolean) => void;
 };
+
+/**
+ * Le milieu de la boîte qui contient tout le tracé.
+ *
+ * Le centre de la boîte plutôt que la moyenne des points : un trait très
+ * fourni d'un côté tirerait la moyenne vers lui, et la carte s'ouvrirait de
+ * travers sur le territoire qu'on vient de rouvrir.
+ */
+function middleOf(strokes: Daub[]): LngLat | null {
+  let west = Infinity;
+  let east = -Infinity;
+  let south = Infinity;
+  let north = -Infinity;
+  for (const daub of strokes) {
+    for (const [lon, lat] of daub.points) {
+      if (lon < west) west = lon;
+      if (lon > east) east = lon;
+      if (lat < south) south = lat;
+      if (lat > north) north = lat;
+    }
+  }
+  if (west === Infinity) return null;
+  return [(west + east) / 2, (south + north) / 2];
+}
 
 export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
   const insets = useSafeAreaInsets();
@@ -156,7 +186,18 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
   const [posingSaving, setPosingSaving] = useState(false);
   /** Painting: the strokes laid down, the one under the finger, the state. */
   const [drawing, setDrawing] = useState(false);
-  const [strokes, setStrokes] = useState<Stroke[]>([]);
+  const [strokes, setStrokes] = useState<Daub[]>([]);
+  /**
+   * Le territoire qu'on reprend, s'il y en a un.
+   *
+   * Dessiner et reprendre sont le même geste au même endroit : seuls le
+   * tracé de départ et la destination de l'enregistrement changent. Le
+   * garder ici plutôt que d'ouvrir un second mode évite d'écrire deux fois
+   * le pinceau.
+   */
+  const [editing, setEditing] = useState<DrawnPolity | null>(null);
+  /** Où amener la planche, quand on y reprend un dessin. */
+  const [lookAt, setLookAt] = useState<LngLat | null>(null);
   const [trail, setTrail] = useState<Stroke>([]);
   const [naming, setNaming] = useState(false);
   /** Pinceau, gomme ou main : ce qu'un doigt fait en ce moment. */
@@ -170,6 +211,8 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
     setTrail([]);
     setNaming(false);
     setTool("brush");
+    setEditing(null);
+    setLookAt(null);
   };
 
   /**
@@ -195,9 +238,46 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
       : strokes;
 
   /** Le coup qu'on vient de donner : il ajoute, ou il retranche. */
+  /**
+   * Reprendre un territoire : recharger son tracé et rendre la main au
+   * pinceau.
+   *
+   * La carte se recentre dessus, mais sans toucher au zoom : chaque trait se
+   * dessine à sa vraie largeur au sol — voir `BrushLayers` —, donc le dessin
+   * est fidèle à n'importe quelle échelle. Il n'y a rien à restaurer.
+   */
+  const editShape = async (territory: DrawnPolity) => {
+    try {
+      const kept = await fetchStrokes(territory.id);
+      if (kept === null || kept.length === 0) {
+        throw new Error("le tracé de ce territoire n'a pas été gardé");
+      }
+      setStrokes(kept);
+      setEditing(territory);
+      /* Le milieu de ce qui a été peint, et non le centre du polygone : il
+         se lit dans le tracé qu'on vient de recevoir, sans rien demander de
+         plus à la base ni au dessin. */
+      setLookAt(middleOf(kept));
+      setTool("brush");
+      setDrawing(true);
+    } catch (cause) {
+      sayMap(
+        "Territoire non repris",
+        cause instanceof Error ? cause.message : String(cause),
+      );
+    }
+  };
+
   const lay = (stroke: Stroke) => {
-    if (tool === "eraser") setStrokes((current) => rub(current, stroke, bite));
-    else setStrokes((current) => [...current, stroke]);
+    if (tool === "eraser") {
+      setStrokes((current) => rub(current, stroke, bite));
+      return;
+    }
+    /* La largeur est prise maintenant, à la latitude où le doigt a commencé.
+       Prise à l'enregistrement, le zoom du moment où l'on appuie sur
+       « Terminer » aurait décidé pour tous les coups à la fois. */
+    const metres = brushMetres(zoom, stroke[0]?.[1] ?? 0);
+    setStrokes((current) => [...current, { points: stroke, metres }]);
   };
 
   /**
@@ -210,16 +290,15 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
   const keepDrawing = async (named: NamedPolity) => {
     setSaving(true);
     try {
-      const [zoom, centre] = await Promise.all([
-        mapRef.current?.getZoom() ?? Promise.resolve(4),
-        mapRef.current?.getCenter() ?? Promise.resolve([0, 0] as const),
-      ]);
+      /* Plus rien à mesurer ici : chaque coup est entré dans la liste à la
+         largeur qu'il avait — voir `lay`. Le zoom du moment où l'on termine
+         ne décide donc plus de la forme du territoire. */
       await draw({
         strokes,
-        brushMetres: brushMetres(zoom, centre[1]),
         name: named.name,
         from: named.from,
         to: named.to,
+        existing: editing?.id ?? null,
       });
       stopDrawing();
     } catch (cause) {
@@ -271,6 +350,11 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
   // Selecting an event recentres the plate; the zoom the reader chose is left
   // alone on purpose.
   const center = useMemo<LngLat | undefined>(() => {
+    /* Reprendre un territoire amène d'abord à lui : il peut avoir été peint
+       à l'autre bout du monde, et une carte qui regarde ailleurs ne montre
+       alors rien du dessin qu'on vient de rouvrir. En tête des trois, parce
+       qu'on ne reprend un territoire qu'en le demandant. */
+    if (lookAt) return lookAt;
     // A zone being changed opens where it already is: asking somebody to pan
     // back to the circle they set last week is asking them to set it again.
     if (asking?.kind === "zone" && asking.from) {
@@ -279,7 +363,7 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
     return selectedEvent
       ? [selectedEvent.longitude, selectedEvent.latitude]
       : undefined;
-  }, [asking, selectedEvent]);
+  }, [lookAt, asking, selectedEvent]);
 
   useEffect(() => {
     if (center) hasFramed.current = true;
@@ -368,10 +452,12 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
           onLook={(centre, zoom) => {
             looking.current = centre;
             setZoom(zoom);
-            const metresPerPoint =
-              (156543.03392 * Math.cos((centre.latitude * Math.PI) / 180)) /
-              2 ** zoom;
-            setPointsPerMetre(metresPerPoint === 0 ? null : 1 / metresPerPoint);
+            /* Demandée à `brush.ts` plutôt que recopiée ici : les deux
+               copies portaient la même constante fausse, et le cercle du
+               viseur de région était donc dessiné à la moitié du rayon
+               qu'il annonçait. */
+            const perPoint = metresPerPoint(zoom, centre.latitude);
+            setPointsPerMetre(perPoint === 0 ? null : 1 / perPoint);
           }}
           // One finger paints, so it must not also drag the plate. Pinch is
           // untouched: the reader can still zoom to where they are working.
@@ -476,8 +562,17 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
       ) : null}
 
       <NamePolityDialog
+        /* Remontée à chaque ouverture, pour que ses champs soient ceux du
+           territoire qu'on reprend — ou vierges pour un territoire neuf.
+           Elle tient son brouillon, et celui d'avant y serait resté. */
+        key={`polity-${editing?.id ?? "new"}`}
         visible={naming}
         busy={saving}
+        known={
+          editing
+            ? { name: editing.name, from: editing.from, to: editing.to }
+            : null
+        }
         onConfirm={(named) => void keepDrawing(named)}
         onClose={() => setNaming(false)}
       />
@@ -513,6 +608,7 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
               {MAP_FEATURES.territories ? (
                 <DrawTerritoryButton
                   onDraw={() => setDrawing(true)}
+                  onEditShape={(territory) => void editShape(territory)}
                   onPose={() => void poseAPlace()}
                 />
               ) : null}
