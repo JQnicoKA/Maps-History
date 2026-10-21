@@ -8,6 +8,7 @@ import {
   RosterEmpty,
   RosterLegend,
   RosterRow,
+  useLingering,
   useNotice,
 } from "../../components/ui";
 import { formatYear } from "../events/historicalDate";
@@ -45,6 +46,15 @@ export function PlaceList({ onPose }: PlaceListProps) {
   const [asking, setAsking] = useState<{ id: string; name: string } | null>(
     null,
   );
+  /**
+   * La même, gardée le temps que la carte s'efface.
+   *
+   * Son nom est dans la phrase, et `asking` retombe à `null` dès qu'on
+   * répond — alors que `Dialog` garde la carte montée cent soixante
+   * millisecondes pour la faire partir en fondu. Sans cela, on lirait
+   * « Si vous supprimez «  » » pendant ce quart de seconde.
+   */
+  const erasing = useLingering(asking);
   const { say, dialog } = useNotice();
 
   const work = (key: string, deed: Promise<void>, failed: string) => {
@@ -62,12 +72,16 @@ export function PlaceList({ onPose }: PlaceListProps) {
 
       <ConfirmDialog
         visible={asking !== null}
-        title={`Effacer « ${asking?.name ?? ""} » ?`}
+        /* Le genre dans le titre, le nom dans la phrase — comme pour un
+           territoire, dans l'onglet d'à côté. Les deux listes sont la même
+           liste à un mot près, et leurs oui/non doivent se lire pareil. */
+        title="Effacer la ville ?"
         /* Plus de `stake` : une ville n'est jamais une copie, puisqu'elle
            ne se copie plus. L'enjeu est donc toujours le même, et le dire
            par une fonction qui n'a plus qu'une branche serait du détour. */
-        message="Elle n'existe que sur votre carte : l'effacer est définitif."
+        message={`Si vous supprimez « ${erasing?.name ?? ""} », elle disparaît pour de bon : elle n'existe que sur votre carte.`}
         confirmLabel="Effacer"
+        cancelLabel="Annuler"
         onConfirm={() => {
           const target = asking;
           setAsking(null);
