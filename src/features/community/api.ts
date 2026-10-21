@@ -344,6 +344,42 @@ export async function alike(
   return ((data ?? []) as Row[]).map(toThing);
 }
 
+/** Une des miennes qui ressemble à ce que je m'apprête à copier. */
+export type Mine = {
+  id: string;
+  title: string;
+  year: number;
+  approximate: boolean;
+  /** Écrite de ma main, par opposition à prise ailleurs. */
+  written: boolean;
+};
+
+/**
+ * Ce que j'ai déjà qui ressemble à l'entrée que je m'apprête à prendre.
+ *
+ * **Le miroir d'`alike`**, et la même question posée dans l'autre sens :
+ * celle-là cherche dans la bibliothèque ce qui ressemble à ce qu'on écrit,
+ * celle-ci cherche dans sa propre collection ce qui ressemble à ce qu'on va
+ * copier. Mêmes seuils, mesurés une fois pour les deux.
+ *
+ * Les arbres n'en ont pas, comme ils n'ont pas d'`alike` : un arbre n'a pas
+ * de titre à comparer, seulement un nom et des gens dedans.
+ */
+export async function mineAlike(
+  kind: Kind,
+  title: string,
+  year: number,
+  approximate: boolean,
+): Promise<Mine[]> {
+  if (DOORS[kind].alike === null) return [];
+  const { data, error } = await supabase().rpc(
+    kind === "event" ? "my_events_like" : "my_characters_like",
+    { said: title.trim(), at_year: year, fuzzy: approximate },
+  );
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Mine[];
+}
+
 /**
  * Says that something should not be in the community.
  *

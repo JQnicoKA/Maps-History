@@ -19,6 +19,7 @@ import {
 } from "react-native";
 
 import * as api from "./api";
+import { mineAlike, type Mine } from "./api";
 import { fetchStale, refreshFromLibrary, type Stale } from "./updates";
 import { LOOKS } from "./looks";
 import { SharedCard } from "./SharedCard";
@@ -54,7 +55,7 @@ import { asLabelWidth, type Tree, type TreeMember } from "../events/types";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useEvents } from "../events/EventsProvider";
-import { formatHistoricalDate } from "../events/historicalDate";
+import { formatHistoricalDate, formatYear } from "../events/historicalDate";
 import { widthsFor } from "./period";
 import { usePlacement } from "../placement";
 import { ANSWER_WITHIN, CONTACT } from "../../config/contact";
@@ -270,6 +271,33 @@ export function Catalogue({
     });
   };
   const [taking, setTaking] = useState<string | null>(null);
+
+  /**
+   * Demander avant de copier, en regardant d'abord ce qu'on a déjà.
+   *
+   * **L'échec de la recherche n'empêche jamais de copier.** Elle est un
+   * confort, pas un verrou : une panne de réseau au mauvais moment ne doit
+   * pas retenir quelqu'un devant ce qu'il est venu prendre. En cas de
+   * silence, la carte s'ouvre telle qu'elle s'ouvrait avant d'exister.
+   */
+  const askToTake = async (one: SharedThing, kind: Kind) => {
+    const year = one.start?.year ?? null;
+    if (year === null) {
+      setAsking({ one, kind, mine: [] });
+      return;
+    }
+    try {
+      const mine = await mineAlike(
+        kind,
+        one.title,
+        year,
+        one.start?.approximate === true,
+      );
+      setAsking({ one, kind, mine });
+    } catch {
+      setAsking({ one, kind, mine: [] });
+    }
+  };
   /**
    * Which of the four faces is up.
    *
@@ -339,6 +367,14 @@ export function Catalogue({
   const [asking, setAsking] = useState<{
     one: SharedThing;
     kind: Kind;
+    /**
+     * Ce que j'ai déjà qui y ressemble, s'il y a quelque chose.
+     *
+     * Cherché avant d'ouvrir la confirmation plutôt que pendant : une carte
+     * qui s'ouvre sans avertissement puis en fait pousser un se ferait
+     * confirmer avant d'avoir parlé.
+     */
+    mine: Mine[];
   } | null>(null);
 
   /**
@@ -659,7 +695,7 @@ export function Catalogue({
       take: look.take,
       takeable: !one.mine && !one.copied,
     }).then((taken) => {
-      if (taken) setAsking({ one, kind });
+      if (taken) void askToTake(one, kind);
     });
   };
 
@@ -813,7 +849,7 @@ export function Catalogue({
                 grow
                 disabled={reading.thing.copied || taking !== null}
                 onPress={() =>
-                  setAsking({ one: reading.thing, kind: reading.kind })
+                  void askToTake(reading.thing, reading.kind)
                 }
               />
             )}
@@ -976,7 +1012,7 @@ export function Catalogue({
                       ? onTheMap(item)
                       : setTrail([{ kind, thing: item }])
                   }
-                  onTake={() => setAsking({ one: item, kind })}
+                  onTake={() => void askToTake(item, kind)}
                 />
               )}
             />
@@ -1081,7 +1117,7 @@ export function Catalogue({
                         take: its.take,
                         takeable: !one.mine && !one.copied,
                       }).then((taken) => {
-                        if (taken) setAsking({ one, kind: step.kind });
+                        if (taken) void askToTake(one, step.kind);
                       });
                     }}
                     // La fiche demande, le panneau dessine — voir
@@ -1106,7 +1142,7 @@ export function Catalogue({
                 said={look.under(drawn.thing)}
                 takeable={!drawn.thing.mine && !drawn.thing.copied}
                 busy={taking === drawn.thing.id}
-                onTake={() => setAsking({ one: drawn.thing, kind: "tree" })}
+                onTake={() => void askToTake(drawn.thing, "tree")}
                 onClose={() => setDrawn(null)}
                 // The panel reaches the foot of the screen, so the buttons
                 // must clear the home indicator themselves — the sheet's own
@@ -1385,9 +1421,26 @@ export function Catalogue({
       {asking === null ? null : (
         <ConfirmDialog
           visible
-          title={LOOKS[asking.kind].ask}
-          message={LOOKS[asking.kind].means}
-          confirmLabel={LOOKS[asking.kind].take}
+          /* Quand on a déjà quelque chose qui y ressemble, la carte pose une
+             autre question — et la pose en premier, le titre étant ce qu'on
+             lit avant tout le reste. */
+          title={
+            asking.mine.length > 0
+              ? "Vous l'avez peut-être déjà"
+              : LOOKS[asking.kind].ask
+          }
+          message={
+            asking.mine.length > 0
+              ? alreadyHave(asking.mine)
+              : LOOKS[asking.kind].means
+          }
+          /* « Quand même », parce qu'on vient de dire pourquoi on pourrait
+             ne pas. Le mot n'a de sens qu'après un avertissement. */
+          confirmLabel={
+            asking.mine.length > 0
+              ? "Copier quand même"
+              : LOOKS[asking.kind].take
+          }
           /* Encre et non rouge : copier ne retire rien, et peindre ce bouton
              en rouge mettrait en garde contre ce que le lecteur est venu
              faire. */
@@ -1448,6 +1501,31 @@ export function Catalogue({
  * Wax once it is narrowing something, so a card opened at a glance says
  * whether anything is being held back.
  */
+/**
+ * Ce qu'on a déjà qui ressemble à l'entrée qu'on s'apprête à prendre.
+ *
+ * Nommé plutôt que compté : « vous avez déjà une entrée semblable » oblige à
+ * aller voir, là où « vous avez déjà « Bataille de Tolbiac » (496) » se
+ * reconnaît sans quitter la carte.
+ *
+ * La provenance est dite, parce qu'elle change l'enjeu : une copie de plus à
+ * côté d'une copie ne coûte rien, une copie à côté de ce qu'on a écrit
+ * soi-même fait deux versions d'une même chose dont une seule est de sa
+ * main. C'est la distinction que `stakes.ts` porte pour la suppression, et
+ * elle vaut ici aussi.
+ */
+function alreadyHave(mine: Mine[]): string {
+  const first = mine[0]!;
+  const said = `« ${first.title} » (${formatYear(first.year)})`;
+  const whose = first.written
+    ? "que vous avez écrite vous-même"
+    : "prise dans la bibliothèque";
+  if (mine.length === 1) {
+    return `Vous avez déjà une entrée ${said} ${whose}. En copier une seconde en fera deux.`;
+  }
+  return `Vous avez déjà ${mine.length} entrées qui y ressemblent, dont ${said} ${whose}. En copier une de plus en fera une de plus.`;
+}
+
 function Row({
   said,
   lit,
