@@ -87,8 +87,23 @@ export function RegionReticle({
             ))}
           </View>
           <View style={styles.actions}>
-            <InkButton label="Annuler" variant="quiet" onPress={onCancel} />
-            <InkButton label="Confirmer" variant="solid" onPress={onConfirm} />
+            <InkButton
+              label="Annuler"
+              /* Tonal et non plus discret : à parts égales de largeur avec
+                 « Confirmer », un bouton sans fond ne se lisait plus comme un
+                 bouton mais comme une phrase posée à côté d'un bouton. Le
+                 gris creusé lui rend sa forme sans lui donner le rang du
+                 plein. */
+              variant="tonal"
+              grow
+              onPress={onCancel}
+            />
+            <InkButton
+              label="Confirmer"
+              variant="solid"
+              grow
+              onPress={onConfirm}
+            />
           </View>
         </View>
       </Paper>
@@ -149,5 +164,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: space.sm,
   },
-  actions: { flexDirection: "row", justifyContent: "flex-end", gap: space.sm },
+  /**
+   * Les deux boutons se partagent la largeur, au lieu de se serrer à droite.
+   *
+   * Plus de `justifyContent` : chacun porte `grow`, donc ils prennent la
+   * moitié de la rangée chacun et il n'y a plus de place à distribuer. C'est
+   * la mise des pieds de feuille, et ce bandeau est le pied de cette carte —
+   * deux boutons blottis dans un angle se lisaient comme une remarque, là où
+   * ils sont la seule chose à faire une fois le cercle réglé.
+   */
+  actions: { flexDirection: "row", gap: space.sm },
 });
