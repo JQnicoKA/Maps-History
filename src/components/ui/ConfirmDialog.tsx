@@ -30,6 +30,14 @@ export type ConfirmDialogProps = {
    */
   cancelLabel?: string | null;
   /**
+   * Ce que ce bouton fait, quand ce n'est pas simplement refuser.
+   *
+   * Le même office qu'`onDismiss` sur `Dialog` : une sortie qui mène
+   * ailleurs plutôt que de fermer. La croix et le voile continuent de
+   * fermer — il faut toujours un moyen de partir pour de bon.
+   */
+  onCancel?: () => void;
+  /**
    * Transmis à `Dialog` — voir sa propre documentation.
    *
    * `"soft"` quand cette confirmation s'ouvre depuis une feuille, ce qui est
@@ -62,6 +70,7 @@ export function ConfirmDialog({
   confirmLabel,
   tone = "danger",
   cancelLabel = null,
+  onCancel,
   veil = "full",
   onConfirm,
   onClose,
@@ -96,7 +105,7 @@ export function ConfirmDialog({
             label={cancelLabel}
             variant="tonal"
             grow
-            onPress={onClose}
+            onPress={onCancel ?? onClose}
           />
           <InkButton
             label={confirmLabel}

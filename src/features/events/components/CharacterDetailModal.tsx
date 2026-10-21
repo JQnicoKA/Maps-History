@@ -31,6 +31,20 @@ const TRASH = require("../../../../assets/icons/trash.png");
 export type CharacterDetailModalProps = {
   person: Character | null;
   onEdit: (person: Character) => void;
+  /**
+   * La fiche sans ses actions : on la lit, on ne la travaille pas.
+   *
+   * Pour le seul endroit qui montre une fiche sans qu'on y soit venu pour
+   * elle — le catalogue, quand il prévient qu'on a déjà quelque chose de
+   * semblable et qu'on demande à le voir. Y laisser la poubelle et le
+   * crayon offrirait de supprimer son personnage au milieu d'une décision qui
+   * ne portait que sur une copie.
+   *
+   * Seul « Fermer » reste, et la feuille se referme d'un glissement vers le
+   * bas comme toutes les autres : on revient donc à la question.
+   */
+  readOnly?: boolean;
+
   /** Opens one of the events this person appears in. */
   onOpenEvent: (id: string) => void;
   /** Opens one of the trees they stand in. */
@@ -63,6 +77,7 @@ export type CharacterDetailModalProps = {
 export function CharacterDetailModal({
   person: subject,
   onEdit,
+  readOnly = false,
   onOpenEvent,
   onOpenTree,
   exceptTree,
@@ -140,6 +155,9 @@ export function CharacterDetailModal({
       onClose={onClose}
       onClosed={onClosed}
       footer={
+        readOnly ? (
+          <InkButton label="Fermer" variant="solid" grow onPress={onClose} />
+        ) : (
         <>
           <Pressable
             accessibilityRole="button"
@@ -161,6 +179,7 @@ export function CharacterDetailModal({
           />
           <InkButton label="Fermer" variant="solid" grow onPress={onClose} />
         </>
+        )
       }
     >
       {dialog}

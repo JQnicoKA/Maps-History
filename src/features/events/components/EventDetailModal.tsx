@@ -54,6 +54,20 @@ export type EventDetailModalProps = {
   event: EventSummary | null;
   /** Handed the whole event, which is the only thing the form may be given. */
   onEdit: (whole: HistoricalEvent) => void;
+  /**
+   * La fiche sans ses actions : on la lit, on ne la travaille pas.
+   *
+   * Pour le seul endroit qui montre une fiche sans qu'on y soit venu pour
+   * elle — le catalogue, quand il prévient qu'on a déjà quelque chose de
+   * semblable et qu'on demande à le voir. Y laisser la poubelle et le
+   * crayon offrirait de supprimer son entrée au milieu d'une décision qui
+   * ne portait que sur une copie.
+   *
+   * Seul « Fermer » reste, et la feuille se referme d'un glissement vers le
+   * bas comme toutes les autres : on revient donc à la question.
+   */
+  readOnly?: boolean;
+
   /** Opens someone from the cast — see `CharacterDetailModal`. */
   onOpenCharacter: (id: string) => void;
   onClose: () => void;
@@ -64,6 +78,7 @@ export type EventDetailModalProps = {
 export function EventDetailModal({
   event: subject,
   onEdit,
+  readOnly = false,
   onOpenCharacter,
   onClose,
   onClosed,
@@ -133,6 +148,9 @@ export function EventDetailModal({
       onClose={onClose}
       onClosed={onClosed}
       footer={
+        readOnly ? (
+          <InkButton label="Fermer" variant="solid" grow onPress={onClose} />
+        ) : (
         <>
           <Pressable
             accessibilityRole="button"
@@ -159,6 +177,7 @@ export function EventDetailModal({
           />
           <InkButton label="Fermer" variant="solid" grow onPress={onClose} />
         </>
+        )
       }
     >
       {dialog}

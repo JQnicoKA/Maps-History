@@ -55,6 +55,8 @@ import { asLabelWidth, type Tree, type TreeMember } from "../events/types";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useEvents } from "../events/EventsProvider";
+import { CharacterDetailModal } from "../events/components/CharacterDetailModal";
+import { EventDetailModal } from "../events/components/EventDetailModal";
 import { formatHistoricalDate, formatYear } from "../events/historicalDate";
 import { widthsFor } from "./period";
 import { usePlacement } from "../placement";
@@ -155,7 +157,7 @@ export function Catalogue({
   onClose,
   onClosed,
 }: CatalogueProps) {
-  const { year, refresh } = useEvents();
+  const { year, refresh, events, characters } = useEvents();
   const { aiming, placeRegion, showShape, looking } = usePlacement();
   const insets = useSafeAreaInsets();
   const { say, dialog } = useNotice();
@@ -271,6 +273,17 @@ export function Catalogue({
     });
   };
   const [taking, setTaking] = useState<string | null>(null);
+  /**
+   * La mienne, ouverte pour comparaison — par-dessus la question.
+   *
+   * La question reste montée en dessous : on referme la fiche d'un
+   * glissement vers le bas, comme toutes les feuilles, et l'on retombe
+   * devant le choix qu'on était en train de faire. C'est ce qui permet
+   * d'aller voir sans perdre sa place.
+   */
+  const [comparing, setComparing] = useState<{ kind: Kind; id: string } | null>(
+    null,
+  );
 
   /**
    * Demander avant de copier, en regardant d'abord ce qu'on a déjà.
@@ -1441,6 +1454,20 @@ export function Catalogue({
               ? "Copier quand même"
               : LOOKS[asking.kind].take
           }
+          /* La sortie mène à la sienne plutôt que de simplement refuser :
+             devant « vous l'avez peut-être déjà », la question qu'on se pose
+             est « laquelle ai-je ? », et y répondre demande de la voir. La
+             carte reste ouverte dessous — voir `comparing`. */
+          {...(asking.mine.length > 0 && asking.kind !== "tree"
+            ? {
+                cancelLabel: "Voir le mien",
+                onCancel: () =>
+                  setComparing({
+                    kind: asking.kind,
+                    id: asking.mine[0]!.id,
+                  }),
+              }
+            : {})}
           /* Encre et non rouge : copier ne retire rien, et peindre ce bouton
              en rouge mettrait en garde contre ce que le lecteur est venu
              faire. */
@@ -1454,6 +1481,42 @@ export function Catalogue({
           onClose={() => setAsking(null)}
         />
       )}
+
+      {/* La mienne, ouverte pour comparaison.
+          ==================================================================
+
+          **Montée ici, à l'intérieur du catalogue**, et non remontée à la
+          coquille : iOS refuse de présenter une modale depuis un panneau qui
+          en présente déjà une, et surtout la question doit rester ouverte
+          dessous. On la referme d'un glissement vers le bas, comme toute
+          feuille, et l'on retombe exactement là où l'on était.
+
+          En lecture seule : on est venu reconnaître une entrée, pas la
+          travailler. Son pied n'offre donc que « Fermer » — voir
+          `readOnly`. */}
+      {comparing?.kind === "event" ? (
+        <EventDetailModal
+          event={events.find((one) => one.id === comparing.id) ?? null}
+          readOnly
+          /* Jamais appelés en lecture seule : le crayon et la distribution
+             ne sont pas dessinés. Ils referment, ce qui est la seule chose
+             sensée si l'un d'eux trouvait malgré tout un chemin. */
+          onEdit={() => setComparing(null)}
+          onOpenCharacter={() => setComparing(null)}
+          onClose={() => setComparing(null)}
+        />
+      ) : null}
+
+      {comparing?.kind === "character" ? (
+        <CharacterDetailModal
+          person={characters.find((one) => one.id === comparing.id) ?? null}
+          readOnly
+          onEdit={() => setComparing(null)}
+          onOpenEvent={() => setComparing(null)}
+          onOpenTree={() => setComparing(null)}
+          onClose={() => setComparing(null)}
+        />
+      ) : null}
 
       {updating === null ? null : (
         <ConfirmDialog

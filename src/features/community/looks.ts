@@ -69,7 +69,7 @@ const span = (one: { start: { year: number } | null; end: { year: number } | nul
 
 export const CHARACTER_LOOK: Look = {
   many: "Bibliothèque",
-  one: "Un personnage",
+  one: "Bibliothèque",
   take: "Copier le personnage",
   named: "Nom du personnage",
   hint: "Clovis, Aliénor, Soliman…",
