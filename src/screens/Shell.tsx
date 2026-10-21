@@ -119,10 +119,34 @@ export function Shell() {
 
       {takenOver ? null : <TabBar value={tab} onChange={setTab} />}
 
-      {/* Après la barre, donc par-dessus : l'arbre dessiné est une vue et
-          non une modale, et il doit couvrir les onglets comme il couvre
-          tout le reste. Il porte sa propre sortie. */}
-      {pages.layer}
+      {/* Ce qui se lève par-dessus tout, dans un calque qui le dit.
+          ====================================================================
+
+          **L'ordre du code ne suffisait pas, et c'est une leçon.** Ce bloc
+          était simplement écrit après la barre d'onglets, au motif qu'un
+          frère plus tardif se peint par-dessus les précédents. C'est vrai
+          tant que personne ne porte de `zIndex` ; dès qu'un descendant en
+          porte un, l'arbitrage cesse d'être celui du code et l'on ne peut
+          plus le lire en regardant ce fichier.
+
+          Le défaut observé : ouvrir un arbre depuis la page Arbres laissait
+          le bandeau « Arbres » par-dessus lui. Les deux barres étant
+          blanches à huit points de hauteur près, il n'en dépassait qu'un
+          second filet — et le retour de l'arbre, enterré dessous, rendait le
+          dessin sans issue.
+
+          Un rang explicite, et strictement au-dessus du seul autre en jeu :
+          le bandeau fixe des pages de collection et celui du compte portent
+          `zIndex: 1`, pour que leur ombre se voie par-dessus leur propre
+          liste. Deux, ici, met la question hors de portée d'un réglage fait
+          trois étages plus bas.
+
+          `box-none` parce que ce calque couvre l'écran en permanence : il ne
+          doit rien intercepter lui-même, et tout laisser à ses occupants —
+          qui sont soit des modales, soit des vues plein écran en absolu. */}
+      <View style={styles.over} pointerEvents="box-none">
+        {pages.layer}
+      </View>
     </View>
   );
 }
@@ -132,4 +156,13 @@ const styles = StyleSheet.create({
   stage: { flex: 1 },
   /** Masqué, et non démonté — voir le commentaire du composant. */
   hidden: { display: "none" },
+  /** Le calque des pages levées : tout l'écran, au-dessus des scènes. */
+  over: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 2,
+  },
 });
