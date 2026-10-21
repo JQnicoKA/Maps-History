@@ -648,28 +648,31 @@ const styles = StyleSheet.create({
   },
   editPressed: { backgroundColor: palette.border },
   /**
-   * Le carré lui-même en rouge, et non son glyphe.
+   * Le rouge posé sur le papier, et non imprimé dedans.
    *
-   * Un dessin rouge dans un carré gris se lit comme un glyphe qui a changé
-   * de couleur ; un carré rouge se lit comme un bouton dont on sait ce
-   * qu'il fait avant de l'avoir lu. C'est la différence entre colorier et
-   * signaler.
+   * `dangerWash` est écrit dans la palette pour ce rôle exact — « le fond
+   * d'un panneau d'avertissement, là où un rouge plein crierait et un gris
+   * ne dirait rien ». Le carré prend donc la place qu'occupait le gris
+   * creusé, à la même profondeur : 1,29 contre le papier de la rangée, où
+   * le gris en valait 1,24. Rien ne bouge, seule la couleur change de
+   * nature.
+   *
+   * **Opaque, et c'est voulu.** Un lavis translucide se poserait autrement
+   * sur chaque fond — une rangée blanche, une feuille, un panneau — et le
+   * même bouton n'aurait pas deux fois la même couleur. C'est l'argument
+   * que porte déjà `dangerWash` dans la palette.
    */
-  editDanger: { backgroundColor: palette.danger },
-  /**
-   * Enfoncé, il s'assombrit — la recette de `waxDeep` sur la cire, appliquée
-   * au rouge : moins 0,073 de clarté, moins un sixième de saturation.
-   */
-  editDangerPressed: { backgroundColor: "#901F18" },
+  editDanger: { backgroundColor: palette.dangerWash },
+  /** Enfoncé, le lavis se soutient d'un cran, comme les autres creux. */
+  editDangerPressed: { backgroundColor: "#E8CFC2" },
   pencil: { width: 16, height: 16, opacity: 0.75 },
   /**
-   * Blanc sur le rouge, et à pleine opacité.
+   * Le rouge plein sur son propre lavis : 5,1:1.
    *
-   * 6,5:1. Le voile de trois quarts qui adoucit les glyphes d'encre sur leur
-   * carré pâle n'a rien à faire ici : il ramènerait le blanc vers le rouge,
-   * c'est-à-dire vers le rose.
+   * À pleine opacité. Le voile de trois quarts qui adoucit les glyphes
+   * d'encre le ramènerait vers son fond, c'est-à-dire vers le rose.
    */
-  pencilDanger: { tintColor: palette.surfaceRaised, opacity: 1 },
+  pencilDanger: { tintColor: palette.danger, opacity: 1 },
   chevron: { fontSize: 22, color: palette.inkFaint, paddingRight: space.xs },
   pressed: { opacity: 0.55 },
   /** Assez pâle pour qu'on n'essaie pas, assez lisible pour qu'on lise. */
