@@ -40,8 +40,16 @@ import {
 } from "../../features/territories/TerritorySheet";
 import { BrushLayers } from "../../features/territories/BrushLayers";
 import { BrushOverlay } from "../../features/territories/BrushOverlay";
-import { BRUSH_POINTS, brushMetres } from "../../features/territories/brush";
-import { DrawPolityBar } from "../../features/territories/DrawPolityBar";
+import {
+  BRUSH_POINTS,
+  brushMercator,
+  brushMetres,
+} from "../../features/territories/brush";
+import {
+  DrawPolityBar,
+  type Tool,
+} from "../../features/territories/DrawPolityBar";
+import { rub } from "../../features/territories/rubber";
 import { DrawTerritoryButton } from "../../features/territories/DrawTerritoryButton";
 import { useHidden } from "../../features/territories/HiddenProvider";
 import {
@@ -151,8 +159,8 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [trail, setTrail] = useState<Stroke>([]);
   const [naming, setNaming] = useState(false);
-  /** Brush or hand: what a single finger does right now. */
-  const [painting, setPainting] = useState(true);
+  /** Pinceau, gomme ou main : ce qu'un doigt fait en ce moment. */
+  const [tool, setTool] = useState<Tool>("brush");
   const [saving, setSaving] = useState(false);
   const { say: sayMap, dialog: mapDialog } = useNotice();
 
@@ -161,7 +169,35 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
     setStrokes([]);
     setTrail([]);
     setNaming(false);
-    setPainting(true);
+    setTool("brush");
+  };
+
+  /**
+   * Jusqu'où la gomme emporte, en mètres de Mercator.
+   *
+   * La somme des deux rayons — celui du pinceau et celui de la gomme, égaux
+   * ici : c'est la distance à laquelle leurs disques se touchent, donc celle
+   * sous laquelle un point de trait doit tomber. La bande effacée fait alors
+   * la largeur du pinceau, ce qui est la seule mesure que la main connaisse.
+   */
+  const bite = 2 * brushMercator(zoom);
+
+  /**
+   * Ce que la gomme est en train d'ôter, montré pendant qu'elle le fait.
+   *
+   * La même fonction que celle qui coupera pour de bon quand le doigt se
+   * lèvera — appliquée au trait en cours plutôt qu'à un trait fini. L'aperçu
+   * ne promet donc rien : il montre le résultat, calculé par le même code.
+   */
+  const shown =
+    tool === "eraser" && trail.length > 0
+      ? rub(strokes, trail, bite)
+      : strokes;
+
+  /** Le coup qu'on vient de donner : il ajoute, ou il retranche. */
+  const lay = (stroke: Stroke) => {
+    if (tool === "eraser") setStrokes((current) => rub(current, stroke, bite));
+    else setStrokes((current) => [...current, stroke]);
   };
 
   /**
@@ -339,7 +375,7 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
           }}
           // One finger paints, so it must not also drag the plate. Pinch is
           // untouched: the reader can still zoom to where they are working.
-          frozen={drawing && painting}
+          frozen={drawing && tool !== "hand"}
         >
           {/* Settlements first, territories after: MapLibre places symbols
               from the topmost layer down, so the country name wins the room
@@ -361,7 +397,12 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
             />
           ) : null}
           {drawing ? (
-            <BrushLayers strokes={strokes} trail={trail} width={BRUSH_POINTS} />
+            <BrushLayers
+              strokes={shown}
+              trail={trail}
+              erasing={tool === "eraser"}
+              width={BRUSH_POINTS}
+            />
           ) : null}
           {/* Somebody else's territory, offered for a look. Above the washes
               of the map itself, since it is a proposal and not yet part of
@@ -417,20 +458,17 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
         <>
           {/* Absent, not merely disabled, while the hand has the screen:
               a sheet that declines every touch still swallows them. */}
-          {painting ? (
-            <BrushOverlay
-              mapRef={mapRef}
-              onStroke={(stroke) => setStrokes((current) => [...current, stroke])}
-              onTrail={setTrail}
-            />
-          ) : null}
+          {/* La gomme prend la même nappe que le pinceau : c'est le même
+              geste, et c'est `lay` qui décide ensuite ce qu'il en fait. */}
+          {tool === "hand" ? null : (
+            <BrushOverlay mapRef={mapRef} onStroke={lay} onTrail={setTrail} />
+          )}
           <DrawPolityBar
             strokes={strokes.length}
             busy={saving}
-            painting={painting}
-            onPaintingChange={setPainting}
+            tool={tool}
+            onToolChange={setTool}
             bottom={insets.bottom + space.md}
-            onUndo={() => setStrokes((current) => current.slice(0, -1))}
             onCancel={stopDrawing}
             onFinish={() => setNaming(true)}
           />

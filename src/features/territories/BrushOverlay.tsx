@@ -50,6 +50,22 @@ const SAMPLE = 14;
  * where they are working without leaving the brush.
  */
 export function BrushOverlay({ mapRef, onStroke, onTrail }: BrushOverlayProps) {
+  /**
+   * Les deux rappels, lus au travers d'une référence.
+   *
+   * **Le `PanResponder` est fabriqué une fois**, au montage, et fige dans ses
+   * gestes les fonctions qu'il avait sous la main à cet instant. Tant qu'il
+   * ne s'est agi que d'appeler un `setState`, dont l'identité ne change
+   * jamais, cela ne se voyait pas. Le jour où le rappel a dû consulter autre
+   * chose — l'outil choisi, par exemple — il a consulté celui du premier
+   * rendu, et tous les coups de gomme sont partis dans la peinture.
+   *
+   * La référence est réécrite à chaque rendu et lue au moment du geste, donc
+   * le responder appelle toujours la version du jour.
+   */
+  const hands = useRef({ onStroke, onTrail });
+  hands.current = { onStroke, onTrail };
+
   const stroke = useRef<Stroke>([]);
   const last = useRef<{ x: number; y: number } | null>(null);
   /**
@@ -66,7 +82,7 @@ export function BrushOverlay({ mapRef, onStroke, onTrail }: BrushOverlayProps) {
         // A point that arrives after the stroke was let go belongs to nothing.
         if (rank <= asked.current && stroke.current !== null) {
           stroke.current.push([coordinate[0], coordinate[1]]);
-          onTrail([...stroke.current]);
+          hands.current.onTrail([...stroke.current]);
         }
       })
       .catch(() => undefined);
@@ -104,13 +120,13 @@ export function BrushOverlay({ mapRef, onStroke, onTrail }: BrushOverlayProps) {
         const painted = stroke.current;
         stroke.current = [];
         last.current = null;
-        onTrail([]);
-        if (painted.length > 0) onStroke(painted);
+        hands.current.onTrail([]);
+        if (painted.length > 0) hands.current.onStroke(painted);
       },
       onPanResponderTerminate: () => {
         stroke.current = [];
         last.current = null;
-        onTrail([]);
+        hands.current.onTrail([]);
       },
     }),
   ).current;

@@ -5,15 +5,23 @@ import { palette } from "../../theme/palette";
 import { shadow, space, type } from "../../theme/tokens";
 
 const PENCIL = require("../../../assets/icons/pencil-draw.png");
+const ERASER = require("../../../assets/icons/eraser.png");
 const HAND = require("../../../assets/icons/hand.png");
+
+/**
+ * Ce qu'un doigt fait en ce moment.
+ *
+ * Trois, et la gomme s'est glissée entre les deux autres parce qu'elle est
+ * du même ordre que le pinceau : on colorie dans les deux cas, et seul le
+ * signe change. La main, elle, interrompt le dessin pour regarder ailleurs.
+ */
+export type Tool = "brush" | "eraser" | "hand";
 
 export type DrawPolityBarProps = {
   strokes: number;
   busy: boolean;
-  /** True while the brush has the screen; false while the map does. */
-  painting: boolean;
-  onPaintingChange: (painting: boolean) => void;
-  onUndo: () => void;
+  tool: Tool;
+  onToolChange: (tool: Tool) => void;
   onCancel: () => void;
   onFinish: () => void;
   bottom: number;
@@ -29,9 +37,8 @@ export type DrawPolityBarProps = {
 export function DrawPolityBar({
   strokes,
   busy,
-  painting,
-  onPaintingChange,
-  onUndo,
+  tool,
+  onToolChange,
   onCancel,
   onFinish,
   bottom,
@@ -41,29 +48,27 @@ export function DrawPolityBar({
       {/* The switch first, because it decides what a finger means — and what
           a finger means is the only thing about this screen that is not
           obvious. */}
-      <SegmentedControl
-        segments={MODES}
-        value={painting ? "brush" : "hand"}
-        onChange={(mode) => onPaintingChange(mode === "brush")}
-      />
+      <SegmentedControl segments={MODES} value={tool} onChange={onToolChange} />
 
       <Text style={styles.hint}>
-        {painting
-          ? strokes === 0
-            ? "Peignez le territoire avec le doigt."
-            : `${strokes} coup${strokes > 1 ? "s" : ""} de pinceau.`
-          : "Déplacez et zoomez la carte librement"}
+        {tool === "hand"
+          ? "Déplacez et zoomez la carte librement"
+          : tool === "eraser"
+            ? "Repassez sur la peinture pour l'ôter."
+            : strokes === 0
+              ? "Peignez le territoire avec le doigt."
+              : `${strokes} coup${strokes > 1 ? "s" : ""} de pinceau.`}
       </Text>
 
+      {/* Deux boutons, et il y en eut trois. « Effacer » défaisait le dernier
+          coup : une annulation déguisée en gomme, qui ne savait retirer que
+          dans l'ordre inverse de la pose. La vraie gomme l'a rendu inutile —
+          on ôte là où l'on veut, autant de fois qu'on veut.
+
+          « Annuler » passe en tonal : à parts égales avec « Terminer », un
+          bouton sans fond ne se lisait pas comme un bouton. */}
       <View style={styles.row}>
-        <InkButton label="Annuler" variant="quiet" grow onPress={onCancel} />
-        <InkButton
-          label="Effacer"
-          variant="tonal"
-          grow
-          disabled={strokes === 0 || busy}
-          onPress={onUndo}
-        />
+        <InkButton label="Annuler" variant="tonal" grow onPress={onCancel} />
         <InkButton
           label={busy ? "…" : "Terminer"}
           variant="solid"
@@ -76,9 +81,10 @@ export function DrawPolityBar({
   );
 }
 
-const MODES = [
-  { value: "brush" as const, label: "Pinceau", icon: PENCIL },
-  { value: "hand" as const, label: "Déplacer", icon: HAND },
+const MODES: { value: Tool; label: string; icon: number }[] = [
+  { value: "brush", label: "Pinceau", icon: PENCIL },
+  { value: "eraser", label: "Gomme", icon: ERASER },
+  { value: "hand", label: "Déplacer", icon: HAND },
 ];
 
 const styles = StyleSheet.create({

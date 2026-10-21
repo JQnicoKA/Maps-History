@@ -28,3 +28,19 @@ export function brushMetres(zoom: number, latitude: number): number {
   const perPoint = (EQUATOR * Math.cos((latitude * Math.PI) / 180)) / 2 ** zoom;
   return Math.max((BRUSH_POINTS / 2) * perPoint, 1);
 }
+
+/**
+ * Le même pinceau, mesuré dans l'espace où l'écran le dessine.
+ *
+ * Mercator étire les distances d'un facteur `1 / cos(latitude)`, et c'est
+ * exactement ce que `brushMetres` défait pour rendre des mètres au sol. Ici
+ * on garde l'étirement : un disque de ce rayon-là est le disque que le doigt
+ * couvre à l'écran, où qu'on soit sur la planche.
+ *
+ * La gomme s'en sert, parce qu'elle raisonne en ce que le doigt recouvre et
+ * non en kilomètres. Et si ce nombre était faux, elle mordrait seulement
+ * trop ou trop peu : rien de ce qui part au serveur n'en dépend.
+ */
+export function brushMercator(zoom: number): number {
+  return Math.max((BRUSH_POINTS / 2) * (EQUATOR / 2 ** zoom), 1);
+}
