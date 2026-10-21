@@ -1062,7 +1062,7 @@ export function TreeBuilder({
           centred={face === "menu"}
           title={
             face === "delete"
-              ? `Supprimer « ${tree.name} » ?`
+              ? "Supprimer l'arbre ?"
               : face === "help"
                 ? "Comment ça marche ?"
                 : "Modifier"
@@ -1075,12 +1075,16 @@ export function TreeBuilder({
           hint={
             face === "delete"
               ? tree.origin === null
-                ? "Les personnages restent dans la collection ; seul l'arbre disparaît."
-                : `Les personnages restent dans la collection. ${COPY_IS_A_COPY}`
+                ? `Cette action est définitive. Si vous supprimez « ${tree.name} », les personnages restent dans la collection ; seul l'arbre disparaît.`
+                : `Cette action est définitive. Si vous supprimez « ${tree.name} », les personnages restent dans la collection. ${COPY_IS_A_COPY}`
               : undefined
           }
-          dismissLabel={face === "menu" || face === "help" ? null : "Retour"}
-          onDismiss={() => setMenu("menu")}
+          /* Rien au pied sur aucune des trois faces. « Modifier » et l'aide
+             n'ont jamais eu de sortie à elles — la croix suffit. La
+             suppression en avait une, « Retour », posée sous le bouton rouge
+             par le panneau lui-même ; elle est remontée dans le corps pour
+             tenir la même ligne que lui. */
+          dismissLabel={null}
         >
           {face === "help" ? (
             <ScrollView style={styles.helpBody}>
@@ -1094,16 +1098,30 @@ export function TreeBuilder({
               </View>
             </ScrollView>
           ) : face === "delete" ? (
-            <InkButton
-              label="Supprimer"
-              variant="solid"
-              tone="danger"
-              disabled={busy}
-              onPress={() => {
-                setMenu(null);
-                run(removeTree(tree.id).then(onClose));
-              }}
-            />
+            /* À parts égales sur une seule ligne, la sortie à gauche et ce
+               qu'on est venu faire à droite — la mise des pieds de feuille de
+               l'application. Empilés, le rouge au-dessus et le retour en
+               dessous, ils se lisaient comme deux questions successives
+               plutôt que comme un choix. */
+            <View style={styles.confirm}>
+              <InkButton
+                label="Retour"
+                variant="tonal"
+                grow
+                onPress={() => setMenu("menu")}
+              />
+              <InkButton
+                label="Supprimer"
+                variant="solid"
+                tone="danger"
+                grow
+                disabled={busy}
+                onPress={() => {
+                  setMenu(null);
+                  run(removeTree(tree.id).then(onClose));
+                }}
+              />
+            </View>
           ) : (
             <>
               {/* Le nom, modifiable sur place. Pas de bouton pour valider :
@@ -1266,6 +1284,8 @@ const styles = StyleSheet.create({
   },
   backGlyph: { fontSize: 34, lineHeight: 38, color: palette.ink, marginTop: -4 },
   moreGlyph: { fontSize: 22, lineHeight: 26, color: palette.ink, marginTop: -6 },
+  /** Les deux boutons du oui/non, à parts égales sur une ligne. */
+  confirm: { flexDirection: "row", gap: space.sm },
   /** Tall enough for the list, short enough that the card stays a card. */
   helpBody: { maxHeight: 400 },
   help: { gap: space.md, paddingBottom: space.xs },
