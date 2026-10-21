@@ -15,6 +15,7 @@ import {
   SegmentedControl,
   Sheet,
   THUMB,
+  useLingering,
   useNotice,
 } from "../../components/ui";
 import { formatYear } from "../events/historicalDate";
@@ -177,6 +178,15 @@ function TerritoryList({ onDraw }: { onDraw: () => void }) {
   const [asking, setAsking] = useState<{ id: string; name: string } | null>(
     null,
   );
+  /**
+   * Le même, gardé le temps que la carte s'efface.
+   *
+   * Son nom est maintenant dans la phrase, et `asking` retombe à `null` dès
+   * qu'on répond — alors que `Dialog` garde la carte montée cent soixante
+   * millisecondes pour la faire partir en fondu. Sans cela, on lirait
+   * « Si vous supprimez «  » » pendant ce quart de seconde.
+   */
+  const erasing = useLingering(asking);
   const { say, dialog } = useNotice();
 
   const work = (key: string, deed: Promise<void>, failed: string) => {
@@ -194,11 +204,19 @@ function TerritoryList({ onDraw }: { onDraw: () => void }) {
 
       <ConfirmDialog
         visible={asking !== null}
-        title={`Effacer « ${asking?.name ?? ""} » ?`}
+        /* Le genre dans le titre, le nom dans la phrase. Le titre porta le
+           nom — « Effacer « Francie occidentale » ? » — et il y devenait
+           long, variable, et parfois coupé ; la question, elle, est toujours
+           la même. La phrase reprend le nom et dit ce qu'on perd. */
+        title="Effacer le territoire ?"
         /* Plus de `stake` : un territoire n'est jamais une copie, puisqu'il
            ne se copie plus. L'enjeu est donc toujours le même. */
-        message="Il n'existe que sur votre carte : l'effacer est définitif."
+        message={`Si vous supprimez « ${erasing?.name ?? ""} », il disparaît pour de bon : il n'existe que sur votre carte.`}
         confirmLabel="Effacer"
+        /* Deux réponses à une question se posent côte à côte. Sans lui, la
+           croix reste la seule sortie — ce qui vaut pour une alerte, moins
+           pour un oui/non qu'on ouvre en visant une poubelle. */
+        cancelLabel="Annuler"
         onConfirm={() => {
           const target = asking;
           setAsking(null);
