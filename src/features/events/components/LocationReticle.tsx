@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { InkButton, Paper } from "../../../components/ui";
 import { palette } from "../../../theme/palette";
+import { space, type } from "../../../theme/tokens";
 
 export type LocationReticleProps = {
   onConfirm: () => void;
@@ -32,8 +33,18 @@ export function LocationReticle({
             Déplacez la carte pour amener le lieu sous le réticule.
           </Text>
           <View style={styles.actions}>
-            <InkButton label="Annuler" variant="quiet" onPress={onCancel} />
-            <InkButton label="Confirmer" variant="solid" onPress={onConfirm} />
+            <InkButton
+              label="Annuler"
+              variant="tonal"
+              grow
+              onPress={onCancel}
+            />
+            <InkButton
+              label="Confirmer"
+              variant="solid"
+              grow
+              onPress={onConfirm}
+            />
           </View>
         </View>
       </Paper>
@@ -72,8 +83,15 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: palette.wax,
   },
-  bar: { position: "absolute", left: 16, right: 16 },
-  barInner: { padding: 12, gap: 10 },
-  hint: { fontSize: 12, color: palette.inkSoft, textAlign: "center" },
-  actions: { flexDirection: "row", justifyContent: "flex-end", gap: 8 },
+  bar: { position: "absolute", left: space.lg, right: space.lg },
+  /* Dix points entre la phrase et les boutons : aucun jeton ne vaut dix, et
+     les trois barres de viseur portent le même écart. Il reste donc écrit en
+     clair, comme chez les deux autres. */
+  barInner: { padding: space.md, gap: 10 },
+  hint: { ...type.caption, color: palette.inkSoft, textAlign: "center" },
+  /* La mise des deux autres viseurs : à parts égales sur toute la largeur.
+     Serrés dans l'angle droit, les deux boutons se lisaient comme une
+     remarque au bas d'une phrase, là où ils sont la seule chose à faire une
+     fois le lieu amené sous la croix. */
+  actions: { flexDirection: "row", gap: space.sm },
 });

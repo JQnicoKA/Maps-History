@@ -155,8 +155,11 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: palette.wax,
   },
-  bar: { position: "absolute", left: 16, right: 16 },
-  barInner: { padding: 12, gap: 10 },
+  bar: { position: "absolute", left: space.lg, right: space.lg },
+  /* Dix points entre la phrase et ce qui suit : aucun jeton ne vaut dix, et
+     les trois barres de viseur portent le même écart. Il reste donc écrit en
+     clair, chez les trois. */
+  barInner: { padding: space.md, gap: 10 },
   hint: { ...type.caption, color: palette.inkSoft, textAlign: "center" },
   radii: {
     flexDirection: "row",

@@ -92,11 +92,17 @@ export function ShapeBar({
         </Text>
         <Text style={styles.said}>{said}</Text>
         <View style={styles.actions}>
-          <InkButton label="Fermer" variant="quiet" onPress={onClose} />
+          <InkButton
+            label="Fermer"
+            variant="tonal"
+            grow
+            onPress={onClose}
+          />
           {takeable ? (
             <InkButton
               label={busy ? "…" : take}
               variant="solid"
+              grow
               disabled={busy}
               onPress={onTake}
             />
@@ -108,13 +114,27 @@ export function ShapeBar({
 }
 
 const styles = StyleSheet.create({
-  bar: { position: "absolute", left: 16, right: 16 },
-  inner: { padding: 12, gap: 6 },
+  bar: { position: "absolute", left: space.lg, right: space.lg },
+  /* Six points, et non les dix des deux autres viseurs : il y a ici un nom
+     **et** sa ligne de précisions, qui vont ensemble et se serrent. L'écart
+     avant les boutons reste de dix, la rangée portant les quatre points qui
+     manquent — voir `actions`. */
+  inner: { padding: space.md, gap: 6 },
   name: { ...type.plate, fontSize: 18, color: palette.ink },
   said: { ...type.caption, color: palette.inkSoft },
+  /**
+   * À parts égales sur toute la largeur, comme les deux autres viseurs.
+   *
+   * « Fermer » pèse donc autant que le bouton qui prend le territoire. C'est
+   * un choix assumé : les trois barres se posent au même endroit de l'écran
+   * et doivent répondre au doigt de la même façon, ce qui vaut mieux qu'une
+   * hiérarchie exacte obtenue par une mise à part.
+   *
+   * Sans territoire à prendre, « Fermer » reste seul et prend toute la
+   * largeur — ce qui est juste, étant alors la seule chose à faire.
+   */
   actions: {
     flexDirection: "row",
-    justifyContent: "flex-end",
     gap: space.sm,
     paddingTop: space.xs,
   },
