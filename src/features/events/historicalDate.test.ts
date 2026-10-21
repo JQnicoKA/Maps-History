@@ -43,6 +43,7 @@ describe("écrire une date", () => {
 describe("écrire une période", () => {
   const event = (over: Partial<EventSummary>): EventSummary => ({
     id: "e",
+    createdAt: "2024-01-01T00:00:00Z",
     title: "t",
     type: "other",
     start: { year: 1337 },

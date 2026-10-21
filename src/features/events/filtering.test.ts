@@ -8,6 +8,7 @@ const event = (
   importance: Importance = "medium",
 ): EventSummary => ({
   id: "e",
+  createdAt: "2024-01-01T00:00:00Z",
   title: "t",
   type: "other",
   start: { year: 1453 },

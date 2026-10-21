@@ -24,6 +24,7 @@ import { currentUserId, PHOTO_BUCKET, supabase } from "../../lib/supabase";
 
 type EventRow = {
   id: string;
+  created_at: string;
   title: string;
   type: EventType;
   description: string | null;
@@ -63,7 +64,7 @@ const EVENT_COLUMNS = `
 
 /** The same, less the description, and with the cover alone among the photos. */
 const SUMMARY_COLUMNS = `
-  id, title, type,
+  id, created_at, title, type,
   start_year, start_month, start_day, start_approx,
   end_year, end_month, end_day, end_approx,
   longitude, latitude, shared, origin_id,
@@ -95,6 +96,7 @@ function toSummary(row: EventRow): EventSummary {
   const photos = storedPhotos(row);
   return {
     id: row.id,
+    createdAt: row.created_at,
     title: row.title,
     type: row.type,
     shared: row.shared,
@@ -451,6 +453,7 @@ export async function updateEvent(
 
 type CharacterRow = {
   id: string;
+  created_at: string;
   name: string;
   bio: string | null;
   birth_year: number | null;
@@ -476,7 +479,7 @@ type CharacterRow = {
 };
 
 const CHARACTER_COLUMNS = `
-  id, name, bio,
+  id, created_at, name, bio,
   birth_year, birth_month, birth_day, birth_approx,
   death_year, death_month, death_day, death_approx,
   longitude, latitude, shared, origin_id,
@@ -497,6 +500,7 @@ function toOptionalDate(
 function toCharacter(row: CharacterRow): Character {
   return {
     id: row.id,
+    createdAt: row.created_at,
     name: row.name,
     bio: row.bio,
     birth: toOptionalDate(

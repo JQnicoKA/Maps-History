@@ -10,6 +10,7 @@ const person = (
   placed = true,
 ): Character => ({
   id: name,
+  createdAt: "2024-01-01T00:00:00Z",
   name,
   bio: null,
   birth: birth === null ? null : { year: birth },

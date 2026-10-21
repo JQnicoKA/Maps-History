@@ -85,14 +85,14 @@ const SORTS: {
     value: "stars",
     label: "Les plus copiés",
     said: "étoiles",
-    why: "Ce que d'autres lecteurs ont trouvé bon à garder.",
+    why: "Les éléments que la communauté a le plus copié depuis la bibliothèque",
     mark: "★",
   },
   {
     value: "recent",
     label: "Les plus récents",
     said: "récents",
-    why: "Ce qui vient d'être écrit, copié ou non.",
+    why: "Les derniers éléments ajoutés à la bibliothèque",
     mark: "◷",
   },
 ];

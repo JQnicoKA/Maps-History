@@ -115,6 +115,15 @@ export type PickedPhoto = {
  */
 export type EventSummary = {
   id: string;
+  /**
+   * Quand cette ligne a été écrite, telle que la base la date.
+   *
+   * Elle n'a rien d'historique — c'est la date du geste, pas celle du fait —
+   * et elle ne sert qu'à répondre « le plus récemment touché » : le tri des
+   * classeurs s'en sert pour les ranger par dernier emploi. Rien ne
+   * l'affiche.
+   */
+  createdAt: string;
   title: string;
   type: EventType;
   start: HistoricalDate;
@@ -190,6 +199,15 @@ export type HistoricalEvent = EventSummary & {
  */
 export type Character = {
   id: string;
+  /**
+   * Quand cette ligne a été écrite, telle que la base la date.
+   *
+   * Elle n'a rien d'historique — c'est la date du geste, pas celle du fait —
+   * et elle ne sert qu'à répondre « le plus récemment touché » : le tri des
+   * classeurs s'en sert pour les ranger par dernier emploi. Rien ne
+   * l'affiche.
+   */
+  createdAt: string;
   name: string;
   bio: string | null;
   birth: HistoricalDate | null;
