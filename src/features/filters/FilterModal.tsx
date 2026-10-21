@@ -69,8 +69,14 @@ export function FilterModal({ visible, onClose }: FilterModalProps) {
       visible={visible}
       onClose={onClose}
       title="Filtres"
-      /* A panel, not a question: titled like the sheets it sits beside. */
-      centred
+      /* Le titre à gauche, à la taille des autres cartes.
+         Il fut `centred` — c'est-à-dire titré comme une feuille, au milieu
+         et plus gros — au motif que ce panneau est un panneau et non une
+         question. L'argument tenait tant que les cartes de l'application
+         étaient toutes des questions ; la bibliothèque en a désormais trois
+         qui règlent quelque chose, toutes titrées à gauche sous leur trait.
+         Ce panneau-ci était donc devenu le seul de son espèce, ce qui est
+         exactement le reproche que `centred` cherchait à éviter. */
       /* Every change lands on the map at once: nothing to confirm, nothing to
          back out of, and a row of buttons would only be furniture. */
       dismissLabel={null}
