@@ -42,6 +42,7 @@ import {
   InkButton,
   InkField,
   Sheet,
+  useLingering,
   useNotice,
 } from "../../components/ui";
 import { DateWheels } from "../events/components/EventDateField";
@@ -284,6 +285,24 @@ export function Catalogue({
   const [comparing, setComparing] = useState<{ kind: Kind; id: string } | null>(
     null,
   );
+  /**
+   * La question mise de côté le temps qu'on aille voir la sienne.
+   *
+   * **Elle ne peut pas rester ouverte dessous**, et c'est la règle que toute
+   * cette application connaît : iOS refuse de présenter une modale depuis un
+   * panneau qui en présente déjà une. La carte descend donc d'abord, la
+   * fiche se lève sur son `onClosed`, et la question remonte quand la fiche
+   * est elle-même partie.
+   *
+   * Le lecteur ne voit pas la différence — il part voir la sienne et
+   * retrouve son choix en revenant — mais c'est un aller-retour et non une
+   * pile.
+   */
+  const [held, setHeld] = useState<{
+    one: SharedThing;
+    kind: Kind;
+    mine: Mine[];
+  } | null>(null);
 
   /**
    * Demander avant de copier, en regardant d'abord ce qu'on a déjà.
@@ -389,6 +408,21 @@ export function Catalogue({
      */
     mine: Mine[];
   } | null>(null);
+
+  /**
+   * La question, gardée le temps que sa carte s'efface.
+   *
+   * **Elle était démontée au lieu d'être baissée** : rendue sous un
+   * `asking === null ? null : …`, elle disparaissait d'un coup dès que la
+   * réponse tombait. Son animation de sortie ne jouait donc jamais — et
+   * `onClosed`, qui ne se produit qu'au bout de celle-ci, jamais non plus.
+   * « Voir le mien » fermait la carte et il ne se passait rien.
+   *
+   * Avec elle, `visible` porte la vérité du moment et la carte continue de
+   * dessiner ce qu'elle dessinait pendant qu'elle part. C'est exactement ce
+   * pour quoi `useLingering` existe.
+   */
+  const shownAsking = useLingering(asking);
 
   /**
    * Whether the era's wheels are out.
@@ -1431,50 +1465,63 @@ export function Catalogue({
       {/* La question, avant le geste. `ConfirmDialog` est monté dans la
           feuille et non à la racine — iOS refuse une seconde modale depuis un
           contrôleur qui en présente déjà une. */}
-      {asking === null ? null : (
+      {shownAsking === null ? null : (
         <ConfirmDialog
-          visible
+          visible={asking !== null}
           /* Quand on a déjà quelque chose qui y ressemble, la carte pose une
              autre question — et la pose en premier, le titre étant ce qu'on
              lit avant tout le reste. */
           title={
-            asking.mine.length > 0
+            shownAsking.mine.length > 0
               ? "Vous l'avez peut-être déjà"
-              : LOOKS[asking.kind].ask
+              : LOOKS[shownAsking.kind].ask
           }
           message={
-            asking.mine.length > 0
-              ? alreadyHave(asking.mine)
-              : LOOKS[asking.kind].means
+            shownAsking.mine.length > 0
+              ? alreadyHave(shownAsking.mine)
+              : LOOKS[shownAsking.kind].means
           }
           /* « Quand même », parce qu'on vient de dire pourquoi on pourrait
              ne pas. Le mot n'a de sens qu'après un avertissement. */
           confirmLabel={
-            asking.mine.length > 0
+            shownAsking.mine.length > 0
               ? "Copier quand même"
-              : LOOKS[asking.kind].take
+              : LOOKS[shownAsking.kind].take
           }
-          /* La sortie mène à la sienne plutôt que de simplement refuser :
-             devant « vous l'avez peut-être déjà », la question qu'on se pose
-             est « laquelle ai-je ? », et y répondre demande de la voir. La
-             carte reste ouverte dessous — voir `comparing`. */
-          {...(asking.mine.length > 0 && asking.kind !== "tree"
-            ? {
-                cancelLabel: "Voir le mien",
-                onCancel: () =>
-                  setComparing({
-                    kind: asking.kind,
-                    id: asking.mine[0]!.id,
-                  }),
-              }
-            : {})}
           /* Encre et non rouge : copier ne retire rien, et peindre ce bouton
              en rouge mettrait en garde contre ce que le lecteur est venu
              faire. */
           tone="ink"
-          cancelLabel="Annuler"
+          /* La sortie mène à la sienne plutôt que de simplement refuser :
+             devant « vous l'avez peut-être déjà », la question qu'on se pose
+             est « laquelle ai-je ? », et y répondre demande de la voir. La
+             carte reste ouverte dessous — voir `comparing`.
+
+             Écrit en deux ternaires plutôt qu'en propriétés répandues : une
+             propriété répandue ne gagne que si rien ne la suit, et celle-ci
+             était suivie d'un `cancelLabel` littéral qui l'écrasait. Le
+             bouton gardait donc le mot « Annuler » tout en appelant l'autre
+             geste — un bouton qui ment, ce qui est pire qu'un bouton absent.
+
+             Pas de test sur le genre : `mineAlike` ne rend jamais rien pour
+             un arbre, faute de titre à comparer. */
+          cancelLabel={shownAsking.mine.length > 0 ? "Voir le mien" : "Annuler"}
+          onCancel={
+            shownAsking.mine.length > 0
+              ? () => {
+                  // Mise de côté, puis descendue : la fiche se lèvera sur
+                  // `onClosed`, pas avant — voir `held`.
+                  setHeld(asking);
+                  setAsking(null);
+                }
+              : undefined
+          }
+          onClosed={() => {
+            if (held === null) return;
+            setComparing({ kind: held.kind, id: held.mine[0]!.id });
+          }}
           onConfirm={() => {
-            const { one, kind: its } = asking;
+            const { one, kind: its } = shownAsking;
             setAsking(null);
             takeIt(one, its);
           }}
@@ -1494,29 +1541,59 @@ export function Catalogue({
           En lecture seule : on est venu reconnaître une entrée, pas la
           travailler. Son pied n'offre donc que « Fermer » — voir
           `readOnly`. */}
-      {comparing?.kind === "event" ? (
-        <EventDetailModal
-          event={events.find((one) => one.id === comparing.id) ?? null}
-          readOnly
-          /* Jamais appelés en lecture seule : le crayon et la distribution
-             ne sont pas dessinés. Ils referment, ce qui est la seule chose
-             sensée si l'un d'eux trouvait malgré tout un chemin. */
-          onEdit={() => setComparing(null)}
-          onOpenCharacter={() => setComparing(null)}
-          onClose={() => setComparing(null)}
-        />
-      ) : null}
+      {/* La mienne, ouverte pour comparaison.
+          ==================================================================
 
-      {comparing?.kind === "character" ? (
-        <CharacterDetailModal
-          person={characters.find((one) => one.id === comparing.id) ?? null}
-          readOnly
-          onEdit={() => setComparing(null)}
-          onOpenEvent={() => setComparing(null)}
-          onOpenTree={() => setComparing(null)}
-          onClose={() => setComparing(null)}
-        />
-      ) : null}
+          **Montées en permanence, et vides le reste du temps.** Les deux
+          fiches portent `visible={subject !== null}` et gardent leur sujet
+          le temps de s'en aller : c'est à elles de décider quand elles
+          partent, et leur `onClosed` ne se produit qu'au bout de ce
+          départ. Les rendre sous condition les arrachait avant — le signal
+          ne venait jamais, la question ne remontait pas, et `held` restait
+          armé pour la fois d'après.
+
+          En lecture seule : on est venu reconnaître une entrée, pas la
+          travailler. Son pied n'offre donc que « Fermer » — voir
+          `readOnly`. */}
+      <EventDetailModal
+        event={
+          comparing?.kind === "event"
+            ? (events.find((one) => one.id === comparing.id) ?? null)
+            : null
+        }
+        readOnly
+        /* Jamais appelés en lecture seule : le crayon et la distribution ne
+           sont pas dessinés. Ils referment, ce qui est la seule chose sensée
+           si l'un d'eux trouvait malgré tout un chemin. */
+        onEdit={() => setComparing(null)}
+        onOpenCharacter={() => setComparing(null)}
+        onClose={() => setComparing(null)}
+        /* La question remonte une fois la fiche vraiment partie, et pas
+           avant : la même règle, dans l'autre sens. */
+        onClosed={() => {
+          if (held === null) return;
+          setAsking(held);
+          setHeld(null);
+        }}
+      />
+
+      <CharacterDetailModal
+        person={
+          comparing?.kind === "character"
+            ? (characters.find((one) => one.id === comparing.id) ?? null)
+            : null
+        }
+        readOnly
+        onEdit={() => setComparing(null)}
+        onOpenEvent={() => setComparing(null)}
+        onOpenTree={() => setComparing(null)}
+        onClose={() => setComparing(null)}
+        onClosed={() => {
+          if (held === null) return;
+          setAsking(held);
+          setHeld(null);
+        }}
+      />
 
       {updating === null ? null : (
         <ConfirmDialog

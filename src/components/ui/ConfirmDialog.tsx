@@ -47,6 +47,15 @@ export type ConfirmDialogProps = {
   veil?: "full" | "soft";
   onConfirm: () => void;
   onClose: () => void;
+  /**
+   * Fired once the card has finished leaving — transmis à `Dialog`.
+   *
+   * Pour la même raison que partout ailleurs dans cette application : iOS
+   * refuse de présenter une modale depuis un panneau qui en descend encore,
+   * donc « ferme cette carte, puis lève cette feuille » doit attendre ce
+   * signal plutôt que de deviner un délai.
+   */
+  onClosed?: () => void;
 };
 
 /**
@@ -74,12 +83,14 @@ export function ConfirmDialog({
   veil = "full",
   onConfirm,
   onClose,
+  onClosed,
 }: ConfirmDialogProps) {
   return (
     <Dialog
       visible={visible}
       veil={veil}
       onClose={onClose}
+      onClosed={onClosed}
       title={title}
       hint={message}
       /* Jamais celui de `Dialog` : il le dessine en `quiet`, c'est-à-dire en
