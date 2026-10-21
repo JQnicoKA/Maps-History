@@ -27,6 +27,7 @@ import { COPY_IS_A_COPY } from "../community/stakes";
 import {
   ConfirmDialog,
   Dialog,
+  Grain,
   InkButton,
   InkField,
   SelectField,
@@ -270,6 +271,28 @@ export function TreeBuilder({
   const [menu, setMenu] = useState<
     "menu" | "delete" | "help" | null
   >(null);
+  /**
+   * La face que la carte dessine, gardée le temps qu'elle s'efface.
+   *
+   * `menu` dit **si** la carte est ouverte, et c'est lui que `visible` lit.
+   * Mais une carte ne part pas sur-le-champ : `Dialog` la garde montée cent
+   * soixante millisecondes pour la faire disparaître en fondu. Pendant ce
+   * temps, `menu` vaut déjà `null` — et chacun des ternaires qui choisissent
+   * le titre, le corps et le bouton de sortie retombait alors sur sa branche
+   * par défaut, qui est « Modifier ».
+   *
+   * On voyait donc la carte « Comment ça marche ? » se changer en
+   * « Modifier » le quart de seconde qu'elle mettait à partir ; et en
+   * fermant « Modifier » elle-même, `centred` retombant à faux, son titre
+   * sautait du milieu vers la gauche au même instant.
+   *
+   * Celle-ci retient la dernière face réelle. La carte continue donc de
+   * dessiner ce qu'elle dessinait pendant qu'elle s'en va, ce qui est
+   * exactement ce pour quoi `useLingering` existe — `open` s'en sert déjà
+   * quelques lignes plus bas, pour la fiche d'un membre.
+   */
+  const face = useLingering(menu);
+
   /** Le nom en cours de frappe, sur la carte « Modifier ». */
   const [name, setName] = useState("");
   const { say, dialog } = useNotice();
@@ -562,6 +585,20 @@ export function TreeBuilder({
      */
     <View style={[StyleSheet.absoluteFill, styles.root, hidden && styles.away]}>
       <View style={styles.root}>
+        {/* Le papier de l'application, sous le dessin.
+            ================================================================
+
+            **Fixé à l'écran et non au dessin**, et c'est tout l'intérêt de le
+            poser ici plutôt que dans `PanZoom` : une fibre qui glisserait et
+            grandirait avec l'arbre se lirait comme une seconde chose
+            dessinée, là où elle doit être la feuille sur laquelle on
+            dessine. La planche reste donc immobile pendant qu'on déplace ce
+            qui est posé dessus, ce qui est exactement ce que fait une table.
+
+            Le même grain que les feuilles et les cartes de l'application, à
+            la même force : il n'y a qu'un papier dans cet atlas. */}
+        <Grain />
+
         <PanZoom
           held={dragging}
           magnification={magnification}
@@ -757,6 +794,13 @@ export function TreeBuilder({
           onLayout={(event) => setChrome(event.nativeEvent.layout.height)}
         >
           <View style={[styles.bar, { paddingTop: insets.top + space.sm }]}>
+            {/* La barre reprend le papier à son compte, comme le bandeau et
+                le pied d'une feuille : elle est opaque — il faut qu'on y lise
+                un nom et qu'on y vise deux cibles — et sans son propre grain
+                elle se lirait comme une bande lisse collée sur une feuille
+                qui ne l'est pas. */}
+            <Grain />
+
             {/* Two sides of the same width, so the title prints in the middle
                 of what is left. */}
             <View style={styles.side}>
@@ -1015,27 +1059,27 @@ export function TreeBuilder({
              pour être lu et ajusté, comme une feuille. « Supprimer ? » pose
              une question et « Comment ça marche » se lit en continu — les
              deux gardent leur titre à gauche, là où l'œil commence. */
-          centred={menu === "menu"}
+          centred={face === "menu"}
           title={
-            menu === "delete"
+            face === "delete"
               ? `Supprimer « ${tree.name} » ?`
-              : menu === "help"
+              : face === "help"
                 ? "Comment ça marche ?"
                 : "Modifier"
           }
           hint={
-            menu === "delete"
+            face === "delete"
               ? tree.origin === null
                 ? "Les personnages restent dans la collection ; seul l'arbre disparaît."
                 : `Les personnages restent dans la collection. ${COPY_IS_A_COPY}`
-              : menu === "help"
+              : face === "help"
                 ? "Toutes les possibilités pour construire votre arbre"
                 : undefined
           }
-          dismissLabel={menu === "menu" || menu === "help" ? null : "Retour"}
+          dismissLabel={face === "menu" || face === "help" ? null : "Retour"}
           onDismiss={() => setMenu("menu")}
         >
-          {menu === "help" ? (
+          {face === "help" ? (
             <ScrollView style={styles.helpBody}>
               <View style={styles.help}>
                 {HELP.map((entry) => (
@@ -1046,7 +1090,7 @@ export function TreeBuilder({
                 ))}
               </View>
             </ScrollView>
-          ) : menu === "delete" ? (
+          ) : face === "delete" ? (
             <InkButton
               label="Supprimer"
               variant="solid"
