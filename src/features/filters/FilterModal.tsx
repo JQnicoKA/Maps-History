@@ -1,10 +1,8 @@
-import type { ReactNode } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Dialog, SegmentedControl, TICK, TickRow } from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import { FolderSelector } from "../events/components/FolderSelector";
-import { formatYear } from "../events/historicalDate";
 import type { Importance } from "../events/types";
 import { palette } from "../../theme/palette";
 import { radius, shadow, space, type } from "../../theme/tokens";
@@ -20,36 +18,7 @@ const IMPORTANCES: { value: Importance | "all"; label: string }[] = [
 export type FilterModalProps = {
   visible: boolean;
   onClose: () => void;
-  /** Ce que l'écran montre : la carte, ou la liste des événements. */
 };
-
-type LayerProps = {
-  title: string;
-  /** What is on show right now, in as few words as it takes. */
-  detail: string;
-  on: boolean;
-  onToggle: () => void;
-  /** Whatever narrows this layer further, shown only while it is on. */
-  children?: ReactNode;
-};
-
-/**
- * One of the three things the plate carries, and whether it is carried.
- *
- * A card each rather than three lines in a list: the events bring a whole
- * control of their own with them, and a checkbox whose settings live at the
- * same indentation as the next checkbox is a checkbox nobody can tell the
- * scope of. Inside the card, the folders plainly belong to the events.
- */
-function Layer({ title, detail, on, onToggle, children }: LayerProps) {
-  return (
-    <View style={[styles.layer, on ? null : styles.layerOff]}>
-      <TickRow title={title} detail={detail} on={on} onToggle={onToggle} />
-
-      {on && children ? <View style={styles.inside}>{children}</View> : null}
-    </View>
-  );
-}
 
 /**
  * What the map is showing, and how to change it.
@@ -63,11 +32,20 @@ function Layer({ title, detail, on, onToggle, children }: LayerProps) {
  * *making*, and nothing here is filled in. Every answer lands on the map the
  * moment it is given, so there is nothing to confirm and the cross is the
  * whole way out.
+ *
+ * **Une liste, puis les affinages**, et c'est une refonte. Le panneau donnait
+ * une carte par calque, chacune avec sa case, sa phrase et ses réglages
+ * dedans : trois grammaires de contrôle empilées, des cartes de hauteurs
+ * inégales, et de la prose là où un filtre se balaie. Surtout, la hiérarchie
+ * était à l'envers — ce qu'on vient faire le plus souvent, montrer ou cacher
+ * les trois calques, était éclaté en trois objets, tandis que le réglage le
+ * plus rare occupait le haut.
+ *
+ * Les trois calques sont donc devenus trois lignes d'une même liste, qui se
+ * comparent d'un coup d'œil ; ce qui les affine vient après, chacun sous son
+ * étiquette.
  */
-export function FilterModal({
-  visible,
-  onClose,
-}: FilterModalProps) {
+export function FilterModal({ visible, onClose }: FilterModalProps) {
   const {
     events,
     folderNames,
@@ -76,13 +54,15 @@ export function FilterModal({
     filters,
     setFilters,
     visibleEvents,
-    year,
   } = useEvents();
 
-  const shown = visibleEvents.length;
+  /** Combien de gens ont reçu un point : sans point, nul ne peut paraître. */
   const placed = characters.filter(
     (person) => person.longitude !== null && person.birth !== null,
   ).length;
+
+  const narrowed =
+    filters.folders.length > 0 || filters.importance !== null;
 
   return (
     <Dialog
@@ -95,23 +75,92 @@ export function FilterModal({
          back out of, and a row of buttons would only be furniture. */
       dismissLabel={null}
     >
-      {/* Bounded and scrolling: the events card grows with every classeur
-          opened, and the whole thing would otherwise run off both ends of
-          the screen.
-
-          La bascule carte/liste vivait ici, au-dessus des calques, parce
-          qu'elle les gouvernait : sur une liste, un territoire n'avait nulle
-          part où s'afficher. Elle est partie avec la vue liste, devenue un
-          onglet à part entière — et ce panneau ne règle plus qu'une seule
-          chose, la planche. */}
+      {/* Bounded and scrolling: le classement s'allonge d'une pastille par
+          classeur ouvert, et le panneau sortirait des deux bouts de l'écran. */}
       <ScrollView style={styles.body} contentContainerStyle={styles.content}>
-        {/* Au-dessus des calques, et non dedans.
-            Il a vécu sous « Événements », du temps où eux seuls se rangeaient.
-            Les personnages ont pris les mêmes classeurs : un tamis logé dans
-            un calque passerait pour une propriété de ce calque, et on
-            chercherait en vain le second. Il les traverse, donc il les
-            précède. */}
-        <View style={styles.filing}>
+        <View style={styles.section}>
+          <Text style={styles.note}>Afficher sur la carte</Text>
+
+          {/* Une seule carte pour les trois, séparées par un filet.
+              Trois cartes faisaient trois objets là où il y a une question :
+              qu'est-ce que la planche porte. */}
+          <View style={styles.card}>
+            <TickRow
+              title="Événements"
+              /* Le compte de ce qui reste après tamisage, et le total avec
+                 lui dès que quelque chose tamise — sans le total, « 12 » ne
+                 dit pas s'il en manque. Rien quand la case est décochée :
+                 elle dit déjà qu'on n'en voit aucun. */
+              count={
+                !filters.events
+                  ? undefined
+                  : narrowed
+                    ? `${visibleEvents.length} / ${events.length}`
+                    : `${events.length}`
+              }
+              on={filters.events}
+              onToggle={() => setFilters({ events: !filters.events })}
+            />
+
+            {/* Dépliée sous la case et seulement quand elle est cochée : un
+                cran d'importance réglé sur un calque rangé ne réglerait
+                rien, et un contrôle qui ne fait rien est un contrôle qu'on
+                croit cassé.
+
+                Indentée de la largeur de la case et de son écart, donc son
+                bord gauche tombe sur le mot « Événements » : c'est cet
+                alignement, et non un titre, qui dit à quoi elle appartient. */}
+            {filters.events ? (
+              <View style={styles.inside}>
+                <Text style={styles.note}>Importance</Text>
+                <SegmentedControl
+                  segments={IMPORTANCES}
+                  value={filters.importance ?? "all"}
+                  onChange={(choice) =>
+                    setFilters({ importance: choice === "all" ? null : choice })
+                  }
+                />
+              </View>
+            ) : null}
+
+            <View style={styles.rule} />
+
+            <TickRow
+              title="Personnages"
+              /* La seule phrase qui survit à la refonte, et elle ne paraît
+                 que dans le cas où le chiffre mentirait : un lecteur qui a
+                 dix personnages et n'en a placé aucun lirait « 0 » comme une
+                 panne du filtre. */
+              detail={
+                filters.characters && placed === 0 && characters.length > 0
+                  ? "aucun n'est placé sur la carte"
+                  : undefined
+              }
+              count={
+                filters.characters ? `${visibleCharacters.length}` : undefined
+              }
+              on={filters.characters}
+              onToggle={() => setFilters({ characters: !filters.characters })}
+            />
+
+            <View style={styles.rule} />
+
+            {/* Sans compte : les territoires de l'année lue se comptent au
+                fil du temps, et un nombre qui change en faisant glisser la
+                frise se lirait comme un réglage du filtre. */}
+            <TickRow
+              title="Territoires"
+              on={filters.territories}
+              onToggle={() => setFilters({ territories: !filters.territories })}
+            />
+          </View>
+        </View>
+
+        {/* Au-dessous des calques et non dedans : il les traverse tous les
+            deux. Logé sous « Événements », comme il le fut du temps où eux
+            seuls se rangeaient, il passerait pour une propriété de ce calque
+            et on chercherait en vain le second. */}
+        <View style={styles.section}>
           <Text style={styles.note}>Classement</Text>
           {/* Le même contrôle qu'à l'étape « Classement » des formulaires,
               sans le droit d'en nommer un : on ne range rien depuis un
@@ -122,105 +171,58 @@ export function FilterModal({
             onChange={(next) => setFilters({ folders: next })}
             emptyLabel="Filtrer par classeur"
           />
-          <Text style={styles.said}>
-            Les évènements et les personnages se rangent sous les mêmes
-            sujets : choisir un classeur tamise les deux à la fois.
-          </Text>
         </View>
-
-        <Layer
-          title="Événements"
-          detail={
-            filters.events
-              ? filters.folders.length === 0 && filters.importance === null
-                ? `toute la collection · ${events.length}`
-                : `${shown} sur ${events.length}`
-              : "masqués"
-          }
-          on={filters.events}
-          onToggle={() => setFilters({ events: !filters.events })}
-        >
-          {/* L'importance reste ici, elle : elle appartient à ce qui s'est
-              passé et non à qui l'a fait, donc les personnages n'en ont pas.
-              « Toutes » est la quatrième réponse que seul le filtre a — le
-              formulaire répond toujours quelque chose, le lecteur peut ne
-              pas demander. */}
-          <Text style={styles.note}>Importance</Text>
-          <SegmentedControl
-            segments={IMPORTANCES}
-            value={filters.importance ?? "all"}
-            onChange={(choice) =>
-              setFilters({ importance: choice === "all" ? null : choice })
-            }
-          />
-        </Layer>
-
-        {/* Ce calque ne parle plus que de la planche : elle ne montre que
-            les vivants de l'année lue, et que ceux à qui l'on a donné un
-            point. La page des personnages, elle, les recense tous et ne
-            dépend d'aucun filtre. */}
-        <Layer
-          title="Personnages"
-          detail={
-            !filters.characters
-              ? "masqués"
-              : placed === 0
-                ? "aucun n'est placé sur la carte"
-                : `${visibleCharacters.length} présent${visibleCharacters.length > 1 ? "s" : ""}${
-                    year === null ? "" : ` en ${formatYear(Math.trunc(year))}`
-                  }`
-          }
-          on={filters.characters}
-          onToggle={() => setFilters({ characters: !filters.characters })}
-        >
-          <Text style={styles.said}>
-            Chacun se tient à l'endroit où vous l'avez placé, de sa naissance
-            à sa mort.
-          </Text>
-        </Layer>
-
-        <Layer
-          title="Territoires"
-          detail={
-            filters.territories ? "les frontières de l'année lue" : "masqués"
-          }
-          on={filters.territories}
-          onToggle={() => setFilters({ territories: !filters.territories })}
-        />
       </ScrollView>
     </Dialog>
   );
 }
 
 const styles = StyleSheet.create({
-  /** Le tamis qui traverse les calques, détaché d'eux par son propre air. */
-  filing: { gap: space.sm, paddingBottom: space.xs },
-
-  /** Tall enough for the three cards, short enough to stay a card itself. */
+  /** Tall enough for the three sections, short enough to stay a card itself. */
   body: { maxHeight: 420 },
-  content: { gap: space.md, paddingBottom: space.xs },
+  /** L'air entre les sections, qui est ce qui les sépare — rien d'autre. */
+  content: { gap: space.lg, paddingBottom: space.xs },
+  /** Une étiquette et ce qu'elle commande, serrés l'un contre l'autre. */
+  section: { gap: space.sm },
 
-  layer: {
-    gap: space.md,
-    padding: space.md,
+  card: {
     borderRadius: radius.lg,
+    /* Le même air tout autour. En haut et en bas il n'y a rien d'autre que
+       lui — les rangées n'ont pas de rembourrage à elles —, donc sans cette
+       ligne la première case toucherait le filet de la carte. */
+    paddingHorizontal: space.md,
+    paddingVertical: space.md,
     backgroundColor: palette.surfaceRaised,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.line,
     ...shadow.soft,
   },
-  /** Put away, and it says so without going grey enough to look broken. */
-  layerOff: { opacity: 0.6, backgroundColor: palette.sunken },
-
-  /** Indented under the tick, so what it governs is unmistakable. */
-  inside: { paddingLeft: TICK + space.md, gap: space.sm },
   /**
-   * Deux styles, parce qu'il y a deux choses.
+   * Ce qui affine un calque, rangé sous lui.
    *
-   * `note` étiquette un contrôle — un mot, en petites capitales, qui est la
-   * voix de l'atlas. `said` porte une phrase, et une phrase en capitales ne se
-   * lit pas, elle se déchiffre.
+   * La largeur de la case plus l'écart qui la sépare de son mot : le bloc
+   * commence donc exactement où commence « Événements ». C'est ce décalage
+   * qui dit la portée du réglage — logé au même retrait que la case
+   * suivante, on ne saurait plus lequel des deux calques il commande.
+   */
+  inside: { paddingLeft: TICK + space.md, paddingTop: space.md, gap: space.sm },
+  /**
+   * Le filet entre deux lignes, et le rembourrage qui le borde.
+   *
+   * Vertical sur la ligne et non sur la carte : posé sur la carte, il aurait
+   * écarté le filet des bords, et un trait qui s'arrête avant le bord d'une
+   * liste se lit comme une rature. Les lignes portent donc leur air
+   * elles-mêmes, par la marge de ce trait.
+   */
+  rule: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: palette.border,
+    marginVertical: space.sm,
+  },
+  /**
+   * L'étiquette d'une section : un mot, en petites capitales, la voix de
+   * l'atlas. Les phrases qui vivaient ici sont parties avec la refonte — un
+   * filtre se balaie, il ne se lit pas.
    */
   note: { ...type.legend, color: palette.inkFaint },
-  said: { ...type.caption, color: palette.inkFaint },
 });

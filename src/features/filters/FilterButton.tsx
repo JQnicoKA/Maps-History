@@ -115,15 +115,35 @@ const styles = StyleSheet.create({
     minHeight: TOUCH,
     paddingLeft: space.lg,
     paddingRight: space.lg,
-    // Wax, always. It is the one control on the plate that is not a door:
-    // the discs open panels and say nothing, this one carries the answer to
-    // "what am I looking at". Colouring it only while filtering made it a
-    // different object depending on the answer.
-    backgroundColor: palette.wax,
+    /**
+     * Le gris creusé de l'application, et non plus la cire.
+     *
+     * Il resta longtemps en cire au motif qu'il n'est pas une porte : les
+     * disques ouvrent des panneaux et ne disent rien, lui porte la réponse à
+     * « qu'est-ce que je regarde ». C'est toujours vrai, et ce n'est pas la
+     * couleur qui le dit — c'est qu'il porte des mots quand les autres
+     * portent un dessin. La cire, elle, veut dire « voici ce que vous
+     * lisez », ce que cette pastille ne marque pas.
+     *
+     * Le liseré passe de la cire sombre à `line` plutôt qu'à `border` : sur
+     * ce gris, `border` ne pèse que 1,06 et disparaîtrait, là où `line`
+     * tient 1,30 — assez pour se lire comme le bord taillé d'une pastille
+     * découpée dans la feuille.
+     */
+    backgroundColor: palette.sunken,
     borderRadius: radius.pill,
     // The same cut edge and the same lift as the discs — see `GlyphButton`.
     borderWidth: 1.5,
-    borderColor: palette.waxDeep,
+    borderColor: palette.line,
+    /**
+     * L'ombre fait tout le travail de séparation, et plus qu'avant.
+     *
+     * La pastille était sombre sur une planche claire : elle se détachait
+     * d'elle-même. Claire, elle ne pèse plus que 1,06 contre la terre du
+     * fond et 1,25 contre la mer — c'est-à-dire rien. Ce qui la pose sur la
+     * carte est désormais son ombre seule, et c'est la raison pour laquelle
+     * elle est gardée telle quelle plutôt qu'allégée avec la couleur.
+     */
     shadowColor: "#2A1F12",
     shadowOpacity: 0.26,
     shadowRadius: 9,
@@ -132,12 +152,12 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.7 },
 
-  /** Cream, like the words beside it — one ink on the wax, not two. */
+  /** En encre, comme les mots à côté — une seule encre sur le gris. */
   funnel: { alignItems: "center", gap: 2.5, paddingVertical: 1 },
   bar: {
     height: 2.5,
     borderRadius: radius.pill,
-    backgroundColor: palette.surfaceRaised,
+    backgroundColor: palette.ink,
   },
   barWide: { width: 15 },
   barMid: { width: 10 },
@@ -147,7 +167,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     letterSpacing: 0.2,
-    color: palette.surfaceRaised,
+    /** 8,9:1 sur le gris creusé : c'est un relevé, il se lit d'abord. */
+    color: palette.ink,
   },
   /**
    * The one mark left saying something is filtered.
@@ -159,6 +180,6 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: radius.pill,
-    backgroundColor: palette.surfaceRaised,
+    backgroundColor: palette.ink,
   },
 });

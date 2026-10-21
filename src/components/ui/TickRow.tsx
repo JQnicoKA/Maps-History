@@ -14,6 +14,18 @@ export type TickRowProps = {
    * that rewrites itself with the state, since the tick says that already.
    */
   detail?: string;
+  /**
+   * Un chiffre au bout de la ligne : ce que la case fait voir, compté.
+   *
+   * Au bout plutôt que sous le titre, parce que trois lignes alignées se
+   * comparent d'un coup d'œil quand leurs chiffres sont dans la même
+   * colonne, et ne se comparent plus du tout quand chacun se cache sous son
+   * propre mot.
+   *
+   * Il n'a rien à dire quand la case est décochée : c'est à l'appelant de ne
+   * pas le donner alors, la case disant déjà qu'on ne voit rien.
+   */
+  count?: string;
   on: boolean;
   onToggle: () => void;
   disabled?: boolean;
@@ -31,6 +43,7 @@ export type TickRowProps = {
 export function TickRow({
   title,
   detail,
+  count,
   on,
   onToggle,
   disabled = false,
@@ -56,6 +69,9 @@ export function TickRow({
           <Text style={styles.detail}>{detail}</Text>
         )}
       </View>
+      {count === undefined || count === "" ? null : (
+        <Text style={styles.count}>{count}</Text>
+      )}
     </Pressable>
   );
 }
@@ -86,4 +102,17 @@ const styles = StyleSheet.create({
   text: { flex: 1, gap: 1 },
   title: { fontSize: 16, fontWeight: "700", color: palette.ink },
   detail: { ...type.caption, color: palette.inkSoft },
+  /**
+   * Tabulaire, pour que la colonne de chiffres soit une colonne.
+   *
+   * Sans cela le « 1 » est plus étroit que le « 8 » dans la plupart des
+   * fontes, et trois nombres alignés à droite se mettent à danser dès que
+   * l'un d'eux change — ce qui arrive ici à chaque réglage du filtre.
+   */
+  count: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: palette.inkFaint,
+    fontVariant: ["tabular-nums"],
+  },
 });
