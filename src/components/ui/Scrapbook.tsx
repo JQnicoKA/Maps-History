@@ -1,4 +1,10 @@
-import { Image, StyleSheet, Text, View } from "react-native";
+import {
+  Image,
+  StyleSheet,
+  Text,
+  View,
+  type ImageSourcePropType,
+} from "react-native";
 
 import { palette } from "../../theme/palette";
 import { radius, space, type } from "../../theme/tokens";
@@ -54,13 +60,39 @@ export function Grain({ opacity = 0.22 }: { opacity?: number }) {
 export type JournalTitleProps = {
   title: string;
   hint?: string;
+  /**
+   * Un glyphe devant le mot, quand le panneau en mérite un.
+   *
+   * Dessiné dans `assets/icons/src` et rasterisé par `npm run icons` — pas
+   * emprunté à une fonte d'icônes. Un jeu tiers arrive avec sa propre
+   * graisse et ses propres angles, ce qui se voit immédiatement au milieu
+   * d'un atlas colorié à la main ; c'est la leçon que la loupe et
+   * l'entonnoir de cette application ont déjà apprise.
+   */
+  icon?: ImageSourcePropType;
 };
 
 /** A page's heading: the name, and a line drawn under it. */
-export function JournalTitle({ title, hint }: JournalTitleProps) {
+export function JournalTitle({ title, hint, icon }: JournalTitleProps) {
   return (
     <View style={styles.heading}>
-      <Text style={styles.title}>{title}</Text>
+      {icon === undefined ? (
+        <Text style={styles.title}>{title}</Text>
+      ) : (
+        /* Le glyphe et le mot sur une rangée, pour que le groupe entier se
+           centre — et non le mot seul avec un dessin posé à sa gauche. */
+        <View style={styles.titleRow}>
+          <Image
+            source={icon}
+            style={styles.titleIcon}
+            resizeMode="contain"
+            /* Décoratif : le mot qu'il précède dit la même chose, et un
+               lecteur d'écran qui annoncerait les deux la dirait deux fois. */
+            accessible={false}
+          />
+          <Text style={styles.title}>{title}</Text>
+        </View>
+      )}
       <View style={styles.underline} />
       {hint === undefined || hint === "" ? null : (
         <Text style={styles.hint}>{hint}</Text>
@@ -73,6 +105,15 @@ const styles = StyleSheet.create({
   /** Ce qui donne au grain le cadre entier à paver — voir `Grain`. */
   grain: { width: "100%", height: "100%" },
   heading: { alignItems: "center", paddingTop: space.sm },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  /**
+   * Vingt-deux points, contre vingt sur les cartes.
+   *
+   * Le titre d'une feuille est écrit à vingt-cinq, celui d'une carte à
+   * vingt-deux : un glyphe de taille fixe aurait paru chétif ici et lourd
+   * là. Il est donc accordé au mot qu'il précède, et non à lui-même.
+   */
+  titleIcon: { width: 22, height: 22, tintColor: palette.ink },
   title: {
     ...type.plate,
     color: palette.ink,

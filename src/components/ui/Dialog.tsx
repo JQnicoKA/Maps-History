@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -8,6 +9,7 @@ import {
   StyleSheet,
   Text,
   View,
+  type ImageSourcePropType,
 } from "react-native";
 
 import { InkButton } from "./InkButton";
@@ -47,6 +49,14 @@ export type DialogProps = {
   title?: string;
   /** A line under the title, when the choice needs one. */
   hint?: string;
+  /**
+   * Un glyphe devant le titre — voir `JournalTitle`, qui le porte aussi.
+   *
+   * Pour les cartes qui **règlent** quelque chose, et pour elles seules. Une
+   * question — « Supprimer cet événement ? » — ne gagne rien à être décorée,
+   * et il faudrait de toute façon un dessin qui vaille pour les douze.
+   */
+  icon?: ImageSourcePropType;
   /**
    * The way out at the foot of the card — "Annuler" unless told otherwise.
    *
@@ -122,6 +132,7 @@ export function Dialog({
   onClosed,
   title,
   hint,
+  icon,
   dismissLabel = "Annuler",
   onDismiss,
   centred = false,
@@ -212,10 +223,22 @@ export function Dialog({
                    one: that is what makes the two read as the same app. Its
                    `hint` is left to the card below, which is wider than a
                    sheet's inset and holds a long sentence better. */
-                <JournalTitle title={title} />
+                <JournalTitle title={title} icon={icon} />
               ) : (
                 <View style={styles.heading}>
-                  <Text style={styles.title}>{title}</Text>
+                  {icon === undefined ? (
+                    <Text style={styles.title}>{title}</Text>
+                  ) : (
+                    <View style={styles.titleRow}>
+                      <Image
+                        source={icon}
+                        style={styles.titleIcon}
+                        resizeMode="contain"
+                        accessible={false}
+                      />
+                      <Text style={styles.title}>{title}</Text>
+                    </View>
+                  )}
                   <View style={styles.underline} />
                 </View>
               )}
@@ -306,6 +329,9 @@ const styles = StyleSheet.create({
   headerBare: { flexDirection: "row", justifyContent: "flex-end" },
   heading: { flex: 1, gap: space.xs },
   title: { ...type.plate, fontSize: 22, color: palette.ink },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  /** Vingt, accordé au titre de vingt-deux — voir `JournalTitle`. */
+  titleIcon: { width: 20, height: 20, tintColor: palette.ink },
   /** Hand-drawn under the words, not ruled across the card. */
   underline: {
     height: 3,

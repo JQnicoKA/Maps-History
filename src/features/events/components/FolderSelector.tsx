@@ -1,5 +1,12 @@
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { Chip, InkButton, InkField, Sheet } from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
@@ -46,6 +53,10 @@ const SORTS: {
 ];
 
 type Ordering = (typeof SORTS)[number]["value"];
+
+/** Le dossier pour la feuille, les deux flèches pour sa carte de tri. */
+const FOLDERS_ICON = require("../../../../assets/icons/folders.png");
+const SORT_ICON = require("../../../../assets/icons/sort.png");
 
 export type FolderSelectorProps = {
   /** Les noms déjà écrits dans la collection — voir `folderNames`. */
@@ -275,6 +286,7 @@ export function FolderSelector({
         visible={open}
         onClose={shut}
         title="Mes classeurs"
+        icon={FOLDERS_ICON}
         tall
         footer={
           <InkButton label="Fermer" variant="solid" grow onPress={shut} />
@@ -378,7 +390,15 @@ export function FolderSelector({
             <View style={styles.card}>
               <View style={styles.cardHead}>
                 <View style={styles.cardHeading}>
-                  <Text style={styles.cardTitle}>Trier</Text>
+                  <View style={styles.cardTitleRow}>
+                    <Image
+                      source={SORT_ICON}
+                      style={styles.cardIcon}
+                      resizeMode="contain"
+                      accessible={false}
+                    />
+                    <Text style={styles.cardTitle}>Trier</Text>
+                  </View>
                   <View style={styles.cardRule} />
                 </View>
                 <Pressable
@@ -517,6 +537,9 @@ const styles = StyleSheet.create({
   },
   cardHead: { flexDirection: "row", alignItems: "flex-start", gap: space.sm },
   cardHeading: { flex: 1, gap: space.xs },
+  cardTitleRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  /** Vingt, comme dans `Dialog` : accordé au titre de vingt-deux. */
+  cardIcon: { width: 20, height: 20, tintColor: palette.ink },
   cardTitle: { ...type.plate, fontSize: 22, color: palette.ink },
   /** Tracé sous le mot, comme tout titre de cette application. */
   cardRule: {

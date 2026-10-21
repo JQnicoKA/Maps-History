@@ -4,6 +4,9 @@ import { Dialog, SegmentedControl, TICK, TickRow } from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import { FolderSelector } from "../events/components/FolderSelector";
 import type { Importance } from "../events/types";
+
+/** Le même entonnoir que la pastille qui ouvre ce panneau. */
+const FILTER = require("../../../assets/icons/filter.png");
 import { palette } from "../../theme/palette";
 import { radius, shadow, space, type } from "../../theme/tokens";
 
@@ -69,6 +72,7 @@ export function FilterModal({ visible, onClose }: FilterModalProps) {
       visible={visible}
       onClose={onClose}
       title="Filtres"
+      icon={FILTER}
       /* Le titre à gauche, à la taille des autres cartes.
          Il fut `centred` — c'est-à-dire titré comme une feuille, au milieu
          et plus gros — au motif que ce panneau est un panneau et non une

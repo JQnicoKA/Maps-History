@@ -10,6 +10,7 @@ import {
   Animated,
   Dimensions,
   FlatList,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -67,6 +68,11 @@ import { palette } from "../../theme/palette";
  * part ailleurs.
  */
 const BANNER = require("../../../assets/banniere_bibliotheque.png");
+
+/** Un glyphe par face de la carte de réglage — voir `Dialog`, qui fait de même. */
+const SORT_ICON = require("../../../assets/icons/sort.png");
+const FILTER_ICON = require("../../../assets/icons/filter.png");
+const ERA_ICON = require("../../../assets/icons/era.png");
 import { BACKDROP, radius, shadow, space, type } from "../../theme/tokens";
 
 /** Where a rising card starts from: below the panel, whatever its height. */
@@ -1126,13 +1132,27 @@ export function Catalogue({
               <View style={styles.card}>
                 <View style={styles.cardHead}>
                   <View style={styles.cardHeading}>
-                    <Text style={styles.cardTitle}>
-                      {sifting === "sort"
-                        ? "Trier"
-                        : sifting === "era"
-                          ? "Époque"
-                          : "Filtres"}
-                    </Text>
+                    <View style={styles.cardTitleRow}>
+                      <Image
+                        source={
+                          sifting === "sort"
+                            ? SORT_ICON
+                            : sifting === "era"
+                              ? ERA_ICON
+                              : FILTER_ICON
+                        }
+                        style={styles.cardIcon}
+                        resizeMode="contain"
+                        accessible={false}
+                      />
+                      <Text style={styles.cardTitle}>
+                        {sifting === "sort"
+                          ? "Trier"
+                          : sifting === "era"
+                            ? "Époque"
+                            : "Filtres"}
+                      </Text>
+                    </View>
                     <View style={styles.cardRule} />
                   </View>
                   <Pressable
@@ -1585,6 +1605,9 @@ const styles = StyleSheet.create({
   },
   cardHead: { flexDirection: "row", alignItems: "flex-start", gap: space.sm },
   cardHeading: { flex: 1, gap: space.xs },
+  cardTitleRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  /** Vingt, comme dans `Dialog` : accordé au titre de vingt-deux. */
+  cardIcon: { width: 20, height: 20, tintColor: palette.ink },
   cardTitle: { ...type.plate, fontSize: 22, color: palette.ink },
   /** Drawn under the word, the way every heading in this app is. */
   cardRule: {

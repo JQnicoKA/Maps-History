@@ -120,6 +120,8 @@ export type SheetProps = {
    * rejoindre la page.
    */
   banner?: ImageSourcePropType;
+  /** Un glyphe devant le titre — voir `JournalTitle`. */
+  icon?: ImageSourcePropType;
   /** Pinned below the scrolling content — where the actions live. */
   footer?: ReactNode;
   /**
@@ -187,6 +189,7 @@ export function Sheet({
   onClosed,
   title,
   banner,
+  icon,
   footer,
   tall = false,
   pattern = false,
@@ -422,7 +425,7 @@ export function Sheet({
               )}
               {title ? (
                 <View style={styles.titleBlock}>
-                  <JournalTitle title={title} />
+                  <JournalTitle title={title} icon={icon} />
                 </View>
               ) : null}
             </View>

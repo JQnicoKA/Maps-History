@@ -35,7 +35,19 @@ import { space } from "../../theme/tokens";
  * dessin couché à quarante-cinq degrés — donc on ne confond pas la porte
  * avec l'outil qu'elle ouvre.
  */
-const TERRITORIES = require("../../../assets/icons/pencil.png");
+/**
+ * **Dessiné à la main, et hors de la chaîne d'icônes.** Les PNG de
+ * `assets/icons` sont normalement fabriqués par `npm run icons` depuis les
+ * SVG de `assets/icons/src`, et celui-ci n'en a pas : il garde donc un nom
+ * qu'aucune source ne réclame, ce qui est exactement ce qui le protège.
+ *
+ * Il portait le nom `pencil.png`, que la chaîne revendique — le SVG du même
+ * nom étant resté le vieux crayon en contour. Une régénération l'a donc
+ * remplacé sans que personne l'ait demandé, et le bouton de la planche s'est
+ * retrouvé avec un trait fin là où il veut un aplat. Le renommer est ce qui
+ * ferme le piège.
+ */
+const TERRITORIES = require("../../../assets/icons/pencil_bouton.png");
 /**
  * Le bandeau du panneau : ce que la planche contient, peint à la main.
  *
