@@ -283,7 +283,19 @@ export function Catalogue({
    * and a modal presented over this panel would be dismissed along with it —
    * that is the freeze the tree cost us.
    */
-  const [sifting, setSifting] = useState<"sort" | "filters" | null>(null);
+  /**
+   * Quelle carte est posée sur le panneau, s'il y en a une.
+   *
+   * **`era` est une carte à elle seule, et c'était un dépliement.** Le réglage
+   * d'époque s'ouvrait dans la carte des filtres : les roues, la date, les
+   * largeurs et la sortie s'ajoutaient d'un coup sous leur étiquette, et la
+   * carte grandissait de moitié sous le doigt. Ce qui est perturbant n'est
+   * pas la taille mais le mouvement — on a touché une ligne, et c'est le
+   * cadre entier qui a bougé. Une seconde carte ne bouge pas : elle arrive.
+   */
+  const [sifting, setSifting] = useState<"sort" | "filters" | "era" | null>(
+    null,
+  );
   /**
    * A genealogy being looked at, drawn over the panel.
    *
@@ -330,7 +342,6 @@ export function Catalogue({
    * was set. A date and the words "toute l'histoire" on screen at once
    * contradict each other, which is what this replaced.
    */
-  const [tuning, setTuning] = useState(false);
   const [why, setWhy] = useState<Reason>("offensive");
   const [said, setSaid] = useState("");
 
@@ -505,9 +516,57 @@ export function Catalogue({
     widthsFor(when).find((one) => one.years === search.span)?.label ?? "";
 
   /** Puts the two settings away, wheels included. */
+  /**
+   * L'époque telle qu'elle était avant qu'on ouvre sa carte.
+   *
+   * **Les roues écrivent dans la recherche à mesure qu'on les tourne**, et
+   * c'est voulu : la liste derrière se refait sous les yeux, ce qui est la
+   * meilleure réponse à « est-ce la bonne date ». Mais écrire tout de suite
+   * veut dire qu'il n'y a rien à annuler, et une croix qui ne peut rien
+   * annuler est un second « Valider ».
+   *
+   * Elle est donc gardée ici le temps du réglage, et rendue si l'on ferme.
+   * Ce n'est pas un brouillon — la recherche, elle, est bien modifiée — mais
+   * de quoi revenir en arrière.
+   */
+  const [eraWas, setEraWas] = useState<Pick<Search, "at" | "span"> | null>(
+    null,
+  );
+
+  /**
+   * Refuser la carte ouverte : la croix, et le voile autour d'elle.
+   *
+   * **Depuis la carte d'époque, refuser veut dire annuler et remonter**, et
+   * non fermer. Elle est une sous-carte de celle des filtres — on n'y vient
+   * que de là —, donc la quitter rend aux filtres ; ce qui l'en distingue de
+   * « Valider », c'est qu'elle rend aussi l'époque qu'on avait avant. La
+   * croix et le bouton sortent par la même porte et n'emportent pas la même
+   * chose.
+   *
+   * Partout ailleurs, il n'y a rien au-dessous : refuser ferme.
+   */
   const close = () => {
+    if (sifting === "era") {
+      if (eraWas) {
+        setSearch((was) => ({ ...was, at: eraWas.at, span: eraWas.span }));
+      }
+      setEraWas(null);
+      setSifting("filters");
+      return;
+    }
+    setEraWas(null);
     setSifting(null);
-    setTuning(false);
+  };
+
+  /**
+   * Revenir aux filtres, d'où l'on vient quand on règle une époque.
+   *
+   * Le retour en arrière est oublié au passage : on est sorti par un bouton
+   * qui garde ce qui vient d'être réglé.
+   */
+  const toFilters = () => {
+    setEraWas(null);
+    setSifting("filters");
   };
 
   /**
@@ -1068,7 +1127,11 @@ export function Catalogue({
                 <View style={styles.cardHead}>
                   <View style={styles.cardHeading}>
                     <Text style={styles.cardTitle}>
-                      {sifting === "sort" ? "Trier" : "Filtres"}
+                      {sifting === "sort"
+                        ? "Trier"
+                        : sifting === "era"
+                          ? "Époque"
+                          : "Filtres"}
                     </Text>
                     <View style={styles.cardRule} />
                   </View>
@@ -1079,11 +1142,81 @@ export function Catalogue({
                     onPress={close}
                     style={({ pressed }) => [pressed && styles.dim]}
                   >
+                    {/* Une croix sur les trois cartes. Sur celle de
+                        l'époque, elle remonte aux filtres **et** rend
+                        l'époque qu'on avait avant — voir `close`. C'est ce
+                        rétablissement, et lui seul, qui la distingue de
+                        « Valider » : les deux reviennent au même endroit,
+                        l'une les mains vides. */}
                     <Text style={styles.cardClose}>×</Text>
                   </Pressable>
                 </View>
 
-                {sifting === "sort" ? (
+                {sifting === "era" ? (
+                  /* No scrolling container: the wheels are a virtualized
+                     list, and React Native refuses to window one inside a
+                     scroll view of the same direction. */
+                  <View style={styles.cardBody}>
+                    <DateWheels
+                      value={when}
+                      onChange={(at) =>
+                        setSearch((was) => {
+                          // A width the new precision no longer offers would
+                          // be a week around a date known only to the year.
+                          const kept = widthsFor(at).some(
+                            (one) => one.years === was.span,
+                          );
+                          return {
+                            ...was,
+                            at,
+                            span: kept ? was.span : widthsFor(at)[0]!.years,
+                          };
+                        })
+                      }
+                    />
+                    <Text style={styles.siftAt}>
+                      {formatHistoricalDate(when)}
+                    </Text>
+                    <View style={styles.siftRow}>
+                      {widthsFor(when).map((one) => (
+                        <Chip
+                          key={one.label}
+                          label={one.label}
+                          selected={search.span === one.years}
+                          onPress={() =>
+                            setSearch((was) => ({ ...was, span: one.years }))
+                          }
+                        />
+                      ))}
+                    </View>
+                    {/* Deux boutons à parts égales, dans l'ordre des pieds
+                        de feuille de l'application : la sortie à gauche, ce
+                        qu'on est venu faire à droite.
+
+                        « Valider » ne valide rien à proprement parler — les
+                        roues écrivent dans la recherche à mesure qu'on les
+                        tourne, et la liste derrière est déjà filtrée. Il dit
+                        « j'en ai fini », ce qui est la seule chose qu'un
+                        lecteur ait à dire ici. */}
+                    <View style={styles.siftActions}>
+                      <InkButton
+                        label="Pas de filtre"
+                        variant="tonal"
+                        grow
+                        onPress={() => {
+                          setSearch((was) => ({ ...was, span: null }));
+                          toFilters();
+                        }}
+                      />
+                      <InkButton
+                        label="Valider"
+                        variant="solid"
+                        grow
+                        onPress={toFilters}
+                      />
+                    </View>
+                  </View>
+                ) : sifting === "sort" ? (
                   <View style={styles.cardBody}>
                     {SORTS.map((one) => {
                       const chosen = search.sort === one.value;
@@ -1130,83 +1263,42 @@ export function Catalogue({
                     })}
                   </View>
                 ) : (
-                  /* No scrolling container: the wheels are a virtualized
-                     list, and React Native refuses to window one inside a
-                     scroll view of the same direction. */
+                  /* Plus de conteneur défilant : les roues sont une liste
+                     virtualisée, et React Native refuse d'en fenêtrer une
+                     dans une vue défilante de même direction. La contrainte
+                     vaut encore, puisque les roues sont parties dans leur
+                     propre carte et non dans un panneau à elles. */
                   <View style={styles.cardBody}>
                     <Text style={styles.siftLegend}>Époque</Text>
 
-                    {tuning ? (
-                      <>
-                        <DateWheels
-                          value={when}
-                          onChange={(at) =>
-                            setSearch((was) => {
-                              // A width the new precision no longer offers
-                              // would be a week around a date known only to
-                              // the year.
-                              const kept = widthsFor(at).some(
-                                (one) => one.years === was.span,
-                              );
-                              return {
-                                ...was,
-                                at,
-                                span: kept ? was.span : widthsFor(at)[0]!.years,
-                              };
-                            })
-                          }
-                        />
-                        <Text style={styles.siftAt}>
-                          {formatHistoricalDate(when)}
-                        </Text>
-                        <View style={styles.siftRow}>
-                          {widthsFor(when).map((one) => (
-                            <Chip
-                              key={one.label}
-                              label={one.label}
-                              selected={search.span === one.years}
-                              onPress={() =>
-                                setSearch((was) => ({
-                                  ...was,
-                                  span: one.years,
-                                }))
-                              }
-                            />
-                          ))}
-                        </View>
-                        <Pressable
-                          accessibilityRole="button"
-                          onPress={() => {
-                            setSearch((was) => ({ ...was, span: null }));
-                            setTuning(false);
-                          }}
-                          style={({ pressed }) => [pressed && styles.dim]}
-                        >
-                          <Text style={styles.clear}>
-                            Revenir à toute l'histoire
-                          </Text>
-                        </Pressable>
-                      </>
-                    ) : (
-                      /* Closed, it says one thing. A date and the words
-                         "toute l'histoire" on screen together contradict
-                         each other, which is what this replaced. */
-                      <Row
-                        said={
-                          era
-                            ? `${formatHistoricalDate(when)} · ${spanSaid}`
-                            : "Toute l'histoire"
-                        }
-                        lit={era}
-                        onPress={() => {
-                          setSearch((was) => ({
-                            ...was,
-                            span: was.span ?? widthsFor(when)[0]!.years,
-                          }));
-                          setTuning(true);
-                        }}
-                      />
-                    )}
+                    {/* Une rangée, et rien d'autre : le réglage s'ouvre dans
+                        sa propre carte. Fermée, elle ne dit qu'une chose —
+                        une date et les mots « toute l'histoire » ensemble à
+                        l'écran se contredisent, ce que cette rangée a
+                        remplacé. */}
+                    <Row
+                      said={
+                        era
+                          ? `${formatHistoricalDate(when)} · ${spanSaid}`
+                          : "Toute l'histoire"
+                      }
+                      lit={era}
+                      onPress={() => {
+                        /* L'instantané d'abord, et la largeur par défaut
+                           ensuite : celle-ci est déjà une modification, et
+                           fermer par la croix doit la défaire aussi. */
+                        setEraWas({ at: search.at, span: search.span });
+                        /* Une largeur par défaut avant d'ouvrir : sans elle,
+                           la carte s'ouvrirait sur des roues qui ne filtrent
+                           rien et sur une liste de largeurs dont aucune n'est
+                           choisie. */
+                        setSearch((was) => ({
+                          ...was,
+                          span: was.span ?? widthsFor(when)[0]!.years,
+                        }));
+                        setSifting("era");
+                      }}
+                    />
 
                     <View style={styles.siftRule} />
 
@@ -1522,6 +1614,15 @@ const styles = StyleSheet.create({
   choiceWhy: { ...type.caption, color: palette.inkSoft },
   onWax: { color: palette.surfaceRaised },
   onWaxSoft: { color: palette.surfaceRaised, opacity: 0.78 },
+
+  /**
+   * Le pied de la carte d'époque : deux boutons, toute la largeur.
+   *
+   * Pas de `justifyContent` — chacun porte `grow`, donc il n'y a plus de
+   * place à distribuer. Un peu d'air au-dessus, parce qu'ils ferment la
+   * carte et ne font pas partie du réglage qu'ils closent.
+   */
+  siftActions: { flexDirection: "row", gap: space.sm, paddingTop: space.xs },
 
   /** A rule between the two questions, drawn rather than ruled across. */
   siftRule: {
