@@ -292,7 +292,7 @@ function TerritoryList({
               {...(one.editable
                 ? {
                     onAside: () => onEditShape(one),
-                    asideLabel: `Reprendre le dessin de ${one.name}`,
+                    asideLabel: `Modifier le dessin de ${one.name}`,
                     asideIcon: PENCIL_ROW,
                   }
                 : {})}

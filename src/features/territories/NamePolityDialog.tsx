@@ -61,9 +61,12 @@ export function NamePolityDialog({
     <Dialog
       visible={visible}
       onClose={onClose}
-      title={known ? "Reprendre ce territoire" : "Votre territoire"}
+      title={known ? "Modifier le territoire" : "Votre territoire"}
       hint="Il apparaîtra sur la carte entre ces deux dates."
-      dismissLabel="Annuler"
+      /* Rien au pied : les deux réponses tiennent une seule ligne dans le
+         corps — voir plus bas. Laissé à `Dialog`, « Annuler » se serait posé
+         sous « Enregistrer » au lieu d'être à côté. */
+      dismissLabel={null}
     >
       <InkField
         label="Nom"
@@ -107,20 +110,29 @@ export function NamePolityDialog({
           est unique par construction. Il n'y a donc plus de doublon possible
           à annoncer. */}
 
-      <InkButton
-        label={busy ? "Enregistrement…" : "Enregistrer"}
-        variant="solid"
-        disabled={!ready || busy}
-        onPress={() => {
-          if (start === null || end === null) return;
-          onConfirm({ name: name.trim(), from: start, to: end });
-        }}
-      />
+      {/* À parts égales sur une ligne, la sortie à gauche et ce qu'on est
+          venu faire à droite — la mise des pieds de feuille de
+          l'application. */}
+      <View style={styles.actions}>
+        <InkButton label="Annuler" variant="tonal" grow onPress={onClose} />
+        <InkButton
+          label={busy ? "Enregistrement…" : "Enregistrer"}
+          variant="solid"
+          grow
+          disabled={!ready || busy}
+          onPress={() => {
+            if (start === null || end === null) return;
+            onConfirm({ name: name.trim(), from: start, to: end });
+          }}
+        />
+      </View>
     </Dialog>
   );
 }
 
 const styles = StyleSheet.create({
+  /** Les deux réponses, à parts égales : chacune porte `grow`. */
+  actions: { flexDirection: "row", gap: space.sm },
   years: { flexDirection: "row", gap: space.sm },
   year: { flex: 1 },
   hint: { ...type.caption, color: palette.inkFaint },
