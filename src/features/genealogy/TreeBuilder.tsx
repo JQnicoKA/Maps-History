@@ -1067,14 +1067,17 @@ export function TreeBuilder({
                 ? "Comment ça marche ?"
                 : "Modifier"
           }
+          /* Seule la suppression en porte un, et c'est ce qui le justifie :
+             il dit ce qu'on garde en perdant l'arbre, qui est la question
+             qu'on se pose à ce moment-là. L'aide avait le sien — « toutes
+             les possibilités pour construire votre arbre » — qui ne faisait
+             que redire le titre juste au-dessus avec plus de mots. */
           hint={
             face === "delete"
               ? tree.origin === null
                 ? "Les personnages restent dans la collection ; seul l'arbre disparaît."
                 : `Les personnages restent dans la collection. ${COPY_IS_A_COPY}`
-              : face === "help"
-                ? "Toutes les possibilités pour construire votre arbre"
-                : undefined
+              : undefined
           }
           dismissLabel={face === "menu" || face === "help" ? null : "Retour"}
           onDismiss={() => setMenu("menu")}
