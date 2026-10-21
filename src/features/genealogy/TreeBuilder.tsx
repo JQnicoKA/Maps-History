@@ -1311,9 +1311,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
-    backgroundColor: palette.wax,
-    borderWidth: 1.5,
-    borderColor: palette.waxDeep,
+    /**
+     * Blanc et sans bord, posé par son ombre seule.
+     *
+     * Il fut un disque de cire bordé de cire sombre, c'est-à-dire la mise des
+     * objets de cette application qui **agissent** sur la planche. Celui-ci
+     * n'agit pas : il explique. Le rendre au papier le remet à son rang,
+     * et c'est l'ombre — plus rien d'autre — qui le détache du dessin.
+     */
+    backgroundColor: palette.surfaceRaised,
     ...shadow.soft,
   },
 
@@ -1322,7 +1328,8 @@ const styles = StyleSheet.create({
     ...type.plate,
     fontSize: 15,
     lineHeight: 18,
-    color: palette.surfaceRaised,
+    /** L'encre de l'atlas sur le papier : 11:1, et la lettre porte seule. */
+    color: palette.ink,
   },
 
 });
