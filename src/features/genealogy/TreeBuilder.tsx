@@ -149,6 +149,9 @@ const GRASP = 11;
  * le premier mot doit le lui dire. Ce qui suit la première phrase explique ;
  * ce qui la commence agit.
  */
+/** Le crayon du titre, quand la carte s'ouvre sur ce qu'on peut changer. */
+const PENCIL_TITLE = require("../../../assets/icons/pencil.png");
+
 const HELP: { question: string; answer: string }[] = [
   {
     question: "Comment ajouter un personnage ?",
@@ -282,9 +285,8 @@ export function TreeBuilder({
    * par défaut, qui est « Modifier ».
    *
    * On voyait donc la carte « Comment ça marche ? » se changer en
-   * « Modifier » le quart de seconde qu'elle mettait à partir ; et en
-   * fermant « Modifier » elle-même, `centred` retombant à faux, son titre
-   * sautait du milieu vers la gauche au même instant.
+   * « Modifier » le quart de seconde qu'elle mettait à partir — titre,
+   * crayon et corps d'un coup.
    *
    * Celle-ci retient la dernière face réelle. La carte continue donc de
    * dessiner ce qu'elle dessinait pendant qu'elle s'en va, ce qui est
@@ -1055,11 +1057,20 @@ export function TreeBuilder({
             saveName();
             setMenu(null);
           }}
-          /* Une seule des trois faces est un panneau : « Modifier » s'ouvre
-             pour être lu et ajusté, comme une feuille. « Supprimer ? » pose
-             une question et « Comment ça marche » se lit en continu — les
-             deux gardent leur titre à gauche, là où l'œil commence. */
-          centred={face === "menu"}
+          /* Le titre à gauche, sous son trait, comme toutes les cartes de
+             l'application.
+             « Modifier » fut centrée — titrée comme une feuille — au motif
+             qu'elle s'ouvre pour être lue et ajustée plutôt que pour poser
+             une question. L'argument tenait tant que les cartes étaient
+             toutes des questions ; il en existe maintenant cinq qui règlent
+             quelque chose — Trier, Filtres, Époque, Mes classeurs et
+             celle-ci — et les quatre autres titrent à gauche. Celle-ci
+             était donc devenue la seule de son espèce, ce qui est
+             exactement le reproche que `centred` cherchait à éviter. */
+          /* Un crayon, et seulement sur la face qui règle. « Supprimer ? »
+             pose une question et « Comment ça marche » se lit en continu :
+             ni l'une ni l'autre ne gagne à être décorée. */
+          icon={face === "menu" ? PENCIL_TITLE : undefined}
           title={
             face === "delete"
               ? "Supprimer l'arbre ?"

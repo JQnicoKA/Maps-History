@@ -13,7 +13,7 @@ import {
 } from "react-native";
 
 import { InkButton } from "./InkButton";
-import { Grain, JournalTitle } from "./Scrapbook";
+import { Grain } from "./Scrapbook";
 import { palette } from "../../theme/palette";
 import {
   BACKDROP,
@@ -74,20 +74,6 @@ export type DialogProps = {
    */
   onDismiss?: () => void;
   /**
-   * Title it the way a bottom sheet titles itself: centred, under its own
-   * rule, at the sheets' own size.
-   *
-   * For the cards that are **panels rather than questions** — Filtres, Votre
-   * compte. They are opened to be read and adjusted, like a sheet, and happen
-   * to be shown in the middle only because they are small; a title shoved to
-   * the left marks them out as a different kind of thing from every other
-   * panel in the app, which they are not.
-   *
-   * A card that really does ask a question keeps its heading left, where the
-   * eye starts reading.
-   */
-  centred?: boolean;
-  /**
    * How heavily this card veils what is behind it.
    *
    * `"full"` by default, and that is what a dialogue is for: nothing behind is
@@ -117,6 +103,15 @@ export type DialogProps = {
 /**
  * A question asked in the middle of the screen.
  *
+ * **Toutes les cartes titrent à gauche, sous leur trait.** Il exista un
+ * `centred` qui titrait comme une feuille — au milieu, un cran plus gros —
+ * pour les cartes qu'on ouvre afin de régler quelque chose plutôt que pour
+ * répondre. L'argument tenait tant que les cartes étaient toutes des
+ * questions ; la bibliothèque, les classeurs, les filtres et le menu d'un
+ * arbre en ont fait cinq qui règlent, et c'est l'exception qui est devenue
+ * la règle. Les dernières cartes centrées se lisaient alors comme une autre
+ * espèce d'objet, ce que `centred` cherchait précisément à éviter.
+ *
  * The app answers almost everything with a bottom sheet, which is the right
  * place for filling something in: it rises from the thumb. A dialogue is for a
  * fork in the road — two or three ways to go, one tap, and nothing else
@@ -135,7 +130,6 @@ export function Dialog({
   icon,
   dismissLabel = "Annuler",
   onDismiss,
-  centred = false,
   veil = "full",
   children,
 }: DialogProps) {
@@ -210,21 +204,9 @@ export function Dialog({
             <Grain />
 
             <View
-              style={
-                title === undefined
-                  ? styles.headerBare
-                  : centred
-                    ? styles.headerCentred
-                    : styles.header
-              }
+              style={title === undefined ? styles.headerBare : styles.header}
             >
-              {title === undefined ? null : centred ? (
-                /* The sheets' own heading, not a centred imitation of this
-                   one: that is what makes the two read as the same app. Its
-                   `hint` is left to the card below, which is wider than a
-                   sheet's inset and holds a long sentence better. */
-                <JournalTitle title={title} icon={icon} />
-              ) : (
+              {title === undefined ? null : (
                 <View style={styles.heading}>
                   {icon === undefined ? (
                     <Text style={styles.title}>{title}</Text>
@@ -249,14 +231,6 @@ export function Dialog({
                 onPress={onClose}
                 style={({ pressed }) => [
                   styles.close,
-                  // Out of the row when centred: a 32-point button sharing
-                  // the line would push the title's middle 16 points left of
-                  // the card's, which is exactly the thing being fixed.
-                  //
-                  // Only with a title, though: lifted out of a header that
-                  // holds nothing else, it would float over a row of no
-                  // height and land on top of the content.
-                  centred && title !== undefined && styles.closeFloat,
                   pressed && styles.pressed,
                 ]}
               >
@@ -265,7 +239,7 @@ export function Dialog({
             </View>
 
             {hint === undefined ? null : (
-              <Text style={[styles.hint, centred && styles.hintCentred]}>
+              <Text style={styles.hint}>
                 {hint}
               </Text>
             )}
@@ -322,9 +296,6 @@ const styles = StyleSheet.create({
   },
   /** The cross sits level with the title, whatever the title wraps to. */
   header: { flexDirection: "row", alignItems: "flex-start", gap: space.sm },
-  /** No row at all: the heading takes the full width so its centre is the
-      card's, and the cross is lifted out of the flow above it. */
-  headerCentred: { position: "relative" },
   /** Untitled: the cross alone, on its own line, pulled into the padding. */
   headerBare: { flexDirection: "row", justifyContent: "flex-end" },
   heading: { flex: 1, gap: space.xs },
@@ -342,7 +313,6 @@ const styles = StyleSheet.create({
     backgroundColor: palette.border,
   },
   hint: { ...type.caption, color: palette.inkSoft, marginTop: space.xs },
-  hintCentred: { textAlign: "center" },
   close: {
     width: 32,
     height: 32,
@@ -352,8 +322,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radius.pill,
   },
-  /** Pulled into the card's own padding, level with the first line of type. */
-  closeFloat: { position: "absolute", top: -4, right: -4, marginTop: 0, marginRight: 0 },
   closeGlyph: { fontSize: 24, lineHeight: 28, color: palette.inkFaint, marginTop: -2 },
   pressed: { opacity: 0.6 },
   choices: { gap: space.sm, marginTop: space.xs, marginBottom: space.xs },
