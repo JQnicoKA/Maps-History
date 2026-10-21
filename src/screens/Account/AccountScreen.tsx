@@ -44,6 +44,16 @@ const TRASH = require("../../../assets/icons/trash.png");
  */
 type Face = "proving" | null;
 
+/**
+ * Le triangle d'alerte, pour la seule page de l'application qui efface tout.
+ *
+ * Un dessin et non un mot de plus : la page en a déjà trois lignes, et une
+ * quatrième phrase pour dire qu'elles sont graves se serait lue avec les
+ * autres. Un panneau se voit avant d'être lu, ce qui est exactement ce qu'on
+ * veut de quelqu'un qui arrive ici par inadvertance.
+ */
+const ALERT = require("../../../assets/alerte.png");
+
 export type AccountScreenProps = {
   /** Lues par la coquille, pour que l'application n'en tienne qu'un compte. */
   notices: Notice[];
@@ -408,9 +418,20 @@ export function AccountScreen({
           automaticallyAdjustKeyboardInsets
           alwaysBounceVertical={false}
         >
+          <Image
+            source={ALERT}
+            style={styles.alert}
+            resizeMode="contain"
+            /* Décoratif : ce qu'il annonce est écrit juste dessous, et un
+               lecteur d'écran qui dirait « alerte » avant de lire la phrase
+               ne ferait que la redire. */
+            accessible={false}
+          />
+
           <Text style={styles.lead}>
             Événements, personnages, arbres et photos seront effacés.
-            C&apos;est définitif. Tapez votre mot de passe pour confirmer.
+            C&apos;est définitif. Aucune possibilité de récupération.
+            Tapez votre mot de passe pour confirmer.
           </Text>
 
           <InkField
@@ -655,6 +676,30 @@ const styles = StyleSheet.create({
     gap: space.xl,
   },
   /** Une phrase d'ouverture, en tête d'une sous-page. */
+  /**
+   * Le panneau d'alerte, centré au-dessus du texte.
+   *
+   * Carré dans son fichier, donc une seule mesure suffit — et `contain`
+   * plutôt que `cover`, pour que le triangle garde ses proportions quoi qu'il
+   * arrive au cadre.
+   *
+   * Un peu d'air en plus au-dessus : il ouvre la page, et la gouttière de
+   * vingt points qui sépare les blocs du corps le collerait au bandeau.
+   *
+   * `maxWidth` est une précaution que la taille actuelle ne réclame plus,
+   * et qu'on garde : deux cents points passent partout, trois cents
+   * débordaient de la page sur un écran de trois cent vingt, où il n'en
+   * reste que deux cent quatre-vingt-huit. Le plafond ramène à la page, et
+   * `contain` fait le reste — l'image s'inscrit dans ce qu'on lui laisse
+   * sans jamais s'étirer.
+   */
+  alert: {
+    width: 200,
+    height: 200,
+    maxWidth: "100%",
+    alignSelf: "center",
+    marginTop: space.sm,
+  },
   lead: { ...type.body, color: palette.inkSoft },
 
   group: { gap: space.sm },
