@@ -125,30 +125,32 @@ const styles = StyleSheet.create({
      * portent un dessin. La cire, elle, veut dire « voici ce que vous
      * lisez », ce que cette pastille ne marque pas.
      *
-     * Le liseré passe de la cire sombre à `line` plutôt qu'à `border` : sur
-     * ce gris, `border` ne pèse que 1,06 et disparaîtrait, là où `line`
-     * tient 1,30 — assez pour se lire comme le bord taillé d'une pastille
-     * découpée dans la feuille.
+     * **Et sans bord**, comme le disque « Dessiner » à côté d'elle. Les deux
+     * sont les seuls objets posés sur la planche, et ils se tenaient de deux
+     * mains différentes depuis que le disque a perdu le sien : une pastille
+     * cernée près d'un disque nu se lit comme un oubli. Ce qui les détache
+     * du fond est désormais leur ombre, et c'est la même.
      */
     backgroundColor: palette.sunken,
     borderRadius: radius.pill,
-    // The same cut edge and the same lift as the discs — see `GlyphButton`.
-    borderWidth: 1.5,
-    borderColor: palette.line,
+    borderWidth: 0,
     /**
-     * L'ombre fait tout le travail de séparation, et plus qu'avant.
+     * L'ombre fait tout le travail de séparation, et c'est la plus dense de
+     * l'application.
      *
      * La pastille était sombre sur une planche claire : elle se détachait
-     * d'elle-même. Claire, elle ne pèse plus que 1,06 contre la terre du
-     * fond et 1,25 contre la mer — c'est-à-dire rien. Ce qui la pose sur la
-     * carte est désormais son ombre seule, et c'est la raison pour laquelle
-     * elle est gardée telle quelle plutôt qu'allégée avec la couleur.
+     * d'elle-même. Claire et sans bord, elle ne pèse plus que 1,06 contre la
+     * terre du fond et 1,25 contre la mer — c'est-à-dire rien. Celle du
+     * disque « Dessiner » lui est donc donnée telle quelle : 0,38 d'opacité,
+     * rayon 13, jetée sept points plus bas, contre les 0,26 que
+     * `GlyphButton` pose d'ordinaire. Elle avait été renforcée pour ce
+     * disque ; les deux objets de la planche la partagent maintenant.
      */
     shadowColor: "#2A1F12",
-    shadowOpacity: 0.26,
-    shadowRadius: 9,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    shadowOpacity: 0.38,
+    shadowRadius: 13,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 12,
   },
   pressed: { opacity: 0.7 },
 

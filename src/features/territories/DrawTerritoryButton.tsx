@@ -312,8 +312,26 @@ const styles = StyleSheet.create({
    * disque taillé.
    */
   disc: {
-    backgroundColor: palette.wax,
-    borderColor: palette.waxDeep,
+    /**
+     * Rendu au papier, et sans bord.
+     *
+     * Il fut un disque de cire bordé de cire sombre. La cire veut dire
+     * « voici ce que vous lisez » — elle marque l'élément sous l'œil sur la
+     * planche et l'onglet ouvert dans la barre —, et ce bouton ne marque
+     * rien : il ouvre une porte. Le `i` de l'arbre a fait le même chemin,
+     * pour la même raison.
+     *
+     * **Le bord part, et c'est ce qui demande de l'attention.** Le liseré
+     * d'un point et demi que `GlyphButton` pose n'est pas une coquetterie :
+     * son commentaire dit qu'un filet est invisible contre un trait de côte,
+     * et que ce bord-là se lit comme la tranche d'un disque découpé dans la
+     * feuille. Retiré, il ne reste que l'ombre pour détacher le disque d'une
+     * planche qui change de couleur tous les dix points — mais celle-ci est
+     * dense (0,38 contre les 0,26 du composant) et jetée bas, ce qui est
+     * précisément ce pour quoi elle avait été renforcée.
+     */
+    backgroundColor: palette.surfaceRaised,
+    borderWidth: 0,
     /**
      * Le relief, et il se fait **par-dessous**.
      *
@@ -334,14 +352,14 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   /**
-   * Blanc sur la cire, et large dans son disque sans le remplir.
+   * En encre sur le papier, et large dans son disque sans le remplir.
    *
    * Vingt-six points sur cinquante-huit : il reste seize points de cire de
    * chaque côté, soit un peu moins de la moitié du disque pour le glyphe.
    * Au-delà, il touchait presque le bord et le disque cessait de se lire
    * comme un disque pour devenir un cadre.
    */
-  glyph: { width: 26, height: 26, tintColor: palette.surfaceRaised },
+  glyph: { width: 26, height: 26, tintColor: palette.ink },
   fill: { flex: 1 },
   switcher: { paddingHorizontal: space.xl, paddingBottom: space.md },
   body: {
