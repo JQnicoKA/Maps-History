@@ -18,8 +18,22 @@ export type SilhouetteProps = {
  * band is a plain view. Eighteen of them at this size reads as the shape it
  * is: nobody mistakes Italy for Burgundy.
  *
- * A silhouette and not a map: no coastline behind it, no colour but the wax.
+ * A silhouette and not a map: no coastline behind it, one colour and no more.
  * It says *what shape*, and the map itself is one tap away for the rest.
+ *
+ * **En reliure pâle et non en cire.** La cire est la couleur de ce qu'on lit
+ * — elle marque, dans une liste, la ligne sur laquelle on est arrêté. Ces
+ * vignettes sont toutes les lignes à la fois : une colonne de taches de cire
+ * disait que tout était désigné, c'est-à-dire que rien ne l'était. Le brun de
+ * reliure est la couleur des choses rangées, et une silhouette est exactement
+ * cela — la forme d'un territoire mis de côté.
+ *
+ * Le pâle plutôt que le dense, et c'est un choix de goût assumé contre la
+ * mesure : la forme ne pèse que 2,8 contre 1 sur le gris creusé de sa case,
+ * là où le brun dense en donnait 8,4. Elle reste lisible parce qu'elle est
+ * large — on ne lit pas une silhouette comme on lit un glyphe —, mais si
+ * elle venait à paraître effacée, `reliefShadow` est le brun du milieu et
+ * rendrait 4,7.
  */
 export function Silhouette({ shape, size }: SilhouetteProps) {
   const bands = useMemo(() => outline(shape, BANDS), [shape]);
@@ -39,7 +53,7 @@ export function Silhouette({ shape, size }: SilhouetteProps) {
             left: band.left * size,
             width: Math.max(band.width * size, 1),
             height,
-            backgroundColor: palette.wax,
+            backgroundColor: palette.bindingPale,
           }}
         />
       ))}

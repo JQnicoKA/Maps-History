@@ -21,7 +21,7 @@ import {
 } from "../../components/ui";
 import { formatYear } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
-import { space } from "../../theme/tokens";
+import { space, type } from "../../theme/tokens";
 
 /**
  * Un crayon, et c'est un renversement.
@@ -167,6 +167,18 @@ export function DrawTerritoryButton({
         }
       >
         <View style={styles.switcher}>
+          {/* Dit une fois, en tête, et pour les deux onglets.
+              La carte du dessous n'est pas un décor livré avec
+              l'application : elle se complète comme la bibliothèque se
+              remplit, et rien ne le disait. Un lecteur qui peint un duché
+              croyait écrire dans son coin ; il faut qu'il sache que ce qu'il
+              trace peut rejoindre la planche que tout le monde lit. */}
+          <Text style={styles.invitation}>
+            La carte aussi est l'œuvre de la communauté. Peignez un territoire
+            ou posez une ville : ce que vous ajoutez pourra être utilisé pour
+            enrichir la carte commune.
+          </Text>
+
           <SegmentedControl segments={PARTS} value={part} onChange={setPart} />
         </View>
 
@@ -413,7 +425,20 @@ const styles = StyleSheet.create({
    */
   glyph: { width: 26, height: 26, tintColor: palette.surfaceRaised },
   fill: { flex: 1 },
-  switcher: { paddingHorizontal: space.xl, paddingBottom: space.md },
+  switcher: {
+    paddingHorizontal: space.xl,
+    paddingBottom: space.md,
+    gap: space.md,
+  },
+  /**
+   * L'invitation, au-dessus du choix.
+   *
+   * En `caption` et non en `legend` : c'est une phrase, et la légende met en
+   * capitales — vingt-cinq mots en capitales ne se lisent pas, ils se
+   * subissent. La règle est écrite dans les tokens, elle vaut ici comme
+   * ailleurs.
+   */
+  invitation: { ...type.caption, color: palette.inkSoft },
   body: {
     paddingHorizontal: space.xl,
     paddingBottom: space.lg,
