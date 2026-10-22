@@ -302,7 +302,7 @@ export function StudySetupDialog({
               detail={
                 backwards
                   ? "La fin précède le début."
-                  : `De ${HISTORY.from} à ${HISTORY.to}, une année négative est avant Jésus-Christ.`
+                  : `De ${HISTORY.from} à nos jours`
               }
               on={allOfTime}
               onToggle={() => {

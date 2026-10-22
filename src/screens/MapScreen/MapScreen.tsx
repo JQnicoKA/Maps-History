@@ -557,7 +557,7 @@ export function MapScreen({
               the finger can see is the one the finger should get. */}
           {drawing || studying ? null : <CharacterMarkers />}
           {studying && study.subject !== null ? (
-            <StudyMarker subject={study.subject} />
+            <StudyMarker subject={study.subject} shape={study.shape} />
           ) : null}
         </WorldMap>
       </View>

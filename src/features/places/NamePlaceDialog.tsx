@@ -95,8 +95,8 @@ export function NamePlaceDialog({
           : unreadable
             ? `Une année entre ${HISTORY.from} et ${HISTORY.to}, ou rien du tout.`
             : blank
-              ? `Laissez la fin vide si elle est encore là. Une année négative est avant Jésus-Christ ; de ${HISTORY.from} à ${HISTORY.to}.`
-              : `Une année négative est avant Jésus-Christ ; de ${HISTORY.from} à ${HISTORY.to}.`}
+              ? `Laissez la fin vide si elle est encore là. De ${HISTORY.from} à nos jours.`
+              : `De ${HISTORY.from} à nos jours.`}
       </Text>
 
       {/* Plus d'avertissement de doublon ici.

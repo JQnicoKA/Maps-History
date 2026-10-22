@@ -100,7 +100,7 @@ export function NamePolityDialog({
       <Text style={styles.hint}>
         {backwards
           ? "La fin précède le début."
-          : `Une année négative est avant Jésus-Christ ; de ${HISTORY.from} à ${HISTORY.to}.`}
+          : `De ${HISTORY.from} à nos jours.`}
       </Text>
 
       {/* Plus d'avertissement de doublon ici.

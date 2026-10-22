@@ -1,8 +1,11 @@
 import { Marker } from "@maplibre/maplibre-react-native";
 import { StyleSheet, Text, View } from "react-native";
 
+import { boxAround, cornersOf, latitudeAt, mercatorY } from "./frame";
 import type { Quarry } from "./subjects";
-import { formatDateYear } from "../events/historicalDate";
+import { BORDERS_END } from "../../config/history";
+import { formatDateYear, formatYear } from "../events/historicalDate";
+import type { TerritoryFeature } from "../territories/api";
 import { describeType } from "../events/types";
 import { palette } from "../../theme/palette";
 import { radius, shadow, space, type } from "../../theme/tokens";
@@ -12,7 +15,32 @@ const LOCKET = 70;
 
 export type StudyMarkerProps = {
   subject: Quarry;
+  /**
+   * La forme du territoire demandé, quand c'en est un.
+   *
+   * Elle sert ici à une seule chose : trouver le milieu de ce qu'on voit,
+   * pour y poser les dates. Un territoire n'a pas de marqueur — la forme est
+   * la question —, mais il a des dates, et elles font partie de l'énoncé
+   * autant que pour un événement.
+   */
+  shape?: TerritoryFeature | null;
 };
+
+/**
+ * Les années d'un territoire, en trois mots au plus.
+ *
+ * Les mêmes trois cas que sa fiche, dites plus court parce qu'une étiquette
+ * sur la planche n'est pas une phrase. **`depuis` n'est pas une coquetterie** :
+ * trois cent quatre-vingt-quatre entités du fond de carte finissent en 2024,
+ * qui n'est pas l'année où elles sont tombées mais celle où les données
+ * s'arrêtent. Écrire « 1991 – 2024 » inventerait un effondrement, et une
+ * étude a moins le droit qu'ailleurs d'enseigner une chose fausse.
+ */
+function territoryYears(from: number, to: number): string {
+  if (from === to) return formatYear(from);
+  if (to >= BORDERS_END) return `depuis ${formatYear(from)}`;
+  return `${formatYear(from)} – ${formatYear(to)}`;
+}
 
 /**
  * Le marqueur d'une question, et ses dates sous lui.
@@ -27,8 +55,33 @@ export type StudyMarkerProps = {
  * Insensible au doigt : il n'y a rien à ouvrir, et une tuile qui s'ouvrirait
  * sous la main porterait le nom cherché.
  */
-export function StudyMarker({ subject }: StudyMarkerProps) {
-  if (subject.kind === "territory") return null;
+export function StudyMarker({ subject, shape = null }: StudyMarkerProps) {
+  if (subject.kind === "territory") {
+    if (shape === null) return null;
+
+    /* Le milieu de ce qu'on voit, pris **en Mercator** : la moyenne de deux
+       latitudes n'est pas le milieu de l'écran, et sur un territoire étiré du
+       nord au sud l'étiquette se poserait de travers. Le même calcul que le
+       cadrage, aux mêmes fonctions — voir `frame.ts`. */
+    const box = boxAround(cornersOf(shape.geometry));
+    if (box === null) return null;
+
+    return (
+      <Marker
+        lngLat={[
+          (box.west + box.east) / 2,
+          latitudeAt((mercatorY(box.south) + mercatorY(box.north)) / 2),
+        ]}
+      >
+        {/* Les dates seules, jamais le nom : le nom est la réponse. */}
+        <View style={styles.label} pointerEvents="none">
+          <Text style={styles.dates}>
+            {territoryYears(subject.territory.from, subject.territory.to)}
+          </Text>
+        </View>
+      </Marker>
+    );
+  }
 
   const place =
     subject.kind === "event"
