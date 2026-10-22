@@ -365,24 +365,24 @@ const styles = StyleSheet.create({
    */
   disc: {
     /**
-     * Rendu au papier, et sans bord.
+     * La cire, et sans bord.
      *
-     * Il fut un disque de cire bordé de cire sombre. La cire veut dire
-     * « voici ce que vous lisez » — elle marque l'élément sous l'œil sur la
-     * planche et l'onglet ouvert dans la barre —, et ce bouton ne marque
-     * rien : il ouvre une porte. Le `i` de l'arbre a fait le même chemin,
-     * pour la même raison.
+     * Il passa au blanc le temps d'une version, pour que le seul bouton de
+     * la planche cesse d'emprunter la couleur qui dit « voici ce que vous
+     * lisez ». À l'écran il s'effaçait : blanc sur un parchemin clair, il ne
+     * pesait que 1,17 contre la terre, et c'est l'ombre seule qui le tenait.
+     * La cire, elle, se détache d'elle-même — 7,1 contre le même fond —, et
+     * sur une planche chargée de traits de côte cela vaut mieux qu'une
+     * règle de vocabulaire.
      *
-     * **Le bord part, et c'est ce qui demande de l'attention.** Le liseré
-     * d'un point et demi que `GlyphButton` pose n'est pas une coquetterie :
-     * son commentaire dit qu'un filet est invisible contre un trait de côte,
-     * et que ce bord-là se lit comme la tranche d'un disque découpé dans la
-     * feuille. Retiré, il ne reste que l'ombre pour détacher le disque d'une
-     * planche qui change de couleur tous les dix points — mais celle-ci est
-     * dense (0,38 contre les 0,26 du composant) et jetée bas, ce qui est
-     * précisément ce pour quoi elle avait été renforcée.
+     * **Le bord ne revient pas.** Le liseré d'un point et demi que
+     * `GlyphButton` pose se lit comme la tranche d'un disque découpé dans la
+     * feuille ; il était là parce qu'un filet est invisible contre une côte.
+     * Sur un aplat de cire, l'aplat fait ce travail lui-même, et l'ombre
+     * dense — 0,38 contre les 0,26 du composant, jetée sept points plus
+     * bas — fait le reste.
      */
-    backgroundColor: palette.surfaceRaised,
+    backgroundColor: palette.wax,
     borderWidth: 0,
     /**
      * Le relief, et il se fait **par-dessous**.
@@ -404,14 +404,14 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   /**
-   * En encre sur le papier, et large dans son disque sans le remplir.
+   * Blanc sur la cire — 7,6:1 — et large dans son disque sans le remplir.
    *
    * Vingt-six points sur cinquante-huit : il reste seize points de cire de
    * chaque côté, soit un peu moins de la moitié du disque pour le glyphe.
    * Au-delà, il touchait presque le bord et le disque cessait de se lire
    * comme un disque pour devenir un cadre.
    */
-  glyph: { width: 26, height: 26, tintColor: palette.ink },
+  glyph: { width: 26, height: 26, tintColor: palette.surfaceRaised },
   fill: { flex: 1 },
   switcher: { paddingHorizontal: space.xl, paddingBottom: space.md },
   body: {
