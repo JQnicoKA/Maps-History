@@ -281,12 +281,36 @@ export function Dialog({
               </View>
             )}
 
-            <View style={styles.body}>
+            <View
+              style={[
+                styles.body,
+                banner === undefined ? null : styles.bodyUnderBanner,
+              ]}
+            >
+              {/* **Une carte à bannière titre au milieu, et sa croix flotte.**
+                  Ce n'est pas le `centred` d'autrefois, qui était un drapeau
+                  levé au jugé et qui avait fini par faire deux espèces de
+                  cartes sans qu'on sache laquelle on avait sous les yeux.
+                  C'est une conséquence de la bannière : une image en plein
+                  cadre donne à la carte une tête, et une tête porte son titre
+                  au milieu. Sans bannière, rien ne change — le titre reste à
+                  gauche sous son trait, comme partout ailleurs. */}
               <View
-                style={title === undefined ? styles.headerBare : styles.header}
+                style={
+                  banner !== undefined
+                    ? styles.headerMiddle
+                    : title === undefined
+                      ? styles.headerBare
+                      : styles.header
+                }
               >
                 {title === undefined ? null : (
-                  <View style={styles.heading}>
+                  <View
+                    style={[
+                      styles.heading,
+                      banner === undefined ? null : styles.headingMiddle,
+                    ]}
+                  >
                     {icon === undefined ? (
                       <Text style={styles.title}>{title}</Text>
                     ) : (
@@ -303,22 +327,34 @@ export function Dialog({
                     <View style={styles.underline} />
                   </View>
                 )}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Fermer"
-                  hitSlop={8}
-                  onPress={onClose}
-                  style={({ pressed }) => [
-                    styles.close,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Text style={styles.closeGlyph}>×</Text>
-                </Pressable>
+                {/* Rien ici quand il y a une bannière : la croix est alors
+                    posée sur l'image, au coin de la carte — voir plus bas. */}
+                {banner === undefined ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Fermer"
+                    hitSlop={8}
+                    onPress={onClose}
+                    style={({ pressed }) => [
+                      styles.close,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={styles.closeGlyph}>×</Text>
+                  </Pressable>
+                ) : null}
               </View>
 
               {hint === undefined ? null : (
-                <Text style={styles.hint}>
+                <Text
+                  style={[
+                    styles.hint,
+                    /* Elle suit son titre : une phrase alignée à gauche sous
+                       un titre centré se lirait comme un défaut de mise en
+                       page plutôt que comme deux intentions. */
+                    banner === undefined ? null : styles.middle,
+                  ]}
+                >
                   {hint}
                 </Text>
               )}
@@ -343,6 +379,33 @@ export function Dialog({
                 />
               )}
             </View>
+
+            {/* La croix, posée **sur** l'image et au coin de la carte.
+                Dernier enfant pour qu'elle passe au-dessus de la bannière, et
+                non dans le corps : dans le corps, elle aurait été repoussée
+                sous l'image par le flux et la tête de la carte aurait eu deux
+                lignes là où elle n'en demande qu'une.
+
+                Un disque de papier plutôt qu'un glyphe nu : une croix seule
+                sur une image se perd dès qu'elle tombe sur une zone claire,
+                et il n'y a pas d'encre qui se lise sur toutes les bannières.
+                Le disque, lui, se lit sur n'importe laquelle, et c'est la même
+                matière que le bouton « i » des arbres — blanc, sans bord, une
+                ombre légère et le glyphe en encre. */}
+            {banner === undefined ? null : (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Fermer"
+                hitSlop={8}
+                onPress={onClose}
+                style={({ pressed }) => [
+                  styles.closeOver,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={styles.closeOverGlyph}>×</Text>
+              </Pressable>
+            )}
           </View>
         </KeyboardAvoidingView>
       </Animated.View>
@@ -378,6 +441,16 @@ const styles = StyleSheet.create({
   /** Ce qui se lit, rembourré — voir `card`. */
   body: { padding: space.xl, gap: space.sm },
   /**
+   * Serré contre la bannière.
+   *
+   * Les vingt points que le corps laisse partout ailleurs séparent du bord de
+   * la carte, c'est-à-dire de rien. Sous une bannière ils séparent de
+   * quelque chose, et le titre se détachait de son image au point de ne plus
+   * lui appartenir. Huit suffisent : avec la gouttière que la police réserve
+   * au-dessus de ses capitales, l'œil en voit une douzaine.
+   */
+  bodyUnderBanner: { paddingTop: space.sm },
+  /**
    * La bande, découpée par les coins de la carte, qui porte le même
    * `overflow` — l'image n'a donc pas à connaître leur rayon.
    *
@@ -403,9 +476,21 @@ const styles = StyleSheet.create({
   bannerImage: { position: "absolute", left: 0, bottom: 0 },
   /** The cross sits level with the title, whatever the title wraps to. */
   header: { flexDirection: "row", alignItems: "flex-start", gap: space.sm },
+  /** Sous une bannière : une colonne centrée, la croix étant partie ailleurs. */
+  headerMiddle: { alignItems: "center" },
   /** Untitled: the cross alone, on its own line, pulled into the padding. */
   headerBare: { flexDirection: "row", justifyContent: "flex-end" },
   heading: { flex: 1, gap: space.xs },
+  /**
+   * Le titre au milieu, et son trait avec lui.
+   *
+   * `flex: 0` est écrit et n'est pas une précaution : `heading` porte
+   * `flex: 1` pour prendre la place que la croix lui laisse dans une rangée.
+   * Dans une colonne sans hauteur arrêtée, ce même `flex: 1` lui donnerait
+   * une base nulle et le titre disparaîtrait — c'est la leçon écrite au pied
+   * de cette carte, à propos de `grow`.
+   */
+  headingMiddle: { flex: 0, alignSelf: "stretch", alignItems: "center" },
   title: { ...type.plate, fontSize: 22, color: palette.ink },
   titleRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
   /** Vingt, accordé au titre de vingt-deux — voir `JournalTitle`. */
@@ -420,6 +505,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.border,
   },
   hint: { ...type.caption, color: palette.inkSoft, marginTop: space.xs },
+  middle: { textAlign: "center" },
   close: {
     width: 32,
     height: 32,
@@ -430,6 +516,34 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   closeGlyph: { fontSize: 24, lineHeight: 28, color: palette.inkFaint, marginTop: -2 },
+  /**
+   * Posée sur la bannière, au coin haut droit de la carte.
+   *
+   * Sur le gris creusé de l'application et non sur du blanc : le blanc est
+   * la couleur du papier de la carte, et un disque de papier posé sur une
+   * image se lit comme un trou découpé dedans. Le gris est une matière à
+   * lui, celle de la pastille des filtres et du bouton de tri — l'étoffe des
+   * petits objets qu'on pose sur autre chose.
+   */
+  closeOver: {
+    position: "absolute",
+    top: space.md,
+    right: space.md,
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: palette.sunken,
+    ...shadow.soft,
+  },
+  /** En encre pleine — 8,9:1 sur ce gris — et non en `inkFaint`. */
+  closeOverGlyph: {
+    fontSize: 22,
+    lineHeight: 26,
+    color: palette.ink,
+    marginTop: -2,
+  },
   pressed: { opacity: 0.6 },
   choices: { gap: space.sm, marginTop: space.xs, marginBottom: space.xs },
 });

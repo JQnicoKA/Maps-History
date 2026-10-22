@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AimButton } from "./AimButton";
@@ -18,9 +18,14 @@ import type { Importance } from "../events/types";
 import { palette } from "../../theme/palette";
 import { space, type } from "../../theme/tokens";
 
-/** En attendant les trois images de fond, c'est celle de la bibliothèque. */
 const BANNER = require("../../../assets/banniere_etudier.png");
-const STUDY = require("../../../assets/icons/study.png");
+
+/** Les trois scènes, une par matière à réviser. */
+const FONDS = {
+  events: require("../../../assets/fond_bouton_evenements.png"),
+  characters: require("../../../assets/fond_bouton_personnages.png"),
+  territories: require("../../../assets/fond_bouton_territoires.png"),
+};
 
 /**
  * Les faces que la carte présente, et l'ordre où elle les présente.
@@ -79,7 +84,7 @@ export function StudySetupDialog({
   onClose,
   onStart,
 }: StudySetupDialogProps) {
-  const { events, characters, folderNames } = useEvents();
+  const { folderNames } = useEvents();
   const [setup, setSetup] = useState<StudySetup>(BLANK_SETUP);
   const [at, setAt] = useState(0);
   /** Les deux champs d'année, gardés en texte : « -8 » se tape caractère par
@@ -87,6 +92,19 @@ export function StudySetupDialog({
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
+  /**
+   * Le monde a pris la place, et les deux autres pâlissent.
+   *
+   * **Dans ce sens seulement, et c'est un essai qui l'a tranché.** Griser les
+   * territoires dès qu'on choisit un événement était symétrique et se lisait
+   * mal : on venait de faire un choix, et c'est une troisième case, qu'on
+   * n'avait pas touchée, qui s'éteignait. Dans l'autre sens le geste est le
+   * même mais la lecture est inverse — on prend les territoires, et ce qu'on
+   * abandonne en les prenant s'efface sous les yeux.
+   *
+   * Les trois restent pressables de toute façon : presser une case grise
+   * range les territoires, ce qui est le chemin le plus court pour revenir.
+   */
   const studyingWorld = setup.aims.includes("territories");
   const route = studyingWorld ? WORLD : COLLECTION;
   /* Changer de but change de chemin : le pas courant est borné à celui-ci
@@ -94,18 +112,6 @@ export function StudySetupDialog({
      n'appartient plus au voyage. */
   const face: Face = route[Math.min(at, route.length - 1)] ?? "aim";
   const last = at >= route.length - 1;
-
-  /** Combien de gens peuvent être interrogés : voir `fromCharacter`. */
-  const placed = useMemo(
-    () =>
-      characters.filter(
-        (person) =>
-          person.longitude !== null &&
-          person.latitude !== null &&
-          person.birth !== null,
-      ).length,
-    [characters],
-  );
 
   const start = readYear(from);
   const end = readYear(to);
@@ -160,8 +166,10 @@ export function StudySetupDialog({
         onStart(pending);
       }}
       banner={BANNER}
+      /* Sans glyphe devant le titre : la bannière en porte déjà un, en grand
+         et en couleur, et un mortier de vingt points sous une image qui
+         annonce la même chose se lirait comme une redite. */
       title="Étudier"
-      icon={STUDY}
       hint={
         face === "aim"
           ? "Que souhaitez-vous étudier ?"
@@ -188,7 +196,7 @@ export function StudySetupDialog({
           <>
             <AimButton
               label="Événements"
-              detail={`${events.length} dans votre collection`}
+              background={FONDS.events}
               chosen={setup.aims.includes("events")}
               dimmed={studyingWorld}
               onPress={() =>
@@ -197,15 +205,7 @@ export function StudySetupDialog({
             />
             <AimButton
               label="Personnages"
-              /* Le compte des interrogeables et non celui de la collection :
-                 un lecteur qui a douze personnages et en voit six annoncés
-                 doit comprendre que les six autres ne sont pas sur la carte,
-                 plutôt que de croire à une panne. */
-              detail={
-                placed === characters.length
-                  ? `${placed} dans votre collection`
-                  : `${placed} sur ${characters.length} sont placés sur la carte`
-              }
+              background={FONDS.characters}
               chosen={setup.aims.includes("characters")}
               dimmed={studyingWorld}
               onPress={() =>
@@ -217,7 +217,7 @@ export function StudySetupDialog({
             />
             <AimButton
               label="Territoires"
-              detail="Le fond de carte, par partie du monde"
+              background={FONDS.territories}
               chosen={studyingWorld}
               onPress={() =>
                 setSetup((one) => ({
@@ -226,12 +226,6 @@ export function StudySetupDialog({
                 }))
               }
             />
-            {studyingWorld ? (
-              <Text style={styles.aside}>
-                Les territoires s'étudient seuls : ils n'ont ni classeur ni
-                importance.
-              </Text>
-            ) : null}
           </>
         ) : null}
 
