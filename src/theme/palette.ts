@@ -106,6 +106,16 @@ export const palette = {
   binding: "#543B27",
   /** Son bord taillé : 1,33 contre l'aplat, la proportion de `waxDeep`. */
   bindingDeep: "#3D2919",
+  /**
+   * Le cuir usé des portes « Rechercher », sous leur fond gravé.
+   *
+   * Prise sur l'image elle-même, dont la couleur moyenne est `#AC855E` : le
+   * dessous et le dessus sont à un cheveu l'un de l'autre, et le bouton n'a
+   * plus de couture là où l'image s'arrête. La reliure sombre qu'il portait
+   * avant se voyait au moindre point que le fond ne couvrait pas, et on
+   * lisait deux bruns là où il n'y a qu'un objet.
+   */
+  bindingPale: "#A7835E",
   inkSoft: "#6E5940",
   inkFaint: "#8C7A5F",
 

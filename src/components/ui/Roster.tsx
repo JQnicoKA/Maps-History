@@ -502,9 +502,21 @@ const styles = StyleSheet.create({
        a été essayé et il n'a pas plu : cette porte n'est pas une rangée de
        plus, et son coin plus ouvert est ce qui le dit. */
     borderRadius: radius.lg,
-    backgroundColor: palette.binding,
-    borderWidth: 1.5,
-    borderColor: palette.bindingDeep,
+    backgroundColor: palette.bindingPale,
+    /**
+     * Sans bord, et c'est l'ombre qui tient la porte.
+     *
+     * Le filet de reliure sombre datait du temps où l'aplat était sombre
+     * lui aussi : il lui donnait l'épaisseur d'un dos de livre. Sur le cuir
+     * clair, il ne donnait plus d'épaisseur, il cernait — un trait brun
+     * autour d'une image brune, qu'on lisait comme un cadre rapporté plutôt
+     * que comme le bord de l'objet.
+     *
+     * C'est le chemin déjà pris par les deux boutons de la planche, le
+     * crayon et la pastille des filtres : l'un et l'autre ont perdu leur
+     * liseré et se détachent par leur seule ombre.
+     */
+    borderWidth: 0,
     /**
      * L'ombre, qui manquait — et c'est elle qui faisait tout.
      *
@@ -548,7 +560,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: radius.lg - 1.5,
+    /* Le rayon plein, et non amputé d'un filet : il n'y a plus de filet à
+       l'intérieur duquel se ranger. Gardé plus petit, le fond gravé aurait
+       laissé paraître un croissant de cuir nu à chaque coin. */
+    borderRadius: radius.lg,
     overflow: "hidden",
     justifyContent: "center",
   },
