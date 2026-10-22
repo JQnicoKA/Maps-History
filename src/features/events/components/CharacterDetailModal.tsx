@@ -286,10 +286,14 @@ export function CharacterDetailModal({
             <Text style={styles.none}>Rangé nulle part</Text>
           ) : (
             <View style={styles.chips}>
-              {/* Les mêmes pastilles que le formulaire, sans le geste : il n'y
-                  a rien à cocher sur la fiche de ce qu'on lit. */}
+              {/* Les mêmes pastilles que le formulaire, **au repos** : il n'y
+                  a rien à cocher sur la fiche de ce qu'on lit, et les peindre
+                  en cire les montrait cochées. La cire dit « voici ce que vous
+                  lisez » — elle désigne, dans une liste, ce sur quoi on est
+                  arrêté. Ici tous les classeurs sont au même titre, et aucun
+                  n'est désigné : le gris creusé est leur état juste. */}
               {person.folders.map((name) => (
-                <Chip key={name} label={name} selected tone="wax" />
+                <Chip key={name} label={name} />
               ))}
             </View>
           )}
