@@ -23,6 +23,18 @@ export type WorldMapProps = {
   mapRef?: Ref<MapRef>;
   /** Recentres the plate without touching the zoom level. */
   center?: LngLat;
+  /**
+   * L'échelle à laquelle se poser, quand le cadrage la décide aussi.
+   *
+   * Absente presque partout : recentrer sans toucher à l'échelle est ce
+   * qu'on veut en suivant la frise ou en ouvrant une tuile — le lecteur a
+   * choisi sa distance et on ne la lui reprend pas. L'étude, elle, pose une
+   * question : elle doit cadrer l'élément à une distance connue, sans quoi
+   * la réponse serait plus facile ou plus dure selon où l'on était resté.
+   *
+   * N'a d'effet qu'avec `center`, puisque c'est le même ordre de caméra.
+   */
+  zoom?: number;
   onPress?: MapProps["onPress"];
   /** 0 recentres instantly — used for the very first framing. */
   centerAnimationDuration?: number;
@@ -69,6 +81,7 @@ export function WorldMap({
   children,
   mapRef,
   center,
+  zoom,
   onPress,
   centerAnimationDuration = 650,
   attributionOffset,
@@ -142,6 +155,11 @@ export function WorldMap({
                 center,
                 animationDuration: centerAnimationDuration,
                 easing: "ease" as const,
+                /* Omis plutôt que posé à la valeur courante : `Camera` laisse
+                   l'échelle tranquille quand on ne la nomme pas, et la lui
+                   redonner à chaque recentrage ferait sauter la planche de
+                   quiconque avait zoomé. */
+                ...(zoom === undefined ? {} : { zoom }),
               }
             : {})}
         />

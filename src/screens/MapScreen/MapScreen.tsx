@@ -17,6 +17,14 @@ import { CharacterSummaryCard } from "../../features/events/components/Character
 import { LocationReticle } from "../../features/events/components/LocationReticle";
 import { FilterButton } from "../../features/filters/FilterButton";
 import {
+  StudyBoard,
+  StudyButton,
+  StudyMarker,
+  StudyShape,
+  useStudyFraming,
+  useStudySession,
+} from "../../features/study";
+import {
   RegionReticle,
   ShapeBar,
   ShapeOnShow,
@@ -99,6 +107,15 @@ export type MapScreenProps = {
    * barre d'onglets, et escamoter l'arbre dessiné s'il y en avait un.
    */
   onDrawingChange: (drawing: boolean) => void;
+  /**
+   * Dit à la coquille qu'une étude a pris la planche.
+   *
+   * Le même office que `onDrawingChange`, et pour la même raison : la barre
+   * d'onglets doit s'effacer. Une prop séparée plutôt qu'un « quelque chose
+   * a pris l'écran » parce que la coquille fait des choses différentes des
+   * deux — le crayon escamote aussi l'arbre dessiné, l'étude non.
+   */
+  onStudyingChange: (studying: boolean) => void;
 };
 
 /**
@@ -125,7 +142,22 @@ function middleOf(strokes: Daub[]): LngLat | null {
   return [(west + east) / 2, (south + north) / 2];
 }
 
-export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
+export function MapScreen({
+  onRaise,
+  onDrawingChange,
+  onStudyingChange,
+}: MapScreenProps) {
+  /**
+   * La séance d'étude, et le cadrage qu'elle demande.
+   *
+   * Tenue ici et non dans un fournisseur : une étude est un geste **sur la
+   * planche**, comme le crayon, et elle ne survit pas à la quitter. Rien
+   * d'autre que cet écran n'a à la connaître.
+   */
+  const study = useStudySession();
+  const framing = useStudyFraming(study);
+  const studying = study.live;
+
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapRef>(null);
   const {
@@ -399,6 +431,10 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
     onDrawingChange(drawing);
   }, [drawing, onDrawingChange]);
 
+  useEffect(() => {
+    onStudyingChange(studying);
+  }, [studying, onStudyingChange]);
+
   // The reticle opens on the reach the filter already had, and on the plate
   // the reader is looking at when it has none.
   useEffect(() => {
@@ -428,14 +464,19 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
       <View style={styles.stage}>
         <WorldMap
           mapRef={mapRef}
-          center={center}
+          /* Le cadrage de l'étude passe devant : pendant qu'on interroge, ce
+             n'est plus la frise ni la tuile qui décident où l'on regarde —
+             c'est la question. Il porte aussi l'échelle, que rien d'autre ne
+             règle : hors étude, le lecteur garde la sienne. */
+          center={framing ? framing.center : center}
+          zoom={framing ? framing.zoom : undefined}
           centerAnimationDuration={hasFramed.current ? 650 : 0}
           /* Rien à ajouter tant que la barre d'onglets est là : elle est
              ancrée sous cette planche et porte déjà la zone sûre de
              l'appareil. Elle s'efface pour laisser le viseur travailler, et
              la planche descend alors jusqu'au bord — la ligne de crédits
              reprend donc à son compte ce que la barre portait. */
-          attributionOffset={aiming || drawing ? insets.bottom : 0}
+          attributionOffset={aiming || drawing || studying ? insets.bottom : 0}
           onDetailChange={setDetailed}
           onStyleFailed={setStyleFailed}
           /* Une touche dans le vide replie la tuile, sans quitter ce qu'on
@@ -448,7 +489,7 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
              Rien pendant qu'on vise ou qu'on peint, comme pour les deux
              calques au-dessous : il n'y a alors pas de tuile à refermer, et
              chaque touche appartient au geste en cours. */
-          onPress={aiming || drawing ? undefined : () => dismissTile()}
+          onPress={aiming || drawing || studying ? undefined : () => dismissTile()}
           onLook={(centre, zoom) => {
             looking.current = centre;
             setZoom(zoom);
@@ -471,7 +512,9 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
               zoom={zoom}
               // Pas pendant qu'on vise ou qu'on peint : chaque touche
               // appartient à cela, et le viseur est ce avec quoi on vise.
-              onTouch={aiming || drawing ? undefined : setTouchedPlace}
+              onTouch={
+                aiming || drawing || studying ? undefined : setTouchedPlace
+              }
             />
           ) : null}
           {MAP_FEATURES.territories && filters.territories ? (
@@ -479,7 +522,7 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
               detailed={detailed}
               // Not while an event is being placed: every touch belongs to
               // that, and the reticle is what the reader is aiming with.
-              onTouch={aiming || drawing ? undefined : setTouched}
+              onTouch={aiming || drawing || studying ? undefined : setTouched}
             />
           ) : null}
           {drawing ? (
@@ -496,13 +539,26 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
           {asking?.kind === "shape" ? (
             <ShapeOnShow shape={asking.shape} />
           ) : null}
+          {/* La forme demandée, qui respire. Elle passe avant les marqueurs
+              pour la raison ordinaire des calques : un lavis ne doit pas se
+              poser par-dessus ce qu'on peut toucher. */}
+          {studying && study.shape !== null ? (
+            <StudyShape shape={study.shape} />
+          ) : null}
           {/* Rien de la collection pendant qu'on peint : les marqueurs se
               confondraient avec la peinture, et ce n'est pas d'eux qu'il
-              s'agit à ce moment-là. */}
-          {drawing ? null : <EventMarkers />}
+              s'agit à ce moment-là.
+              Rien non plus pendant une étude, et pour une raison plus dure :
+              les autres marqueurs porteraient la réponse. Seul celui de la
+              question reste, et ce n'est pas le même objet — voir
+              `StudyMarker`. */}
+          {drawing || studying ? null : <EventMarkers />}
           {/* People last, so a cameo is never buried under a locket: the one
               the finger can see is the one the finger should get. */}
-          {drawing ? null : <CharacterMarkers />}
+          {drawing || studying ? null : <CharacterMarkers />}
+          {studying && study.subject !== null ? (
+            <StudyMarker subject={study.subject} />
+          ) : null}
         </WorldMap>
       </View>
 
@@ -587,12 +643,18 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
         onClose={() => setPosing(null)}
       />
 
-      {aiming || drawing ? null : (
+      {aiming || drawing || studying ? null : (
         <>
           <View
             style={[styles.top, { top: insets.top + 8 }]}
             pointerEvents="box-none"
           >
+            {/* Le mortier à gauche, le crayon à droite, et entre eux ce qu'on
+                regarde : les deux verbes de la planche se font face. */}
+            <View style={styles.topLeft}>
+              <StudyButton onStart={study.begin} />
+            </View>
+
             <FilterButton />
             {/* Un seul bouton reste de ce côté, et c'est un verbe : dessiner
                 sur la planche. Les deux autres — ajouter une note, ouvrir ce
@@ -680,6 +742,11 @@ export function MapScreen({ onRaise, onDrawingChange }: MapScreenProps) {
         </>
       )}
 
+      {/* Le plateau de l'étude : le compte en haut, la question en bas, et
+          les deux cartes qui la closent. Toujours monté — c'est lui qui porte
+          le relevé, qu'on voit après que l'étude a cessé. */}
+      <StudyBoard study={study} />
+
       {/* Les deux fiches que la planche elle-même ouvre : ce que le doigt a
           trouvé dessus. Elles appartiennent à la carte et non à la coquille,
           puisque rien d'autre qu'une touche sur la planche ne les lève. */}
@@ -698,6 +765,7 @@ const styles = StyleSheet.create({
     right: 10,
     alignItems: "center",
   },
+  topLeft: { position: "absolute", left: 0, top: 0, gap: space.sm },
   topRight: { position: "absolute", right: 0, top: 0, gap: space.sm },
   stage: { flex: 1 },
   bottom: { position: "absolute", left: 10, right: 10, gap: 8 },

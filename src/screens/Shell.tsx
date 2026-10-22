@@ -47,6 +47,13 @@ export function Shell() {
    */
   const [drawing, setDrawing] = useState(false);
   /**
+   * Une étude est en cours sur la planche.
+   *
+   * Gardée à part du crayon bien qu'elle efface la même barre : `usePages` ne
+   * reçoit que le crayon, puisque c'est lui seul qui escamote l'arbre dessiné.
+   */
+  const [studying, setStudying] = useState(false);
+  /**
    * Les notifications, lues **une fois** pour toute l'application.
    *
    * `useNotices` interroge le serveur à chaque montage, et les quatre pages
@@ -67,7 +74,7 @@ export function Shell() {
    * donc la bascule est ici plutôt qu'à chacun des endroits qui les
    * déclenchent.
    */
-  const takenOver = aiming || drawing;
+  const takenOver = aiming || drawing || studying;
 
   useEffect(() => {
     if (takenOver) setTab("map");
@@ -78,7 +85,11 @@ export function Shell() {
   return (
     <View style={styles.screen}>
       <View style={[styles.stage, tab === "map" ? null : styles.hidden]}>
-        <MapScreen onRaise={pages.raise} onDrawingChange={setDrawing} />
+        <MapScreen
+          onRaise={pages.raise}
+          onDrawingChange={setDrawing}
+          onStudyingChange={setStudying}
+        />
       </View>
 
       <View style={[styles.stage, tab === "events" ? null : styles.hidden]}>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
+  Dimensions,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -49,6 +50,16 @@ export type DialogProps = {
   title?: string;
   /** A line under the title, when the choice needs one. */
   hint?: string;
+  /**
+   * Une image en plein cadre, posée au bord haut de la carte.
+   *
+   * Ce que `Sheet` sait faire depuis les quatre bannières, et pour la même
+   * raison : une carte qui ouvre un chantier — étudier, par exemple — se
+   * présente, là où une question se pose nue. La carte perd alors son
+   * rembourrage au profit de son corps, pour que l'image touche les trois
+   * bords ; ses coins arrondis la découpent, elle n'a pas à les connaître.
+   */
+  banner?: ImageSourcePropType;
   /**
    * Un glyphe devant le titre — voir `JournalTitle`, qui le porte aussi.
    *
@@ -121,6 +132,32 @@ export type DialogProps = {
 /** The fade in and out, matching the dimming of a sheet. */
 const FADE = 160;
 
+/**
+ * La largeur du papier, mesurée et non devinée.
+ *
+ * C'est `maxWidth` de la carte, bornée par l'écran moins le rembourrage que
+ * `root` laisse de chaque côté. Une bannière doit connaître ce nombre :
+ * `Image` exige ses deux dimensions en points — voir `bannerImage` — et la
+ * largeur d'un parent en pourcentage ne lui parvient pas.
+ */
+const CARD_MAX = 380;
+const CARD_WIDTH = Math.min(
+  CARD_MAX,
+  Dimensions.get("window").width - 2 * space.xl,
+);
+
+/**
+ * La hauteur de la bande, en part de la largeur de la carte.
+ *
+ * Posée sur la largeur et non sur celle de l'écran : une carte est un objet
+ * de proportions, et la bande doit garder les siennes quel que soit
+ * l'appareil. Trois huitièmes font un bandeau large d'à peu près deux fois
+ * et demie sa hauteur — le format des quatre bannières de l'atlas, qui se
+ * trouvent toutes autour de 2,4.
+ */
+const BANNER_SHARE = 0.38;
+const BANNER_HEIGHT = CARD_WIDTH * BANNER_SHARE;
+
 export function Dialog({
   visible,
   onClose,
@@ -128,11 +165,34 @@ export function Dialog({
   title,
   hint,
   icon,
+  banner,
   dismissLabel = "Annuler",
   onDismiss,
   veil = "full",
   children,
 }: DialogProps) {
+  /**
+   * Le rapport de la bannière, demandé à l'asset — comme dans `Sheet`.
+   *
+   * `undefined` pour une source distante, dont la taille n'est pas connue
+   * avant le chargement : l'image prend alors la hauteur de la bande et
+   * `cover` la recadre.
+   */
+  const shape = banner ? Image.resolveAssetSource(banner) : null;
+  const ratio =
+    shape && shape.height > 0 ? shape.width / shape.height : undefined;
+  /** Ce que l'image mesure une fois réduite à la largeur de la carte. */
+  const natural = ratio ? CARD_WIDTH / ratio : undefined;
+  /**
+   * La bande, jamais plus haute que ce que l'image peut remplir.
+   *
+   * Au-delà, on n'en montrerait pas davantage : on ajouterait du vide
+   * au-dessus, et ce vide serait un filet de papier coincé entre le coin
+   * arrondi et l'image. Demander plus revient donc à tout voir.
+   */
+  const band =
+    natural === undefined ? BANNER_HEIGHT : Math.min(BANNER_HEIGHT, natural);
+
   // Read through a ref, like `Sheet` does: listing the callback among the
   // effect's dependencies would replay the exit every time the caller renders.
   const closed = useRef(onClosed);
@@ -203,66 +263,86 @@ export function Dialog({
           <View style={styles.card}>
             <Grain />
 
-            <View
-              style={title === undefined ? styles.headerBare : styles.header}
-            >
-              {title === undefined ? null : (
-                <View style={styles.heading}>
-                  {icon === undefined ? (
-                    <Text style={styles.title}>{title}</Text>
-                  ) : (
-                    <View style={styles.titleRow}>
-                      <Image
-                        source={icon}
-                        style={styles.titleIcon}
-                        resizeMode="contain"
-                        accessible={false}
-                      />
-                      <Text style={styles.title}>{title}</Text>
-                    </View>
-                  )}
-                  <View style={styles.underline} />
-                </View>
-              )}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Fermer"
-                hitSlop={8}
-                onPress={onClose}
-                style={({ pressed }) => [
-                  styles.close,
-                  pressed && styles.pressed,
-                ]}
+            {/* Au bord haut, avant le corps : c'est le corps qui porte
+                désormais le rembourrage, la carte n'en a plus — sans quoi
+                l'image se serait posée au milieu d'une marge. */}
+            {banner === undefined ? null : (
+              <View style={[styles.banner, { height: band }]}>
+                <Image
+                  source={banner}
+                  style={[
+                    styles.bannerImage,
+                    /* Les deux dimensions, toujours : voir `bannerImage`. */
+                    { width: CARD_WIDTH, height: natural ?? band },
+                  ]}
+                  resizeMode="cover"
+                  accessible={false}
+                />
+              </View>
+            )}
+
+            <View style={styles.body}>
+              <View
+                style={title === undefined ? styles.headerBare : styles.header}
               >
-                <Text style={styles.closeGlyph}>×</Text>
-              </Pressable>
+                {title === undefined ? null : (
+                  <View style={styles.heading}>
+                    {icon === undefined ? (
+                      <Text style={styles.title}>{title}</Text>
+                    ) : (
+                      <View style={styles.titleRow}>
+                        <Image
+                          source={icon}
+                          style={styles.titleIcon}
+                          resizeMode="contain"
+                          accessible={false}
+                        />
+                        <Text style={styles.title}>{title}</Text>
+                      </View>
+                    )}
+                    <View style={styles.underline} />
+                  </View>
+                )}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Fermer"
+                  hitSlop={8}
+                  onPress={onClose}
+                  style={({ pressed }) => [
+                    styles.close,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.closeGlyph}>×</Text>
+                </Pressable>
+              </View>
+
+              {hint === undefined ? null : (
+                <Text style={styles.hint}>
+                  {hint}
+                </Text>
+              )}
+
+              {/* Nothing here carries `grow`: that is `flex: 1`, meant to fill
+                  a row. In a column sized by its content it gives each child a
+                  basis of nothing, and they spill out of the card. Stretching
+                  to the full width happens on its own. */}
+              <View style={styles.choices}>{children}</View>
+
+              {/* En plein, et non en `quiet`.
+                  Il était dessiné en texte nu sur le papier de la carte, et ne
+                  se lisait pas comme un bouton — « Annuler » et « Retour »
+                  disparaissaient dans le fond. C'est la même étoffe que le
+                  « Fermer » au pied des feuilles, qui est la même chose : la
+                  sortie, offerte sans insister. */}
+              {dismissLabel === null ? null : (
+                <InkButton
+                  label={dismissLabel}
+                  variant="tonal"
+                  onPress={onDismiss ?? onClose}
+                />
+              )}
             </View>
-
-            {hint === undefined ? null : (
-              <Text style={styles.hint}>
-                {hint}
-              </Text>
-            )}
-
-            {/* Nothing here carries `grow`: that is `flex: 1`, meant to fill
-                a row. In a column sized by its content it gives each child a
-                basis of nothing, and they spill out of the card. Stretching
-                to the full width happens on its own. */}
-            <View style={styles.choices}>{children}</View>
-
-            {/* En plein, et non en `quiet`.
-                Il était dessiné en texte nu sur le papier de la carte, et ne
-                se lisait pas comme un bouton — « Annuler » et « Retour »
-                disparaissaient dans le fond. C'est la même étoffe que le
-                « Fermer » au pied des feuilles, qui est la même chose : la
-                sortie, offerte sans insister. */}
-            {dismissLabel === null ? null : (
-              <InkButton
-                label={dismissLabel}
-                variant="tonal"
-                onPress={onDismiss ?? onClose}
-              />
-            )}
           </View>
         </KeyboardAvoidingView>
       </Animated.View>
@@ -282,9 +362,10 @@ const styles = StyleSheet.create({
   veilSoft: { backgroundColor: BACKDROP_SOFT },
   card: {
     width: "100%",
-    maxWidth: 380,
-    gap: space.sm,
-    padding: space.xl,
+    maxWidth: CARD_MAX,
+    /* Ni rembourrage ni écart ici : ils sont passés à `body`, pour qu'une
+       bannière puisse toucher les trois bords. Sans bannière, une colonne
+       rembourrée dans une carte nue revient exactement au même. */
     borderRadius: radius.xl,
     backgroundColor: palette.surfaceRaised,
     // Clipped so the grain keeps to the rounded corners, and edged so the
@@ -294,6 +375,32 @@ const styles = StyleSheet.create({
     borderColor: palette.border,
     ...shadow.lifted,
   },
+  /** Ce qui se lit, rembourré — voir `card`. */
+  body: { padding: space.xl, gap: space.sm },
+  /**
+   * La bande, découpée par les coins de la carte, qui porte le même
+   * `overflow` — l'image n'a donc pas à connaître leur rayon.
+   *
+   * Sa hauteur est posée au vol : elle dépend de l'image — voir `band`.
+   */
+  banner: { overflow: "hidden" },
+  /**
+   * Accrochée en bas à gauche, à une taille entièrement dictée.
+   *
+   * **Les deux dimensions sont écrites, et c'est une leçon.** `Image`
+   * compose son style ainsi :
+   *
+   *     style = [{width, height}, styles.base, props.style]
+   *
+   * — les dimensions intrinsèques de l'asset d'abord, le style du programme
+   * ensuite. Celui-ci gagne, mais **seulement sur ce qu'il nomme** : toute
+   * dimension laissée de côté garde celle du fichier, ses pixels comptés en
+   * points. La largeur est donc celle de la carte, et la hauteur celle que
+   * l'image prend à cette largeur : elle n'est ni rognée sur les côtés ni
+   * écrasée, seulement plus haute que la bande. `bottom: 0` décide alors
+   * quel bord déborde — le haut — et donc quel bord survit.
+   */
+  bannerImage: { position: "absolute", left: 0, bottom: 0 },
   /** The cross sits level with the title, whatever the title wraps to. */
   header: { flexDirection: "row", alignItems: "flex-start", gap: space.sm },
   /** Untitled: the cross alone, on its own line, pulled into the padding. */
