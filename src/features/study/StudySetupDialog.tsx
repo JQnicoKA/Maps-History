@@ -19,7 +19,7 @@ import { palette } from "../../theme/palette";
 import { space, type } from "../../theme/tokens";
 
 /** En attendant les trois images de fond, c'est celle de la bibliothèque. */
-const BANNER = require("../../../assets/banniere_bibliotheque.png");
+const BANNER = require("../../../assets/banniere_etudier.png");
 const STUDY = require("../../../assets/icons/study.png");
 
 /**

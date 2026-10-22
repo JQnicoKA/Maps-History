@@ -17,10 +17,29 @@ export type OptionState = "waiting" | "right" | "wrong" | "revealed" | "faded";
 export type StudyOptionProps = {
   label: string;
   state: OptionState;
+  /**
+   * La cellule prend sa part de la rangée.
+   *
+   * À sa place **ici et seulement ici**, parce que les propositions sont
+   * désormais posées par deux en rangée : en enfant direct d'une colonne,
+   * `flex: 1` donnerait à chaque bouton une base nulle et les ferait sortir
+   * de la carte — la leçon est écrite au pied de `Dialog`.
+   *
+   * Il est porté par les deux vues, celle qui anime et celle qui se presse :
+   * la première prend la largeur dans la rangée, la seconde la hauteur dans
+   * la première. Sans la seconde, deux cellules voisines de hauteurs
+   * inégales laisseraient un trou de papier sous la plus courte.
+   */
+  grow?: boolean;
   onPress: () => void;
 };
 
-export function StudyOption({ label, state, onPress }: StudyOptionProps) {
+export function StudyOption({
+  label,
+  state,
+  grow = false,
+  onPress,
+}: StudyOptionProps) {
   /**
    * Le petit ressort de la bonne réponse trouvée.
    *
@@ -51,7 +70,9 @@ export function StudyOption({ label, state, onPress }: StudyOptionProps) {
   const answered = state !== "waiting";
 
   return (
-    <Animated.View style={{ transform: [{ scale: pop }] }}>
+    <Animated.View
+      style={[grow ? styles.grow : null, { transform: [{ scale: pop }] }]}
+    >
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ disabled: answered }}
@@ -68,6 +89,7 @@ export function StudyOption({ label, state, onPress }: StudyOptionProps) {
         onPress={onPress}
         style={({ pressed }) => [
           styles.option,
+          grow ? styles.grow : null,
           state === "right" || state === "revealed" ? styles.good : null,
           state === "wrong" ? styles.bad : null,
           state === "faded" ? styles.faded : null,
@@ -81,7 +103,12 @@ export function StudyOption({ label, state, onPress }: StudyOptionProps) {
               ? styles.onColour
               : null,
           ]}
-          numberOfLines={2}
+          /* Quatre, et c'est mesuré : le plus long titre de la collection
+             fait soixante et un caractères, et une cellule de demi-largeur en
+             tient dix-sept par ligne. Couper la bonne réponse d'un examen
+             n'est pas une option, et les rangées s'étirent sur leur plus
+             haute — la grille ne s'allonge que pour les titres qui l'exigent. */
+          numberOfLines={4}
         >
           {label}
         </Text>
@@ -91,10 +118,13 @@ export function StudyOption({ label, state, onPress }: StudyOptionProps) {
 }
 
 const styles = StyleSheet.create({
+  grow: { flex: 1 },
   option: {
-    minHeight: 48,
+    minHeight: 54,
     justifyContent: "center",
-    paddingHorizontal: space.lg,
+    /* Resserré depuis que les cellules sont à demi-largeur : chaque point
+       repris sur les côtés est un point rendu au titre. */
+    paddingHorizontal: space.md,
     paddingVertical: space.sm,
     borderRadius: radius.lg,
     backgroundColor: palette.surfaceRaised,

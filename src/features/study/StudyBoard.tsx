@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -9,7 +10,9 @@ import {
   GlyphButton,
   InkButton,
 } from "../../components/ui";
+import { CharacterDetailModal } from "../events/components/CharacterDetailModal";
 import { CharacterSummaryCard } from "../events/components/CharacterSummaryCard";
+import { EventDetailModal } from "../events/components/EventDetailModal";
 import { EventSummaryCard } from "../events/components/EventSummaryCard";
 import { formatYear } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
@@ -22,6 +25,22 @@ export type StudyBoardProps = {
 };
 
 /**
+ * Les propositions, rangées deux par deux.
+ *
+ * Une collection maigre peut n'en offrir que trois : la dernière rangée n'en
+ * porte alors qu'une, qui prend toute la largeur. C'est plus franc qu'une
+ * demi-case orpheline à côté d'un vide, et cela se lit comme un choix plutôt
+ * que comme un oubli.
+ */
+function pairsOf<T>(items: readonly T[]): T[][] {
+  const rows: T[][] = [];
+  for (let at = 0; at < items.length; at += 2) {
+    rows.push(items.slice(at, at + 2));
+  }
+  return rows;
+}
+
+/**
  * Ce qui se pose sur la planche pendant une étude.
  *
  * Le compte en haut, la question en bas, et rien entre les deux : la carte est
@@ -32,6 +51,15 @@ export type StudyBoardProps = {
 export function StudyBoard({ study }: StudyBoardProps) {
   const insets = useSafeAreaInsets();
   const { question, subject, given } = study;
+  /**
+   * La fiche entière de ce qu'on vient de voir, ouverte depuis la tuile.
+   *
+   * Liée à `given` et non tenue seule : passer à la question suivante referme
+   * la fiche, sans quoi elle montrerait le sujet d'après sous le titre de
+   * celui d'avant.
+   */
+  const [reading, setReading] = useState(false);
+  const shown = reading && given !== null ? subject : null;
 
   const right = question?.subject.id ?? null;
 
@@ -85,22 +113,23 @@ export function StudyBoard({ study }: StudyBoardProps) {
                   et seulement une fois répondu : montrée plus tôt, elle donnerait
                   la réponse.
 
-                  Insensible au doigt, et c'est voulu : pendant une étude elle est
-                  un relevé, non une porte. L'ouvrir mènerait hors de l'examen au
-                  moment précis où l'on vient d'apprendre quelque chose. */}
+                  Et c'est une porte : venir d'apprendre quelque chose est
+                  précisément le moment où l'on veut en lire davantage. La fiche
+                  s'ouvre sans son pied ordinaire — ni supprimer ni modifier,
+                  seulement fermer : on révise, on ne tient pas l'inventaire. */}
               {given !== null && subject !== null ? (
-                <View pointerEvents="none">
+                <View>
                   {subject.kind === "event" ? (
                     <EventSummaryCard
                       floating
                       event={subject.event}
-                      onOpen={() => undefined}
+                      onOpen={() => setReading(true)}
                     />
                   ) : subject.kind === "character" ? (
                     <CharacterSummaryCard
                       floating
                       person={subject.person}
-                      onOpen={() => undefined}
+                      onOpen={() => setReading(true)}
                     />
                   ) : (
                     <View style={styles.plate}>
@@ -116,14 +145,30 @@ export function StudyBoard({ study }: StudyBoardProps) {
                 </View>
               ) : null}
 
+              {/* En grille de deux sur deux, et non en pile.
+                  Quatre cases empilées font une colonne qu'on lit de haut en
+                  bas — on compare la première à la deuxième, puis à la
+                  troisième, et le pouce parcourt la moitié de l'écran. En
+                  carré, les quatre sont dans un seul regard et la main les
+                  atteint toutes sans se déplacer.
+
+                  Rangée par rangée plutôt qu'un enroulement : dans une rangée
+                  vraie, les deux cellules s'étirent sur la plus haute, et
+                  aucun titre de quatre lignes ne laisse un trou de papier à
+                  côté de lui. */}
               <View style={styles.options}>
-                {question.options.map((option) => (
-                  <StudyOption
-                    key={option.id}
-                    label={option.label}
-                    state={stateOf(option.id)}
-                    onPress={() => study.answer(option.id)}
-                  />
+                {pairsOf(question.options).map((pair) => (
+                  <View key={pair[0]?.id ?? "seule"} style={styles.pair}>
+                    {pair.map((option) => (
+                      <StudyOption
+                        key={option.id}
+                        label={option.label}
+                        state={stateOf(option.id)}
+                        grow
+                        onPress={() => study.answer(option.id)}
+                      />
+                    ))}
+                  </View>
                 ))}
               </View>
 
@@ -161,6 +206,40 @@ export function StudyBoard({ study }: StudyBoardProps) {
            un contrôleur qui en retire encore une autre : enchaînées dans le
            même instant, elles laissent un voile que plus rien ne touche. */
         onClosed={study.sealed}
+      />
+
+      {/* Les deux fiches, **montées en permanence** avec un sujet nullable.
+          Rendues sous condition, elles seraient démontées au lieu d'être
+          baissées : leur panneau partirait d'un coup et `onClosed` ne
+          viendrait jamais. C'est la leçon de la bibliothèque, et elle vaut
+          ici aussi.
+
+          `readOnly` réduit le pied à « Fermer ». Supprimer ou modifier au
+          milieu d'un examen n'aurait pas de sens, et la poubelle rouge y
+          serait un piège à la main droite.
+
+          `links={false}` retire ce qui mène ailleurs — la distribution d'un
+          événement, les événements et les arbres d'un personnage. Ces rangées
+          portent un chevron et se pressent : elles promettaient un voyage
+          qu'on ne peut pas faire d'ici. Reste ce que la chose **est**, son
+          classement et son importance. */}
+      <EventDetailModal
+        event={shown?.kind === "event" ? shown.event : null}
+        readOnly
+        links={false}
+        onEdit={() => undefined}
+        onOpenCharacter={() => setReading(false)}
+        onClose={() => setReading(false)}
+      />
+
+      <CharacterDetailModal
+        person={shown?.kind === "character" ? shown.person : null}
+        readOnly
+        links={false}
+        onEdit={() => undefined}
+        onOpenEvent={() => setReading(false)}
+        onOpenTree={() => setReading(false)}
+        onClose={() => setReading(false)}
       />
 
       <StudyReport study={study} />
@@ -272,6 +351,8 @@ const styles = StyleSheet.create({
   },
   bottom: { position: "absolute", left: 10, right: 10, gap: space.sm },
   options: { gap: space.sm },
+  /** Deux cellules à parts égales, qui s'étirent sur la plus haute. */
+  pair: { flexDirection: "row", gap: space.sm },
   /** La tuile d'un territoire, qui n'en avait pas : un nom et des années. */
   plate: {
     padding: space.md,

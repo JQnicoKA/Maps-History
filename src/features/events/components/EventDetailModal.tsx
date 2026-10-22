@@ -67,6 +67,18 @@ export type EventDetailModalProps = {
    * bas comme toutes les autres : on revient donc à la question.
    */
   readOnly?: boolean;
+  /**
+   * Les sections qui mènent **ailleurs** sont-elles montrées ?
+   *
+   * Vraies partout, sauf pendant une étude. Une fiche ouverte au milieu d'un
+   * examen est une fiche qu'on lit : les rangées qui mènent à un autre
+   * personnage, à un autre événement ou à un arbre y paraissent pressables
+   * sans l'être — on ne peut pas lever une seconde modale depuis un panneau
+   * qui en présente une, et on ne voudrait pas quitter l'examen pour autant.
+   * Ce qui reste est ce que la chose **est** : son classement et son
+   * importance.
+   */
+  links?: boolean;
 
   /** Opens someone from the cast — see `CharacterDetailModal`. */
   onOpenCharacter: (id: string) => void;
@@ -79,6 +91,7 @@ export function EventDetailModal({
   event: subject,
   onEdit,
   readOnly = false,
+  links = true,
   onOpenCharacter,
   onClose,
   onClosed,
@@ -233,7 +246,7 @@ export function EventDetailModal({
           </ScrollView>
         ) : null}
 
-        {event.characters.length > 0 ? (
+        {links && event.characters.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.legend}>Personnages</Text>
             <View style={styles.cast}>

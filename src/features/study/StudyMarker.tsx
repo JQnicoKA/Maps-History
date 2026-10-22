@@ -57,7 +57,20 @@ export function StudyMarker({ subject }: StudyMarkerProps) {
   return (
     <Marker lngLat={place}>
       <View style={styles.stack} pointerEvents="none">
-        <View style={styles.locket}>
+        {/* Rond pour un événement, carré pour quelqu'un — la distinction de
+            la carte elle-même, où les gens sont des camées et les événements
+            des médaillons. Elle manquait ici : deux ronds identiques ne
+            disaient pas de quelle espèce de chose on était en train de
+            demander le nom, ce qui est pourtant la moitié de l'énoncé. */}
+        <View
+          style={[
+            styles.locket,
+            subject.kind === "event" ? styles.round : styles.square,
+          ]}
+        >
+          {/* Jamais la photographie ni l'initiale, qui sont ce que la carte
+              montre d'ordinaire : l'une et l'autre donnent la réponse — un
+              « C » suffit à désigner Clovis parmi quatre noms. */}
           <Text style={styles.glyph}>
             {subject.kind === "event"
               ? describeType(subject.event.type).emoji
@@ -81,7 +94,6 @@ const styles = StyleSheet.create({
   locket: {
     width: LOCKET,
     height: LOCKET,
-    borderRadius: LOCKET / 2,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -90,6 +102,16 @@ const styles = StyleSheet.create({
     borderColor: palette.wax,
     ...shadow.plate,
   },
+  round: { borderRadius: LOCKET / 2 },
+  /**
+   * Le camée des gens, à la proportion de celui de la carte.
+   *
+   * Là-bas, un camée fait quarante-six points et ses coins sont arrondis de
+   * huit — soit un peu plus d'un sixième du côté. Ici le marqueur fait
+   * soixante-dix, et douze tiennent le même rapport : c'est la même forme,
+   * vue de plus près, et non une seconde idée du carré.
+   */
+  square: { borderRadius: radius.md },
   glyph: { fontSize: LOCKET * 0.42 },
   label: {
     paddingHorizontal: space.sm,

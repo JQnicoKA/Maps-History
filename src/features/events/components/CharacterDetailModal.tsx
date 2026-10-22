@@ -60,6 +60,18 @@ export type CharacterDetailModalProps = {
    * bas comme toutes les autres : on revient donc à la question.
    */
   readOnly?: boolean;
+  /**
+   * Les sections qui mènent **ailleurs** sont-elles montrées ?
+   *
+   * Vraies partout, sauf pendant une étude. Une fiche ouverte au milieu d'un
+   * examen est une fiche qu'on lit : les rangées qui mènent à un autre
+   * personnage, à un autre événement ou à un arbre y paraissent pressables
+   * sans l'être — on ne peut pas lever une seconde modale depuis un panneau
+   * qui en présente une, et on ne voudrait pas quitter l'examen pour autant.
+   * Ce qui reste est ce que la chose **est** : son classement et son
+   * importance.
+   */
+  links?: boolean;
 
   /** Opens one of the events this person appears in. */
   onOpenEvent: (id: string) => void;
@@ -94,6 +106,7 @@ export function CharacterDetailModal({
   person: subject,
   onEdit,
   readOnly = false,
+  links = true,
   onOpenEvent,
   onOpenTree,
   exceptTree,
@@ -303,32 +316,34 @@ export function CharacterDetailModal({
           </Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.legend}>Événements</Text>
-          {appears.length === 0 ? (
-            <Text style={styles.none}>Aucun événement ne le mentionne.</Text>
-          ) : (
-            appears.map((event) => (
-              <Pressable
-                key={event.id}
-                accessibilityRole="button"
-                accessibilityLabel={event.title}
-                onPress={() => onOpenEvent(event.id)}
-                style={({ pressed }) => [styles.row, pressed && styles.dim]}
-              >
-                <Text style={styles.rowTitle} numberOfLines={1}>
-                  {event.title}
-                </Text>
-                <Text style={styles.rowDetail}>{formatEventPeriod(event)}</Text>
-                <Text style={styles.chevron}>›</Text>
-              </Pressable>
-            ))
-          )}
-        </View>
+        {links ? (
+          <View style={styles.section}>
+            <Text style={styles.legend}>Événements</Text>
+            {appears.length === 0 ? (
+              <Text style={styles.none}>Aucun événement ne le mentionne.</Text>
+            ) : (
+              appears.map((event) => (
+                <Pressable
+                  key={event.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={event.title}
+                  onPress={() => onOpenEvent(event.id)}
+                  style={({ pressed }) => [styles.row, pressed && styles.dim]}
+                >
+                  <Text style={styles.rowTitle} numberOfLines={1}>
+                    {event.title}
+                  </Text>
+                  <Text style={styles.rowDetail}>{formatEventPeriod(event)}</Text>
+                  <Text style={styles.chevron}>›</Text>
+                </Pressable>
+              ))
+            )}
+          </View>
+        ) : null}
 
         {/* Only when there are any: a heading over "aucun arbre" would make a
             genealogy sound like something every person is missing. */}
-        {standsIn.length === 0 ? null : (
+        {!links || standsIn.length === 0 ? null : (
           <View style={styles.section}>
             <Text style={styles.legend}>Arbres</Text>
             {standsIn.map((tree) => (
