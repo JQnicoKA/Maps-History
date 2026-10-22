@@ -338,8 +338,17 @@ export function TreeNode({
 
     {/* Where the line would go, not in a list of commands: a spouse stands
         beside you and a child below you, so that is where the two crosses
-        sit. Drawn at the menu's scale, since they belong to it. */}
-    {menu ? (
+        sit. Drawn at the menu's scale, since they belong to it.
+
+        **Jamais sur une étiquette.** Un titre n'épouse personne et n'a pas
+        d'enfants : la règle tient déjà dans le constructeur, qui ne lui
+        trouve aucun candidat, et dans un déclencheur en base. Mais les deux
+        croix se dessinaient quand même, creuses, et une croix creuse veut
+        dire « personne pour l'instant » — c'est-à-dire « plus tard, peut-être
+        ». Ici il n'y a pas de plus tard, et offrir le geste pour l'expliquer
+        ensuite dans un choix vide est une promesse qu'on ne peut pas tenir.
+        Le menu d'une étiquette ne garde donc que « Retirer de l'arbre ». */}
+    {menu && member.kind === "person" ? (
       <>
         <Pressable
           accessibilityRole="button"

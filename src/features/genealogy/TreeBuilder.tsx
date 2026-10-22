@@ -678,8 +678,12 @@ export function TreeBuilder({
                       setPlacing(null);
                       run(removeFromTree(tree.id, node.member.id));
                     },
-                    // Both, always. `ready` only decides how they look —
-                    // the picker is what explains an empty one.
+                    // Les deux pour quiconque peut en avoir ; `ready` ne
+                    // décide que de leur air, et le choix qui s'ouvre
+                    // explique celui qui est creux. Une étiquette, elle, ne
+                    // les voit pas du tout : `TreeNode` ne les dessine que
+                    // pour une personne, parce qu'il n'y a là rien à
+                    // expliquer — seulement rien à offrir.
                     couple: {
                       ready: spousesFor(node.member).length > 0,
                       onPress: () => {
