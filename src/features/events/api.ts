@@ -454,6 +454,7 @@ export async function updateEvent(
 type CharacterRow = {
   id: string;
   created_at: string;
+  importance: Importance;
   name: string;
   bio: string | null;
   birth_year: number | null;
@@ -479,7 +480,7 @@ type CharacterRow = {
 };
 
 const CHARACTER_COLUMNS = `
-  id, created_at, name, bio,
+  id, created_at, name, bio, importance,
   birth_year, birth_month, birth_day, birth_approx,
   death_year, death_month, death_day, death_approx,
   longitude, latitude, shared, origin_id,
@@ -501,6 +502,7 @@ function toCharacter(row: CharacterRow): Character {
   return {
     id: row.id,
     createdAt: row.created_at,
+    importance: row.importance,
     name: row.name,
     bio: row.bio,
     birth: toOptionalDate(
@@ -543,6 +545,7 @@ function characterRow(draft: CharacterDraft) {
   return {
     name: draft.name.trim(),
     bio: draft.bio.trim() || null,
+    importance: draft.importance,
     birth_year: draft.birth?.year ?? null,
     birth_month: draft.birth?.month ?? null,
     birth_day: draft.birth?.day ?? null,
@@ -687,7 +690,6 @@ type TreeRow = {
     width: number;
     generation: number;
     position: number;
-    importance: Importance;
     note: string | null;
   }[];
   tree_links: { parent_id: string; child_id: string; kind: TreeBond }[];
@@ -696,7 +698,7 @@ type TreeRow = {
 const TREE_COLUMNS = `
   id, name, note, shared, origin_id,
   tree_members (
-    id, character_id, text, width, generation, position, importance, note
+    id, character_id, text, width, generation, position, note
   ),
   tree_links ( parent_id, child_id, kind )
 `;
@@ -728,7 +730,6 @@ function toTree(row: TreeRow): Tree {
               characterId: member.character_id,
               generation: member.generation,
               position: member.position,
-              importance: member.importance,
               note: member.note,
             },
       ),
@@ -806,7 +807,7 @@ export async function addTreeMember(
       generation,
       position,
     })
-    .select("id, character_id, generation, position, importance, note")
+    .select("id, character_id, generation, position, note")
     .single();
   if (error) throw new Error(error.message);
   return {
@@ -815,7 +816,7 @@ export async function addTreeMember(
     characterId: data.character_id,
     generation: data.generation,
     position: data.position,
-    importance: data.importance,
+
     note: data.note,
   };
 }
@@ -875,7 +876,7 @@ export async function updateTreeLabel(
 export async function updateTreeMember(
   id: string,
   patch: Partial<
-    Pick<TreePerson, "generation" | "position" | "importance" | "note">
+    Pick<TreePerson, "generation" | "position" | "note">
   >,
 ): Promise<void> {
   const { error } = await supabase()
@@ -883,7 +884,6 @@ export async function updateTreeMember(
     .update({
       ...(patch.generation === undefined ? {} : { generation: patch.generation }),
       ...(patch.position === undefined ? {} : { position: patch.position }),
-      ...(patch.importance === undefined ? {} : { importance: patch.importance }),
       ...(patch.note === undefined ? {} : { note: patch.note?.trim() || null }),
     })
     .eq("id", id);

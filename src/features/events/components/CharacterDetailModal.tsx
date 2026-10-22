@@ -22,11 +22,27 @@ import {
 import { useEvents } from "../EventsProvider";
 import { formatEventPeriod } from "../historicalDate";
 import { lifespan, placeOfPerson } from "../lifespan";
-import { type Character, type StoredPhoto } from "../types";
+import {
+  type Character,
+  type Importance,
+  type StoredPhoto,
+} from "../types";
 import { palette } from "../../../theme/palette";
 import { radius, space, TOUCH, type } from "../../../theme/tokens";
 
 const TRASH = require("../../../../assets/icons/trash.png");
+
+/**
+ * Les trois crans, nommés comme sur la fiche d'un événement.
+ *
+ * Avec une capitale : sous une légende, ce sont des valeurs, et une valeur
+ * commence par une capitale comme tout ce que porte cette fiche.
+ */
+const IMPORTANCE_LABEL: Record<Importance, string> = {
+  high: "Élevée",
+  medium: "Moyenne",
+  low: "Faible",
+};
 
 export type CharacterDetailModalProps = {
   person: Character | null;
@@ -266,6 +282,27 @@ export function CharacterDetailModal({
           )}
         </View>
 
+        {/* L'importance, entre le classement et ce qu'il a fait.
+            ==============================================================
+
+            Les deux se lisent de la même façon — ce que son auteur a décidé
+            de lui, et non ce que l'Histoire en dit — donc elles se suivent.
+            Ce qui vient après, les événements et les arbres, n'est plus une
+            lecture du personnage mais ce que la collection sait de lui.
+
+            Elle ne se réglait pas ici il y a peu : elle vivait sur
+            l'appartenance à chaque arbre. Devenue une propriété de la
+            personne, elle a sa ligne sur sa fiche, comme celle d'un
+            événement a la sienne. */}
+        <View style={styles.section}>
+          <Text style={styles.legend}>Importance</Text>
+          {/* Le cran seul : la légende au-dessus porte déjà le mot, et
+              « Importance » suivi de « Importance élevée » bégaie. */}
+          <Text style={styles.plain}>
+            {IMPORTANCE_LABEL[person.importance]}
+          </Text>
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.legend}>Événements</Text>
           {appears.length === 0 ? (
@@ -354,6 +391,8 @@ const styles = StyleSheet.create({
   section: { gap: space.sm },
   legend: { ...type.legend, color: palette.inkFaint },
   none: { ...type.caption, color: palette.inkFaint },
+  /** Une valeur qui se lit telle quelle, sans pastille ni rangée. */
+  plain: { ...type.body, color: palette.inkSoft },
   row: {
     flexDirection: "row",
     alignItems: "center",

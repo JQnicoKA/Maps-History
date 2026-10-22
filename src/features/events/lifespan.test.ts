@@ -11,6 +11,7 @@ const person = (
 ): Character => ({
   id: name,
   createdAt: "2024-01-01T00:00:00Z",
+  importance: "medium",
   name,
   bio: null,
   birth: birth === null ? null : { year: birth },

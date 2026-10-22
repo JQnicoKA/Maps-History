@@ -227,8 +227,7 @@ export function TreeBuilder({
     addToTree,
     addLabel,
     editLabel,
-    editTreeMember,
-    eraseLink,
+      eraseLink,
     linkInTree,
     orderRow,
     removeFromTree,
@@ -675,14 +674,6 @@ export function TreeBuilder({
                     // `frame` keeps one spare row above the first member, so
                     // the topmost occupied generation is `from + 1`.
                     below: node.member.generation <= rows.from + 1,
-                    onImportance: (importance) => {
-                      setPlacing(null);
-                      if (node.member.kind !== "person") return;
-                      if (importance === node.member.importance) return;
-                      run(
-                        editTreeMember(tree.id, node.member.id, { importance }),
-                      );
-                    },
                     onRemove: () => {
                       setPlacing(null);
                       run(removeFromTree(tree.id, node.member.id));

@@ -16,20 +16,18 @@ import {
   span,
   STROKE,
 } from "./layout";
-import type { Importance, Tree, TreeLink, TreeMember } from "../events/types";
+import type { Tree, TreeLink, TreeMember } from "../events/types";
 
 const at = (
   id: string,
   generation: number,
   position: number,
-  importance: Importance = "medium",
 ): TreeMember => ({
   kind: "person",
   id,
   characterId: `c${id}`,
   generation,
   position,
-  importance,
   note: null,
 });
 
@@ -54,7 +52,7 @@ const drawn = (subject: Tree) => {
 
 describe("le trait d'un couple", () => {
   const subject = tree(
-    [at("f", 0, 0, "high"), at("m", 0, 1, "low")],
+    [at("f", 0, 0), at("m", 0, 1)],
     [{ kind: "couple", from: "f", to: "m" }],
   );
 
@@ -90,17 +88,12 @@ describe("le trait d'un couple", () => {
     expect(bar!.top).toBeLessThanOrEqual(node("f").y + NODE.height);
   });
 
-  it("a la même longueur quelles que soient les importances", () => {
-    const pesants = tree(
-      [at("f", 0, 0, "high"), at("m", 0, 1, "high")],
-      [{ kind: "couple", from: "f", to: "m" }],
-    );
-    // Les visages ne changent plus de taille : le trait qui les joint non plus.
-    expect(drawn(pesants).segments[0]!.width).toBeCloseTo(
-      drawn(subject).segments[0]!.width,
-      9,
-    );
-  });
+  /* Il y avait ici un essai vérifiant que le trait gardait sa longueur quelle
+     que soit l'importance des deux époux. Il gardait contre un défaut ancien,
+     du temps où un visage majeur était dessiné plus grand. Les visages font
+     désormais tous la même taille, et l'importance a quitté le membre pour
+     le personnage — la mise en page ne peut donc plus la voir, même en le
+     voulant. L'essai comparait deux arbres identiques. */
 
   it("n'est pas tracé entre deux générations", () => {
     const crooked = tree(

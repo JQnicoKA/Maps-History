@@ -694,7 +694,6 @@ export function Catalogue({
                       characterId: m.characterId ?? "",
                       generation: m.generation,
                       position: m.position,
-                      importance: m.importance,
                       note: null,
                     }
                   : {

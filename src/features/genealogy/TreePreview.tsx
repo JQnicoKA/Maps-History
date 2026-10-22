@@ -83,7 +83,12 @@ export function TreePreview({
             ) : (
               <TreeFace
                 face={faces.get(node.member.characterId)}
-                importance={node.member.importance}
+                /* Tous au même poids dans un aperçu : l'importance est ce
+                   que **vous** accordez à quelqu'un, et l'arbre qu'on
+                   regarde ici est celui d'un autre. La bibliothèque ne
+                   publie donc pas ce réglage, et l'inventer donnerait une
+                   hiérarchie que personne n'a écrite. */
+                importance="medium"
               />
             )}
           </View>

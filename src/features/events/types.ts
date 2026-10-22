@@ -200,6 +200,16 @@ export type HistoricalEvent = EventSummary & {
 export type Character = {
   id: string;
   /**
+   * Ce que ce personnage pèse, pour celui qui l'a écrit.
+   *
+   * Le pendant exact de celle d'un événement, et réglée au même endroit :
+   * dans le formulaire, une fois pour toutes. Les arbres s'en servent pour
+   * le poids du nœud — un majeur se détache, un discret s'efface — et ne
+   * l'offrent plus à régler chez eux : on ne décide pas de ce que quelqu'un
+   * vaut dessin par dessin.
+   */
+  importance: Importance;
+  /**
    * Quand cette ligne a été écrite, telle que la base la date.
    *
    * Elle n'a rien d'historique — c'est la date du geste, pas celle du fait —
@@ -268,7 +278,16 @@ export type TreePerson = {
   characterId: string;
   generation: number;
   position: number;
-  importance: Importance;
+  /**
+   * Plus d'importance ici, et c'est un déménagement.
+   *
+   * Elle vivait sur l'appartenance : le même roi pouvait être majeur dans
+   * une lignée et discret dans une autre. C'était défendable, et ce n'est
+   * plus ce qu'on veut — l'importance dit ce que quelqu'un pèse dans la
+   * collection, pas dans un dessin. Elle est donc portée par le personnage,
+   * comme celle d'un événement l'est par l'événement, et le nœud la lit
+   * là : voir `Character.importance`.
+   */
   note: string | null;
 };
 
@@ -376,6 +395,8 @@ export type Tree = {
 export type CharacterDraft = {
   name: string;
   bio: string;
+  /** Ce qu'il pèse, réglé au formulaire — voir `Character.importance`. */
+  importance: Importance;
   /** Required by the form: a person with no birth cannot appear anywhere. */
   birth: HistoricalDate | null;
   /** Optional: an unknown death leaves them on the map from their birth on. */

@@ -25,7 +25,6 @@ const at = (
   characterId: `c${id}`,
   generation,
   position,
-  importance: "medium",
   note: null,
 });
 

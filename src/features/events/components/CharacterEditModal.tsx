@@ -15,6 +15,7 @@ import {
   ConfirmDialog,
   InkButton,
   InkField,
+  SegmentedControl,
   Sheet,
   useLingering,
   useNotice,
@@ -29,6 +30,7 @@ import type { Point } from "../../placement";
 import type {
   Character,
   HistoricalDate,
+  Importance,
   PickedPhoto,
   StoredPhoto,
 } from "../types";
@@ -46,6 +48,13 @@ const BANNER = require("../../../../assets/banniere_personnage.png");
 import { radius, space, TOUCH, type } from "../../../theme/tokens";
 
 const TRASH = require("../../../../assets/icons/trash.png");
+
+/** L'échelle, telle qu'on la propose — la même que pour un événement. */
+const IMPORTANCES: { value: Importance; label: string }[] = [
+  { value: "low", label: "Faible" },
+  { value: "medium", label: "Moyenne" },
+  { value: "high", label: "Élevée" },
+];
 
 export type CharacterEditModalProps = {
   /** Someone to edit, `"new"` to invent one, `null` to stay shut. */
@@ -102,6 +111,9 @@ export function CharacterEditModal({
 
   const [name, setName] = useState(person?.name ?? "");
   const [bio, setBio] = useState(person?.bio ?? "");
+  const [importance, setImportance] = useState<Importance>(
+    person?.importance ?? "medium",
+  );
   const [birth, setBirth] = useState<HistoricalDate | null>(
     person?.birth ?? null,
   );
@@ -205,6 +217,7 @@ export function CharacterEditModal({
     const draft = {
       name: trimmed,
       bio,
+      importance,
       birth,
       death,
       longitude: where.longitude,
@@ -371,6 +384,28 @@ export function CharacterEditModal({
           placeholder="Quelques lignes…"
         />
 
+        {/* Juste avant le classement, comme dans le formulaire d'un
+            événement : on dit ce que quelqu'un pèse une fois qu'on sait qui
+            il est, et avant de le ranger.
+
+            **Elle a quitté les arbres pour venir ici.** Elle s'y réglait
+            membre par membre, donc le même roi pouvait être majeur dans une
+            lignée et discret dans une autre. L'importance dit ce que
+            quelqu'un pèse dans la collection, pas dans un dessin : elle se
+            décide une fois, là où on l'écrit. */}
+        <View style={styles.section}>
+          <Text style={styles.legend}>Importance</Text>
+          <Text style={styles.said}>
+            Elle règle le poids de son visage dans vos arbres : un personnage
+            majeur s'y détache, un discret s'y efface.
+          </Text>
+          <SegmentedControl
+            segments={IMPORTANCES}
+            value={importance}
+            onChange={setImportance}
+          />
+        </View>
+
         {/* Après le lieu et avant les portraits, à la même place que dans le
             formulaire d'un événement : le classement vient quand on sait de
             qui l'on parle, et avant l'illustration. */}
@@ -436,6 +471,8 @@ const styles = StyleSheet.create({
   },
   section: { gap: space.sm },
   legend: { ...type.legend, color: palette.inkSoft },
+  /** Une phrase sous une étiquette : voir `type.caption` contre `legend`. */
+  said: { ...type.caption, color: palette.inkFaint },
   location: {
     flexDirection: "row",
     alignItems: "center",

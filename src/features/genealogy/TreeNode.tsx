@@ -12,7 +12,7 @@ import { CARD_TOP, FACE_AXIS, GAP, NODE } from "./layout";
 import { TreeFace } from "./TreeFace";
 import { TreePlate } from "./TreePlate";
 import { lifespan } from "../events/lifespan";
-import type { Character, Importance, TreeMember } from "../events/types";
+import type { Character, TreeMember } from "../events/types";
 import { lifted as tapLifted, shifted } from "../../lib/touch";
 import { palette } from "../../theme/palette";
 import { radius, shadow, space, type } from "../../theme/tokens";
@@ -79,7 +79,6 @@ export type TreeNodeProps = {
     scale: number;
     /** Opens downwards instead, for the top row where there is no room above. */
     below: boolean;
-    onImportance: (value: Importance) => void;
     onRemove: () => void;
     /**
      * The two lines this person can take, offered where they would be drawn:
@@ -96,13 +95,6 @@ export type TreeNodeProps = {
     descent: { ready: boolean; onPress: () => void };
   };
 };
-
-/** What a place in a tree can be worth, in the order the menu offers it. */
-const PLACES: { value: Importance; label: string }[] = [
-  { value: "low", label: "Discret" },
-  { value: "medium", label: "Normal" },
-  { value: "high", label: "Majeur" },
-];
 
 /** How long a finger must rest before the card comes loose, in milliseconds. */
 const HOLD = 260;
@@ -299,7 +291,11 @@ export function TreeNode({
                   tint: person.photos[0]?.tint ?? null,
                 }
           }
-          importance={member.importance}
+          /* Lue sur le personnage, et non sur son appartenance : ce
+             qu'il pèse ne dépend pas du dessin où on le regarde. Moyenne
+             quand il manque — un membre dont la fiche n'est pas encore
+             arrivée se dessine au poids ordinaire plutôt qu'effacé. */
+          importance={person?.importance ?? "medium"}
           active={active}
           dimmed={muted}
           pressed={pressed && !lifted}
@@ -318,38 +314,17 @@ export function TreeNode({
           },
         ]}
       >
-        {/* Le poids n'existe pas pour un écrit : « discret » et « majeur » ne
-            disent rien d'une étiquette. Son menu est ailleurs — c'est
-            `TreeBuilder` qui l'ouvre, parce qu'il faut un champ de saisie et
-            qu'un champ ne tient pas sur une carte à l'échelle du dessin. */}
-        {member.kind === "label" ? null : (
-          <>
-        <Text style={styles.menuTitle}>Place dans cet arbre</Text>
-        <View style={styles.choices}>
-          {PLACES.map((place) => {
-            const chosen = place.value === member.importance;
-            return (
-              <Pressable
-                key={place.value}
-                accessibilityRole="button"
-                accessibilityState={{ selected: chosen }}
-                accessibilityLabel={place.label}
-                onPress={() => menu.onImportance(place.value)}
-                style={({ pressed }) => [
-                  styles.choice,
-                  chosen && styles.choiceOn,
-                  pressed && styles.choicePressed,
-                ]}
-              >
-                <Text style={[styles.choiceLabel, chosen && styles.choiceLabelOn]}>
-                  {place.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-          </>
-        )}
+        {/* Plus de « Place dans cet arbre » ici.
+            ==============================================================
+
+            Le poids d'un nœud se lit maintenant sur le personnage et non
+            sur son appartenance : on ne décide pas de ce que quelqu'un vaut
+            dessin par dessin, pas plus qu'on ne le décide événement par
+            événement. Il se règle là où l'on écrit la personne, une fois
+            pour toutes — voir `Character.importance`.
+
+            Ce menu ne garde donc que ce qui appartient vraiment à l'arbre :
+            retirer le membre, et les deux croix qui tendent un lien. */}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Retirer de l'arbre"

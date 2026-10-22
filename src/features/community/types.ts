@@ -1,4 +1,4 @@
-import type { HistoricalDate, Importance, TreeBond } from "../events/types";
+import type { HistoricalDate, TreeBond } from "../events/types";
 
 /**
  * What kind of thing a page of the catalogue is about.
@@ -145,7 +145,11 @@ export type SharedThingDetail = SharedThing & {
       width: number;
       generation: number;
       position: number;
-      importance: Importance;
+      /* Plus d'importance sur un membre : elle est portée par le personnage
+         — voir `Character.importance` — et la bibliothèque ne la publie pas.
+         L'aperçu d'un arbre d'autrui dessine donc tous ses visages au même
+         poids, ce qui est honnête : ce réglage est celui de son auteur, et
+         ne vaut pas pour vous. */
     }[];
     links: { from: string; to: string; kind: TreeBond }[];
     people: {

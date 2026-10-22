@@ -164,7 +164,7 @@ type EventsContextValue = {
     treeId: string,
     id: string,
     patch: Partial<
-      Pick<TreePerson, "generation" | "position" | "importance" | "note">
+      Pick<TreePerson, "generation" | "position" | "note">
     >,
   ) => Promise<void>;
   /** Pose quelques mots dans une case — voir `addTreeLabel`. */
@@ -724,7 +724,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       treeId: string,
       id: string,
       patch: Partial<
-        Pick<TreePerson, "generation" | "position" | "importance" | "note">
+        Pick<TreePerson, "generation" | "position" | "note">
       >,
     ) => {
       await api.updateTreeMember(id, patch);
