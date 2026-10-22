@@ -311,8 +311,11 @@ const styles = StyleSheet.create({
     // The proportion iOS itself rounds an icon by, so the badge on this screen
     // and the one on the home screen read as the same object.
     borderRadius: LOGO_SIZE * 0.24,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.line,
+    /* Sans filet depuis que le logo est sombre.
+       Il en portait un parce que l'ancien badge était crème sur un écran
+       crème : sans bord, il n'avait pas de contour. Celui-ci est d'un rouge
+       de brique sur du papier clair — il se détache tout seul, et le filet
+       pâle ne faisait plus qu'un anneau posé sur le dessin. */
   },
   name: {
     fontSize: 38,
