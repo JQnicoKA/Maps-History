@@ -21,6 +21,21 @@ export type CollectionPageProps<T> = {
    */
   owned: string;
   count: number;
+  /**
+   * Le compte d'avant le tamis, quand il y en a un.
+   *
+   * Rendu « (12 / 49) » dès qu'il diffère : sans lui, un lecteur qui a
+   * resserré sa liste et refermé le panneau lit « (12) » et croit avoir perdu
+   * trente-sept événements. Le total dit qu'ils sont là, derrière un réglage.
+   */
+  total?: number;
+  /**
+   * Ce qui se pose au bout de la ligne du compte — la pastille des filtres.
+   *
+   * Passé par la page et non dessiné ici : les trois collections n'ont pas
+   * les mêmes questions à poser, et les arbres n'en posent aucune.
+   */
+  tools?: ReactElement;
   /** La porte du catalogue de la bibliothèque. */
   seekLabel: string;
   onSeek: () => void;
@@ -84,6 +99,8 @@ export function CollectionPage<T>({
   title,
   owned,
   count,
+  total,
+  tools,
   seekLabel,
   onSeek,
   addLabel,
@@ -139,12 +156,22 @@ export function CollectionPage<T>({
                 événements (0) » au-dessus d'un échec de lecture serait un
                 chiffre faux posé à côté de la raison pour laquelle on ne
                 l'a pas. */}
-            <Text style={styles.owned}>
-              {owned}
-              {failed === null && !loading ? (
-                <Text style={styles.count}> ({count})</Text>
-              ) : null}
-            </Text>
+            {/* Le compte à gauche, ce qui le resserre à l'autre bout : on
+                lit d'abord ce qu'on a, puis ce qui en décide. */}
+            <View style={styles.ownedRow}>
+              <Text style={styles.owned}>
+                {owned}
+                {failed === null && !loading ? (
+                  <Text style={styles.count}>
+                    {" "}
+                    ({total === undefined || total === count
+                      ? count
+                      : `${count} / ${total}`})
+                  </Text>
+                ) : null}
+              </Text>
+              {tools === undefined ? null : tools}
+            </View>
           </View>
         }
         renderItem={({ item }) => row(item)}
@@ -206,11 +233,26 @@ const styles = StyleSheet.create({
    * celle des rangées, et sans cela les trois se liraient comme une seule
    * pile de quatre choses.
    */
+  /**
+   * Le titre et sa pastille, aux deux bouts.
+   *
+   * `flex-end` plutôt que `center` : le titre peut revenir à la ligne sur un
+   * écran étroit, et une pastille centrée sur deux lignes de titre flotterait
+   * au milieu de rien. Alignée sur le bas, elle reste posée sur la dernière
+   * ligne, c'est-à-dire sur le compte qu'elle commande.
+   */
+  ownedRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: space.md,
+    paddingTop: space.sm,
+  },
   owned: {
     ...type.heading,
     fontWeight: "700",
     color: palette.ink,
-    paddingTop: space.sm,
+    flexShrink: 1,
   },
   /**
    * Le compte, en encre plus pâle : c'est une précision, pas le titre.

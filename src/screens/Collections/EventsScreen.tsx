@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { CollectionPage } from "./CollectionPage";
 import { EventSummaryCard } from "../../features/events/components/EventSummaryCard";
+import { SiftButton } from "../../features/events/components/SiftButton";
 import { useEvents } from "../../features/events/EventsProvider";
 import { toSortKey } from "../../features/events/historicalDate";
+import { NO_SIFT, kept, type Sift } from "../../features/events/sift";
 import type { EventSummary } from "../../features/events/types";
 
 export type EventsScreenProps = {
@@ -21,13 +23,16 @@ export type EventsScreenProps = {
 /**
  * Les événements de la collection, en colonne, par ordre chronologique.
  *
- * **Les filtres ne gouvernent pas cette page**, et c'est un changement. La
- * vue liste qu'elle remplace lisait `visibleEvents`, donc les calques et
- * l'étendue réglés dans le filtre la restreignaient aussi. Le filtre
- * appartient désormais à la carte seule : il n'est atteignable que de là, et
- * un réglage invisible depuis cette page qui en cacherait la moitié ne
- * s'expliquerait par rien. Une page nommée « Événements » montre les
- * événements.
+ * **Le filtre de la carte ne gouverne pas cette page**, et c'est un
+ * changement ancien. La vue liste qu'elle remplace lisait `visibleEvents`,
+ * donc les calques et l'étendue réglés sur la planche la restreignaient
+ * aussi : un réglage invisible d'ici en cachait la moitié, sans que rien ne
+ * l'explique.
+ *
+ * Elle a désormais **son** tamis, qui est une autre affaire : il vit sur
+ * cette page, il se voit — la pastille porte son compte —, et il ne cache
+ * rien ailleurs. Deux questions seulement, celles que la collection se pose :
+ * dans quel classeur, et de quelle importance.
  *
  * **L'année lue ne la filtre pas non plus.** La frise sélectionne, la liste
  * recense : on y fait défiler une collection, pas un instant — et la frise
@@ -42,20 +47,23 @@ export function EventsScreen({
 }: EventsScreenProps) {
   const { events, selectedEvent, selectEvent, loading, error, refresh } =
     useEvents();
+  const [sift, setSift] = useState<Sift>(NO_SIFT);
 
   const ordered = useMemo<EventSummary[]>(
-    /* Une copie avant de trier : `events` vient du fournisseur, et le trier
-       en place réordonnerait la collection pour tout le monde, carte
-       comprise. */
-    () => [...events].sort((a, b) => toSortKey(a.start) - toSortKey(b.start)),
-    [events],
+    /* `kept` rend déjà une copie, donc trier ici ne réordonne pas la
+       collection du fournisseur — ce que la carte lit aussi. */
+    () =>
+      kept(events, sift).sort((a, b) => toSortKey(a.start) - toSortKey(b.start)),
+    [events, sift],
   );
 
   return (
     <CollectionPage
       title="Événements"
       owned="Vos événements"
-      count={events.length}
+      count={ordered.length}
+      total={events.length}
+      tools={<SiftButton value={sift} onChange={setSift} />}
       seekLabel="Rechercher un événement"
       onSeek={onSeek}
       addLabel="Créer un événement"
@@ -74,7 +82,11 @@ export function EventsScreen({
           }}
         />
       )}
-      empty="Votre collection est vide. Écrivez un événement, ou cherchez-en un dans la bibliothèque."
+      empty={
+        events.length === 0
+          ? "Votre collection est vide. Écrivez un événement, ou cherchez-en un dans la bibliothèque."
+          : "Aucun événement ne répond à ces filtres."
+      }
       loading={loading}
       failed={error}
       onRetry={() => void refresh()}

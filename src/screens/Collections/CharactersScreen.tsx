@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { CollectionPage } from "./CollectionPage";
 import { CharacterSummaryCard } from "../../features/events/components/CharacterSummaryCard";
+import { SiftButton } from "../../features/events/components/SiftButton";
 import { useEvents } from "../../features/events/EventsProvider";
 import { momentOf } from "../../features/events/lifespan";
+import { NO_SIFT, kept, type Sift } from "../../features/events/sift";
 import type { Character } from "../../features/events/types";
 
 export type CharactersScreenProps = {
@@ -27,8 +29,9 @@ export type CharactersScreenProps = {
  * et c'est la règle de `compareByLife`, qui veut qu'un non daté soit en vue
  * plutôt qu'enterré au bout d'une liste.
  *
- * Comme la page des événements, elle ignore les filtres : ils appartiennent
- * à la carte.
+ * Comme la page des événements, elle ignore le filtre de la **carte** — il
+ * appartient à la planche — et porte le sien, qui ne tamise que cette liste :
+ * dans quel classeur, et de quelle importance.
  */
 export function CharactersScreen({
   onOpen,
@@ -38,17 +41,22 @@ export function CharactersScreen({
   onProfile,
 }: CharactersScreenProps) {
   const { characters, loading, error, refresh } = useEvents();
+  const [sift, setSift] = useState<Sift>(NO_SIFT);
 
   const ordered = useMemo<Character[]>(
-    () => [...characters].sort((a, b) => momentOf(a) - momentOf(b)),
-    [characters],
+    /* `kept` rend déjà une copie : trier ici ne touche pas à la collection
+       du fournisseur, que la carte lit aussi. */
+    () => kept(characters, sift).sort((a, b) => momentOf(a) - momentOf(b)),
+    [characters, sift],
   );
 
   return (
     <CollectionPage
       title="Personnages"
       owned="Vos personnages"
-      count={characters.length}
+      count={ordered.length}
+      total={characters.length}
+      tools={<SiftButton value={sift} onChange={setSift} />}
       seekLabel="Rechercher un personnage"
       onSeek={onSeek}
       addLabel="Créer un personnage"
@@ -58,7 +66,11 @@ export function CharactersScreen({
       row={(one) => (
         <CharacterSummaryCard person={one} onOpen={() => onOpen(one.id)} />
       )}
-      empty="Aucun personnage pour l'instant. Écrivez-en un, ou cherchez-en un dans la bibliothèque."
+      empty={
+        characters.length === 0
+          ? "Aucun personnage pour l'instant. Écrivez-en un, ou cherchez-en un dans la bibliothèque."
+          : "Aucun personnage ne répond à ces filtres."
+      }
       loading={loading}
       failed={error}
       onRetry={() => void refresh()}
