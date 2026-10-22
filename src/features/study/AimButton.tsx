@@ -28,6 +28,26 @@ import { radius, shadow, space, type } from "../../theme/tokens";
 const VEIL = 0.45;
 
 /**
+ * Le voile du bouton choisi, qui s'épaissit.
+ *
+ * **La clarté est le seul langage que ces images parlent.** Le bord et la
+ * pastille y sont passés en encre, et l'encre ne pèse que 1,37 contre 1 sur
+ * ce brun : à elle seule, elle ne disait pas assez fort qu'un bouton était
+ * pris. Un ton ne se voit pas sur une image ; un assombrissement, si — et
+ * d'autant mieux qu'il se compare à ses voisins restés clairs.
+ *
+ * Mesuré sur la bande réellement vue : le bouton passe de `(107, 73, 48)` à
+ * `(80, 54, 35)`, soit un écart de 1,4 contre 1 d'un bouton à l'autre. Et il
+ * rend au passage ce qu'il prend : le blanc, qui pesait 4,8 sur les pixels
+ * les plus clairs du dessin, y monte à 9,1.
+ *
+ * Il ne risque pas d'être pris pour le grisé de l'exclusion, qui va dans
+ * l'autre sens : rangé, le bouton pâlit vers le papier de la carte ; pris,
+ * il s'enfonce.
+ */
+const VEIL_CHOSEN = 0.78;
+
+/**
  * Le filet du bouton, écrit une fois parce que l'image le soustrait.
  *
  * `onLayout` rend la largeur **bordure comprise**, tandis qu'un enfant posé à
@@ -141,7 +161,10 @@ export function AimButton({
             style={[styles.backdrop, { width: across, height: natural }]}
             accessible={false}
           />
-          <View style={styles.veil} pointerEvents="none" />
+          <View
+            style={[styles.veil, chosen ? styles.veilChosen : null]}
+            pointerEvents="none"
+          />
         </>
       )}
 
@@ -248,6 +271,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.bindingDeep,
     opacity: VEIL,
   },
+  veilChosen: { opacity: VEIL_CHOSEN },
   words: { flex: 1, gap: 2 },
   wordsMiddle: { alignItems: "center" },
   /** Exactement la pastille, de l'autre côté — voir `BEAD`. */
