@@ -23,10 +23,15 @@ export type StudyButtonProps = {
  * interroger dessus. Entre eux, la pastille des filtres, qui ne fait rien mais
  * dit ce qu'on regarde.
  *
- * En cire et sans bord, avec l'ombre dense des objets posés sur la planche :
- * c'est la matière des deux disques, arrêtée du temps du crayon et reprise
- * telle quelle — deux boutons de même office de part et d'autre d'une même
- * rangée ne peuvent pas être de deux mains différentes.
+ * **Deux verbes, deux bruns**, et ils se distinguent : la cire pour le crayon,
+ * la reliure pour le mortier — le même `binding` que le fond des boutons
+ * « Rechercher un événement », qui est le brun des choses qu'on ouvre pour
+ * aller chercher quelque chose dedans. La forme, l'ombre et le glyphe blanc
+ * restent ceux du crayon : ce qui les rapproche est ce qu'ils sont — deux
+ * disques posés sur la planche —, ce qui les sépare est ce qu'ils font.
+ *
+ * Le glyphe blanc pèse 10,3:1 sur cette reliure, contre 7,6 sur la cire : le
+ * brun est plus sombre, le mortier s'y lit donc mieux encore.
  */
 export function StudyButton({ onStart }: StudyButtonProps) {
   const [open, setOpen] = useState(false);
@@ -53,13 +58,23 @@ export function StudyButton({ onStart }: StudyButtonProps) {
 
 const styles = StyleSheet.create({
   disc: {
-    backgroundColor: palette.wax,
+    backgroundColor: palette.binding,
     borderWidth: 0,
     shadowOpacity: 0.38,
     shadowRadius: 13,
     shadowOffset: { width: 0, height: 7 },
     elevation: 12,
   },
-  /** Blanc sur la cire, large dans son disque sans le remplir. */
-  glyph: { width: 26, height: 26, tintColor: palette.surfaceRaised },
+  /**
+   * Blanc sur la reliure, et plus large que celui du crayon.
+   *
+   * Trente-quatre points et non vingt-six, parce que les deux dessins ne
+   * remplissent pas leur carré de la même façon : le crayon traverse le sien
+   * en diagonale d'un coin à l'autre, le mortier est une forme large et
+   * plate qui n'occupe que la moitié de sa hauteur. À taille égale, il
+   * paraissait donc deux fois plus petit. Son encre atteint vingt-cinq points
+   * de large pour douze de haut — il reste seize points de reliure de chaque
+   * côté, et le disque se lit toujours comme un disque.
+   */
+  glyph: { width: 34, height: 34, tintColor: palette.surfaceRaised },
 });
