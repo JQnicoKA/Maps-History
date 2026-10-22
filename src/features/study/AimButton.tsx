@@ -252,8 +252,7 @@ const styles = StyleSheet.create({
   wordsMiddle: { alignItems: "center" },
   /** Exactement la pastille, de l'autre côté — voir `BEAD`. */
   counterweight: { width: BEAD },
-  /** Un cran au-dessus de `heading` : c'est le seul mot de son bouton. */
-  label: { ...type.title, fontWeight: "700", color: palette.ink },
+  label: { ...type.heading, fontWeight: "700", color: palette.ink },
   detail: { ...type.caption, color: palette.inkSoft },
   /**
    * Blanc sur le voile, avec une ombre portée.
@@ -264,6 +263,16 @@ const styles = StyleSheet.create({
    * une couleur de fond ; une image n'en a pas une.
    */
   labelOnImage: {
+    /**
+     * D'un cran plus grand, et seulement ici.
+     *
+     * Les trois buts sont le premier pas de l'étude : ils annoncent la
+     * matière, chacun sur sa scène, et un mot de dix-sept points posé sur une
+     * image de soixante-seize se perd dedans. Les étapes suivantes — les
+     * parties du monde — sont une liste de choix et non une annonce : elles
+     * gardent la taille des listes de l'application.
+     */
+    fontSize: type.title.fontSize,
     color: palette.surfaceRaised,
     textShadowColor: "rgba(26, 16, 8, 0.55)",
     textShadowOffset: { width: 0, height: 1 },
