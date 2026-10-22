@@ -12,6 +12,17 @@ import { radius, space, type } from "../../../theme/tokens";
 /** Le même entonnoir que la pastille de la carte et que la bibliothèque. */
 const FILTER = require("../../../../assets/icons/filter.png");
 
+/**
+ * La hauteur de la pastille, exportée.
+ *
+ * `CollectionPage` s'en sert pour réserver la même rangée sur les trois
+ * collections, y compris celle des arbres, qui n'a rien à filtrer. Sans ce
+ * nombre partagé, la rangée se mesurait sur son contenu : le titre des arbres
+ * remontait de quinze points et la liste avec lui, et passer d'un onglet à
+ * l'autre faisait sauter la page.
+ */
+export const SIFT_HEIGHT = 34;
+
 /** Les trois crans, et « Toutes » que seul un filtre propose. */
 const IMPORTANCES: { value: Importance | "all"; label: string }[] = [
   { value: "all", label: "Toutes" },
@@ -113,7 +124,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: space.xs,
-    minHeight: 34,
+    minHeight: SIFT_HEIGHT,
     paddingHorizontal: space.md,
     borderRadius: radius.pill,
     backgroundColor: palette.surfaceRaised,

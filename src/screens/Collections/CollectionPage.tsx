@@ -3,6 +3,7 @@ import { FlatList, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AddSlot, Failure, SeekRow } from "../../components/ui";
+import { SIFT_HEIGHT } from "../../features/events/components/SiftButton";
 import { ProfileButton } from "../Account/ProfileButton";
 import { palette } from "../../theme/palette";
 import { shadow, space, type } from "../../theme/tokens";
@@ -234,17 +235,30 @@ const styles = StyleSheet.create({
    * pile de quatre choses.
    */
   /**
-   * Le titre et sa pastille, aux deux bouts.
+   * Le titre et sa pastille, aux deux bouts et au même milieu.
    *
-   * `flex-end` plutôt que `center` : le titre peut revenir à la ligne sur un
-   * écran étroit, et une pastille centrée sur deux lignes de titre flotterait
-   * au milieu de rien. Alignée sur le bas, elle reste posée sur la dernière
-   * ligne, c'est-à-dire sur le compte qu'elle commande.
+   * **La hauteur est réservée, qu'il y ait une pastille ou non**, et c'est
+   * ce qui tient les trois onglets ensemble : mesurée sur son contenu, la
+   * rangée des arbres — qui n'a rien à filtrer — était plus courte de quinze
+   * points, et le titre comme la liste y remontaient d'autant. On passait
+   * d'un onglet à l'autre et la page sautait, sans qu'on puisse dire
+   * pourquoi.
+   *
+   * Centré et non aligné sur le bas : le titre est un mot court qui ne revient
+   * pas à la ligne, et c'est bien sur le milieu de la pastille que l'œil
+   * l'attend.
+   *
+   * La hauteur réservée est celle de la pastille **plus** le rembourrage du
+   * haut, et non la seule pastille : `minHeight` se mesure bordure comprise,
+   * donc les huit points s'y imputeraient au lieu de s'y ajouter. Une page
+   * sans pastille serait restée huit points plus courte qu'une page qui en a
+   * une — le défaut qu'on vient de corriger, en plus petit.
    */
   ownedRow: {
     flexDirection: "row",
-    alignItems: "flex-end",
+    alignItems: "center",
     justifyContent: "space-between",
+    minHeight: SIFT_HEIGHT + space.sm,
     gap: space.md,
     paddingTop: space.sm,
   },
