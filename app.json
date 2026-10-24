@@ -19,7 +19,7 @@
     "android": {
       "package": "com.mapshistory.app",
       "adaptiveIcon": {
-        "backgroundColor": "#853528",
+        "backgroundColor": "#893626",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
