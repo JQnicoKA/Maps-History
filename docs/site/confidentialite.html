@@ -63,16 +63,18 @@
 <table>
   <tr><th>Données</th><th>Finalité</th><th>Base légale</th></tr>
   <tr>
-    <td><strong>Adresse électronique</strong> et mot de passe, ce dernier
-      conservé sous forme chiffrée et jamais lisible</td>
+    <td><strong>Adresse électronique</strong>, et un
+      <strong>mot de passe</strong> si vous en choisissez un, conservé sous
+      forme chiffrée et jamais lisible</td>
     <td>Créer le compte, l'authentifier, permettre la réinitialisation du mot
       de passe</td>
     <td>Exécution du contrat</td>
   </tr>
   <tr>
-    <td><strong>Pseudonyme</strong>, attribué à la création du compte</td>
-    <td>Signer vos contributions publiques sans révéler votre adresse
-      électronique</td>
+    <td><strong>Identifiant du compte Apple, Google ou Facebook</strong> par
+      lequel vous entrez, si vous choisissez cette façon de vous connecter,
+      avec l'adresse électronique et le nom que ce service nous transmet</td>
+    <td>Vous authentifier sans mot de passe</td>
     <td>Exécution du contrat</td>
   </tr>
   <tr>
@@ -98,8 +100,10 @@
   </tr>
 </table>
 <p>
-  L'adresse électronique et le mot de passe sont nécessaires&nbsp;: sans eux le
-  compte ne peut pas exister.
+  Une adresse électronique est nécessaire&nbsp;: sans elle le compte ne peut
+  pas exister. Le mot de passe, lui, ne l'est pas — un compte ouvert par
+  Apple, Google ou Facebook n'en a aucun, et vous pouvez en définir un plus
+  tard depuis la page de votre compte.
 </p>
 
 <h2>Contenu</h2>
@@ -112,7 +116,8 @@
   En revanche, tant que la case <strong>« Ouvert à la bibliothèque »</strong>
   reste cochée, nous pouvons lire ce que vous écrivez pour en tirer une entrée
   de la bibliothèque — l'ensemble que tous les lecteurs consultent. Ces entrées
-  ne portent aucune signature&nbsp;: elles ne vous désignent pas. La
+  ne portent aucune signature&nbsp;: elles ne vous désignent pas, et rien dans
+  l'application ne rattache un contenu à son auteur. La
   bibliothèque utilise ses propres images et ne reprend pas vos photographies.
   Décocher la case suffit à vous y soustraire, à tout moment.
 </p>
@@ -138,13 +143,27 @@
   <tr><td>Supabase</td><td>Base de données, comptes, stockage des photographies</td><td>Irlande</td></tr>
   <tr><td>Resend</td><td>Courriels de compte</td><td>Irlande</td></tr>
   <tr><td>Sentry</td><td>Rapports d'erreur</td><td>Allemagne</td></tr>
-  <tr><td>MapTiler</td><td>Fonds de carte</td><td>Suisse</td></tr>
+  <tr><td>MapTiler</td><td>Polices et fonds de carte</td><td>Suisse</td></tr>
+  <tr><td>Cloudflare</td><td>Diffusion de notre propre fond de carte</td><td>États-Unis</td></tr>
 </table>
 <p>
-  Aucun transfert hors de l'Espace économique européen, à l'exception de la
-  Suisse, couverte par une décision d'adéquation de la Commission européenne.
-  L'affichage de la carte conduit votre appareil à contacter MapTiler, qui voit
-  alors votre adresse IP&nbsp;; il ne reçoit aucun élément de votre collection.
+  La Suisse est couverte par une décision d'adéquation de la Commission
+  européenne. Les transferts vers les États-Unis — Cloudflare pour la carte,
+  et Apple, Google ou Meta si vous choisissez de vous connecter par l'un
+  d'eux — reposent sur les clauses contractuelles types de la Commission ou
+  sur le cadre de protection des données UE–États-Unis.
+  L'affichage de la carte conduit votre appareil à contacter Cloudflare, qui
+  sert nos tuiles, et MapTiler, qui sert les polices&nbsp;; l'un et l'autre
+  voient alors votre adresse IP, et ne reçoivent aucun élément de votre
+  collection.
+</p>
+<p>
+  <strong>Si vous vous connectez par Apple, Google ou Facebook</strong>, votre
+  appareil s'adresse à ce service, qui apprend que vous utilisez HistoryNote
+  et nous transmet en retour votre adresse électronique et votre nom. Nous ne
+  lui communiquons rien de votre collection, et il ne peut rien y lire. Apple
+  vous permet de masquer votre adresse derrière un relais&nbsp;; HistoryNote
+  s'en accommode.
 </p>
 
 <h2>Ce qui n'est pas collecté</h2>
@@ -167,8 +186,11 @@
 <p>
   Vous disposez d'un droit d'accès, de rectification, d'effacement, de
   limitation, d'opposition et de portabilité, exerçables à
-  <a href="mailto:contact@historynote.fr">contact@historynote.fr</a>. Une
-  réponse vous sera apportée dans un délai d'un mois. Vous pouvez également
+  <a href="mailto:contact@historynote.fr">contact@historynote.fr</a>. Une réponse
+  vous sera apportée dans un délai d'<strong>un mois</strong> à compter de la
+  demande. Ce délai peut être prolongé de deux mois pour une demande complexe
+  ou nombreuse&nbsp;; nous vous en informerions alors dans le premier mois, en
+  vous disant pourquoi. Vous pouvez également
   saisir la Commission nationale de l'informatique et des libertés,
   <a href="https://www.cnil.fr">cnil.fr</a>.
 </p>

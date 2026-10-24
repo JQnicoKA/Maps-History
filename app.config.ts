@@ -1,5 +1,7 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
 
+import { VARIANTS, variantOf } from "./src/config/variants";
+
 /**
  * Trois applications, un seul code.
  *
@@ -18,25 +20,6 @@ import type { ConfigContext, ExpoConfig } from "expo/config";
  * arbitrairement laquelle ouvrir — et le lien atterrirait une fois sur deux
  * dans la mauvaise.
  */
-const VARIANTES = {
-  development: {
-    suffixe: ".dev",
-    nom: "HistoryNote dev",
-    schema: "mapshistory-dev",
-  },
-  preview: {
-    suffixe: ".preview",
-    nom: "HistoryNote test",
-    schema: "mapshistory-preview",
-  },
-  production: {
-    suffixe: "",
-    nom: "HistoryNote",
-    schema: "mapshistory",
-  },
-} as const;
-
-type Variante = keyof typeof VARIANTES;
 
 /**
  * Lue dans l'environnement, avec `production` par défaut.
@@ -46,19 +29,18 @@ type Variante = keyof typeof VARIANTES;
  * construire le lien de retour avec le schéma de sa propre variante. Une seule
  * source, deux lecteurs, aucun désaccord possible.
  */
-const choisie = (process.env.EXPO_PUBLIC_APP_VARIANT ?? "production") as Variante;
-const variante = VARIANTES[choisie] ?? VARIANTES.production;
+const variante = VARIANTS[variantOf(process.env.EXPO_PUBLIC_APP_VARIANT)];
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...(config as ExpoConfig),
-  name: variante.nom,
-  scheme: variante.schema,
+  name: variante.name,
+  scheme: variante.scheme,
   ios: {
     ...config.ios,
-    bundleIdentifier: `com.mapshistory.app${variante.suffixe}`,
+    bundleIdentifier: `com.mapshistory.app${variante.suffix}`,
   },
   android: {
     ...config.android,
-    package: `com.mapshistory.app${variante.suffixe}`,
+    package: `com.mapshistory.app${variante.suffix}`,
   },
 });

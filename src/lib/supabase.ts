@@ -4,6 +4,14 @@ import "react-native-url-polyfill/auto";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { installWebCryptoDigest } from "./webcrypto";
+
+/* Posé avant toute création de client, comme le polyfill d'URL au-dessus :
+   `supabase-js` lit `crypto.subtle` au moment où il fabrique un défi PKCE, et
+   ne le relit jamais. Arrivé trop tard, le complément ne servirait à rien —
+   voir `webcrypto.ts` pour ce qui se passe sans lui. */
+installWebCryptoDigest();
+
 import { env } from "../config/env";
 import { sessionStore } from "./sessionStore";
 

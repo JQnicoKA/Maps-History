@@ -86,7 +86,20 @@ export function AccountScreen({
   onSeeEntry,
 }: AccountScreenProps) {
   const insets = useSafeAreaInsets();
-  const { account, signOut, deleteAccount, changePassword } = useAuth();
+  const { account, signOut, deleteAccount, changePassword, setPassword: choosePassword } =
+    useAuth();
+  /**
+   * Ce compte a-t-il un mot de passe ?
+   *
+   * Non pour qui est entré par Apple, Google ou Facebook sans jamais en
+   * choisir un. Deux choses en dépendent sur cette page : on ne propose pas
+   * de **changer** ce qui n'existe pas — on propose d'en **définir** un —, et
+   * la suppression ne peut pas en demander un comme preuve.
+   *
+   * Vrai par défaut le temps que la session arrive : afficher « Aucun » puis
+   * se raviser serait dire au lecteur qu'il a perdu son mot de passe.
+   */
+  const hasPassword = account?.hasPassword ?? true;
   const [face, setFace] = useState<Face>(null);
   /** Les deux champs du mot de passe, dépliés sous leur rangée. */
   const [changing, setChanging] = useState(false);
@@ -165,24 +178,32 @@ export function AccountScreen({
   };
 
   /** Both fields answered, and the new one worth having. */
-  const ready = password !== "" && isStrong(chosen);
+  const ready = (password !== "" || !hasPassword) && isStrong(chosen);
 
   const change = () =>
     attempt(async () => {
-      await changePassword(password, chosen);
+      if (hasPassword) await changePassword(password, chosen);
+      else await choosePassword(chosen);
       // Replié, et la phrase le dit : le lecteur a demandé une chose, et des
       // champs qui se vident sans un mot le laissent se demander si ça a pris.
       setChanging(false);
       clear();
-      setDone("Mot de passe modifié.");
+      setDone(hasPassword ? "Mot de passe modifié." : "Mot de passe défini.");
     });
 
   const erase = () =>
     attempt(async () => {
-      // The bucket first, while there is still a session allowed to empty it:
-      // rows cascade when the account goes, files do not.
-      await deleteOwnPhotos();
-      await deleteAccount(password);
+      /* Le seau est vidé **par** `deleteAccount`, entre la preuve d'identité
+         et l'effacement : les lignes disparaissent en cascade avec le compte,
+         les fichiers non, et il faut encore une session pour les retirer.
+         Le faire ici, avant l'appel, l'aurait fait passer avant la preuve —
+         et quelqu'un qui referme la feuille de son fournisseur aurait gardé
+         son compte et perdu ses photos. */
+      const done = await deleteAccount(
+        hasPassword ? password : null,
+        deleteOwnPhotos,
+      );
+      if (done === "cancelled") setFace(null);
     });
 
   const title =
@@ -263,13 +284,20 @@ export function AccountScreen({
                 open={changing}
                 accessibilityLabel={
                   changing
-                    ? "Replier le changement de mot de passe"
-                    : "Changer le mot de passe"
+                    ? "Replier"
+                    : hasPassword
+                      ? "Changer le mot de passe"
+                      : "Définir un mot de passe"
                 }
               >
                 {/* Des points plutôt qu'un vide : un mot de passe a une
-                    valeur même quand on ne la montre pas. */}
-                <Text style={styles.value}>••••••••</Text>
+                    valeur même quand on ne la montre pas. Et un mot plutôt
+                    que des points quand il n'y en a pas : huit points
+                    laisseraient croire qu'il en existe un, qu'on aurait
+                    oublié. */}
+                <Text style={styles.value}>
+                  {hasPassword ? "••••••••" : "Aucun"}
+                </Text>
               </Row>
 
               {/* Déplié dans la carte, sous la rangée qui l'annonce : c'est
@@ -280,22 +308,33 @@ export function AccountScreen({
 
                   {/* Proof before choice, in that order: it is the question
                       the reader can answer straight away, and the one that
-                      decides whether the rest is worth typing. */}
-                  <InkField
-                    style={styles.onDrawer}
-                    label="Mot de passe actuel"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    textContentType="password"
-                    returnKeyType="next"
-                  />
+                      decides whether the rest is worth typing.
+                      Rien à prouver quand il n'y a pas de mot de passe : la
+                      session en cours est la preuve, et c'est la même règle
+                      qu'à la fin d'une réinitialisation. */}
+                  {hasPassword ? (
+                    <InkField
+                      style={styles.onDrawer}
+                      label="Mot de passe actuel"
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      textContentType="password"
+                      returnKeyType="next"
+                    />
+                  ) : (
+                    <Text style={styles.onDrawerNote}>
+                      Vous êtes entré par un compte Apple, Google ou Facebook.
+                      Définir un mot de passe ajoute une seconde façon de vous
+                      connecter ; l&apos;autre continuera de fonctionner.
+                    </Text>
+                  )}
 
                   <InkField
                     style={styles.onDrawer}
-                    label="Nouveau mot de passe"
+                    label={hasPassword ? "Nouveau mot de passe" : "Mot de passe"}
                     value={chosen}
                     onChangeText={setChosen}
                     placeholder="Choisissez un mot de passe complexe"
@@ -430,23 +469,31 @@ export function AccountScreen({
 
           <Text style={styles.lead}>
             Événements, personnages, arbres et photos seront effacés.
-            C&apos;est définitif. Aucune possibilité de récupération.
-            Tapez votre mot de passe pour confirmer.
+            C&apos;est définitif. Aucune possibilité de récupération.{" "}
+            {hasPassword
+              ? "Tapez votre mot de passe pour confirmer."
+              : "Vous devrez vous reconnecter à votre compte pour confirmer."}
           </Text>
 
-          <InkField
-            label="Votre mot de passe"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            textContentType="password"
-            returnKeyType="done"
-            onSubmitEditing={() => {
-              if (password !== "" && !busy) void erase();
-            }}
-          />
+          {/* La preuve qu'il s'agit bien de vous, et non d'un téléphone laissé
+              sur une table. Sans mot de passe, c'est la feuille du
+              fournisseur qui la donne — elle s'ouvre au moment de presser le
+              bouton, et la refermer annule la suppression. */}
+          {hasPassword ? (
+            <InkField
+              label="Votre mot de passe"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              textContentType="password"
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                if (password !== "" && !busy) void erase();
+              }}
+            />
+          ) : null}
 
           {problem === null ? null : (
             <View style={[styles.note, styles.noteBad]}>
@@ -458,7 +505,7 @@ export function AccountScreen({
             label={busy ? "Suppression…" : "Supprimer le compte"}
             variant="solid"
             tone="danger"
-            disabled={busy || password === ""}
+            disabled={busy || (hasPassword && password === "")}
             onPress={() => void erase()}
           />
         </ScrollView>
@@ -778,6 +825,8 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.border,
   },
+  /** Une phrase dans le tiroir, à la place du champ qu'elle remplace. */
+  onDrawerNote: { ...type.caption, color: palette.inkSoft },
   /** Les deux réponses d'un formulaire : renoncer, et enregistrer. */
   answers: { flexDirection: "row", gap: space.sm },
 

@@ -13,9 +13,25 @@ import type { Session } from "@supabase/supabase-js";
 import { env } from "../../config/env";
 import { TERMS_VERSION } from "../../config/contact";
 import { watchAccount } from "../../lib/monitoring";
+import { signInWith, type SocialProvider } from "./social";
 import { supabase } from "../../lib/supabase";
 
-export type Account = { id: string; email: string };
+export type Account = {
+  id: string;
+  email: string;
+  /**
+   * A-t-il un mot de passe ?
+   *
+   * Faux pour qui est entré par Apple, Google ou Facebook et n'a jamais rien
+   * choisi. Deux écrans en dépendent : on ne propose pas de **changer** un mot
+   * de passe qui n'existe pas, et la suppression ne peut pas en demander un
+   * comme preuve. Lu sur les identités que Supabase attache à la session — la
+   * liste dit exactement par quelles portes ce compte peut s'ouvrir.
+   */
+  hasPassword: boolean;
+  /** Les fournisseurs rattachés : `email`, `apple`, `google`, `facebook`. */
+  providers: string[];
+};
 
 /** What a sign-up ended as — the two are not the same screen afterwards. */
 export type SignUpResult = "signed-in" | "confirm-email";
@@ -32,7 +48,28 @@ type AuthContextValue = {
    * The password is asked for again and checked against the server: this is one
    * tap away from the map, and a borrowed phone should not be enough.
    */
-  deleteAccount: (password: string) => Promise<void>;
+  /**
+   * Efface le compte et tout ce qu'il contient.
+   *
+   * `password` vaut `null` pour un compte sans mot de passe — ouvert par
+   * Apple, Google ou Facebook. La preuve d'identité passe alors par la feuille
+   * du fournisseur, et `"cancelled"` dit qu'elle a été refermée : ce n'est pas
+   * un échec, c'est une hésitation, et le compte est intact.
+   */
+  /**
+   * `before` tourne **entre la preuve et l'effacement**, et c'est tout
+   * l'intérêt de le passer ici.
+   *
+   * La page du compte y vide le seau de photos, parce que les lignes
+   * disparaissent en cascade avec le compte mais pas les fichiers. L'appeler
+   * elle-même avant `deleteAccount` l'aurait fait passer **avant la preuve** :
+   * quelqu'un qui referme la feuille de son fournisseur aurait gardé son
+   * compte et perdu ses photos.
+   */
+  deleteAccount: (
+    password: string | null,
+    before?: () => Promise<void>,
+  ) => Promise<"deleted" | "cancelled">;
   /**
    * Replaces the password of the account already signed in.
    *
@@ -41,16 +78,6 @@ type AuthContextValue = {
    * knowing the old one is a password anybody who borrows the phone owns.
    */
   changePassword: (current: string, next: string) => Promise<void>;
-
-  /**
-   * The name this account wears in front of the others.
-   *
-   * `undefined` while it is being read, and `null` only if the read failed —
-   * the database hands one out at sign-up, so every account has one.
-   */
-  handle: string | null | undefined;
-  /** Chooses another. Throws when it is already taken or badly shaped. */
-  rename: (handle: string) => Promise<void>;
 
   /** Sends the link that lets a forgotten password be replaced. */
   sendReset: (email: string) => Promise<void>;
@@ -92,7 +119,6 @@ const AuthContext = createContext<AuthContextValue | null>(null);
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<Account | null | undefined>(undefined);
-  const [handle, setHandle] = useState<string | null | undefined>(undefined);
   const [recovering, setRecovering] = useState(false);
 
   useEffect(() => {
@@ -131,58 +157,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data.subscription.unsubscribe();
       watching.remove();
     };
-  }, []);
-
-  /**
-   * The pseudonym, read once per account.
-   *
-   * Not part of the session: it lives in `profiles`, which is the one table
-   * every signed-in reader may read — that is what lets a name stand beside a
-   * contribution. Read here rather than where it is shown, so the account
-   * card and, later, everything the community puts on screen all get it from
-   * the same place.
-   */
-  useEffect(() => {
-    const id = account?.id;
-    if (id === undefined) {
-      setHandle(undefined);
-      return;
-    }
-    let alive = true;
-    void supabase()
-      .from("profiles")
-      .select("handle")
-      .eq("user_id", id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (!alive) return;
-        if (error) {
-          console.warn("Pseudonyme illisible :", error.message);
-          setHandle(null);
-          return;
-        }
-        setHandle((data as { handle: string } | null)?.handle ?? null);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [account?.id]);
-
-  const rename = useCallback(async (next: string) => {
-    const client = supabase();
-    const { data } = await client.auth.getSession();
-    const id = data.session?.user.id;
-    if (!id) throw new Error("Session expirée — reconnectez-vous.");
-
-    const { data: saved, error } = await client
-      .from("profiles")
-      .update({ handle: next.trim() })
-      .eq("user_id", id)
-      .select("handle")
-      .single();
-    if (error) throw new Error(translate(error.message));
-
-    setHandle((saved as { handle: string }).handle);
   }, []);
 
   /**
@@ -264,22 +238,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     const { error } = await supabase().auth.signOut();
     if (error) throw new Error(translate(error.message));
+    /* Rien à oublier côté fournisseur : Google et Facebook passent par le
+       navigateur du système, dont les cookies ne nous appartiennent pas et
+       qu'il serait malvenu de vider — le lecteur y est connecté pour ses
+       autres usages. Qui veut changer de compte le fait dans la feuille, qui
+       propose toujours le choix. */
     // Leaving mid-recovery is a way out of it, not a way to skip it.
     setRecovering(false);
   }, []);
 
-  const deleteAccount = useCallback(async (password: string) => {
+  const deleteAccount = useCallback(async (
+    password: string | null,
+    before?: () => Promise<void>,
+  ) => {
     const client = supabase();
     const { data } = await client.auth.getSession();
-    const email = data.session?.user.email;
-    if (!email) throw new Error("Session expirée — reconnectez-vous.");
+    const user = data.session?.user;
+    if (!user) throw new Error("Session expirée — reconnectez-vous.");
 
-    // Proof it is really them, and not a phone left on a table.
-    const { error: refused } = await client.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (refused) throw new Error(translate(refused.message));
+    /* Proof it is really them, and not a phone left on a table.
+       ====================================================================
+       Un compte ouvert par Apple, Google ou Facebook **n'a pas de mot de
+       passe** à redemander. La preuve passe alors par la même porte que
+       l'inscription : on rouvre la feuille du fournisseur, et c'est elle qui
+       répond de l'identité. Refermer cette feuille annule la suppression
+       plutôt que de la faire échouer — on ne perd pas son compte pour avoir
+       hésité. */
+    if (password === null) {
+      const social = (user.identities ?? [])
+        .map((one) => one.provider)
+        .find(
+          (one): one is SocialProvider =>
+            one === "apple" || one === "google" || one === "facebook",
+        );
+      if (!social) {
+        throw new Error("Impossible de vérifier votre identité.");
+      }
+      if ((await signInWith(social)) === "cancelled") return "cancelled";
+    } else {
+      const email = user.email;
+      if (!email) throw new Error("Session expirée — reconnectez-vous.");
+      const { error: refused } = await client.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (refused) throw new Error(translate(refused.message));
+    }
+
+    /* L'identité est prouvée : ce qui suit n'est plus annulable, et c'est
+       maintenant seulement qu'on touche à quoi que ce soit. */
+    await before?.();
 
     const { error } = await client.rpc("delete_own_account");
     if (error) throw new Error(translate(error.message));
@@ -287,6 +295,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Locally, and on purpose: the account no longer exists, so a server-side
     // sign-out would be answered by a session that is already void.
     await client.auth.signOut({ scope: "local" });
+    return "deleted";
   }, []);
 
   const changePassword = useCallback(async (current: string, next: string) => {
@@ -336,8 +345,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       deleteAccount,
       changePassword,
-      handle,
-      rename,
       sendReset,
       recovering,
       setPassword,
@@ -349,8 +356,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       deleteAccount,
       changePassword,
-      handle,
-      rename,
       sendReset,
       recovering,
       setPassword,
@@ -368,7 +373,13 @@ export function useAuth(): AuthContextValue {
 
 function toAccount(session: Session | null): Account | null {
   if (!session?.user) return null;
-  return { id: session.user.id, email: session.user.email ?? "" };
+  const providers = (session.user.identities ?? []).map((one) => one.provider);
+  return {
+    id: session.user.id,
+    email: session.user.email ?? "",
+    hasPassword: providers.includes("email"),
+    providers,
+  };
 }
 
 /**
@@ -391,12 +402,6 @@ function translate(message: string): string {
   }
   if (said.includes("is invalid")) {
     return "Cette adresse est refusée. Vérifiez-la, ou essayez-en une autre.";
-  }
-  if (said.includes("profiles_handle_unique") || said.includes("duplicate key")) {
-    return "Ce pseudonyme est déjà pris.";
-  }
-  if (said.includes("profiles_handle_shape")) {
-    return "Ce pseudonyme n'a pas une forme acceptée.";
   }
   if (said.includes("new password should be different")) {
     return "Choisissez un mot de passe différent de l'ancien.";

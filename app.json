@@ -11,6 +11,7 @@
     "ios": {
       "bundleIdentifier": "com.mapshistory.app",
       "supportsTablet": true,
+      "usesAppleSignIn": true,
       "config": {
         "usesNonExemptEncryption": false
       }
@@ -28,6 +29,8 @@
     "plugins": [
       "@maplibre/maplibre-react-native",
       "expo-status-bar",
+      "expo-apple-authentication",
+      "expo-web-browser",
       [
         "expo-image-picker",
         {
