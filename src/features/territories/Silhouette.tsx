@@ -53,7 +53,7 @@ export function Silhouette({ shape, size }: SilhouetteProps) {
             left: band.left * size,
             width: Math.max(band.width * size, 1),
             height,
-            backgroundColor: palette.bindingPale,
+            backgroundColor: palette.ink,
           }}
         />
       ))}

@@ -20,13 +20,6 @@ import { space, type } from "../../theme/tokens";
 
 const BANNER = require("../../../assets/banniere_etudier.png");
 
-/** Les trois scènes, une par matière à réviser. */
-const FONDS = {
-  events: require("../../../assets/fond_bouton_evenements.png"),
-  characters: require("../../../assets/fond_bouton_personnages.png"),
-  territories: require("../../../assets/fond_bouton_territoires.png"),
-};
-
 /**
  * Les faces que la carte présente, et l'ordre où elle les présente.
  *
@@ -196,7 +189,7 @@ export function StudySetupDialog({
           <>
             <AimButton
               label="Événements"
-              background={FONDS.events}
+              dark
               chosen={setup.aims.includes("events")}
               dimmed={studyingWorld}
               onPress={() =>
@@ -205,7 +198,7 @@ export function StudySetupDialog({
             />
             <AimButton
               label="Personnages"
-              background={FONDS.characters}
+              dark
               chosen={setup.aims.includes("characters")}
               dimmed={studyingWorld}
               onPress={() =>
@@ -217,7 +210,7 @@ export function StudySetupDialog({
             />
             <AimButton
               label="Territoires"
-              background={FONDS.territories}
+              dark
               chosen={studyingWorld}
               onPress={() =>
                 setSetup((one) => ({

@@ -85,39 +85,34 @@ export const palette = {
    */
   border: "#F1DFB9",
 
-  /** Sepia printing ink, from heavy plate lines to faded engraving. */
-  ink: "#4A3927",
   /**
-   * Le cuir d'une reliure : l'aplat de la porte qui mène à la bibliothèque.
+   * L'encre, et elle est noire.
    *
-   * Un brun chaud, plus clair et plus roux que l'encre du texte — `#543B27`
-   * contre `#4A3927`. L'écart est petit et c'est voulu : cette couleur est
-   * de la même famille que l'encre dont l'atlas est imprimé, elle n'est
-   * simplement pas celle avec laquelle on écrit.
+   * Elle fut un sépia — `#4A3927` —, de la famille des bruns dont le reste de
+   * la planche est imprimé. Le noir est venu avec le bicorne du logo, et il
+   * change ce que l'application dit d'elle-même : le papier reste crème, les
+   * lavis restent chauds, mais ce qu'on y écrit est franc. Le contraste passe
+   * de 10,2 à 19,5 sur la surface.
    *
-   * **Pleine, et c'est un retour en arrière assumé.** Elle a été voilée un
-   * temps, pour qu'elle pèse moins en tête de liste. Le voile traitait le
-   * symptôme : ce qui gênait n'était pas qu'elle soit sombre, c'est qu'elle
-   * était le seul grand bloc de la page à ne porter aucune ombre — collée
-   * au papier là où chaque rangée y est posée. Elle a maintenant l'ombre
-   * des autres cartes, et un objet qui porte une ombre ne se voit pas au
-   * travers : la densité lui est rendue.
+   * Elle sert soixante-quatorze fois comme couleur de texte et sept fois
+   * comme aplat — c'est la même valeur qui fait le corps de texte et le fond
+   * des boutons pleins, et c'est voulu : un bouton plein est de l'encre
+   * étalée.
    */
-  binding: "#543B27",
-  /** Son bord taillé : 1,33 contre l'aplat, la proportion de `waxDeep`. */
-  bindingDeep: "#3D2919",
-  /**
-   * Le cuir usé des portes « Rechercher », sous leur fond gravé.
+  ink: "#000000",  /**
+   * Les deux crans sous l'encre, en gris et non plus en brun.
    *
-   * Prise sur l'image elle-même, dont la couleur moyenne est `#AC855E` : le
-   * dessous et le dessus sont à un cheveu l'un de l'autre, et le bouton n'a
-   * plus de couture là où l'image s'arrête. La reliure sombre qu'il portait
-   * avant se voyait au moindre point que le fond ne couvrait pas, et on
-   * lisait deux bruns là où il n'y a qu'un objet.
+   * Ils étaient `#6E5940` et `#8C7A5F`, des sépias assortis à l'encre qu'ils
+   * suivaient. Sous une encre noire, un texte secondaire brun se lit comme
+   * une autre voix plutôt que comme la même en retrait.
+   *
+   * **Les valeurs sont choisies pour ne rien changer à la hiérarchie** : sur
+   * la surface, le gris doux pèse 6,20 là où le brun pesait 6,15, et le gris
+   * pâle 3,81 là où le brun pesait 3,84. Ce qui était au second plan y reste
+   * exactement.
    */
-  bindingPale: "#A7835E",
-  inkSoft: "#6E5940",
-  inkFaint: "#8C7A5F",
+  inkSoft: "#5C5C5C",
+  inkFaint: "#7D7D7D",
 
   /** Hand-applied washes over the base colour. */
   forest: "#DDD0A4",

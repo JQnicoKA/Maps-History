@@ -133,6 +133,15 @@ export function SeekRow({ label, detail, onPress }: SeekRowProps) {
             resizeMode="cover"
           />
         ) : null}
+
+        {/* Un voile sur la gravure.
+            Elle est claire là où les mots tombent — `#C58F49` en moyenne dans
+            le tiers gauche —, et le blanc n'y pesait que 2,84 contre 1, tombant
+            à 1,98 sur ses pixels les plus clairs : sous le seuil des objets
+            graphiques, sans parler de texte. Un tiers de noir le porte à 5,96,
+            et 4,45 au pire, sans éteindre le dessin — le fond devient
+            `#805D2F`, un cuir plus profond plutôt qu'une tache sombre. */}
+        <View style={styles.seekVeil} pointerEvents="none" />
       </View>
 
       <Lens />
@@ -502,7 +511,7 @@ const styles = StyleSheet.create({
        a été essayé et il n'a pas plu : cette porte n'est pas une rangée de
        plus, et son coin plus ouvert est ce qui le dit. */
     borderRadius: radius.lg,
-    backgroundColor: palette.bindingPale,
+    backgroundColor: palette.ink,
     /**
      * Sans bord, et c'est l'ombre qui tient la porte.
      *
@@ -601,8 +610,17 @@ const styles = StyleSheet.create({
     backgroundColor: palette.surfaceRaised,
     transform: [{ rotate: "45deg" }],
   },
+  seekVeil: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#000000",
+    opacity: 0.15,
+  },
   seekText: { flex: 1, gap: 2 },
-  /** Blanc sur le cuir : 10,3:1, et le mot porte le poids de la porte. */
+  /** Blanc, et le mot porte le poids de la porte. */
   seekLabel: { fontSize: 15, fontWeight: "700", color: palette.surfaceRaised },
   /**
    * La seconde ligne, voilée plutôt qu'en encre pâle.

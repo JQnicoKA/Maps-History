@@ -23,15 +23,14 @@ export type StudyButtonProps = {
  * interroger dessus. Entre eux, la pastille des filtres, qui ne fait rien mais
  * dit ce qu'on regarde.
  *
- * **Deux verbes, deux bruns**, et ils se distinguent : la cire pour le crayon,
- * la reliure pour le mortier — le même `binding` que le fond des boutons
- * « Rechercher un événement », qui est le brun des choses qu'on ouvre pour
- * aller chercher quelque chose dedans. La forme, l'ombre et le glyphe blanc
- * restent ceux du crayon : ce qui les rapproche est ce qu'ils sont — deux
- * disques posés sur la planche —, ce qui les sépare est ce qu'ils font.
+ * **Deux verbes, deux couleurs**, et ils se distinguent : la cire pour le
+ * crayon, l'encre pour le mortier. Elle fut un brun de reliure, `#543B27`,
+ * puis noire avec tous les aplats de l'application. La forme, l'ombre et le
+ * glyphe blanc restent ceux du crayon : ce qui les rapproche est ce qu'ils
+ * sont — deux disques posés sur la planche —, ce qui les sépare est ce
+ * qu'ils font.
  *
- * Le glyphe blanc pèse 10,3:1 sur cette reliure, contre 7,6 sur la cire : le
- * brun est plus sombre, le mortier s'y lit donc mieux encore.
+ * Le glyphe blanc pèse 21:1 sur le noir, contre 7,6 sur la cire.
  */
 export function StudyButton({ onStart }: StudyButtonProps) {
   const [open, setOpen] = useState(false);
@@ -58,7 +57,7 @@ export function StudyButton({ onStart }: StudyButtonProps) {
 
 const styles = StyleSheet.create({
   disc: {
-    backgroundColor: palette.binding,
+    backgroundColor: palette.ink,
     borderWidth: 0,
     shadowOpacity: 0.38,
     shadowRadius: 13,

@@ -241,8 +241,16 @@ const styles = StyleSheet.create({
   google: { backgroundColor: "#FA4335" },
   /** Le bleu de Facebook, qui est le sien et non celui de l'atlas. */
   facebook: { backgroundColor: "#1877F2" },
-  /** L'encre de l'atlas : la seule porte qui soit à nous. */
-  email: { backgroundColor: palette.ink },
+  /**
+   * Le gris de l'atlas : la seule porte qui soit à nous.
+   *
+   * **Grise et non noire**, depuis que l'encre l'est : la feuille d'Apple,
+   * juste au-dessus, est noire elle aussi, et deux portes de la même couleur
+   * à deux lignes d'écart se lisaient comme une seule. Le gris doux en est
+   * séparé de 3,1 contre 1 — assez pour qu'on voie deux objets — et porte le
+   * blanc à 6,7.
+   */
+  email: { backgroundColor: palette.inkSoft },
   dim: { opacity: 0.7 },
   waiting: { opacity: 0.5 },
   label: { ...type.body, fontWeight: "600" },
