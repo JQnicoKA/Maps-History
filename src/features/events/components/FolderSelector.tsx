@@ -10,6 +10,7 @@ import {
 
 import { Chip, InkButton, InkField, Sheet } from "../../../components/ui";
 import { useEvents } from "../EventsProvider";
+import { matching, propre, same } from "../folderNames";
 import { palette } from "../../../theme/palette";
 import { BACKDROP, radius, shadow, space, type } from "../../../theme/tokens";
 
@@ -75,44 +76,6 @@ export type FolderSelectorProps = {
   /** Ce que dit la pastille d'ouverture avant qu'on ait rien choisi. */
   emptyLabel?: string;
 };
-
-/**
- * Les accents retirés, pour comparer et pour chercher.
- *
- * Écrit à la main plutôt que par `normalize("NFD")` et une classe Unicode : ce
- * code tourne sur Hermes, et une table de sept lettres françaises est sûre là
- * où les échappements de propriété Unicode sont une pari. Ce qu'elle couvre
- * est exactement ce qu'un nom de classeur français contient.
- */
-const PLATS: Record<string, string> = {
-  à: "a", â: "a", ä: "a",
-  é: "e", è: "e", ê: "e", ë: "e",
-  î: "i", ï: "i",
-  ô: "o", ö: "o",
-  ù: "u", û: "u", ü: "u",
-  ç: "c",
-  œ: "oe", æ: "ae",
-};
-
-const plat = (said: string) =>
-  said
-    .toLowerCase()
-    .split("")
-    .map((lettre) => PLATS[lettre] ?? lettre)
-    .join("");
-
-/**
- * Le même nom, à la casse et aux accents près.
- *
- * Le seul vrai défaut du classement par étiquette : « Carolingiens » tapé deux
- * fois différemment ferait deux sujets là où il y en a un. On s'en garde en
- * ramenant ce qui est tapé à ce qui est déjà écrit — et non pas en interdisant
- * de taper, ce qui empêcherait d'en nommer un nouveau.
- */
-const same = (a: string, b: string) => plat(a) === plat(b);
-
-/** Les espaces en trop ôtés : « Guerres  de religion » n'est pas un nom neuf. */
-const propre = (said: string) => said.trim().replace(/\s+/g, " ");
 
 /**
  * Au-delà de combien de classeurs le clavier s'ouvre tout seul.
@@ -192,8 +155,7 @@ export function FolderSelector({
   const all = [...known, ...value.filter((one) => !known.includes(one))];
 
   const wanted = propre(typed);
-  const found =
-    wanted === "" ? all : all.filter((name) => plat(name).includes(plat(wanted)));
+  const found = matching(all, typed);
 
   /**
    * La liste tamisée, dans l'ordre demandé.

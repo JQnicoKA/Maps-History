@@ -27,8 +27,15 @@ export type Kind = "event" | "character" | "tree";
  * Deliberately not an `EventSummary`: it is somebody else's row, it carries
  * things a summary never has — a count of copies, whether this
  * reader already took it — and it lacks things a summary always has, like the
- * folders it is filed under, which are the owner's way of thinking and not
- * ours to display. Two shapes, because they are two different objects.
+ * folders it is filed under. Two shapes, because they are two different
+ * objects.
+ *
+ * **Les classeurs manquent par place et non par pudeur**, et la ligne de ce
+ * commentaire qui disait le contraire — « the owner's way of thinking and not
+ * ours to display » — n'était déjà plus vraie quand elle a été écrite deux
+ * fois : la fiche les dit sous « Rangé dans », par `filing`, et le filtre du
+ * panneau choisit désormais parmi eux. Ce qu'une ligne de liste n'a pas, c'est
+ * la place de les porter, et `search_events` ne les rend donc pas.
  */
 export type SharedThing = {
   id: string;
@@ -204,6 +211,23 @@ export type Search = {
    */
   near: { longitude: number; latitude: number } | null;
   withinMetres: number | null;
+  /**
+   * Les classeurs retenus, par leur nom, ou aucun.
+   *
+   * Des noms et non des identifiants : un classeur n'est qu'une étiquette
+   * écrite sur ce qui s'y range. La collection les relève en parcourant ce
+   * qu'elle tient en mémoire ; la bibliothèque, qui ne tient qu'une page de
+   * vingt-quatre, les demande à `library_folders`.
+   *
+   * Plusieurs valent « l'un **ou** l'autre », comme dans la collection : on
+   * cherche ce qui touche à l'un de ces sujets, non ce qui touche à tous — ce
+   * que la base écrit `&&`, le chevauchement de deux tableaux.
+   *
+   * Un tableau vide ne resserre rien, et c'est ce qu'il doit faire : le
+   * panneau s'ouvre sans classeur choisi, et lire cela comme « aucun classeur
+   * ne convient » viderait la liste d'entrée.
+   */
+  folders: string[];
   sort: Ordering;
 };
 
@@ -213,6 +237,7 @@ export const ANYTHING: Search = {
   span: null,
   near: null,
   withinMetres: null,
+  folders: [],
   sort: "stars",
 };
 

@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -16,6 +17,7 @@ import {
   StyleSheet,
   Text,
   View,
+  type ImageSourcePropType,
 } from "react-native";
 
 import * as api from "./api";
@@ -24,6 +26,7 @@ import { fetchStale, refreshFromLibrary, type Stale } from "./updates";
 import { LOOKS } from "./looks";
 import { SharedCard } from "./SharedCard";
 import { windowed } from "./trail";
+import { matching } from "../events/folderNames";
 import { ThingRow } from "./ThingRow";
 import {
   ANYTHING,
@@ -77,6 +80,88 @@ const BANNER = require("../../../assets/banniere_bibliotheque.png");
 const SORT_ICON = require("../../../assets/icons/sort.png");
 const FILTER_ICON = require("../../../assets/icons/filter.png");
 const ERA_ICON = require("../../../assets/icons/era.png");
+/** Le même dossier que « Mes classeurs », puisque c'est la même question. */
+const FOLDERS_ICON = require("../../../assets/icons/folders.png");
+
+/**
+ * Quelle carte est posée sur le panneau.
+ *
+ * Nommé, et non plus écrit dans le `useState` : il y en a cinq, dont deux
+ * sont des sous-cartes, et l'en-tête doit savoir dessiner chacune.
+ */
+type Sifting = "sort" | "filters" | "era" | "folders" | "folderSort";
+
+/**
+ * Le glyphe et le titre de chaque face, par son nom.
+ *
+ * Une table plutôt qu'une chaîne de ternaires dans le JSX : à trois faces
+ * elle se lisait encore, à cinq elle demandait d'être lue deux fois pour
+ * savoir laquelle tombe dans le `else`. Et si une face s'ajoutait sans son
+ * glyphe, c'est ici que le compilateur le dirait.
+ */
+const FACES: Record<Sifting, { icon: ImageSourcePropType; title: string }> = {
+  sort: { icon: SORT_ICON, title: "Trier" },
+  filters: { icon: FILTER_ICON, title: "Filtres" },
+  era: { icon: ERA_ICON, title: "Époque" },
+  /* « Classeurs », et non « Mes classeurs » : ce ne sont pas les miens. Ce
+     sont ceux sous lesquels la bibliothèque entière range ce qu'elle tient,
+     et quelques-uns ne sortiront jamais de la collection d'un inconnu. */
+  folders: { icon: FOLDERS_ICON, title: "Classeurs" },
+  folderSort: { icon: SORT_ICON, title: "Trier" },
+};
+
+/**
+ * Les trois façons de ranger la liste des classeurs.
+ *
+ * Les mêmes que dans « Mes classeurs » — c'est le même geste au même endroit
+ * de l'écran, et un lecteur qui l'a appris une fois ne doit pas l'apprendre
+ * deux. Dites autrement, pourtant : là-bas un classeur pèse ce qu'on y a mis
+ * soi-même, ici ce que la bibliothèque entière y a mis. « Le plus utilisé »
+ * ne désigne donc pas le même classeur selon la liste, et la phrase sous le
+ * nom est tout ce qui le dit.
+ */
+const FILING_SORTS: {
+  value: "name" | "recent" | "used";
+  label: string;
+  /** Dit sur la pastille, où il n'y a la place que d'un mot. */
+  said: string;
+  /** Et pourquoi on le voudrait, sur la carte où il y a la place de le dire. */
+  why: string;
+  mark: string;
+}[] = [
+  {
+    value: "name",
+    label: "Ordre alphabétique",
+    said: "A→Z",
+    why: "De A à Z, sans égard pour ce qu'ils contiennent.",
+    mark: "A",
+  },
+  {
+    value: "recent",
+    label: "Les plus récents",
+    said: "récents",
+    why: "Ceux où la bibliothèque a rangé quelque chose en dernier.",
+    mark: "◷",
+  },
+  {
+    value: "used",
+    label: "Les plus garnis",
+    said: "garnis",
+    why: "Ceux qui rangent le plus d'entrées de la bibliothèque.",
+    mark: "≡",
+  },
+];
+
+type Filing = (typeof FILING_SORTS)[number]["value"];
+
+/**
+ * Au-delà de combien de classeurs le clavier s'ouvre tout seul.
+ *
+ * Le même nombre que dans « Mes classeurs », et pour la même raison :
+ * tamiser trois pastilles ne vaut pas un clavier qui couvre la carte. Passé
+ * une poignée, chercher devient le geste probable.
+ */
+const ASSEZ_POUR_CHERCHER = 8;
 import { BACKDROP, radius, shadow, space, type } from "../../theme/tokens";
 
 /** Where a rising card starts from: below the panel, whatever its height. */
@@ -359,9 +444,21 @@ export function Catalogue({
    * pas la taille mais le mouvement — on a touché une ligne, et c'est le
    * cadre entier qui a bougé. Une seconde carte ne bouge pas : elle arrive.
    */
-  const [sifting, setSifting] = useState<"sort" | "filters" | "era" | null>(
-    null,
-  );
+  const [sifting, setSifting] = useState<Sifting | null>(null);
+  /**
+   * Les classeurs de la bibliothèque : tous ceux sous lesquels elle range ce
+   * genre, et ce que chacun pèse.
+   *
+   * Demandés à l'ouverture du panneau et gardés — ce sont les sujets dont la
+   * bibliothèque parle, et ils ne bougent pas parce qu'on tape un mot. C'est
+   * ce qui sépare cette liste de celle de « Mes classeurs » : là-bas elle se
+   * relève dans la collection, qui est en mémoire ; ici elle se demande, la
+   * bibliothèque n'ayant jamais plus d'une page sous la main.
+   */
+  const [shelf, setShelf] = useState<api.LibraryFolder[]>([]);
+  /** Ce qui est tapé dans la carte des classeurs : un tamis, rien de plus. */
+  const [sieving, setSieving] = useState("");
+  const [filing, setFiling] = useState<Filing>("name");
   /**
    * A genealogy being looked at, drawn over the panel.
    *
@@ -522,6 +619,32 @@ export function Catalogue({
     };
   }, [visible]);
 
+  /**
+   * Les classeurs de la bibliothèque, relevés à l'ouverture.
+   *
+   * Par genre, puisque c'est un onglet à la fois qu'on filtre, et parce que
+   * les arbres n'en ont aucun : `api.folders` le sait et ne demande rien
+   * dans ce cas.
+   */
+  useEffect(() => {
+    if (!visible) return;
+    let alive = true;
+    void api
+      .folders(kind)
+      .then((all) => {
+        if (alive) setShelf(all);
+      })
+      .catch(() => {
+        // Muette, comme la relecture des exemplaires en retard juste
+        // au-dessus : sans cette liste la carte des classeurs est vide, ce
+        // qui est une carte vide et non une panne. Le reste du panneau
+        // cherche exactement comme avant.
+      });
+    return () => {
+      alive = false;
+    };
+  }, [visible, kind]);
+
   /** L'exemplaire en retard de ce qu'on lit, s'il y en a un. */
   const stale =
     reading === null
@@ -597,9 +720,75 @@ export function Catalogue({
    */
   const era = search.span !== null && search.at !== null;
   const region = search.near !== null && search.withinMetres !== null;
-  const narrowed = (era ? 1 : 0) + (region ? 1 : 0);
+  /** Un classeur retenu suffit, et dix n'en font pas dix : un filtre est un. */
+  const filed = search.folders.length > 0;
+  const narrowed = (filed ? 1 : 0) + (era ? 1 : 0) + (region ? 1 : 0);
   /** The date in the wheels, which stand on today when nothing was said. */
   const when = search.at ?? { year: new Date().getFullYear() };
+  /**
+   * Les classeurs tamisés par ce qui est tapé, dans l'ordre demandé.
+   *
+   * Le nom départage toujours, quel que soit le tri : sans lui, deux
+   * classeurs à égalité de poids changeraient de place d'un rendu à l'autre,
+   * et une liste qui bouge toute seule sous le doigt est une liste qu'on
+   * croit cassée. C'est la règle de « Mes classeurs », et pour la même
+   * raison.
+   *
+   * Un classeur retenu que la bibliothèque ne connaîtrait plus — le dernier
+   * événement qui le portait a été retiré pendant qu'on cherchait — reste
+   * dans la liste, choisi : il filtre encore, donc le panneau doit offrir de
+   * le décocher. Rien d'autre ne le permettrait.
+   */
+  const shelved = useMemo(() => {
+    const names = [
+      ...shelf.map((one) => one.name),
+      ...search.folders.filter(
+        (name) => !shelf.some((one) => one.name === name),
+      ),
+    ];
+    const found = matching(names, sieving);
+    const byName = (a: string, b: string) => a.localeCompare(b);
+    if (filing === "name") return [...found].sort(byName);
+    const weigh = (name: string) =>
+      shelf.find((one) => one.name === name) ?? null;
+    if (filing === "used") {
+      return [...found].sort(
+        (a, b) => (weigh(b)?.uses ?? 0) - (weigh(a)?.uses ?? 0) || byName(a, b),
+      );
+    }
+    /* Les dates sont comparées en nombres et non en chaînes. Les deux
+       marchent tant que la base rend le même format avec le même décalage
+       horaire, ce qu'elle fait ; `Date.parse` ne suppose rien de tout cela.
+       Un classeur sans date compte pour maintenant, ce qui est vrai de
+       celui qu'on vient de décrocher de la liste. */
+    const now = Date.now();
+    const seen = (name: string) => {
+      const at = weigh(name)?.lastAt ?? null;
+      return at === null ? now : Date.parse(at);
+    };
+    return [...found].sort((a, b) => seen(b) - seen(a) || byName(a, b));
+  }, [shelf, search.folders, sieving, filing]);
+
+  /**
+   * Retenir un classeur, ou le lâcher.
+   *
+   * Écrit dans la recherche sur-le-champ, comme les roues de l'époque : la
+   * liste derrière la carte se refait sous les yeux, ce qui est la meilleure
+   * réponse à « est-ce le bon classeur ».
+   */
+  const toggleFolder = (name: string) =>
+    setSearch((was) => ({
+      ...was,
+      folders: was.folders.includes(name)
+        ? was.folders.filter((one) => one !== name)
+        : [...was.folders, name],
+    }));
+
+  /** Ce que la rangée fermée dit : les classeurs retenus, ou qu'il n'y en a pas. */
+  const filedSaid = filed
+    ? search.folders.join(" · ")
+    : "Tous les classeurs";
+
   /** And the width, named — "± 1 semaine" — for the closed row. */
   const spanSaid =
     widthsFor(when).find((one) => one.years === search.span)?.label ?? "";
@@ -643,6 +832,31 @@ export function Catalogue({
       setSifting("filters");
       return;
     }
+    /* Le tri des classeurs est une sous-carte de la leur : le quitter y
+       rend, et non au panneau. Rien à rétablir — on y est entré par un
+       bouton, et en sortir par la croix laisse le tri qu'on vient de
+       choisir, ce qui est ce qu'on voulait en le choisissant. */
+    if (sifting === "folderSort") {
+      setSifting("folders");
+      return;
+    }
+    /**
+     * Les classeurs remontent aux filtres, et n'y rendent rien.
+     *
+     * C'est ce qui les distingue de l'époque juste au-dessus. S'en aller de
+     * là-bas défait la largeur par défaut que l'ouverture avait posée —
+     * une modification qu'on n'avait pas demandée, donc une modification à
+     * pouvoir refuser. Ouvrir celle-ci ne touche à rien : chaque pastille
+     * cochée tombe sur la liste derrière, qu'on la voit se refaire, et il
+     * n'y a jamais eu d'état antérieur à garder.
+     *
+     * Le tamis, lui, s'oublie : il n'a filtré que cette carte-ci.
+     */
+    if (sifting === "folders") {
+      setSieving("");
+      setSifting("filters");
+      return;
+    }
     setEraWas(null);
     setSifting(null);
   };
@@ -655,6 +869,7 @@ export function Catalogue({
    */
   const toFilters = () => {
     setEraWas(null);
+    setSieving("");
     setSifting("filters");
   };
 
@@ -1216,23 +1431,13 @@ export function Catalogue({
                   <View style={styles.cardHeading}>
                     <View style={styles.cardTitleRow}>
                       <Image
-                        source={
-                          sifting === "sort"
-                            ? SORT_ICON
-                            : sifting === "era"
-                              ? ERA_ICON
-                              : FILTER_ICON
-                        }
+                        source={FACES[sifting].icon}
                         style={styles.cardIcon}
                         resizeMode="contain"
                         accessible={false}
                       />
                       <Text style={styles.cardTitle}>
-                        {sifting === "sort"
-                          ? "Trier"
-                          : sifting === "era"
-                            ? "Époque"
-                            : "Filtres"}
+                        {FACES[sifting].title}
                       </Text>
                     </View>
                     <View style={styles.cardRule} />
@@ -1254,7 +1459,149 @@ export function Catalogue({
                   </Pressable>
                 </View>
 
-                {sifting === "era" ? (
+                {sifting === "folders" ? (
+                  <View style={styles.cardBody}>
+                    {/* Sans étiquette : le titre de la carte dit déjà de quoi
+                        il s'agit, et la seule chose à faire ici est de taper.
+                        Le clavier ne prend la main qu'au-delà d'une poignée
+                        de classeurs — tamiser trois pastilles ne vaut pas un
+                        clavier, à ce compte-là on les lit. */}
+                    <InkField
+                      value={sieving}
+                      onChangeText={setSieving}
+                      placeholder="Rechercher un classeur..."
+                      autoFocus={shelf.length > ASSEZ_POUR_CHERCHER}
+                      autoCorrect={false}
+                      returnKeyType="search"
+                    />
+
+                    {/* Au-delà de deux : trier une liste de deux noms est une
+                        question qu'on ne pose pas. La même règle qu'en face,
+                        dans « Mes classeurs ». */}
+                    {shelf.length > 2 ? (
+                      <View style={styles.tools}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="Trier les classeurs"
+                          onPress={() => setSifting("folderSort")}
+                          style={({ pressed }) => [
+                            styles.tool,
+                            pressed && styles.dim,
+                          ]}
+                        >
+                          <Text style={styles.toolLabel}>
+                            Tri ·{" "}
+                            {
+                              FILING_SORTS.find((one) => one.value === filing)
+                                ?.said
+                            }
+                          </Text>
+                          <Text style={styles.toolMore}>⌄</Text>
+                        </Pressable>
+                      </View>
+                    ) : null}
+
+                    {/* De hauteur fixe, et c'est tout l'objet de ce cadre :
+                        la liste perd une rangée de pastilles à chaque lettre
+                        tapée, et sans lui la carte se resserrerait sous les
+                        doigts. C'est exactement le reproche qui a sorti les
+                        roues de l'époque d'ici — on touche une ligne, et le
+                        cadre entier bouge. */}
+                    <View style={styles.shelf}>
+                      {shelved.length > 0 ? (
+                        <ScrollView
+                          keyboardShouldPersistTaps="handled"
+                          contentContainerStyle={styles.siftRow}
+                        >
+                          {shelved.map((name) => (
+                            <Chip
+                              key={name}
+                              label={name}
+                              selected={search.folders.includes(name)}
+                              tone="wax"
+                              onPress={() => toggleFolder(name)}
+                            />
+                          ))}
+                        </ScrollView>
+                      ) : (
+                        <Text style={styles.nothing}>
+                          {shelf.length === 0
+                            ? "La bibliothèque n'a encore rangé ce genre sous aucun classeur."
+                            : "Rien de tel parmi les classeurs de la bibliothèque."}
+                        </Text>
+                      )}
+                    </View>
+
+                    {/* La mise des pieds de l'application, et celle de la
+                        carte d'époque : la sortie à gauche, ce qu'on est venu
+                        faire à droite. « Valider » ne valide rien non plus —
+                        chaque pastille a déjà filtré la liste derrière. Il dit
+                        « j'en ai fini ». */}
+                    <View style={styles.siftActions}>
+                      <InkButton
+                        label="Tous les classeurs"
+                        variant="tonal"
+                        grow
+                        onPress={() => {
+                          setSearch((was) => ({ ...was, folders: [] }));
+                          toFilters();
+                        }}
+                      />
+                      <InkButton
+                        label="Valider"
+                        variant="solid"
+                        grow
+                        onPress={toFilters}
+                      />
+                    </View>
+                  </View>
+                ) : sifting === "folderSort" ? (
+                  <View style={styles.cardBody}>
+                    {FILING_SORTS.map((one) => {
+                      const chosen = filing === one.value;
+                      return (
+                        <Pressable
+                          key={one.value}
+                          accessibilityRole="radio"
+                          accessibilityState={{ selected: chosen }}
+                          onPress={() => {
+                            setFiling(one.value);
+                            setSifting("folders");
+                          }}
+                          style={({ pressed }) => [
+                            styles.choice,
+                            chosen && styles.choiceOn,
+                            pressed && styles.dim,
+                          ]}
+                        >
+                          <Text
+                            style={[styles.choiceMark, chosen && styles.onWax]}
+                          >
+                            {one.mark}
+                          </Text>
+                          <View style={styles.choiceText}>
+                            <Text
+                              style={[
+                                styles.choiceTitle,
+                                chosen && styles.onWax,
+                              ]}
+                            >
+                              {one.label}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.choiceWhy,
+                                chosen && styles.onWaxSoft,
+                              ]}
+                            >
+                              {one.why}
+                            </Text>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ) : sifting === "era" ? (
                   /* No scrolling container: the wheels are a virtualized
                      list, and React Native refuses to window one inside a
                      scroll view of the same direction. */
@@ -1371,6 +1718,29 @@ export function Catalogue({
                      vaut encore, puisque les roues sont parties dans leur
                      propre carte et non dans un panneau à elles. */
                   <View style={styles.cardBody}>
+                    {/* Le classeur d'abord : c'est le **sujet**, tandis que
+                        l'époque et la région sont des circonstances. Un
+                        lecteur de la bibliothèque y vient pour les
+                        Mérovingiens avant d'y venir pour le VIe siècle.
+
+                        Absent sur l'onglet des arbres, et pas par timidité :
+                        un arbre n'a pas de classeur du tout — voir
+                        `api.FILES`. Une rangée qui dirait « Tous les
+                        classeurs » devant une carte qui n'en montrerait aucun
+                        serait une porte sur un mur. */}
+                    {api.FILES[kind] ? (
+                      <>
+                        <Text style={styles.siftLegend}>Classeur</Text>
+                        <Row
+                          said={filedSaid}
+                          lit={filed}
+                          onPress={() => setSifting("folders")}
+                        />
+
+                        <View style={styles.siftRule} />
+                      </>
+                    ) : null}
+
                     <Text style={styles.siftLegend}>Époque</Text>
 
                     {/* Une rangée, et rien d'autre : le réglage s'ouvre dans
@@ -1919,6 +2289,15 @@ const styles = StyleSheet.create({
     color: palette.inkFaint,
   },
   siftRow: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+  /**
+   * Le cadre des pastilles de classeurs : une hauteur, et rien d'autre.
+   *
+   * Fixe et non plafonnée. Un plafond laisse la carte se resserrer dès que le
+   * tamis ôte une rangée, c'est-à-dire sous les doigts, à chaque lettre.
+   * Cent soixante points tiennent quatre rangées, soit plus de classeurs
+   * qu'une bibliothèque n'en a avant longtemps.
+   */
+  shelf: { height: 160 },
   siftAt: {
     ...type.body,
     fontWeight: "700",

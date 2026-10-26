@@ -52,6 +52,36 @@ const DOORS: Record<
   },
 };
 
+/**
+ * Lesquels des trois genres se rangent dans des classeurs.
+ *
+ * Les arbres n'en ont pas, et pas seulement par oubli : la colonne `folders`
+ * n'existe que sur `events` et `characters`. Un arbre n'est pas un fait qu'on
+ * classe par sujet, c'est une lignée — ce qui le situe est le nom qu'elle
+ * porte. Le panneau n'ouvre donc pas de carte de classeurs sur l'onglet des
+ * arbres, et surtout ne la demande pas à la base, qui n'aurait rien à rendre.
+ */
+export const FILES: Record<Kind, boolean> = {
+  event: true,
+  character: true,
+  tree: false,
+};
+
+/**
+ * Un classeur de la bibliothèque : son nom, son poids, sa dernière venue.
+ *
+ * Les deux nombres servent au tri de la carte — les plus utilisés, les plus
+ * récents — et ils arrivent de la base parce qu'ils ne se comptent pas ici :
+ * la collection les tire de ses propres événements, qu'elle a tous en
+ * mémoire, et la bibliothèque n'en tient qu'une page.
+ */
+export type LibraryFolder = {
+  name: string;
+  uses: number;
+  /** Quand on s'en est servi pour la dernière fois, ou null. */
+  lastAt: string | null;
+};
+
 /** Which photo bucket a kind's pictures live in — one, so far. */
 type Row = {
   id: string;
@@ -139,6 +169,23 @@ export async function search(
     near_lon: wanted.near?.longitude ?? null,
     near_lat: wanted.near?.latitude ?? null,
     within_m: wanted.near ? wanted.withinMetres : null,
+    /**
+     * Les classeurs retenus — et **la clé absente** pour qui n'en a pas.
+     *
+     * Non pas `filed: null`, ce qui serait l'air de rien : PostgREST choisit
+     * la fonction d'après l'ensemble des clés envoyées, et `search_trees`
+     * n'a pas ce paramètre. Une clé de trop ne vaut donc pas un argument
+     * ignoré, elle vaut « aucune fonction de ce nom ne prend ces
+     * arguments » — soit l'onglet des arbres en panne.
+     *
+     * Null plutôt qu'un tableau vide pour les deux autres. La porte traite
+     * les deux pareil — voir `search_events` —, mais dire « rien » quand il
+     * n'y a rien à dire évite d'envoyer un tableau vide par-dessus le réseau
+     * à chaque frappe.
+     */
+    ...(FILES[kind]
+      ? { filed: wanted.folders.length === 0 ? null : wanted.folders }
+      : {}),
     sort: wanted.sort,
     page_size: PAGE,
     after_rank: after?.rank ?? null,
@@ -146,6 +193,31 @@ export async function search(
   });
   if (error) throw new Error(error.message);
   return ((data ?? []) as Row[]).map(toThing);
+}
+
+/**
+ * Tous les classeurs sous lesquels la bibliothèque range ce genre.
+ *
+ * Demandée une fois à l'ouverture du panneau et non à chaque frappe : ce sont
+ * les sujets dont la bibliothèque parle, et ils ne changent pas parce qu'on
+ * tape un mot. Le tamis du champ de la carte travaille donc sur cette liste,
+ * en mémoire.
+ *
+ * Les gardes sont celles de `search_events`, posées dans la fonction : on ne
+ * relève que les classeurs de ce qui est visible. Un nom de classeur dit de
+ * quoi quelqu'un parle, donc il ne doit pas échapper à un blocage.
+ */
+export async function folders(kind: Kind): Promise<LibraryFolder[]> {
+  if (!FILES[kind]) return [];
+  const { data, error } = await supabase().rpc("library_folders", { kind });
+  if (error) throw new Error(error.message);
+  return (
+    (data ?? []) as { name: string; uses: number; last_at: string | null }[]
+  ).map((row) => ({
+    name: row.name,
+    uses: row.uses,
+    lastAt: row.last_at,
+  }));
 }
 
 /** One shared thing, whole, for the card that shows it before it is taken. */
