@@ -1,36 +1,40 @@
 import type { Character, MapFilters, EventSummary } from "./types";
 
 /**
- * Deux questions indépendantes, et il faut passer les deux.
+ * Ce que le filtre de la planche laisse passer.
  *
- * Le classement et l'importance. Le premier a été détaché en
- * `matchesFolders` le jour où les personnages ont pris les mêmes classeurs :
- * eux n'ont pas d'importance — elle appartient à ce qui s'est passé, pas à
- * qui l'a fait —, donc ils ne posent que la première des deux questions.
+ * **Deux questions indépendantes, et il faut passer les deux** : le classement
+ * et l'importance.
  *
- * Ce qui a disparu avec ce déménagement : `effectiveImportance`, qui retenait
- * la plus forte des importances d'un événement parmi les classeurs regardés.
- * Elle existait pour qu'un événement majeur d'un sujet ne soit pas dessiné
- * comme mineur d'un autre — un cas que la base n'a jamais contenu, et qu'aucun
- * appelant hors de son test n'a jamais demandé.
+ * Elles valaient d'abord pour les seuls événements, puis le classement a été
+ * détaché en `matchesFolders` le jour où les personnages ont pris les mêmes
+ * classeurs — eux n'avaient pas d'importance, qui appartenait alors à ce qui
+ * s'était passé et non à qui l'avait fait. **Ce n'est plus vrai** : un
+ * personnage porte désormais la sienne, choisie sur sa fiche. Les deux genres
+ * répondent donc aux deux questions, et il n'y a plus qu'un tamis.
+ *
+ * Ce qui a disparu avec le déménagement d'alors : `effectiveImportance`, qui
+ * retenait la plus forte des importances d'un événement parmi les classeurs
+ * regardés. Elle existait pour qu'un événement majeur d'un sujet ne soit pas
+ * dessiné comme mineur d'un autre — un cas que la base n'a jamais contenu, et
+ * qu'aucun appelant hors de son test n'a jamais demandé.
  */
 export function matchesFilters(
-  event: EventSummary,
+  filed: Pick<EventSummary | Character, "folders" | "importance">,
   filters: MapFilters,
 ): boolean {
   return (
-    matchesFolders(event, filters) &&
-    (filters.importance === null || event.importance === filters.importance)
+    matchesFolders(filed, filters) &&
+    (filters.importance === null || filed.importance === filters.importance)
   );
 }
 
 /**
- * Le tamis des classeurs seul, parce qu'il sert aux deux genres.
+ * Le tamis des classeurs seul.
  *
- * Un personnage se range sous les mêmes sujets qu'un événement, mais il n'a
- * pas d'importance — celle-ci appartient à ce qui s'est passé, pas à qui l'a
- * fait. Les deux questions sont donc séparées ici, et les personnages ne
- * posent que la première.
+ * Gardé à part de `matchesFilters` bien que les deux genres posent désormais
+ * les deux questions : un classement se lit sur n'importe quoi qui en porte,
+ * et séparer les deux rend chacune éprouvable sans l'autre.
  *
  * Les classeurs se réunissent : choisir deux sujets montre ce qui appartient
  * à l'un **ou** à l'autre. Aucun sujet choisi ne filtre rien — c'est « tout »

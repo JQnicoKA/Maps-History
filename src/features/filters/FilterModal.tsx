@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { Dialog, SegmentedControl, TICK, TickRow } from "../../components/ui";
+import { Dialog, SegmentedControl, TickRow } from "../../components/ui";
 import { useEvents } from "../events/EventsProvider";
 import { FolderSelector } from "../events/components/FolderSelector";
 import type { Importance } from "../events/types";
@@ -112,27 +112,6 @@ export function FilterModal({ visible, onClose }: FilterModalProps) {
               onToggle={() => setFilters({ events: !filters.events })}
             />
 
-            {/* Dépliée sous la case et seulement quand elle est cochée : un
-                cran d'importance réglé sur un calque rangé ne réglerait
-                rien, et un contrôle qui ne fait rien est un contrôle qu'on
-                croit cassé.
-
-                Indentée de la largeur de la case et de son écart, donc son
-                bord gauche tombe sur le mot « Événements » : c'est cet
-                alignement, et non un titre, qui dit à quoi elle appartient. */}
-            {filters.events ? (
-              <View style={styles.inside}>
-                <Text style={styles.note}>Importance</Text>
-                <SegmentedControl
-                  segments={IMPORTANCES}
-                  value={filters.importance ?? "all"}
-                  onChange={(choice) =>
-                    setFilters({ importance: choice === "all" ? null : choice })
-                  }
-                />
-              </View>
-            ) : null}
-
             <View style={styles.rule} />
 
             <TickRow
@@ -147,7 +126,11 @@ export function FilterModal({ visible, onClose }: FilterModalProps) {
                   : undefined
               }
               count={
-                filters.characters ? `${visibleCharacters.length}` : undefined
+                !filters.characters
+                  ? undefined
+                  : narrowed
+                    ? `${visibleCharacters.length} / ${characters.length}`
+                    : `${characters.length}`
               }
               on={filters.characters}
               onToggle={() => setFilters({ characters: !filters.characters })}
@@ -182,6 +165,26 @@ export function FilterModal({ visible, onClose }: FilterModalProps) {
             emptyLabel="Filtrer par classeur"
           />
         </View>
+
+        {/* **Ici et non plus sous « Événements ».**
+            Elle y était logée du temps où eux seuls en portaient une — « elle
+            appartient à ce qui s'est passé, pas à qui l'a fait ». Un
+            personnage porte désormais la sienne, choisie sur sa fiche, et une
+            importance qui resterait dans le nid des événements passerait pour
+            une propriété de ce calque : on chercherait en vain celle des
+            personnages.
+            C'est exactement l'argument qui a sorti le classement du même nid,
+            le jour où les personnages ont pris les mêmes classeurs. */}
+        <View style={styles.section}>
+          <Text style={styles.note}>Importance</Text>
+          <SegmentedControl
+            segments={IMPORTANCES}
+            value={filters.importance ?? "all"}
+            onChange={(choice) =>
+              setFilters({ importance: choice === "all" ? null : choice })
+            }
+          />
+        </View>
       </ScrollView>
     </Dialog>
   );
@@ -206,17 +209,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.line,
     ...shadow.soft,
-  },
-  /**
-   * Ce qui affine un calque, rangé sous lui.
-   *
-   * La largeur de la case plus l'écart qui la sépare de son mot : le bloc
-   * commence donc exactement où commence « Événements ». C'est ce décalage
-   * qui dit la portée du réglage — logé au même retrait que la case
-   * suivante, on ne saurait plus lequel des deux calques il commande.
-   */
-  inside: { paddingLeft: TICK + space.md, paddingTop: space.md, gap: space.sm },
-  /**
+  },  /**
    * Le filet entre deux lignes, et le rembourrage qui le borde.
    *
    * Vertical sur la ligne et non sur la carte : posé sur la carte, il aurait

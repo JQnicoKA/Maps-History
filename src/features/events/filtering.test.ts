@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { matchesFilters } from "./filtering";
-import type { MapFilters, EventSummary, Importance } from "./types";
+import type { Character, MapFilters, EventSummary, Importance } from "./types";
 
 const event = (
   folders: string[],
@@ -71,5 +71,36 @@ describe("ce que le filtre laisse passer", () => {
 
   it("garde un événement non rangé quand seule l'importance est demandée", () => {
     expect(matchesFilters(event([], "high"), filters([], "high"))).toBe(true);
+  });
+});
+
+describe("le même tamis pour les personnages", () => {
+  /**
+   * Ils n'y passaient pas.
+   *
+   * `matchesFolders` leur suffisait du temps où l'importance appartenait à ce
+   * qui s'était passé et non à qui l'avait fait. Depuis qu'un personnage porte
+   * la sienne, le filtre de la planche doit la lire comme il lit celle d'un
+   * événement — c'est la même question posée au même endroit.
+   */
+  const person = (
+    folders: string[],
+    importance: Importance = "medium",
+  ): Pick<Character, "folders" | "importance"> => ({ folders, importance });
+
+  it("resserre un personnage sur l'importance demandée", () => {
+    expect(matchesFilters(person([], "high"), filters([], "high"))).toBe(true);
+    expect(matchesFilters(person([], "low"), filters([], "high"))).toBe(false);
+  });
+
+  it("le laisse passer quand aucune importance n'est demandée", () => {
+    expect(matchesFilters(person([], "low"), filters([]))).toBe(true);
+  });
+
+  it("croise son classeur et son importance", () => {
+    const shown = person(["Mérovingiens"], "high");
+    expect(matchesFilters(shown, filters(["Mérovingiens"], "high"))).toBe(true);
+    expect(matchesFilters(shown, filters(["Capétiens"], "high"))).toBe(false);
+    expect(matchesFilters(shown, filters(["Mérovingiens"], "low"))).toBe(false);
   });
 });

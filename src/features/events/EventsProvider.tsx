@@ -3,7 +3,7 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 import * as api from "./api";
 import { mend } from "../community/api";
 import { DEFAULT_YEAR } from "../../config/history";
-import { matchesFilters, matchesFolders } from "./filtering";
+import { matchesFilters } from "./filtering";
 import { useNetwork, useReconnected } from "../network/NetworkProvider";
 import { compareByLife, momentOf, standsAt } from "./lifespan";
 import { toSortKey } from "./historicalDate";
@@ -382,7 +382,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       filters.characters && year !== null
         ? characters.filter(
             (person) =>
-              standsAt(person, year) && matchesFolders(person, filters),
+              standsAt(person, year) && matchesFilters(person, filters),
           )
         : [],
     [characters, filters, year],
