@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import {
   Image,
   Pressable,
@@ -13,26 +13,14 @@ import { radius, shadow, space, TOUCH, type } from "../../theme/tokens";
 
 const PENCIL = require("../../../assets/icons/pencil.png");
 
-/** Round, like the marker a face or a cover may end up in. */
-/**
- * Le fond de la porte qui mène à la bibliothèque.
- *
- * Opaque, et il recouvre donc entièrement le cuir posé dessous. Celui-ci
- * reste malgré tout : il tient la place le temps que l'image arrive, sans
- * quoi la porte s'ouvrirait blanche une fraction de seconde.
- *
- * Il a remplacé le papier peint du panneau, qui servait à meubler un aplat.
- * Une image composée n'a pas besoin qu'on lui pose une seconde texture
- * par-dessus.
- */
-const BACKDROP = require("../../../assets/fond_bouton_rechercher.png");
-
-/** Son rapport, demandé à l'asset plutôt qu'écrit à la main. */
-const BACKDROP_SHAPE = Image.resolveAssetSource(BACKDROP);
-const BACKDROP_RATIO =
-  BACKDROP_SHAPE && BACKDROP_SHAPE.height > 0
-    ? BACKDROP_SHAPE.width / BACKDROP_SHAPE.height
-    : undefined;
+/* Plus de fond gravé sur la porte de la bibliothèque.
+   Elle a porté `fond_bouton_rechercher.png` sous un voile d'un tiers de noir,
+   et toute une machinerie avec : la largeur mesurée à la pose pour en déduire
+   la hauteur, une vue clipée pour que le découpage n'emporte pas l'ombre, et
+   un voile pour que le blanc tienne sur une gravure claire. Un aplat noir ne
+   demande rien de tout cela — le blanc y pèse 21 contre 1 — et c'est le même
+   chemin que les trois boutons de la page Étudier, qui ont rendu leurs
+   images. L'asset reste dans `assets`, inemployé. */
 
 export const THUMB = 46;
 
@@ -93,19 +81,6 @@ export type SeekRowProps = {
  * time one of them was touched.
  */
 export function SeekRow({ label, detail, onPress }: SeekRowProps) {
-  /**
-   * La largeur de la porte, mesurée plutôt que devinée.
-   *
-   * Elle dépend de l'écran et des marges de la page qui porte ce bouton, et
-   * c'est d'elle que se déduit la hauteur de l'image. `resizeMode="cover"`
-   * aurait suffi tant que l'image est plus haute, en proportion, que la
-   * boîte — c'est le cas sur tous les téléphones d'aujourd'hui, à deux pour
-   * cent près sur le plus étroit. Deux pour cent ne sont pas une règle : à
-   * la première porte un peu plus haute — ce bouton sait afficher une
-   * seconde ligne —, `cover` se mettrait à rogner les côtés.
-   */
-  const [width, setWidth] = useState(0);
-
   return (
     <Pressable
       accessibilityRole="button"
@@ -113,37 +88,8 @@ export function SeekRow({ label, detail, onPress }: SeekRowProps) {
       onPress={onPress}
       style={({ pressed }) => [styles.seek, pressed && styles.pressed]}
     >
-      {/* Posé en premier, donc derrière le reste. Clipé par sa propre vue et
-          non par le bouton : `overflow: hidden` découpe l'ombre de la vue qui
-          le porte, et c'est l'ombre qui pose cette porte sur le papier. */}
-      <View
-        pointerEvents="none"
-        style={styles.seekBack}
-        onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
-        accessibilityElementsHidden
-        importantForAccessibility="no"
-      >
-        {width > 0 && BACKDROP_RATIO ? (
-          <Image
-            source={BACKDROP}
-            /* Les deux dimensions dites, et aucune déduite : `Image` pose
-               celles de l'asset dans le style avant les vôtres, et toute
-               dimension qu'on ne nomme pas reste celle du fichier. */
-            style={{ width, height: width / BACKDROP_RATIO }}
-            resizeMode="cover"
-          />
-        ) : null}
-
-        {/* Un voile sur la gravure.
-            Elle est claire là où les mots tombent — `#C58F49` en moyenne dans
-            le tiers gauche —, et le blanc n'y pesait que 2,84 contre 1, tombant
-            à 1,98 sur ses pixels les plus clairs : sous le seuil des objets
-            graphiques, sans parler de texte. Un tiers de noir le porte à 5,96,
-            et 4,45 au pire, sans éteindre le dessin — le fond devient
-            `#805D2F`, un cuir plus profond plutôt qu'une tache sombre. */}
-        <View style={styles.seekVeil} pointerEvents="none" />
-      </View>
-
+      {/* Rien derrière la loupe et les mots : l'aplat du bouton est tout le
+          fond. La vue qui portait l'image et son voile a disparu avec eux. */}
       <Lens />
       <View style={styles.seekText}>
         <Text style={styles.seekLabel}>{label}</Text>
@@ -515,11 +461,11 @@ const styles = StyleSheet.create({
     /**
      * Sans bord, et c'est l'ombre qui tient la porte.
      *
-     * Le filet de reliure sombre datait du temps où l'aplat était sombre
-     * lui aussi : il lui donnait l'épaisseur d'un dos de livre. Sur le cuir
-     * clair, il ne donnait plus d'épaisseur, il cernait — un trait brun
-     * autour d'une image brune, qu'on lisait comme un cadre rapporté plutôt
-     * que comme le bord de l'objet.
+     * Le filet de reliure l'a cernée tant qu'elle portait une gravure : un
+     * trait brun autour d'une image brune se lit comme un cadre rapporté
+     * plutôt que comme le bord de l'objet. L'aplat noir ne le rappellerait
+     * pas davantage — un liseré sur du noir est soit invisible, soit un
+     * second noir qu'on cherche à distinguer du premier.
      *
      * C'est le chemin déjà pris par les deux boutons de la planche, le
      * crayon et la pastille des filtres : l'un et l'autre ont perdu leur
@@ -546,35 +492,6 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
-  },
-  /**
-   * Le fond du bouton : l'aire qu'il couvre, et comment il la coupe.
-   *
-   * **L'image est plus haute que cette boîte, et c'est `justifyContent` qui
-   * décide du recadrage.** Centrée sur l'axe vertical, elle déborde d'autant
-   * en haut qu'en bas : la largeur est donc intégralement conservée — elle
-   * est posée à la mesure de la boîte — et ce qui se perd se perd par
-   * moitiés égales, de sorte que le centre de l'image soit toujours ce qu'on
-   * voit.
-   *
-   * Un rayon d'un point et demi plus serré que celui du bouton —
-   * l'épaisseur de son bord — parce qu'il s'arrête à l'intérieur de ce
-   * bord : posé en absolu, il naît sur la boîte de rembourrage, c'est-à-dire
-   * juste en deçà du trait taillé. Au même rayon que le bouton, il aurait
-   * mordu dessus dans les angles.
-   */
-  seekBack: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    /* Le rayon plein, et non amputé d'un filet : il n'y a plus de filet à
-       l'intérieur duquel se ranger. Gardé plus petit, le fond gravé aurait
-       laissé paraître un croissant de cuir nu à chaque coin. */
-    borderRadius: radius.lg,
-    overflow: "hidden",
-    justifyContent: "center",
   },
   /** A lens, drawn: a ring and a handle. */
   lens: {
@@ -610,15 +527,6 @@ const styles = StyleSheet.create({
     backgroundColor: palette.surfaceRaised,
     transform: [{ rotate: "45deg" }],
   },
-  seekVeil: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "#000000",
-    opacity: 0.15,
-  },
   seekText: { flex: 1, gap: 2 },
   /** Blanc, et le mot porte le poids de la porte. */
   seekLabel: { fontSize: 15, fontWeight: "700", color: palette.surfaceRaised },
@@ -628,7 +536,8 @@ const styles = StyleSheet.create({
    * Elle était en `inkSoft`, ce qui marchait sur du papier et disparaît sur
    * un aplat sombre. Du blanc à quatre-vingts pour cent la met un cran sous
    * le libellé sans lui donner une couleur à elle, ce qui ferait trois tons
-   * sur un objet qui n'en veut qu'un. 7,3:1.
+   * sur un objet qui n'en veut qu'un. Sur le noir plein elle donne `#CCCCCC`,
+   * soit 13,1:1 — c'était 7,3 sur la gravure voilée.
    */
   seekDetail: { ...type.caption, color: "rgba(255, 255, 255, 0.8)" },
   seekMore: {
