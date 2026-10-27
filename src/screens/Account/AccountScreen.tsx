@@ -515,7 +515,7 @@ export function AccountScreen({
         visible={asking === "leaving"}
         title="Se déconnecter ?"
         message="Il faudra vous reconnecter."
-        confirmLabel="Se déconnecter"
+        confirmLabel="Valider"
         cancelLabel="Annuler"
         onConfirm={() => {
           setAsking(null);

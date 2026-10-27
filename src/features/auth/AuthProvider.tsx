@@ -88,6 +88,21 @@ type AuthContextValue = {
   recovering: boolean;
   /** Writes the new password and ends the recovery. */
   setPassword: (password: string) => Promise<void>;
+  /**
+   * Un lien de réinitialisation est arrivé, et il ne valait plus rien.
+   *
+   * Deux causes, un seul remède, donc un seul drapeau : le jeton avait déjà
+   * été consommé — par une ouverture précédente, par le scanner de liens d'une
+   * boîte de courriel, ou par le délai —, ou bien le lien a été ouvert sur un
+   * appareil qui n'est pas celui qui l'a demandé, dont le vérificateur PKCE
+   * manque forcément.
+   *
+   * Le lecteur ne peut pas distinguer les deux et n'a pas à le faire : dans un
+   * cas comme dans l'autre il lui faut un lien neuf, ouvert sur ce téléphone.
+   */
+  staleLink: boolean;
+  /** Referme l'avertissement et rend l'écran d'avant. */
+  dismissStaleLink: () => void;
 };
 
 /**
@@ -120,6 +135,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<Account | null | undefined>(undefined);
   const [recovering, setRecovering] = useState(false);
+  const [staleLink, setStaleLink] = useState(false);
 
   useEffect(() => {
     const client = supabase();
@@ -175,9 +191,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!url || !url.startsWith(RETURN_TO)) return;
       const query = new URL(url).searchParams;
 
+      /**
+       * Le serveur a refusé le lien avant même qu'on ait pu l'échanger.
+       *
+       * C'est de loin le cas le plus fréquent, et il n'a longtemps rien
+       * produit qu'un `console.warn` : le lecteur voyait l'application
+       * s'ouvrir sur l'écran de connexion, sans un mot, et concluait que le
+       * lien n'avait pas marché sans savoir pourquoi.
+       *
+       * Le message du serveur reste journalisé — il distingue le jeton
+       * consommé du jeton périmé, ce qui sert à qui relit les journaux — mais
+       * ce n'est plus lui qui tient lieu de réponse.
+       */
       const failed = query.get("error_description") ?? query.get("error");
       if (failed) {
         console.warn("Lien de réinitialisation refusé :", failed);
+        setStaleLink(true);
         return;
       }
 
@@ -186,7 +215,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { error } = await supabase().auth.exchangeCodeForSession(code);
       if (error) {
+        /**
+         * Le code est bon mais cet appareil n'a pas de quoi l'échanger.
+         *
+         * C'est la signature d'un lien ouvert ailleurs que sur le téléphone
+         * qui l'a demandé : avec PKCE le vérificateur est engendré et gardé
+         * par l'appareil qui demande, et il ne quitte jamais son stockage.
+         * Le même avertissement convient, puisque le remède est le même.
+         */
         console.warn("Lien de réinitialisation expiré :", error.message);
+        setStaleLink(true);
         return;
       }
       setRecovering(true);
@@ -337,6 +375,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRecovering(false);
   }, []);
 
+  const dismissStaleLink = useCallback(() => setStaleLink(false), []);
+
   const value = useMemo(
     () => ({
       account,
@@ -348,6 +388,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sendReset,
       recovering,
       setPassword,
+      staleLink,
+      dismissStaleLink,
     }),
     [
       account,
@@ -359,6 +401,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sendReset,
       recovering,
       setPassword,
+      staleLink,
+      dismissStaleLink,
     ],
   );
 

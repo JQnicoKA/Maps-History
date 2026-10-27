@@ -7,6 +7,7 @@ import {
   AuthProvider,
   AuthScreen,
   NewPasswordScreen,
+  StaleLinkScreen,
   useAuth,
 } from "./features/auth";
 import { EventsProvider } from "./features/events/EventsProvider";
@@ -60,7 +61,28 @@ export default function App() {
  * the map would strand the reader with an account whose password is unknown.
  */
 function Gate() {
-  const { account, recovering } = useAuth();
+  const { account, recovering, staleLink, dismissStaleLink } = useAuth();
+
+  /**
+   * Un lien de réinitialisation refusé passe avant tout le reste.
+   *
+   * Avant même l'attente de la session, et c'est voulu : le lien **est** ce
+   * qui a lancé l'application, donc l'avertissement arrive pendant que
+   * `account` vaut encore `undefined`. Placé plus bas, il aurait clignoté
+   * derrière la roue d'attente puis cédé la place à l'écran de connexion,
+   * c'est-à-dire au silence qu'il remplace.
+   *
+   * Avant la connexion aussi : un lecteur peut cliquer un vieux lien alors
+   * qu'il est déjà entré, et il a droit à la même explication plutôt qu'à une
+   * application qui ne réagit pas.
+   */
+  if (staleLink) {
+    return (
+      <Outside>
+        <StaleLinkScreen onClose={dismissStaleLink} />
+      </Outside>
+    );
+  }
 
   if (account === undefined) {
     return (
