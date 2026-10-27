@@ -134,7 +134,7 @@ export function useStudySession(): StudySession {
         }
         if (everything.length < MIN_SUBJECTS) {
           setFailure(
-            `Il faut au moins ${MIN_SUBJECTS} éléments pour qu'une question ait quatre réponses.`,
+            `Il faut au moins ${MIN_SUBJECTS} éléments pour démarrer une session d'étude.`,
           );
           setStage("off");
           return;

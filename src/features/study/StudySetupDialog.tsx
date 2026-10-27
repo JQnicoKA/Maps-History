@@ -189,7 +189,7 @@ export function StudySetupDialog({
           <>
             <AimButton
               label="Événements"
-              dark
+              big
               chosen={setup.aims.includes("events")}
               dimmed={studyingWorld}
               onPress={() =>
@@ -198,7 +198,7 @@ export function StudySetupDialog({
             />
             <AimButton
               label="Personnages"
-              dark
+              big
               chosen={setup.aims.includes("characters")}
               dimmed={studyingWorld}
               onPress={() =>
@@ -210,7 +210,7 @@ export function StudySetupDialog({
             />
             <AimButton
               label="Territoires"
-              dark
+              big
               chosen={studyingWorld}
               onPress={() =>
                 setSetup((one) => ({

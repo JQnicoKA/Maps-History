@@ -21,17 +21,21 @@ export type AimButtonProps = {
    */
   dimmed?: boolean;
   /**
-   * Noir plutôt que papier, pour les trois buts d'une étude.
+   * Le mot d'un cran plus grand, et la boîte avec.
    *
-   * Ils portaient chacun une scène dessinée, détourée et voilée pour que le
-   * texte s'y lise. Le noir a remplacé les images, et toute cette machinerie
-   * avec : plus de mesure de largeur, plus de voile, plus de contraste à
-   * calculer sur un dessin qui va du beige au brun sous les mêmes trois mots.
+   * Pour les trois buts d'une étude, qui annoncent une matière — les quatre
+   * parties du monde, au pas suivant, sont une liste de choix et gardent la
+   * taille des listes de l'application.
    *
-   * Les quatre parties du monde, au pas suivant, restent sur le papier de la
-   * carte : ce sont une liste de choix, non trois annonces.
+   * **Et c'est tout ce qu'il reste d'un drapeau qui fut `dark`.** Les trois
+   * buts ont porté chacun une scène dessinée, puis un aplat noir qui l'a
+   * remplacée — avec un filet pâle, une pastille creuse et un choix dit par
+   * le clair, le brun du « Suivant » étant invisible sur du noir. Les voilà
+   * sur le papier de la carte comme tout le reste du panneau, et ces quatre
+   * styles n'ont plus rien à contourner : un seul jeu de couleurs sert les
+   * deux pas, et il n'y a plus qu'une façon de dire « c'est pris ».
    */
-  dark?: boolean;
+  big?: boolean;
   onPress: () => void;
 };
 
@@ -51,7 +55,7 @@ export function AimButton({
   detail,
   chosen,
   dimmed = false,
-  dark = false,
+  big = false,
   onPress,
 }: AimButtonProps) {
   /**
@@ -71,8 +75,8 @@ export function AimButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
-        dark ? styles.dark : null,
-        chosen ? (dark ? styles.chosenDark : styles.chosen) : null,
+        big ? styles.tall : null,
+        chosen ? styles.chosen : null,
         dimmed && !chosen ? styles.dimmed : null,
         pressed ? styles.pressed : null,
       ]}
@@ -84,26 +88,18 @@ export function AimButton({
       {middle ? <View style={styles.counterweight} /> : null}
 
       <View style={[styles.words, middle ? styles.wordsMiddle : null]}>
-        <Text style={[styles.label, dark ? styles.labelDark : null]}>
+        <Text style={[styles.label, big ? styles.labelBig : null]}>
           {label}
         </Text>
         {detail === undefined ? null : (
-          <Text style={[styles.detail, dark ? styles.detailDark : null]}>
-            {detail}
-          </Text>
+          <Text style={styles.detail}>{detail}</Text>
         )}
       </View>
 
       {/* La pastille de choix, à droite : pleine quand c'est pris, creuse
           sinon. Elle suit le bord plutôt que de le doubler — sur des lignes
           de même hauteur, l'œil cherche une marque à une place fixe. */}
-      <View
-        style={[
-          styles.bead,
-          dark ? styles.beadDark : null,
-          chosen ? (dark ? styles.beadOnDark : styles.beadOn) : null,
-        ]}
-      />
+      <View style={[styles.bead, chosen ? styles.beadOn : null]} />
     </Pressable>
   );
 }
@@ -124,21 +120,13 @@ const styles = StyleSheet.create({
     ...shadow.soft,
   },
   /**
-   * Noir, et plus haut que les boutons de papier.
+   * Plus haut, parce que le mot y est plus grand.
    *
-   * Soixante-seize points parce que le mot y est écrit d'un cran plus grand —
-   * voir `labelDark` — et qu'un titre de vingt et un points dans une boîte de
-   * soixante-deux touche presque ses bords.
-   *
-   * Le filet est un blanc très pâle : sur du noir posé sur du papier blanc,
-   * c'est lui qui dessine le bord du bouton, et un filet sombre n'y aurait
-   * rien tracé du tout.
+   * Soixante-seize points : un titre de vingt et un points dans une boîte de
+   * soixante-deux touche presque ses bords. Rien de plus — la couleur est
+   * celle de tous les boutons du panneau.
    */
-  dark: {
-    minHeight: 76,
-    backgroundColor: "#000000",
-    borderColor: "rgba(255, 255, 255, 0.22)",
-  },
+  tall: { minHeight: 76 },
   /**
    * C'est pris, et dans l'encre du bouton « Suivant ».
    *
@@ -148,19 +136,6 @@ const styles = StyleSheet.create({
   chosen: {
     borderColor: palette.ink,
     backgroundColor: palette.paperDeep,
-  },
-  /**
-   * C'est pris, dit par le clair.
-   *
-   * **Sur du noir, seule la clarté parle.** Le bouton ne peut pas s'assombrir
-   * davantage, et l'encre du « Suivant » — un brun sombre — y serait
-   * invisible. Le parchemin de l'atlas, lui, tranche franchement, et le filet
-   * passe de pâle à plein pour que le choix se voie d'un coup d'œil sur trois
-   * boutons alignés.
-   */
-  chosenDark: {
-    borderColor: palette.paper,
-    backgroundColor: "#000000",
   },
   /**
    * Rangé, mais pas éteint.
@@ -178,15 +153,8 @@ const styles = StyleSheet.create({
   counterweight: { width: BEAD },
   label: { ...type.heading, fontWeight: "700", color: palette.ink },
   detail: { ...type.caption, color: palette.inkSoft },
-  /**
-   * D'un cran plus grand, et seulement sur les buts.
-   *
-   * Ils sont le premier pas de l'étude et annoncent une matière ; les parties
-   * du monde, au pas suivant, sont une liste de choix et gardent la taille des
-   * listes de l'application.
-   */
-  labelDark: { fontSize: type.title.fontSize, color: palette.paper },
-  detailDark: { color: "rgba(255, 255, 255, 0.72)" },
+  /** D'un cran plus grand, et seulement sur les buts — voir `big`. */
+  labelBig: { fontSize: type.title.fontSize },
   bead: {
     width: BEAD,
     height: BEAD,
@@ -195,12 +163,5 @@ const styles = StyleSheet.create({
     borderColor: palette.line,
     backgroundColor: palette.surfaceRaised,
   },
-  /** Un anneau pâle et creux, là où le filet du papier disparaîtrait. */
-  beadDark: {
-    borderColor: "rgba(255, 255, 255, 0.45)",
-    backgroundColor: "transparent",
-  },
   beadOn: { backgroundColor: palette.ink, borderColor: palette.ink },
-  /** Pleine et claire : le cœur allumé dit que c'est pris. */
-  beadOnDark: { backgroundColor: palette.paper, borderColor: palette.paper },
 });
