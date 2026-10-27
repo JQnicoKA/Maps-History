@@ -1,11 +1,11 @@
 import type { LngLat, MapRef } from "@maplibre/maplibre-react-native";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MissingConfigNotice } from "./MissingConfigNotice";
-import { InkButton, Paper, useNotice } from "../../components/ui";
+import { InkButton, Paper, usePatience, useNotice } from "../../components/ui";
 import { WorldMap } from "../../components/WorldMap";
 import { env } from "../../config/env";
 import { INITIAL_VIEW, MAP_FEATURES } from "../../config/map";
@@ -193,6 +193,26 @@ export function MapScreen({
 
   /** True from country zoom on, where the fiefs are worth drawing. */
   const [detailed, setDetailed] = useState(false);
+  /**
+   * Les territoires de l'année demandée ne sont pas encore arrivés.
+   *
+   * Tenu ici et non dans `TerritoryLayers`, qui le découvre : la couche ne
+   * dessine que des calques MapLibre, et ce qu'il faut en faire se montre à
+   * l'autre bout de l'écran, près de l'année. Les deux se rejoignent dans cet
+   * écran, qui monte la planche et la frise.
+   */
+  const [loadingTerritories, setLoadingTerritories] = useState(false);
+  /**
+   * Et seulement si l'attente dure.
+   *
+   * Un pas d'une année tape dans le cache — mille deux cents entités gardées
+   * en mémoire, et deux années voisines partagent presque tout — donc le
+   * chargement y est instantané. Sans ce délai, la roue clignoterait à chaque
+   * clic sur un chevron et pendant tout le balayage de la frise, ce qui
+   * inquiète plus que le silence. Elle ne paraît donc que pour ce qu'elle est
+   * faite : le saut de mille ans.
+   */
+  const waiting = usePatience(loadingTerritories);
   /**
    * La planche n'a pas pu charger son style — voir `WorldMap`.
    *
@@ -523,6 +543,10 @@ export function MapScreen({
               // Not while an event is being placed: every touch belongs to
               // that, and the reticle is what the reader is aiming with.
               onTouch={aiming || drawing || studying ? undefined : setTouched}
+              // Le poseur d'état d'un `useState` ne change jamais d'identité,
+              // donc l'effet qui le rapporte ne se redéclenche que sur le
+              // chargement lui-même.
+              onBusy={setLoadingTerritories}
             />
           ) : null}
           {drawing ? (
@@ -683,6 +707,42 @@ export function MapScreen({
             <Timeline />
           </View>
 
+          {/**
+            * La roue d'attente, posée juste au-dessus de la pastille de
+            * l'année.
+            *
+            * **Hors de la frise, et il a fallu la mesurer pour le savoir.**
+            * Celle-ci fait quatre-vingt-huit points pour soixante-dix-neuf de
+            * contenu — la pastille, la gouttière et la règle —, donc il ne
+            * reste que neuf points au-dessus de l'année : trop peu pour une
+            * roue de vingt. La poser dedans aurait débordé du cadre, ce qu'iOS
+            * tolère et qu'Android rogne selon les cas.
+            *
+            * Posée en absolu comme la frise elle-même, elle ne déplace rien :
+            * la rangée de l'année porte quatre boutons de pas, et un témoin
+            * qui s'insère entre eux les ferait se dérober sous le doigt à
+            * chaque apparition. Elle est centrée, comme la pastille l'est dans
+            * sa rangée — les deux tombent donc sur le même axe sans qu'on ait
+            * à le calculer.
+            *
+            * `pointerEvents="none"` : rien ne se touche ici, et la frise se
+            * balaie au doigt juste en dessous.
+            */}
+          <View
+            style={[styles.wheel, { bottom: CREDITS_STRIP + FRIEZE_HEIGHT - 4 }]}
+            pointerEvents="none"
+          >
+            {waiting ? (
+              <ActivityIndicator
+                size="small"
+                /* En cire, comme la pastille qu'elle surmonte et comme les
+                   boutons de pas : c'est la couleur de tout ce qui est posé
+                   sur la planche. */
+                color={palette.wax}
+              />
+            ) : null}
+          </View>
+
           <View
             style={[
               styles.bottom,
@@ -770,6 +830,8 @@ const styles = StyleSheet.create({
   stage: { flex: 1 },
   bottom: { position: "absolute", left: 10, right: 10, gap: 8 },
   frieze: { position: "absolute", left: 0, right: 0 },
+  /** Pleine largeur et centrée, pour tomber sur l'axe de la pastille. */
+  wheel: { position: "absolute", left: 0, right: 0, alignItems: "center" },
   errorCard: { padding: space.md, gap: space.sm },
   error: {
     fontSize: 12,

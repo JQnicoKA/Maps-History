@@ -1,7 +1,7 @@
 import type { ExpressionSpecification } from "@maplibre/maplibre-gl-style-spec";
 import { GeoJSONSource, Layer } from "@maplibre/maplibre-react-native";
 import type { FeatureCollection, Point } from "geojson";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { useTerritoriesAt } from "./useTerritoriesAt";
 import { ZOOM } from "../../config/map";
@@ -103,12 +103,40 @@ export type TerritoryLayersProps = {
     from: number;
     to: number;
   }) => void;
+  /**
+   * Dit quand les territoires de l'année demandée ne sont pas encore là.
+   *
+   * Remonté plutôt que montré ici : ce composant ne dessine que des couches
+   * MapLibre, et le témoin d'attente a sa place près de l'année, c'est-à-dire
+   * à l'autre bout de l'écran. C'est `MapScreen` qui tient les deux.
+   */
+  onBusy?: (busy: boolean) => void;
 };
 
-export function TerritoryLayers({ detailed, onTouch }: TerritoryLayersProps) {
+export function TerritoryLayers({
+  detailed,
+  onTouch,
+  onBusy,
+}: TerritoryLayersProps) {
   const { year } = useEvents();
   const { mask } = useHidden();
-  const collection = useTerritoriesAt(year, detailed, mask);
+  const { collection, loading } = useTerritoriesAt(year, detailed, mask);
+
+  useEffect(() => {
+    onBusy?.(loading);
+  }, [loading, onBusy]);
+
+  /**
+   * Éteint le témoin en partant, et seulement en partant.
+   *
+   * Cette couche est montée sous condition — le calque des territoires peut
+   * être décoché dans les filtres —, et une couche démontée en pleine
+   * requête laisserait une roue tourner sur une carte qui ne charge plus
+   * rien. Le nettoyage est dans un effet à lui, sans dépendance au
+   * chargement : accroché au premier, il se serait déclenché à chaque
+   * bascule et aurait fait battre le témoin.
+   */
+  useEffect(() => () => onBusy?.(false), [onBusy]);
 
   /**
    * One label anchor per entity, not per polygon: MapLibre labels every part of

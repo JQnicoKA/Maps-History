@@ -36,4 +36,5 @@ export {
 export { Sheet, type SheetProps } from "./Sheet";
 export { TICK, TickRow, type TickRowProps } from "./TickRow";
 export { useLingering } from "./useLingering";
+export { usePatience } from "./usePatience";
 export { useNotice, type NoticeHandle } from "./useNotice";
