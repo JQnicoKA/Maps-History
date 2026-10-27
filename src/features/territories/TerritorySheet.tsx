@@ -40,8 +40,8 @@ function span(territory: TouchedTerritory): string {
   }
   if (to >= BORDERS_END) return `Ces frontières depuis ${formatYear(from)}.`;
   return from === to
-    ? `Ces frontières en ${formatYear(from)}.`
-    : `Ces frontières de ${formatYear(from)} à ${formatYear(to)}.`;
+    ? `Ses frontières en ${formatYear(from)}.`
+    : `Ses frontières de ${formatYear(from)} à ${formatYear(to)}.`;
 }
 
 export type TerritorySheetProps = {

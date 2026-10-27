@@ -1,0 +1,134 @@
+-- Défaire « les territoires élargis jusqu'à la côte »
+-- ===================================================
+--
+-- À coller dans l'éditeur SQL de Supabase. **Aucune restauration de code
+-- n'est nécessaire** : l'application n'a pas changé d'une ligne, tout tient
+-- dans une colonne et un `coalesce`.
+--
+-- Le problème
+-- -----------
+-- Cliopatria est numérisé à un point tous les 25 km, donc ses côtes suivent
+-- les vraies de loin. Par endroits le lavis débordait dans la mer — ce qui ne
+-- coûte rien, `territory-fill` étant posé `beforeId="water"`, donc la mer
+-- opaque du fond de carte repasse par-dessus. Par d'autres il s'arrêtait
+-- avant le rivage et laissait un liséré de terre nue, bien visible.
+--
+-- Élargir convertit le manque en débordement, et le débordement est gratuit.
+--
+--     large(T) = T ∪ ( tampon(T, 20 km) \ contemporains(T) )
+--
+-- Quatre choses s'y sont décidées à la dure, et chacune a coûté un essai :
+--
+--   1. **`T ∪`** : on ajoute, on ne rogne jamais. Sans lui, la soustraction
+--      mangeait aussi les chevauchements que Cliopatria porte déjà, et l'aire
+--      *baissait* de 2,3 % au lieu de monter.
+--
+--   2. **Les contemporains, et eux seuls.** Un premier essai retranchait
+--      « toute terre jamais revendiquée », pour empêcher une frontière ouverte
+--      de gagner 20 km de terre ferme. C'était se mordre la queue : sur la
+--      côte languedocienne, 3 territoires sont dessinés en 1521 mais 529 y ont
+--      été tracés toutes époques confondues. Le masque protégeait donc les
+--      côtes nues qu'il s'agissait de remplir, l'anneau était coupé sur ces
+--      bandes invisibles, et il ressurgissait au-delà, en mer : frontière,
+--      blanc, puis tache flottante. **54 des 119 territoires de 1521 en
+--      portaient, 151 en tout.**
+--      Cliopatria découpant ses territoires aux dates de changement (la
+--      tranche de France est 1521–1525), « chevaucher la tranche » équivaut à
+--      « être dessiné ». Chaque coupure tombe donc sur une couleur, et une
+--      coupure contre une couleur ne laisse pas de trou.
+--
+--   3. **Les morceaux qui ne touchent pas le territoire sont jetés**, et le
+--      tri est refait *après* la simplification : à 3 km de tolérance elle
+--      sectionne un isthme d'un point de large et recrée une tache.
+--
+--   4. **Le tampon est posé en Mercator**, avec la correction de latitude du
+--      centre du territoire (`20 km / cos φ`). Un tampon géographique sur
+--      12 040 multipolygones ne tient pas dans le temps imparti.
+--
+--   5. **`st_makevalid` à l'intérieur de la différence, et le tampon borné au
+--      voisinage du territoire.** Les Fidji vont jusqu'à 179,86° et vingt
+--      kilomètres en valent 0,188 : le tampon franchit l'antiméridien,
+--      `st_transform` rend des longitudes au-delà de 180, et `st_makevalid`
+--      les replie en un ruban parasite à l'autre bout de la carte. Un
+--      multipolygone ainsi cassé empoisonne le tout — c'est pour sa
+--      Tchoukotka que l'Empire russe échouait en mer Blanche, à quatre-vingts
+--      degrés de là. 175 territoires butaient sur ce seul défaut, tous les
+--      plus gros empires ; la borne les a tous sauvés, et le journal d'échecs
+--      est retombé à zéro.
+--
+-- Ce que ça a donné, d'abord sur les 119 territoires de 1521 :
+--
+--                          masque, 10 km    contemporains, 20 km
+--   taches flottantes            151                  0
+--   aire gagnée                 +2,8 %             +10,3 %
+--   sommets                     ×1,68               ×1,10
+--
+-- Puis sur les 12 040 :
+--
+--   aire gagnée          +7,7 %
+--   sommets              ×2,48  (2,47 M -> 6,13 M)
+--   invalides            0
+--   taches flottantes    0      sur 44 564 morceaux
+--
+-- Le ×2,48 est inhérent au tampon : `ST_Buffer` ajoute un point par angle, et
+-- le contour d'un territoire sans voisin est intégralement celui du tampon. Il
+-- se ramènerait à ×1,86 en simplifiant la source de 10 km avant de la
+-- tamponner, ou à ×1,51 à 20 km, pour 0,1 à 0,5 point de gain en moins — mais
+-- la mesure du réseau a tranché contre : la date la plus lourde des cinq mille
+-- ans, l'an 2000, passe de 795 ko à 1,79 Mo de GeoJSON, soit un mégaoctet de
+-- plus réparti sur deux requêtes de 120 entités. Le commentaire de
+-- `src/features/territories/api.ts` redoutait 7 Mo ; on en est loin.
+--
+-- Défaire
+-- -------
+-- `geom` n'a jamais été touché. Une ligne suffit, et `polities_by_ids`
+-- retombe aussitôt sur le tracé d'origine par son `coalesce` :
+
+update public.polities set geom_wide = null;
+
+-- Pour défaire aussi la colonne et la fonction, c'est-à-dire revenir à
+-- l'état d'avant sans trace :
+--
+--   alter table public.polities drop column geom_wide;
+--   -- puis reprendre la définition de `polities_by_ids` de la migration
+--   -- `a_wider_wash_for_the_coasts_trial`, en remplaçant
+--   --   coalesce(p.geom_wide, p.geom)
+--   -- par
+--   --   p.geom
+--
+-- Les échafaudages, s'ils traînent encore :
+--
+--   drop table if exists public.polity_widen_failed;
+--   drop function if exists public.widen_polities(int, int, float8);
+--
+-- Les tables d'essai (`essai_1521`, `essai_terre`, `essai_sommets`) et la
+-- procédure `widen_polities_run` ont été retirées par la migration
+-- `the_coasts_are_washed_to_the_shore`. `widen_polities` n'est exécutable que
+-- par `postgres` et `service_role` : aucun client ne peut l'appeler.
+--
+-- Refaire avec une autre distance
+-- -------------------------------
+-- `widen_polities` prend les mètres en second argument. Pour tout reprendre à
+-- 30 km :
+--
+--   update public.polities set geom_wide = null;
+--   delete from public.polity_widen_failed;
+--   -- puis, autant de fois qu'il reste quelque chose :
+--   select * from public.widen_polities(300, 30000);
+--
+-- Elle travaille jusqu'à épuiser son budget de secondes et rend ce qu'elle a
+-- fait, ce qu'elle a raté et ce qui reste. Un territoire qui fait trébucher
+-- GEOS — « side location conflict », ce qui arrive sur les plus gros empires
+-- arctiques — garde son tracé d'origine, est noté dans
+-- `polity_widen_failed`, et le lot continue. Une côte non élargie est l'état
+-- d'hier ; un lot interrompu ne laisse rien du tout.
+--
+-- À vérifier après coup : aucune tache flottante, aucune géométrie invalide.
+--
+--   select count(*) as taches
+--   from (select (st_dump(geom_wide)).geom as morceau, geom as original
+--         from public.polities where geom_wide is not null) p
+--   where not st_intersects(morceau, original);
+--
+--   select count(*) from public.polities
+--   where geom_wide is not null and not st_isvalid(geom_wide);
