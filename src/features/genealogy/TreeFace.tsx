@@ -67,6 +67,23 @@ export function TreeFace({
     <View
       accessibilityRole="button"
       accessibilityLabel={face?.name ?? "Personnage"}
+      /**
+       * Android compose le sous-arbre hors écran avant d'appliquer l'alpha.
+       *
+       * Sans cela il applique l'opacité **vue par vue** : le fond de la carte
+       * se fond dans le papier, puis le nom se fond dans le fond déjà fondu,
+       * et le texte se rapproche de la couleur de sa carte au lieu de pâlir
+       * avec elle. iOS aplatit le sous-arbre avant de le voiler, ce qui
+       * conserve le contraste du nom sur sa carte ; ceci demande la même
+       * chose à Android.
+       *
+       * Demandé seulement quand il y a de l'alpha à appliquer : hors de ce
+       * cas, c'est un calque de plus pour rien, et un arbre en porte
+       * quarante.
+       */
+      needsOffscreenAlphaCompositing={
+        dimmed || pressed || WEIGHT[importance] < 1
+      }
       style={[
         styles.node,
         {
@@ -98,14 +115,30 @@ export function TreeFace({
         </View>
       </View>
 
-      <Text style={styles.name} numberOfLines={2}>
-        {face?.name ?? "Supprimé"}
-      </Text>
-      {face === undefined || face.dates === "" ? null : (
-        <Text style={styles.dates} numberOfLines={1}>
-          {face.dates}
+      {/**
+        * Les mots, dans une vue qui les porte **au-dessus de la carte**.
+        *
+        * Le fond de la carte est un frère déclaré avant eux, et il porte
+        * `shadow.soft`, donc `elevation: 4`. Sur Android l'ordre de dessin se
+        * décide à l'élévation et non à l'ordre du code : la carte passait
+        * par-dessus le nom et les dates, qui disparaissaient. Le portrait, lui,
+        * est indemne — il porte la même élévation, et à égalité Android
+        * retombe sur l'ordre du code.
+        *
+        * Cette vue n'a pas de fond, donc son élévation ne dessine aucune ombre :
+        * Android tire l'ombre du contour, et un contour vide n'en projette pas.
+        * Elle ne sert qu'à l'ordre.
+        */}
+      <View style={styles.words}>
+        <Text style={styles.name} numberOfLines={2}>
+          {face?.name ?? "Supprimé"}
         </Text>
-      )}
+        {face === undefined || face.dates === "" ? null : (
+          <Text style={styles.dates} numberOfLines={1}>
+            {face.dates}
+          </Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -173,6 +206,15 @@ const styles = StyleSheet.create({
   // is a child of the frame rather than the frame itself.
   image: { width: "100%", height: "100%", borderRadius: 999 },
   initial: { fontSize: FACE * 0.36, fontWeight: "700", color: palette.inkFaint },
+  /**
+   * Le porteur des mots — voir le commentaire de son emploi.
+   *
+   * `gap` et `alignSelf` reprennent ce que la colonne faisait avant : les
+   * trois points qui séparaient le nom des dates, et la largeur pleine dont
+   * le rembourrage latéral du nom a besoin pour que deux lignes se coupent au
+   * bon endroit.
+   */
+  words: { alignSelf: "stretch", alignItems: "center", gap: 3, elevation: 5 },
   /**
    * Sized to the room the card actually has.
    *
