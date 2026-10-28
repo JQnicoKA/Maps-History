@@ -466,13 +466,29 @@ export async function report(
   reason: Reason,
   said: string,
 ): Promise<void> {
-  const { error } = await supabase().rpc("report_it", {
-    kind,
-    source_id: id,
-    reason,
-    said: said.trim() === "" ? null : said.trim(),
+  /**
+   * Par la fonction de bord, et non plus droit sur la porte SQL.
+   *
+   * `report_it` ne faisait qu'écrire une ligne, et elle y restait : rien ne
+   * prévenait personne, alors que la feuille de signalement promet qu'on
+   * regardera sous 72 heures. La fonction `report` dépose puis expédie un
+   * avis, exactement comme `contact` — voir `supabase/functions/report`.
+   *
+   * L'échec d'expédition n'en est pas un ici : la ligne est écrite, et c'est
+   * elle qui compte. Le lecteur a dit ce qu'il avait à dire.
+   */
+  const { data, error } = await supabase().functions.invoke("report", {
+    body: { kind, id, reason, said: said.trim() },
   });
   if (error) throw new Error(error.message);
+
+  const answer = data as { garde?: boolean; expedie?: boolean };
+  if (!answer.garde) throw new Error("Signalement non enregistré.");
+  if (!answer.expedie) {
+    // Gardé sans être annoncé : le lecteur n'a rien à en faire, nous si.
+    // La raison est dans `reports.failure`.
+    console.warn("Signalement gardé sans avis — voir reports.failure.");
+  }
 }
 
 /**
