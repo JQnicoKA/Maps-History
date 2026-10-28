@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 
 import { CollectionPage } from "./CollectionPage";
 import {
@@ -10,7 +10,8 @@ import {
   useNotice,
 } from "../../components/ui";
 import { useEvents } from "../../features/events/EventsProvider";
-import type { Tree } from "../../features/events/types";
+import type { Character, Tree } from "../../features/events/types";
+import { headOf } from "../../features/genealogy/head";
 import { generationCount } from "../../features/genealogy/layout";
 import { palette } from "../../theme/palette";
 import { space } from "../../theme/tokens";
@@ -24,6 +25,55 @@ export type TreesScreenProps = {
   unread: number;
   onProfile: () => void;
 };
+
+/**
+ * La tête d'un arbre, dans la case de sa rangée.
+ *
+ * **Une fleur y tenait lieu de tout**, la même pour les quarante arbres d'une
+ * liste : une marque de genre, pas une marque d'arbre. Un visage dit lequel on
+ * regarde, ce qu'aucun pictogramme ne peut faire.
+ *
+ * Trois états, dans l'ordre où l'on tombe dessus : le portrait de la tête,
+ * son initiale si elle n'en a pas, et la fleur si l'arbre est encore vide —
+ * là, il n'y a vraiment rien d'autre à montrer.
+ *
+ * Qui est la tête, c'est `headOf` qui le dit, et il est écrit à part parce que
+ * c'est une règle et non un dessin.
+ */
+function Head({
+  tree,
+  people,
+}: {
+  tree: Tree;
+  people: readonly Character[];
+}) {
+  const id = headOf(tree, people);
+  const person = id === null ? undefined : people.find((one) => one.id === id);
+  const photo = person?.photos[0]?.url;
+
+  if (photo !== undefined) {
+    return (
+      <Image
+        source={{ uri: photo }}
+        /* La case est carrée et déjà rognée par son parent — voir `thumb`
+           dans `Roster`. `cover` plutôt que `contain` : un portrait cadré
+           vaut mieux qu'un portrait entouré de vide. */
+        style={styles.portrait}
+        resizeMode="cover"
+      />
+    );
+  }
+
+  if (person !== undefined) {
+    return (
+      <Text style={styles.initial}>
+        {person.name.charAt(0).toUpperCase()}
+      </Text>
+    );
+  }
+
+  return <Text style={styles.glyph}>⚘</Text>;
+}
 
 /**
  * Les arbres de la collection.
@@ -85,7 +135,7 @@ export function TreesScreen({ onOpen, onSeek, unread, onProfile }: TreesScreenPr
         keyOf={(one) => one.id}
         row={(one) => (
           <RosterRow
-            thumb={<Text style={styles.glyph}>⚘</Text>}
+            thumb={<Head tree={one} people={characters} />}
             title={one.name}
             detail={summarise(one)}
             onPress={() => onOpen(one.id)}
@@ -163,5 +213,8 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: palette.surface },
   /** A sprig, for want of a portrait: a tree has no face of its own. */
   glyph: { fontSize: 20, color: palette.inkFaint },
+  portrait: { width: "100%", height: "100%" },
+  /** La même lettre que sur un nœud de l'arbre, à l'échelle de la case. */
+  initial: { fontSize: 20, fontWeight: "700", color: palette.inkFaint },
   form: { paddingHorizontal: space.xl, paddingBottom: space.lg },
 });
