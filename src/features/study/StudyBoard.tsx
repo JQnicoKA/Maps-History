@@ -264,10 +264,17 @@ export function StudyBoard({ study }: StudyBoardProps) {
 /**
  * Le relevé, au bout ou à la sortie.
  *
- * Une seule issue — « D'accord » — parce qu'il n'y a rien à décider : c'est
- * ce qui s'est passé. Les noms manqués sont écrits, et c'est la seule part du
- * relevé qui serve à quelque chose : un chiffre dit comment on s'en est tiré,
- * une liste dit quoi revoir.
+ * Une seule issue — « D'accord » — parce qu'il n'y a rien à décider : c'est ce
+ * qui s'est passé.
+ *
+ * **Un chiffre, et rien d'autre.** Une liste « À revoir » nommait les sujets
+ * manqués ; elle est partie. Ce qu'on vient de rater, on vient aussi de le
+ * voir — chaque mauvaise réponse ouvre la tuile du sujet, qu'on peut toucher
+ * pour lire sa fiche entière. Le relevé répétait donc, en plus sec, ce que
+ * l'étude avait déjà montré, et finissait une séance sur une liste de fautes
+ * plutôt que sur un résultat.
+ *
+ * `score.missed` reste calculé par `tally()`, et n'est plus lu nulle part.
  */
 function StudyReport({ study }: { study: StudySession }) {
   const { score } = study;
@@ -290,17 +297,6 @@ function StudyReport({ study }: { study: StudySession }) {
       }
       dismissLabel={null}
     >
-      {score.missed.length === 0 ? null : (
-        <View style={styles.missed}>
-          <Text style={styles.legend}>À revoir</Text>
-          {score.missed.map((one) => (
-            <Text key={one.id} style={styles.missedOne} numberOfLines={1}>
-              {one.label}
-            </Text>
-          ))}
-        </View>
-      )}
-
       <InkButton label="D'accord" variant="solid" onPress={study.close} />
     </Dialog>
   );
@@ -364,7 +360,4 @@ const styles = StyleSheet.create({
   },
   plateName: { ...type.heading, fontWeight: "700", color: palette.ink },
   plateDates: { ...type.caption, color: palette.inkSoft },
-  missed: { gap: 2, marginBottom: space.xs },
-  legend: { ...type.legend, color: palette.inkFaint },
-  missedOne: { ...type.body, color: palette.inkSoft },
 });
