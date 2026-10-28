@@ -67,7 +67,7 @@ import { EventDetailModal } from "../events/components/EventDetailModal";
 import { formatHistoricalDate, formatYear } from "../events/historicalDate";
 import { widthsFor } from "./period";
 import { usePlacement } from "../placement";
-import { ANSWER_WITHIN, CONTACT } from "../../config/contact";
+import { ANSWER_SAID, CONTACT, LOOKED_AT_WITHIN } from "../../config/contact";
 import { palette } from "../../theme/palette";
 
 /**
@@ -645,7 +645,7 @@ export function Catalogue({
         setSaid("");
         say(
           "Signalement envoyé",
-          `Nous le regardons sous ${ANSWER_WITHIN}. Vous pouvez aussi nous écrire à ${CONTACT}.`,
+          `Nous le regardons sous ${LOOKED_AT_WITHIN}. Vous pouvez aussi nous écrire à ${CONTACT}.`,
         );
       })
       .catch((cause: unknown) =>
@@ -1054,8 +1054,8 @@ export function Catalogue({
           />
 
           <Text style={styles.aside}>
-            Nous répondons sous {ANSWER_WITHIN}. Vous pouvez aussi écrire à{" "}
-            {CONTACT}.
+            Nous le regardons sous {LOOKED_AT_WITHIN} et répondons{" "}
+            {ANSWER_SAID}. Vous pouvez aussi écrire à {CONTACT}.
           </Text>
         </ScrollView>
       ) : (

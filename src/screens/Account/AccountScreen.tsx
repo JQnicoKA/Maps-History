@@ -20,6 +20,8 @@ import { NoticeList } from "../../features/community/NoticeList";
 import type { Notice } from "../../features/community/notices";
 import type { NoticeKind } from "../../features/community/notices";
 import { deleteOwnPhotos } from "../../features/events/api";
+import { ANSWER_SAID } from "../../config/contact";
+import { writeToUs } from "./writeToUs";
 import { palette } from "../../theme/palette";
 import { radius, shadow, space, TOUCH, type } from "../../theme/tokens";
 
@@ -42,7 +44,18 @@ const TRASH = require("../../../assets/icons/trash.png");
  * « Supprimer le compte ? » sont des oui/non, et un oui/non est une carte au
  * milieu de l'écran — c'est exactement ce que `ConfirmDialog` est.
  */
-type Face = "proving" | null;
+type Face = "proving" | "contact" | null;
+
+/**
+ * Les deux bornes d'un message, **les mêmes que celles de la table**.
+ *
+ * `contact_messages` porte une contrainte `between 10 and 4000`, et c'est elle
+ * qui décide : la base est le seul endroit qu'on ne peut pas contourner. Les
+ * répéter ici ne sert qu'à ne pas laisser presser un bouton qui se fera
+ * refuser — si les deux divergent un jour, c'est l'écran qui a tort.
+ */
+const SHORTEST = 10;
+const LONGEST = 4000;
 
 /**
  * Le triangle d'alerte, pour la seule page de l'application qui efface tout.
@@ -103,6 +116,10 @@ export function AccountScreen({
   const [face, setFace] = useState<Face>(null);
   /** Les deux champs du mot de passe, dépliés sous leur rangée. */
   const [changing, setChanging] = useState(false);
+  /** Ce qu'on nous écrit, et ce qu'il en est advenu. */
+  const [said, setSaid] = useState("");
+  const [sending, setSending] = useState(false);
+
   /** La question posée, s'il y en a une : se déconnecter, ou effacer. */
   const [asking, setAsking] = useState<"leaving" | "erasing" | null>(null);
   /** Ce qu'il faudra lever une fois la feuille des notifications partie. */
@@ -139,6 +156,7 @@ export function AccountScreen({
     setAsking(null);
     clear();
     setDone(null);
+    setSaid("");
     onClose();
   };
 
@@ -146,6 +164,40 @@ export function AccountScreen({
   const back = () => {
     setFace(null);
     clear();
+    /* Le message s'oublie en sortant. Un brouillon qui réapparaît des jours
+       plus tard dans une page de réglages est une surprise, pas un service :
+       on ne vient pas ici pour reprendre un texte. */
+    setSaid("");
+    setProblem(null);
+  };
+
+  /**
+   * Porte le message, puis rend la page du compte.
+   *
+   * Le succès s'annonce **sur la page d'avant** et non ici : la carte verte de
+   * `done` y est déjà, c'est là qu'on atterrit, et une page de formulaire qui
+   * se félicite elle-même laisse le lecteur devant un champ vide sans savoir
+   * s'il doit recommencer.
+   */
+  const write = async () => {
+    setSending(true);
+    setProblem(null);
+    try {
+      const expedie = await writeToUs(said);
+      if (!expedie) {
+        /* Gardé mais non expédié : le lecteur n'a rien à en faire — son
+           message est bien chez nous —, mais nous si. Il manque la clé
+           `RESEND_API_KEY` ou `CONTACT_TO`, et la raison est écrite dans
+           `contact_messages.failure`. */
+        console.warn("Message gardé sans être expédié — voir contact_messages.");
+      }
+      back();
+      setDone(`Message reçu. Nous répondons ${ANSWER_SAID}.`);
+    } catch (cause) {
+      setProblem(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSending(false);
+    }
   };
 
   /** Déplie les deux champs, ou les replie en oubliant ce qui y était. */
@@ -207,7 +259,11 @@ export function AccountScreen({
     });
 
   const title =
-    face === "proving" ? "Confirmer la suppression" : "Votre compte";
+    face === "proving"
+      ? "Confirmer la suppression"
+      : face === "contact"
+        ? "Nous écrire"
+        : "Votre compte";
 
   return (
     <View style={styles.page}>
@@ -397,6 +453,18 @@ export function AccountScreen({
                     : `${notices.length} à lire`}
                 </Text>
               </Row>
+
+              {/* Dans ce groupe et non dans un à part : c'est déjà celui des
+                  échanges avec les autres — les avis qu'on reçoit —, et nous
+                  écrire en est un. Un groupe d'une rangée pour une seule
+                  porte aurait fait un bloc de plus à parcourir. */}
+              <Row
+                label="Nous contacter"
+                onPress={() => go("contact")}
+                accessibilityLabel="Nous écrire un message"
+              >
+                <Text style={styles.value}>Une question, un souci</Text>
+              </Row>
             </Group>
 
             {/* Only in a development build, and deliberately kept rather than
@@ -446,6 +514,62 @@ export function AccountScreen({
             </Pressable>
           </View>
         </>
+      ) : face === "contact" ? (
+        <ScrollView
+          style={styles.fill}
+          contentContainerStyle={[
+            styles.body,
+            { paddingBottom: insets.bottom + space.xxl },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
+          alwaysBounceVertical={false}
+        >
+          <Text style={styles.lead}>
+            Dites-nous ce qui vous amène : une erreur dans une fiche, une
+            fonction qui résiste, une idée. Nous répondons à l&apos;adresse de
+            votre compte, {ANSWER_SAID}.
+          </Text>
+
+          {/* Sans étiquette : le titre du bandeau dit « Nous écrire », et la
+              seule chose à faire sur cette page est de taper. */}
+          <InkField
+            value={said}
+            onChangeText={setSaid}
+            placeholder="Votre message…"
+            multiline
+            autoFocus
+            /* Majuscule à la première lettre de chaque phrase, et non à
+               chaque mot : c'est de la prose, pas un nom propre. */
+            autoCapitalize="sentences"
+            maxLength={LONGEST}
+          />
+
+          {/* Le compte ne paraît qu'à l'approche de la borne. Un compteur
+              permanent sous un champ vide donne à une invitation à écrire
+              l'air d'un examen. */}
+          {said.length > LONGEST - 400 ? (
+            <Text style={styles.counter}>
+              {LONGEST - said.length} caractères restants
+            </Text>
+          ) : null}
+
+          {problem === null ? null : (
+            <View style={[styles.note, styles.noteBad]}>
+              <Text style={styles.noteBadText}>{problem}</Text>
+            </View>
+          )}
+
+          <InkButton
+            label={sending ? "Envoi…" : "Envoyer"}
+            variant="solid"
+            /* Dix caractères, comme la contrainte de la table : un bouton
+               qu'on peut presser pour se faire refuser par la base est un
+               bouton qui ment. */
+            disabled={sending || said.trim().length < SHORTEST}
+            onPress={() => void write()}
+          />
+        </ScrollView>
       ) : (
         <ScrollView
           style={styles.fill}
@@ -751,6 +875,13 @@ const styles = StyleSheet.create({
 
   group: { gap: space.sm },
   legend: { ...type.legend, color: palette.inkFaint, paddingLeft: space.xs },
+  /** Le décompte des caractères restants, à l'approche de la borne. */
+  counter: {
+    ...type.caption,
+    color: palette.inkFaint,
+    textAlign: "right",
+    paddingRight: space.xs,
+  },
   card: {
     backgroundColor: palette.surfaceRaised,
     borderRadius: radius.lg,
