@@ -68,9 +68,12 @@ Trois façons de vivre avec :
    déjà l'une des quatre sources téléchargées et relève du domaine public.
    Demande un profil Planetiler sur mesure, en Java : du vrai travail.
 
-Le calque reste donc en place dans `land.ts` — il fonctionne aujourd'hui, sur
-les tuiles de MapTiler. Il faut seulement savoir qu'il s'éteindra le jour du
-basculement.
+**Ce qui a été fait, le 28 octobre 2026.** La bascule ayant eu lieu, le calque
+`globallandcover-wash` ne dessinait plus rien : il a été retiré de `land.ts`,
+avec le relevé de ce qu'il faisait et de la sortie possible. On a pris la
+première des trois voies ci-dessus — l'accepter. Les continents sont du
+parchemin nu sous z7, où `landcover` reprend la main, et c'est l'aspect qu'avait
+la carte avant le 1er octobre.
 
 ---
 

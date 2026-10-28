@@ -1,6 +1,13 @@
 import * as AppleAuthentication from "expo-apple-authentication";
 import { useEffect, useState } from "react";
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Image,
+  Linking,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import {
   APPLE_POSSIBLE,
@@ -30,23 +37,70 @@ export type SocialSignInProps = {
   onProblem: (problem: string | null) => void;
 };
 
-/** La marque d'une porte, dessinée plutôt que chargée. */
+/**
+ * Les marques officielles, telles qu'elles nous sont données.
+ *
+ * **Elles furent trois lettres dessinées** — un `G`, un `f` et un `@` en
+ * `<Text>` coloré. C'était commode et c'était un ersatz : Google et Meta
+ * publient tous deux des règles d'identité qui exigent leurs fichiers, non
+ * redessinés, non recolorés. Ce n'est pas une exigence esthétique mais une
+ * condition d'usage de leur connexion, et un bouton non conforme est un motif
+ * de rejet à la revue de l'App Store.
+ *
+ * Le `@` reste dessiné : il n'appartient à personne.
+ *
+ * Prises dans l'archive d'identité de Google (variante iOS, **thème neutre**,
+ * sans texte, carrée) et au Brand Resource Centre de Meta (logo secondaire,
+ * le `f` blanc, celui qui se pose sur leur bleu). Leur provenance exacte et la
+ * façon dont le `G` a été préparé sont dans `assets/marques-officielles.md`.
+ */
+/**
+ * La boîte d'une marque, portée de vingt-deux à vingt-quatre.
+ *
+ * **Et surtout, le `G` a été détouré de sa tuile.** Le fichier de Google est
+ * un carré de thème clair avec le `G` au milieu, et le `G` n'y occupe que
+ * **45 % de la largeur** — mesuré sur leur image, boîte de 59 pixels dans une
+ * tuile de 132. Posée dans une boîte de vingt-deux points, la marque ne
+ * faisait donc dix points que de tuile, et le `G` lui-même à peine dix. D'où
+ * la plainte, et elle était juste.
+ *
+ * Recadré sur le `G` seul, c'est la marque entière qui occupe la boîte. Rien
+ * n'a été redessiné ni recoloré : seul le pourtour de la tuile a été ôté.
+ *
+ * **Et la tuile est celle du thème neutre, non du thème clair.** Recadrer ne
+ * retire que le bord, pas le fond : la tuile claire est blanche à l'intérieur,
+ * et le `G` paraissait donc dans un carré blanc posé sur le gris du bouton.
+ * La tuile neutre est remplie de `#F2F2F2`, c'est-à-dire exactement la couleur
+ * du bouton — la jonction ne se voit plus, et c'est la présentation même du
+ * bouton Neutral de Google.
+ *
+ * Cela lie le fichier au fond : changer `google.backgroundColor` sans reprendre
+ * la tuile ferait réapparaître le carré.
+ */
+const MARK = 24;
+
+const GOOGLE_G = require("../../../assets/google-g.png");
+const FACEBOOK_F = require("../../../assets/facebook-f.png");
+
 function Mark({ which }: { which: "google" | "facebook" | "email" }) {
+  if (which === "email") {
+    return (
+      <View style={styles.mark}>
+        <Text style={[styles.markLetter, styles.letterEmail]}>@</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.mark}>
-      <Text
-        style={[
-          styles.markLetter,
-          which === "google"
-            ? styles.letterGoogle
-            : which === "facebook"
-              ? styles.letterFacebook
-              : styles.letterEmail,
-        ]}
-      >
-        {which === "google" ? "G" : which === "facebook" ? "f" : "@"}
-      </Text>
-    </View>
+    <Image
+      source={which === "google" ? GOOGLE_G : FACEBOOK_F}
+      /* Les deux dimensions nommées, toujours : `Image` pose celles du
+         fichier avant les vôtres, et une dimension tue reste celle de
+         l'asset — ici 44 points pour le `G` et 2 084 pour le `f`. */
+      style={styles.markImage}
+      resizeMode="contain"
+      accessible={false}
+    />
   );
 }
 
@@ -238,39 +292,70 @@ const styles = StyleSheet.create({
     ...shadow.soft,
   },
   /** Le rouge de Google, plein et sans filet. */
-  google: { backgroundColor: "#FA4335" },
+  /**
+   * Le gris neutre de Google, et un filet emprunté à leur thème clair.
+   *
+   * Il fut `#FA4335`, choisi parce qu'il tenait bien à côté du bleu de
+   * Facebook. Mais Google n'autorise que trois fonds pour sa marque : blanc
+   * `#FFFFFF`, neutre `#F2F2F2`, sombre `#131314`. Le sombre vaut la porte
+   * d'Apple à 1,03 contre 1 — deux portes qu'on lirait comme une seule, le
+   * défaut même que le fond d'`email` a été introduit pour corriger.
+   *
+   * **Le filet n'est pas de nous, et il n'est pas non plus du thème neutre.**
+   * Celui-ci est plat jusqu'au bord — relevé sur leur fichier, `#F2F2F2`
+   * partout — et un fond plat à 1,04 contre le parchemin de la page serait un
+   * bouton qu'on ne verrait pas. Le trait est donc celui de leur thème clair,
+   * `#747775`, relevé au pixel sur leur bouton : on combine deux de leurs
+   * traitements au lieu d'en inventer un, et leurs règles portent sur le `G`,
+   * non sur le bord du contenant. Il pèse 4,2 contre la page, assez pour
+   * dessiner un objet.
+   */
+  google: {
+    backgroundColor: "#F2F2F2",
+    borderWidth: 1,
+    borderColor: "#747775",
+  },
   /** Le bleu de Facebook, qui est le sien et non celui de l'atlas. */
   facebook: { backgroundColor: "#1877F2" },
   /**
-   * Le gris de l'atlas : la seule porte qui soit à nous.
+   * La cire de l'atlas : la seule porte qui soit à nous, et qui le dise.
    *
-   * **Grise et non noire**, depuis que l'encre l'est : la feuille d'Apple,
-   * juste au-dessus, est noire elle aussi, et deux portes de la même couleur
-   * à deux lignes d'écart se lisaient comme une seule. Le gris doux en est
-   * séparé de 3,1 contre 1 — assez pour qu'on voie deux objets — et porte le
-   * blanc à 6,7.
+   * Elle fut grise, et la grisaille n'était qu'une façon de n'être pas noire
+   * — la feuille d'Apple l'est, et deux portes de la même couleur à deux
+   * lignes d'écart se lisaient comme une seule. Mais trois des quatre portes
+   * appartiennent à d'autres et portent leurs couleurs ; celle-ci est la
+   * nôtre, et la cire est ce que l'atlas emploie partout ailleurs pour ce qui
+   * lui appartient.
+   *
+   * Elle porte le blanc à 7,6 contre 1 et se détache du parchemin à 7,1 —
+   * mieux que le gris sur les deux comptes.
    */
-  email: { backgroundColor: palette.inkSoft },
+  email: { backgroundColor: palette.wax },
   dim: { opacity: 0.7 },
   waiting: { opacity: 0.5 },
   label: { ...type.body, fontWeight: "600" },
-  labelGoogle: { color: "#FFFFFF" },
+  /** L'encre de Google sur leur fond clair, et non du blanc : 16,5 contre 1. */
+  labelGoogle: { color: "#1F1F1F" },
   labelFacebook: { color: "#FFFFFF" },
   labelEmail: { color: palette.surfaceRaised },
-  /** Toujours blanche : elle se pose sur du noir, du blanc, du bleu et de
-      l'encre, et une marque qui changerait de fond avec sa porte ne se
-      lirait plus comme la même espèce d'objet. */
+  /**
+   * Le disque blanc, désormais pour la seule arobase.
+   *
+   * Les deux autres portent leur fichier officiel, qui apporte son propre fond
+   * — blanc pour le `G`, transparent pour le `f`. Leur poser un disque
+   * dessous aurait doublé le premier et effacé le second.
+   */
   mark: {
-    width: 22,
-    height: 22,
+    width: MARK,
+    height: MARK,
     borderRadius: radius.pill,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FFFFFF",
   },
   markLetter: { fontSize: 17, fontWeight: "800", lineHeight: 21 },
-  letterGoogle: { color: "#4285F4" },
-  letterFacebook: { color: "#1877F2" },
+  /** La même boîte que le disque, pour que les trois portes gardent leur rythme. */
+  markImage: { width: MARK, height: MARK },
   letterEmail: { color: palette.ink },
   pact: { ...type.caption, color: palette.inkFaint, marginTop: space.xs },
   link: { color: palette.wax, fontWeight: "600" },

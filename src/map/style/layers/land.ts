@@ -14,76 +14,30 @@ export function landLayers(): LayerSpecification[] {
       type: "background",
       paint: { "background-color": palette.paper },
     },
-    {
-      /**
-       * The washes at world and continental scale.
-       *
-       * A second landcover layer, and not a duplicate: OpenMapTiles splits the
-       * subject in two and the halves do not overlap in practice. `landcover`
-       * is traced from OSM and only becomes populated past z9 — measured on a
-       * real tile, at z5 it holds one kilobyte and nothing but glaciers, which
-       * is why the continents read as bare parchment at every scale a reader
-       * actually browses. `globallandcover` is the raster-derived twin that
-       * covers z0–9, and it was already arriving in every tile — a hundred
-       * kilobytes of it, discarded unread.
-       *
-       * So this costs nothing that was not already paid for. It simply prints
-       * what was in the parcel.
-       *
-       * **It only works on MapTiler's tiles, and that is worth knowing before
-       * anyone wonders why it went dark.** `globallandcover` is not part of
-       * the OpenMapTiles schema that Planetiler implements — there is no
-       * `GlobalLandcover.java` in that project, because the raster the layer
-       * derives from is not one of Planetiler's four inputs. The day we read
-       * our own archive, this draws nothing and the continents go back to bare
-       * parchment below z7, where `landcover` takes over. Measured and written
-       * up in `docs/brancher-les-tuiles.md`.
-       */
-      id: "globallandcover-wash",
-      type: "fill",
-      source: SOURCE.base,
-      "source-layer": "globallandcover",
-      // Where the traced layer takes over. Beyond this the source has no data
-      // at all, so drawing it would only cost a lookup.
-      maxzoom: 9,
-      paint: {
-        "fill-color": [
-          "match",
-          ["get", "class"],
-          // Its vocabulary is its own — read off a tile rather than guessed:
-          // crop, forest, grass, scrub, snow, tree.
-          "forest",
-          palette.forest,
-          "tree",
-          palette.forest,
-          "scrub",
-          palette.scrub,
-          "grass",
-          palette.scrub,
-          "crop",
-          palette.sand,
-          "snow",
-          palette.ice,
-          palette.paperDeep,
-        ],
-        // Lighter than the traced washes above. At world scale the eye takes
-        // in whole continents at once, and a tint that reads as "a wash over
-        // paper" close up reads as "a coloured map" from far: the parchment
-        // has to stay the thing one sees first.
-        "fill-opacity": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          0,
-          0.22,
-          4,
-          0.3,
-          9,
-          0.4,
-        ],
-        "fill-antialias": false,
-      },
-    },
+    /* Plus de `globallandcover-wash`, et c'est définitif.
+
+       Ce calque imprimait les aplats de couvert aux échelles mondiale et
+       continentale, là où `landcover` ne porte que des glaciers — mesuré sur
+       une vraie tuile : un kilooctet à z5, rien que de la banquise. Il ne
+       coûtait rien, puisque ces cent kilooctets arrivaient déjà dans chaque
+       tuile et étaient jetés sans être lus.
+
+       Mais `globallandcover` **n'existe pas hors de chez MapTiler** : il n'est
+       pas du schéma OpenMapTiles qu'implémente Planetiler, faute d'y trouver
+       le raster dont il dérive. Depuis que le fond vient de notre propre
+       archive, ce calque ne dessinait plus rien — exactement ce que
+       `docs/brancher-les-tuiles.md` avait prévu, et ce que son propre
+       commentaire annonçait : « the day we read our own archive, this draws
+       nothing ».
+
+       Les continents sont donc du parchemin nu sous z7, où `landcover`
+       reprend la main. C'est l'aspect qu'avait la carte avant le 1er octobre
+       2026, et il plaisait.
+
+       Pour le retrouver un jour, la sortie est notée : fabriquer le wash de
+       bas zoom depuis Natural Earth, qui est déjà l'une des quatre sources de
+       Planetiler et relève du domaine public. Demande un profil sur mesure,
+       en Java. */
     {
       id: "landcover-wash",
       type: "fill",
