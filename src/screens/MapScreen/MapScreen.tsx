@@ -461,8 +461,21 @@ export function MapScreen({
     if (asking?.kind === "zone") setReach(asking.metres);
   }, [asking]);
 
+  /**
+   * Ce qui manque pour que la planche s'affiche.
+   *
+   * **La clé MapTiler n'est plus réclamée inconditionnellement.** Elle ne sert
+   * plus qu'à deux choses, et chacune a son interrupteur : le fond, si
+   * `EXPO_PUBLIC_TILES_URL` est vide, et le relief, si `MAP_FEATURES.relief`
+   * est vrai. Les lettres s'en sont affranchies — voir `glyphsUrl`. Une
+   * installation qui héberge son fond, ses lettres et renonce à l'ombrage n'a
+   * donc plus besoin de clé du tout, et la lui réclamer serait mentir.
+   */
+  const needsMapTiler = !env.hasOwnTiles || MAP_FEATURES.relief;
   const missing = [
-    ...(env.hasMapTilerApiKey ? [] : ["EXPO_PUBLIC_MAPTILER_API_KEY"]),
+    ...(env.hasMapTilerApiKey || !needsMapTiler
+      ? []
+      : ["EXPO_PUBLIC_MAPTILER_API_KEY"]),
     ...(env.hasSupabase
       ? []
       : ["EXPO_PUBLIC_SUPABASE_URL", "EXPO_PUBLIC_SUPABASE_ANON_KEY"]),

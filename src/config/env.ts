@@ -23,6 +23,20 @@ const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN?.trim() ?? "";
 const tilesUrl = process.env.EXPO_PUBLIC_TILES_URL?.trim() ?? "";
 
 /**
+ * Nos propres dossiers de glyphes, si nous en avons.
+ *
+ * Vide, les lettres viennent de MapTiler. Renseignée, elles viennent de chez
+ * nous — et c'est une question de **disponibilité**, non de prix : MapTiler
+ * sert les polices gratuitement, mais par la même clé que le relief, qui est
+ * facturé. Le jour où un plafond de dépense invalide cette clé, la carte
+ * perdrait tout son texte en même temps que son ombrage. Ici, les étiquettes
+ * ne dépendent plus de rien.
+ *
+ * Fabriqués par `npm run glyphs`. Voir `docs/brancher-les-glyphes.md`.
+ */
+const glyphsUrl = process.env.EXPO_PUBLIC_GLYPHS_URL?.trim().replace(/\/$/, "") ?? "";
+
+/**
  * Laquelle des trois applications s'exécute — `app.config.ts` lit la même
  * variable pour décider du nom, de l'identifiant et du schéma d'URL.
  *
@@ -72,6 +86,9 @@ export const env = {
   tilesUrl,
   /** Faux = on lit MapTiler. Un seul interrupteur, et il se vide. */
   hasOwnTiles: tilesUrl.length > 0,
+  glyphsUrl,
+  /** Idem pour les lettres, et les deux sont indépendants. */
+  hasOwnGlyphs: glyphsUrl.length > 0,
   hasGoogleLogin: googleLogin,
   hasFacebookLogin: facebookLogin,
   variant,

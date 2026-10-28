@@ -43,3 +43,6 @@ yarn-error.*
 
 # Claude Code local overrides
 .claude/settings.local.json
+
+# Sortie de `npm run glyphs` : des fichiers à téléverser, pas à versionner.
+build/
