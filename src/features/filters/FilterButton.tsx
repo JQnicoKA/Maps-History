@@ -116,35 +116,41 @@ const styles = StyleSheet.create({
     paddingLeft: space.lg,
     paddingRight: space.lg,
     /**
-     * Le gris creusé de l'application, et non plus la cire.
+     * Blanche et cernée, comme la pastille « Filtres » des pages.
      *
-     * Il resta longtemps en cire au motif qu'il n'est pas une porte : les
-     * disques ouvrent des panneaux et ne disent rien, lui porte la réponse à
-     * « qu'est-ce que je regarde ». C'est toujours vrai, et ce n'est pas la
-     * couleur qui le dit — c'est qu'il porte des mots quand les autres
-     * portent un dessin. La cire, elle, veut dire « voici ce que vous
-     * lisez », ce que cette pastille ne marque pas.
+     * Elle fut en cire, puis en gris creusé et sans bord. Ce dernier état
+     * tenait un raisonnement qui s'est retourné : la pastille devait
+     * s'accorder au disque « Dessiner » posé près d'elle, qui avait perdu son
+     * liseré, et *« une pastille cernée près d'un disque nu se lit comme un
+     * oubli »*.
      *
-     * **Et sans bord**, comme le disque « Dessiner » à côté d'elle. Les deux
-     * sont les seuls objets posés sur la planche, et ils se tenaient de deux
-     * mains différentes depuis que le disque a perdu le sien : une pastille
-     * cernée près d'un disque nu se lit comme un oubli. Ce qui les détache
-     * du fond est désormais leur ombre, et c'est la même.
+     * L'argument valait tant qu'on regardait la planche seule. Mais ce bouton
+     * a un jumeau ailleurs — celui qui ouvre les filtres dans Événements,
+     * Personnages et Arbres — et c'est **le même geste pour la même chose**.
+     * Qu'il change d'aspect selon l'écran en faisait deux objets. Un lecteur
+     * qui a appris la pastille blanche cernée dans une liste doit la
+     * reconnaître sur la carte.
+     *
+     * Entre s'accorder à son voisin et s'accorder à son jumeau, c'est le
+     * jumeau qui l'emporte : le voisin fait un autre métier.
      */
-    backgroundColor: palette.sunken,
+    backgroundColor: palette.surfaceRaised,
     borderRadius: radius.pill,
-    borderWidth: 0,
+    borderWidth: 1.5,
+    borderColor: palette.border,
     /**
-     * L'ombre fait tout le travail de séparation, et c'est la plus dense de
-     * l'application.
+     * L'ombre reste, elle, et c'est ce qui sépare les deux jumeaux.
      *
-     * La pastille était sombre sur une planche claire : elle se détachait
-     * d'elle-même. Claire et sans bord, elle ne pèse plus que 1,06 contre la
-     * terre du fond et 1,25 contre la mer — c'est-à-dire rien. Celle du
-     * disque « Dessiner » lui est donc donnée telle quelle : 0,38 d'opacité,
-     * rayon 13, jetée sept points plus bas, contre les 0,26 que
-     * `GlyphButton` pose d'ordinaire. Elle avait été renforcée pour ce
-     * disque ; les deux objets de la planche la partagent maintenant.
+     * Celui des pages n'en porte aucune : il est posé sur du papier, entre un
+     * titre et une liste, et un papier n'a pas besoin qu'on l'en détache.
+     * Celui-ci flotte au-dessus d'une carte qui a ses propres couleurs — un
+     * lavis de territoire peut passer dessous à tout moment —, et le filet
+     * seul n'y suffirait pas.
+     *
+     * C'est celle du disque « Dessiner », partagée telle quelle : 0,38
+     * d'opacité, rayon 13, jetée sept points plus bas, contre les 0,26 que
+     * `GlyphButton` pose d'ordinaire. Les deux objets de la planche se
+     * tiennent donc toujours de la même main, par en dessous.
      */
     shadowColor: "#2A1F12",
     shadowOpacity: 0.38,
@@ -154,7 +160,7 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.7 },
 
-  /** En encre, comme les mots à côté — une seule encre sur le gris. */
+  /** En encre, comme les mots à côté — une seule encre sur le blanc. */
   funnel: { alignItems: "center", gap: 2.5, paddingVertical: 1 },
   bar: {
     height: 2.5,
@@ -169,7 +175,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     letterSpacing: 0.2,
-    /** 8,9:1 sur le gris creusé : c'est un relevé, il se lit d'abord. */
+    /** 21:1 sur le blanc : c'est un relevé, il se lit d'abord. */
     color: palette.ink,
   },
   /**
