@@ -167,7 +167,27 @@ const styles = StyleSheet.create({
   stage: { flex: 1 },
   /** Masqué, et non démonté — voir le commentaire du composant. */
   hidden: { display: "none" },
-  /** Le calque des pages levées : tout l'écran, au-dessus des scènes. */
+  /**
+   * Le calque des pages levées : tout l'écran, au-dessus des scènes.
+   *
+   * **`zIndex` suffit sur iOS, pas sur Android**, et c'est ce qui a laissé
+   * passer le défaut : sur Android l'ordre de dessin se décide à
+   * l'`elevation`, pas au `zIndex`. Le bandeau fixe des pages de collection
+   * porte `shadow.soft`, donc `elevation: 4`, et il se dessinait par-dessus ce
+   * calque — on ouvrait un arbre et le titre « Arbres » restait au-dessus du
+   * sien, avec la porte du compte.
+   *
+   * Une seule page le montrait, et la raison est instructive : toutes les
+   * autres sont des `Sheet`, c'est-à-dire des `Modal` Android, qui sont des
+   * fenêtres à part et qu'aucune élévation n'atteint. `TreeBuilder` est le
+   * seul à être un `View` en absolu — il l'est devenu le jour où sa `Modal`
+   * refusait de rendre la main, voir son propre commentaire.
+   *
+   * Vingt-quatre, et non cinq : ce calque doit passer devant tout ce que la
+   * scène dessous peut porter, et la plus haute élévation de l'application
+   * est aujourd'hui le douze de la pastille des filtres. Le chiffre est
+   * ignoré sur iOS.
+   */
   over: {
     position: "absolute",
     top: 0,
@@ -175,5 +195,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 2,
+    elevation: 24,
   },
 });
