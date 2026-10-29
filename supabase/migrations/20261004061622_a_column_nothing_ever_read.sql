@@ -1,0 +1,18 @@
+-- `tree_members.mark` ne sert à rien, et n'a jamais servi.
+--
+-- Vérifié des deux côtés avant de la retirer : aucune fonction SQL ne la cite
+-- — `copy_tree` recopie bien `note`, mais pas elle — et le code de
+-- l'application ne la lit nulle part ; `CHARACTER_COLUMNS` et la sélection des
+-- membres d'arbre l'ignorent, et le type `TreeMember` ne la porte pas. C'est
+-- le reste d'une idée abandonnée avant d'avoir une interface.
+--
+-- Elle contenait **une** valeur, et la voici consignée plutôt que perdue en
+-- silence : « accident », posée sur Clodomir Ier dans l'arbre « Mérovingiens ».
+-- Clodomir est mort à la bataille de Vézeronce en 524 ; qui a saisi ce mot et
+-- ce qu'il voulait en faire, personne ne peut plus le dire — aucun écran ne
+-- l'a jamais affiché.
+--
+-- `note`, en revanche, reste : elle est recopiée par `copy_tree`, lue par
+-- l'application et portée par le type. Jamais affichée non plus, mais branchée
+-- de bout en bout — la retirer coûterait de toucher une porte qui marche.
+alter table public.tree_members drop column mark;;

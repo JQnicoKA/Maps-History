@@ -17,7 +17,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PREFIX="${GLYPHS_PREFIX:-glyphs/2026-10}"
-PUBLIC_BASE="https://pub-fd69708b34254e3cabc8112d91c58b0a.r2.dev"
+PUBLIC_BASE="https://tiles.historynote-cdn.com"
 
 if [ ! -d build/glyphs ]; then
   echo "build/glyphs est absent. Lancez d'abord : npm run glyphs" >&2

@@ -149,7 +149,7 @@ ne se poserait que pour une version web.
 ### Vérifier avant de recompiler
 
 ```sh
-BASE="https://pub-fd69708b34254e3cabc8112d91c58b0a.r2.dev/glyphs/2026-10"
+BASE="https://tiles.historynote-cdn.com/glyphs/2026-10"
 curl -sS -o /dev/null -w "%{http_code} %{size_download} octets\n" \
   "$BASE/Noto%20Sans%20Bold,Noto%20Sans%20Regular/0-255.pbf"
 ```
@@ -162,7 +162,7 @@ ici, et la carte sera muette.
 
 ```sh
 # .env — sans barre oblique finale, et avec le préfixe daté
-EXPO_PUBLIC_GLYPHS_URL=https://pub-fd69708b34254e3cabc8112d91c58b0a.r2.dev/glyphs/2026-10
+EXPO_PUBLIC_GLYPHS_URL=https://tiles.historynote-cdn.com/glyphs/2026-10
 ```
 
 Puis recompiler : `EXPO_PUBLIC_*` est inliné dans le bundle **au moment de la

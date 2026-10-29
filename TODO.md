@@ -97,14 +97,12 @@ Les deux documents sont à jour de ce parcours :
 
 **Ce qu'il reste à faire, et rien ne presse :**
 
-1. **Une adresse définitive.** L'archive n'est joignable que par son adresse
-   `pub-….r2.dev`, que Cloudflare bride et réserve au développement. Il faut
-   rattacher un domaine, ce qui suppose la zone DNS chez Cloudflare — or
-   `historynote.fr` est chez OVH **avec les MX du courriel**. Trois sorties au
-   § 9 du runbook : déplacer la zone, déléguer `tiles.historynote.fr` seul, ou
-   prendre un autre domaine.
-2. **Renseigner `EXPO_PUBLIC_TILES_URL`** et republier. Le code est déjà en
-   place : vide il lit MapTiler, renseignée il lit notre archive.
+1. ~~**Une adresse définitive.**~~ Fait le 29 octobre 2026 :
+   `tiles.historynote-cdn.com`, domaine à part acheté chez Cloudflare pour ne
+   pas déplacer la zone de `historynote.fr`. Voir le point 3 de
+   `docs/audit-2026-10-28.md`.
+2. ~~**Renseigner `EXPO_PUBLIC_TILES_URL`**~~ Fait, avec
+   `EXPO_PUBLIC_GLYPHS_URL`, dans `.env` et dans EAS.
 3. **Mettre à jour la page de confidentialité le même jour.** Elle nomme
    MapTiler (Suisse) comme sous-traitant et promet qu'il n'y a aucun transfert
    hors EEE ; Cloudflare la remplace. La juridiction européenne du bucket est
