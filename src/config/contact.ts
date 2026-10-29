@@ -31,7 +31,7 @@ export const CONTACT = "contact@historynote.fr";
  * le signale attend qu'il disparaisse, pas qu'on lui écrive. Regarder n'est
  * pas répondre — c'est ce que les deux constantes séparent.
  */
-export const LOOKED_AT_WITHIN = "72 heures";
+export const LOOKED_AT_WITHIN = "24 heures";
 
 /**
  * Quand une réponse écrite arrive — **une tournure, et non une durée.**

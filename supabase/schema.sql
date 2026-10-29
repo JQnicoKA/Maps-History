@@ -1695,9 +1695,26 @@ declare
   v_said text := nullif(btrim(said), '');
   moi uuid := auth.uid();
   nouvelle public.reports;
+  dans_l_heure int;
+  dans_la_journee int;
 begin
   if moi is null then
     raise exception 'Il faut être connecté pour signaler.';
+  end if;
+
+  select
+    count(*) filter (where r.created_at > now() - interval '1 hour'),
+    count(*)
+  into dans_l_heure, dans_la_journee
+  from public.reports r
+  where r.reporter = moi
+    and r.created_at > now() - interval '1 day';
+
+  if dans_l_heure >= 3 then
+    raise exception 'Vous avez déjà fait trois signalements dans l''heure. Nous les regardons : réessayez un peu plus tard.';
+  end if;
+  if dans_la_journee >= 10 then
+    raise exception 'Vous avez atteint dix signalements aujourd''hui. Si quelque chose presse, écrivez-nous depuis « Nous contacter ».';
   end if;
 
   insert into public.reports (kind, source_id, reporter, reason, said)
@@ -2716,32 +2733,6 @@ $$;
 ALTER FUNCTION "public"."widen_polities"("seconds" integer, "metres" integer, "grille" double precision) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."withhold_when_reported"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  voices integer;
-begin
-  select count(*) into voices
-  from public.reports r
-  where r.kind = new.kind and r.source_id = new.source_id;
-
-  if voices >= 3 then
-    insert into public.withheld (kind, source_id, reports)
-    values (new.kind, new.source_id, voices)
-    on conflict (kind, source_id)
-      do update set reports = excluded.reports;
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."withhold_when_reported"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."write_to_us"("body" "text") RETURNS TABLE("id" "uuid", "email" "text", "said" "text", "at" timestamp with time zone)
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -3729,6 +3720,10 @@ CREATE UNIQUE INDEX "profiles_one_library" ON "public"."profiles" USING "btree" 
 
 
 
+CREATE INDEX "reports_reporter_recent_idx" ON "public"."reports" USING "btree" ("reporter", "created_at" DESC);
+
+
+
 CREATE INDEX "review_became" ON "public"."review" USING "btree" ("kind", "became") WHERE ("became" IS NOT NULL);
 
 
@@ -3810,10 +3805,6 @@ CREATE OR REPLACE TRIGGER "tree_members_touch_tree" AFTER INSERT OR DELETE OR UP
 
 
 CREATE OR REPLACE TRIGGER "trees_touch_updated_at" BEFORE UPDATE ON "public"."trees" FOR EACH ROW EXECUTE FUNCTION "public"."touch_updated_at"();
-
-
-
-CREATE OR REPLACE TRIGGER "withhold_when_reported_enough" AFTER INSERT ON "public"."reports" FOR EACH ROW EXECUTE FUNCTION "public"."withhold_when_reported"();
 
 
 
@@ -9810,11 +9801,6 @@ GRANT ALL ON FUNCTION "public"."updategeometrysrid"("catalogn_name" character va
 
 REVOKE ALL ON FUNCTION "public"."widen_polities"("seconds" integer, "metres" integer, "grille" double precision) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."widen_polities"("seconds" integer, "metres" integer, "grille" double precision) TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."withhold_when_reported"() FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."withhold_when_reported"() TO "service_role";
 
 
 

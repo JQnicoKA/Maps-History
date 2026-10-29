@@ -9,6 +9,7 @@ import type {
 import { bounds } from "./period";
 import { lifespan } from "../events/lifespan";
 import type { Importance, TreeBond } from "../events/types";
+import { refusal } from "../../lib/refusal";
 import { supabase } from "../../lib/supabase";
 
 const BUCKET = "event-photos";
@@ -457,8 +458,13 @@ export async function mineAlike(
  *
  * Adressé au conservateur, et à personne d'autre : lui seul publie, donc lui
  * seul peut s'être trompé. Le signalement n'est plus un rempart mais une
- * assurance contre cette erreur-là. Assez de voix et la chose quitte le
- * catalogue d'elle-même ; voir `withhold_when_reported`.
+ * assurance contre cette erreur-là.
+ *
+ * **Il prévient, il ne retire rien.** Trois voix retiraient autrefois l'entrée
+ * d'elles-mêmes, et trois comptes jetables suffisaient à vider la
+ * bibliothèque. Le retrait est redevenu une décision du conservateur, qui
+ * inscrit l'entrée dans `withheld`. `report_it` borne la cadence à trois par
+ * heure et dix par jour : chaque signalement est un courriel.
  */
 export async function report(
   kind: Kind,
@@ -471,7 +477,7 @@ export async function report(
    *
    * `report_it` ne faisait qu'écrire une ligne, et elle y restait : rien ne
    * prévenait personne, alors que la feuille de signalement promet qu'on
-   * regardera sous 72 heures. La fonction `report` dépose puis expédie un
+   * regardera sous 24 heures. La fonction `report` dépose puis expédie un
    * avis, exactement comme `contact` — voir `supabase/functions/report`.
    *
    * L'échec d'expédition n'en est pas un ici : la ligne est écrite, et c'est
@@ -480,7 +486,8 @@ export async function report(
   const { data, error } = await supabase().functions.invoke("report", {
     body: { kind, id, reason, said: said.trim() },
   });
-  if (error) throw new Error(error.message);
+  // La cadence refuse en toutes lettres : voir `refusal`.
+  if (error) throw new Error(await refusal(error));
 
   const answer = data as { garde?: boolean; expedie?: boolean };
   if (!answer.garde) throw new Error("Signalement non enregistré.");

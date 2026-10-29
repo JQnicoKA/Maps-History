@@ -13,7 +13,7 @@
  *
  * Le signalement ne faisait auparavant que le premier temps. La ligne
  * attendait qu'on pense à consulter la table, alors que l'application promet
- * de regarder sous 72 heures.
+ * de regarder sous 24 heures.
  *
  * **Aucun privilège élevé**, comme `copy` et `contact` : le jeton de
  * l'appelant, et rien que ce que les deux portes SQL autorisent.
