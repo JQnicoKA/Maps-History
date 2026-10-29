@@ -63,7 +63,7 @@
     },
     "owner": "jqnicoka",
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "fingerprint"
     },
     "updates": {
       "url": "https://u.expo.dev/9461c858-cd2f-41fe-be81-b4406df0ceef"

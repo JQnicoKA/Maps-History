@@ -115,7 +115,7 @@ export function TreePreview({
         <InkButton label="Fermer" variant="tonal" grow onPress={onClose} />
         {takeable ? (
           <InkButton
-            label={busy ? "…" : "Copier l'arbre"}
+            label={busy ? "…" : "Copier"}
             variant="solid"
             grow
             disabled={busy}

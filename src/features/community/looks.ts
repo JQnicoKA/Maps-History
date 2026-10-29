@@ -20,7 +20,7 @@ import { describeType, type EventType } from "../events/types";
 export const EVENT_LOOK: Look = {
   many: "Bibliothèque",
   one: "Un événement",
-  take: "Copier l'événement",
+  take: "Copier",
   named: "Nom de l'événement",
   hint: "Marignan, sacre, traité…",
   ask: "Copier cet événement ?",
@@ -70,7 +70,7 @@ const span = (one: { start: { year: number } | null; end: { year: number } | nul
 export const CHARACTER_LOOK: Look = {
   many: "Bibliothèque",
   one: "Bibliothèque",
-  take: "Copier le personnage",
+  take: "Copier",
   named: "Nom du personnage",
   hint: "Clovis, Aliénor, Soliman…",
   ask: "Copier ce personnage ?",
@@ -109,7 +109,7 @@ export const CHARACTER_LOOK: Look = {
 export const TREE_LOOK: Look = {
   many: "Bibliothèque",
   one: "Un arbre",
-  take: "Copier l'arbre",
+  take: "Copier",
   named: "Nom de l'arbre",
   /* Des maisons, pas des personnes : on cherche une lignée entière. */
   hint: "Capétiens, Plantagenêt, Habsbourg…",
