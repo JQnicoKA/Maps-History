@@ -15,7 +15,7 @@ travail.
 >
 > **78 corrections ont été appliquées**, touchant 261 tranches sur 12 040.
 > Aucune tranche n'a été perdue, aucun lavis n'a été cassé. Le journal complet
-> est dans la table `polity_corrections` : `select * from polity_corrections
+> est dans la table `polity_corrections` : `select * from archive.polity_corrections
 > order by id`.
 >
 > Ce document reste le dossier de ce qui a été fait. Les cas que je n'ai **pas**

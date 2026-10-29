@@ -98,8 +98,8 @@ update public.polities set geom_wide = null;
 --
 -- Les échafaudages, s'ils traînent encore :
 --
---   drop table if exists public.polity_widen_failed;
---   drop function if exists public.widen_polities(int, int, float8);
+--   drop table if exists archive.polity_widen_failed;
+--   drop function if exists archive.widen_polities(int, int, float8);
 --
 -- Les tables d'essai (`essai_1521`, `essai_terre`, `essai_sommets`) et la
 -- procédure `widen_polities_run` ont été retirées par la migration
@@ -112,9 +112,9 @@ update public.polities set geom_wide = null;
 -- 30 km :
 --
 --   update public.polities set geom_wide = null;
---   delete from public.polity_widen_failed;
+--   delete from archive.polity_widen_failed;
 --   -- puis, autant de fois qu'il reste quelque chose :
---   select * from public.widen_polities(300, 30000);
+--   select * from archive.widen_polities(300, 30000);
 --
 -- Elle travaille jusqu'à épuiser son budget de secondes et rend ce qu'elle a
 -- fait, ce qu'elle a raté et ce qui reste. Un territoire qui fait trébucher

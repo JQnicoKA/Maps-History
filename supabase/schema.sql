@@ -13,6 +13,12 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 
+CREATE SCHEMA IF NOT EXISTS "archive";
+
+
+ALTER SCHEMA "archive" OWNER TO "postgres";
+
+
 CREATE SCHEMA IF NOT EXISTS "private";
 
 
@@ -103,6 +109,143 @@ CREATE TYPE "public"."event_type" AS ENUM (
 
 
 ALTER TYPE "public"."event_type" OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "archive"."widen_polities"("seconds" integer DEFAULT 85, "metres" integer DEFAULT 20000, "grille" double precision DEFAULT 0.0000001) RETURNS TABLE("fait" integer, "rate" integer, "reste" bigint)
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  deadline timestamptz := clock_timestamp() + make_interval(secs => seconds);
+  r record;
+  n int := 0;
+  bad int := 0;
+begin
+  for r in select id, name from public.polities where geom_wide is null order by id loop
+    exit when clock_timestamp() > deadline;
+    begin
+      update public.polities p
+      set geom_wide = w.g
+      from (
+        select st_multi(st_collectionextract(st_makevalid(
+                 st_union(q.geom, coalesce(b.ajout, st_setsrid('POLYGON EMPTY'::geometry, 4326)))
+               ), 3)) as g
+        from public.polities q
+        -- Combien de degrés de longitude vaut le tampon, à cette latitude.
+        cross join lateral (
+          select metres / (111320.0 * cos(radians(
+                   least(abs(st_y(st_centroid(q.geom))), 80.0)))) * 1.6 as marge
+        ) m
+        -- L'anneau : le tampon posé en Mercator avec la correction de
+        -- latitude, validé, borné au voisinage, puis le territoire ôté.
+        cross join lateral (
+          select st_difference(
+            st_intersection(
+              st_makevalid(st_transform(
+                st_buffer(
+                  st_transform(q.geom, 3857),
+                  metres / cos(radians(least(abs(st_y(st_centroid(q.geom))), 80.0))),
+                  'quad_segs=1'
+                ), 4326)),
+              st_intersection(
+                st_expand(q.geom, m.marge),
+                st_makeenvelope(-180, -89.9, 180, 89.9, 4326)
+              )
+            ),
+            q.geom, grille) as anneau
+        ) a
+        -- Moins les seuls contemporains, et l'on ne garde que les morceaux
+        -- qui touchent le tracé d'origine.
+        cross join lateral (
+          select st_union(d.geom) as garde
+          from st_dump(st_difference(
+            a.anneau,
+            coalesce((
+              select st_makevalid(st_union(o.geom)) from public.polities o
+              where o.id <> q.id
+                and o.start_year <= q.end_year and o.end_year >= q.start_year
+                and o.geom && a.anneau and st_intersects(o.geom, a.anneau)
+            ), st_setsrid('POLYGON EMPTY'::geometry, 4326)),
+            grille
+          )) d
+          where st_intersects(d.geom, q.geom)
+        ) k
+        -- Simplifié, puis trié une seconde fois.
+        cross join lateral (
+          select st_union(d2.geom) as ajout
+          from st_dump(st_simplifypreservetopology(
+            coalesce(k.garde, st_setsrid('POLYGON EMPTY'::geometry, 4326)), 0.03)) d2
+          where st_intersects(d2.geom, q.geom)
+        ) b
+        where q.id = r.id
+      ) w
+      where p.id = r.id;
+      n := n + 1;
+    exception when others then
+      -- Le territoire garde son tracé d'origine et le lot continue. Une côte
+      -- non élargie est l'état d'hier ; un lot interrompu ne laisse rien.
+      update public.polities set geom_wide = st_multi(geom) where id = r.id;
+      insert into archive.polity_widen_failed (id, name, raison)
+        values (r.id, r.name, sqlerrm)
+        on conflict (id) do update set raison = excluded.raison;
+      bad := bad + 1;
+    end;
+  end loop;
+  return query select n, bad, count(*) from public.polities where geom_wide is null;
+end;
+$$;
+
+
+ALTER FUNCTION "archive"."widen_polities"("seconds" integer, "metres" integer, "grille" double precision) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "private"."garder_le_titre_de_conservateur"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  if current_user in ('authenticated', 'anon')
+     and (tg_op = 'INSERT' and new.library
+          or tg_op = 'UPDATE' and new.library is distinct from old.library) then
+    raise exception 'On ne se fait pas conservateur soi-même.'
+      using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "private"."garder_le_titre_de_conservateur"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "private"."garder_les_colonnes_de_la_bibliotheque"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  if current_user not in ('authenticated', 'anon') then
+    return new;
+  end if;
+
+  if tg_op = 'INSERT' then
+    if new.published or new.stars <> 0 or new.origin_id is not null or new.taken_at is not null then
+      raise exception 'Seule la bibliothèque publie, compte les copies et rattache un exemplaire.'
+        using errcode = '42501';
+    end if;
+  elsif new.published is distinct from old.published
+     or new.stars is distinct from old.stars
+     or new.origin_id is distinct from old.origin_id
+     or new.taken_at is distinct from old.taken_at then
+    raise exception 'Seule la bibliothèque publie, compte les copies et rattache un exemplaire.'
+      using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "private"."garder_les_colonnes_de_la_bibliotheque"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "private"."photo_readable"("path" "text") RETURNS boolean
@@ -2646,93 +2789,6 @@ $$;
 ALTER FUNCTION "public"."tree_member_one_generation"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."widen_polities"("seconds" integer DEFAULT 85, "metres" integer DEFAULT 20000, "grille" double precision DEFAULT 0.0000001) RETURNS TABLE("fait" integer, "rate" integer, "reste" bigint)
-    LANGUAGE "plpgsql"
-    AS $$
-declare
-  deadline timestamptz := clock_timestamp() + make_interval(secs => seconds);
-  r record;
-  n int := 0;
-  bad int := 0;
-begin
-  for r in select id, name from public.polities where geom_wide is null order by id loop
-    exit when clock_timestamp() > deadline;
-    begin
-      update public.polities p
-      set geom_wide = w.g
-      from (
-        select st_multi(st_collectionextract(st_makevalid(
-                 st_union(q.geom, coalesce(b.ajout, st_setsrid('POLYGON EMPTY'::geometry, 4326)))
-               ), 3)) as g
-        from public.polities q
-        -- Combien de degrés de longitude vaut le tampon, à cette latitude.
-        cross join lateral (
-          select metres / (111320.0 * cos(radians(
-                   least(abs(st_y(st_centroid(q.geom))), 80.0)))) * 1.6 as marge
-        ) m
-        -- L'anneau : le tampon posé en Mercator avec la correction de
-        -- latitude, validé, borné au voisinage, puis le territoire ôté.
-        cross join lateral (
-          select st_difference(
-            st_intersection(
-              st_makevalid(st_transform(
-                st_buffer(
-                  st_transform(q.geom, 3857),
-                  metres / cos(radians(least(abs(st_y(st_centroid(q.geom))), 80.0))),
-                  'quad_segs=1'
-                ), 4326)),
-              st_intersection(
-                st_expand(q.geom, m.marge),
-                st_makeenvelope(-180, -89.9, 180, 89.9, 4326)
-              )
-            ),
-            q.geom, grille) as anneau
-        ) a
-        -- Moins les seuls contemporains, et l'on ne garde que les morceaux
-        -- qui touchent le tracé d'origine.
-        cross join lateral (
-          select st_union(d.geom) as garde
-          from st_dump(st_difference(
-            a.anneau,
-            coalesce((
-              select st_makevalid(st_union(o.geom)) from public.polities o
-              where o.id <> q.id
-                and o.start_year <= q.end_year and o.end_year >= q.start_year
-                and o.geom && a.anneau and st_intersects(o.geom, a.anneau)
-            ), st_setsrid('POLYGON EMPTY'::geometry, 4326)),
-            grille
-          )) d
-          where st_intersects(d.geom, q.geom)
-        ) k
-        -- Simplifié, puis trié une seconde fois.
-        cross join lateral (
-          select st_union(d2.geom) as ajout
-          from st_dump(st_simplifypreservetopology(
-            coalesce(k.garde, st_setsrid('POLYGON EMPTY'::geometry, 4326)), 0.03)) d2
-          where st_intersects(d2.geom, q.geom)
-        ) b
-        where q.id = r.id
-      ) w
-      where p.id = r.id;
-      n := n + 1;
-    exception when others then
-      -- Le territoire garde son tracé d'origine et le lot continue. Une côte
-      -- non élargie est l'état d'hier ; un lot interrompu ne laisse rien.
-      update public.polities set geom_wide = st_multi(geom) where id = r.id;
-      insert into public.polity_widen_failed (id, name, raison)
-        values (r.id, r.name, sqlerrm)
-        on conflict (id) do update set raison = excluded.raison;
-      bad := bad + 1;
-    end;
-  end loop;
-  return query select n, bad, count(*) from public.polities where geom_wide is null;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."widen_polities"("seconds" integer, "metres" integer, "grille" double precision) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."write_to_us"("body" "text") RETURNS TABLE("id" "uuid", "email" "text", "said" "text", "at" timestamp with time zone)
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -2797,6 +2853,79 @@ COMMENT ON FUNCTION "public"."wrote_it"("about" "text", "which" "uuid") IS 'Vrai
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
+
+
+CREATE TABLE IF NOT EXISTS "archive"."functions_before_dropping_handle" (
+    "name" "text" NOT NULL,
+    "definition" "text" NOT NULL,
+    "kept_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "archive"."functions_before_dropping_handle" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "archive"."polities_english_names" (
+    "id" "uuid" NOT NULL,
+    "name" "text" NOT NULL
+);
+
+
+ALTER TABLE "archive"."polities_english_names" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "archive"."polity_corrections" (
+    "id" bigint NOT NULL,
+    "avant" "text" NOT NULL,
+    "apres" "text" NOT NULL,
+    "pourquoi" "text" NOT NULL,
+    "tranches" integer NOT NULL,
+    "fait_le" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "archive"."polity_corrections" OWNER TO "postgres";
+
+
+ALTER TABLE "archive"."polity_corrections" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "archive"."polity_corrections_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+
+CREATE TABLE IF NOT EXISTS "archive"."polity_french" (
+    "en" "text" NOT NULL,
+    "fr" "text" NOT NULL,
+    "note" "text"
+);
+
+
+ALTER TABLE "archive"."polity_french" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "archive"."polity_wash_english_names" (
+    "name" "text" NOT NULL,
+    "wash" "text"
+);
+
+
+ALTER TABLE "archive"."polity_wash_english_names" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "archive"."polity_widen_failed" (
+    "id" "uuid" NOT NULL,
+    "name" "text",
+    "raison" "text",
+    "at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "archive"."polity_widen_failed" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."blocks" (
@@ -3087,16 +3216,6 @@ COMMENT ON COLUMN "public"."events"."taken_at" IS 'Quand cet exemplaire a été 
 
 
 
-CREATE TABLE IF NOT EXISTS "public"."functions_before_dropping_handle" (
-    "name" "text" NOT NULL,
-    "definition" "text" NOT NULL,
-    "kept_at" timestamp with time zone DEFAULT "now"() NOT NULL
-);
-
-
-ALTER TABLE "public"."functions_before_dropping_handle" OWNER TO "postgres";
-
-
 CREATE TABLE IF NOT EXISTS "public"."hidden_places" (
     "user_id" "uuid" DEFAULT "auth"."uid"() NOT NULL,
     "ohm_id" bigint NOT NULL,
@@ -3170,39 +3289,6 @@ COMMENT ON COLUMN "public"."polities"."geom_wide" IS 'Le même territoire, élar
 
 
 
-CREATE TABLE IF NOT EXISTS "public"."polities_english_names" (
-    "id" "uuid" NOT NULL,
-    "name" "text" NOT NULL
-);
-
-
-ALTER TABLE "public"."polities_english_names" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."polity_corrections" (
-    "id" bigint NOT NULL,
-    "avant" "text" NOT NULL,
-    "apres" "text" NOT NULL,
-    "pourquoi" "text" NOT NULL,
-    "tranches" integer NOT NULL,
-    "fait_le" timestamp with time zone DEFAULT "now"() NOT NULL
-);
-
-
-ALTER TABLE "public"."polity_corrections" OWNER TO "postgres";
-
-
-ALTER TABLE "public"."polity_corrections" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
-    SEQUENCE NAME "public"."polity_corrections_id_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
-
-
 CREATE TABLE IF NOT EXISTS "public"."polity_edges" (
     "a" "text" NOT NULL,
     "b" "text" NOT NULL
@@ -3239,16 +3325,6 @@ ALTER TABLE "public"."polity_fragments" ALTER COLUMN "id" ADD GENERATED ALWAYS A
 
 
 
-CREATE TABLE IF NOT EXISTS "public"."polity_french" (
-    "en" "text" NOT NULL,
-    "fr" "text" NOT NULL,
-    "note" "text"
-);
-
-
-ALTER TABLE "public"."polity_french" OWNER TO "postgres";
-
-
 CREATE TABLE IF NOT EXISTS "public"."polity_wash" (
     "name" "text" NOT NULL,
     "wash" smallint NOT NULL
@@ -3256,26 +3332,6 @@ CREATE TABLE IF NOT EXISTS "public"."polity_wash" (
 
 
 ALTER TABLE "public"."polity_wash" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."polity_wash_english_names" (
-    "name" "text" NOT NULL,
-    "wash" "text"
-);
-
-
-ALTER TABLE "public"."polity_wash_english_names" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."polity_widen_failed" (
-    "id" "uuid" NOT NULL,
-    "name" "text",
-    "raison" "text",
-    "at" timestamp with time zone DEFAULT "now"()
-);
-
-
-ALTER TABLE "public"."polity_widen_failed" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."profiles" (
@@ -3413,6 +3469,41 @@ CREATE TABLE IF NOT EXISTS "public"."withheld" (
 ALTER TABLE "public"."withheld" OWNER TO "postgres";
 
 
+ALTER TABLE ONLY "archive"."functions_before_dropping_handle"
+    ADD CONSTRAINT "functions_before_dropping_handle_pkey" PRIMARY KEY ("name");
+
+
+
+ALTER TABLE ONLY "archive"."polities_english_names"
+    ADD CONSTRAINT "polities_english_names_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "archive"."polity_corrections"
+    ADD CONSTRAINT "polity_corrections_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "archive"."polity_french"
+    ADD CONSTRAINT "polity_french_fr_key" UNIQUE ("fr");
+
+
+
+ALTER TABLE ONLY "archive"."polity_french"
+    ADD CONSTRAINT "polity_french_pkey" PRIMARY KEY ("en");
+
+
+
+ALTER TABLE ONLY "archive"."polity_wash_english_names"
+    ADD CONSTRAINT "polity_wash_english_names_pkey" PRIMARY KEY ("name");
+
+
+
+ALTER TABLE ONLY "archive"."polity_widen_failed"
+    ADD CONSTRAINT "polity_widen_failed_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."blocks"
     ADD CONSTRAINT "blocks_pkey" PRIMARY KEY ("user_id", "blocked");
 
@@ -3473,11 +3564,6 @@ ALTER TABLE ONLY "public"."events"
 
 
 
-ALTER TABLE ONLY "public"."functions_before_dropping_handle"
-    ADD CONSTRAINT "functions_before_dropping_handle_pkey" PRIMARY KEY ("name");
-
-
-
 ALTER TABLE ONLY "public"."hidden_places"
     ADD CONSTRAINT "hidden_places_pkey" PRIMARY KEY ("user_id", "ohm_id");
 
@@ -3498,18 +3584,8 @@ ALTER TABLE ONLY "public"."places"
 
 
 
-ALTER TABLE ONLY "public"."polities_english_names"
-    ADD CONSTRAINT "polities_english_names_pkey" PRIMARY KEY ("id");
-
-
-
 ALTER TABLE ONLY "public"."polities"
     ADD CONSTRAINT "polities_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."polity_corrections"
-    ADD CONSTRAINT "polity_corrections_pkey" PRIMARY KEY ("id");
 
 
 
@@ -3523,28 +3599,8 @@ ALTER TABLE ONLY "public"."polity_fragments"
 
 
 
-ALTER TABLE ONLY "public"."polity_french"
-    ADD CONSTRAINT "polity_french_fr_key" UNIQUE ("fr");
-
-
-
-ALTER TABLE ONLY "public"."polity_french"
-    ADD CONSTRAINT "polity_french_pkey" PRIMARY KEY ("en");
-
-
-
-ALTER TABLE ONLY "public"."polity_wash_english_names"
-    ADD CONSTRAINT "polity_wash_english_names_pkey" PRIMARY KEY ("name");
-
-
-
 ALTER TABLE ONLY "public"."polity_wash"
     ADD CONSTRAINT "polity_wash_pkey" PRIMARY KEY ("name");
-
-
-
-ALTER TABLE ONLY "public"."polity_widen_failed"
-    ADD CONSTRAINT "polity_widen_failed_pkey" PRIMARY KEY ("id");
 
 
 
@@ -3788,6 +3844,22 @@ CREATE OR REPLACE TRIGGER "events_touch_updated_at" BEFORE UPDATE ON "public"."e
 
 
 
+CREATE OR REPLACE TRIGGER "garder_le_titre_de_conservateur" BEFORE INSERT OR UPDATE ON "public"."profiles" FOR EACH ROW EXECUTE FUNCTION "private"."garder_le_titre_de_conservateur"();
+
+
+
+CREATE OR REPLACE TRIGGER "garder_les_colonnes_de_la_bibliotheque" BEFORE INSERT OR UPDATE ON "public"."characters" FOR EACH ROW EXECUTE FUNCTION "private"."garder_les_colonnes_de_la_bibliotheque"();
+
+
+
+CREATE OR REPLACE TRIGGER "garder_les_colonnes_de_la_bibliotheque" BEFORE INSERT OR UPDATE ON "public"."events" FOR EACH ROW EXECUTE FUNCTION "private"."garder_les_colonnes_de_la_bibliotheque"();
+
+
+
+CREATE OR REPLACE TRIGGER "garder_les_colonnes_de_la_bibliotheque" BEFORE INSERT OR UPDATE ON "public"."trees" FOR EACH ROW EXECUTE FUNCTION "private"."garder_les_colonnes_de_la_bibliotheque"();
+
+
+
 CREATE OR REPLACE TRIGGER "tree_link_joins_people" BEFORE INSERT OR UPDATE ON "public"."tree_links" FOR EACH ROW EXECUTE FUNCTION "public"."tree_link_joins_people"();
 
 
@@ -3928,6 +4000,24 @@ ALTER TABLE ONLY "public"."trees"
 
 
 
+ALTER TABLE "archive"."functions_before_dropping_handle" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "archive"."polities_english_names" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "archive"."polity_corrections" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "archive"."polity_french" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "archive"."polity_wash_english_names" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "archive"."polity_widen_failed" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."blocks" ENABLE ROW LEVEL SECURITY;
 
 
@@ -3963,9 +4053,6 @@ ALTER TABLE "public"."event_photos" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."events" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."functions_before_dropping_handle" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."hidden_places" ENABLE ROW LEVEL SECURITY;
@@ -4076,25 +4163,13 @@ ALTER TABLE "public"."places" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."polities" ENABLE ROW LEVEL SECURITY;
 
 
-ALTER TABLE "public"."polities_english_names" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."polity_corrections" ENABLE ROW LEVEL SECURITY;
-
-
 ALTER TABLE "public"."polity_edges" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."polity_fragments" ENABLE ROW LEVEL SECURITY;
 
 
-ALTER TABLE "public"."polity_french" ENABLE ROW LEVEL SECURITY;
-
-
 ALTER TABLE "public"."polity_wash" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."polity_wash_english_names" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."profiles" ENABLE ROW LEVEL SECURITY;
@@ -4518,6 +4593,7 @@ GRANT ALL ON FUNCTION "public"."geometry"("text") TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "archive"."widen_polities"("seconds" integer, "metres" integer, "grille" double precision) FROM PUBLIC;
 
 
 
@@ -4761,6 +4837,17 @@ GRANT ALL ON FUNCTION "public"."geometry"("text") TO "service_role";
 
 
 
+
+
+
+
+
+
+REVOKE ALL ON FUNCTION "private"."garder_le_titre_de_conservateur"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "private"."garder_les_colonnes_de_la_bibliotheque"() FROM PUBLIC;
 
 
 
@@ -5336,8 +5423,7 @@ GRANT ALL ON FUNCTION "public"."find_srid"(character varying, character varying,
 
 
 
-GRANT ALL ON FUNCTION "public"."fork_polity_wash"("ancien" "text", "nouveau" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."fork_polity_wash"("ancien" "text", "nouveau" "text") TO "authenticated";
+REVOKE ALL ON FUNCTION "public"."fork_polity_wash"("ancien" "text", "nouveau" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."fork_polity_wash"("ancien" "text", "nouveau" "text") TO "service_role";
 
 
@@ -6739,8 +6825,7 @@ GRANT ALL ON FUNCTION "public"."refresh_from_library"("about" "text", "which" "u
 
 
 
-GRANT ALL ON FUNCTION "public"."rename_polity"("ancien" "text", "nouveau" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."rename_polity"("ancien" "text", "nouveau" "text") TO "authenticated";
+REVOKE ALL ON FUNCTION "public"."rename_polity"("ancien" "text", "nouveau" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rename_polity"("ancien" "text", "nouveau" "text") TO "service_role";
 
 
@@ -9799,11 +9884,6 @@ GRANT ALL ON FUNCTION "public"."updategeometrysrid"("catalogn_name" character va
 
 
 
-REVOKE ALL ON FUNCTION "public"."widen_polities"("seconds" integer, "metres" integer, "grille" double precision) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."widen_polities"("seconds" integer, "metres" integer, "grille" double precision) TO "service_role";
-
-
-
 REVOKE ALL ON FUNCTION "public"."write_to_us"("body" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."write_to_us"("body" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."write_to_us"("body" "text") TO "service_role";
@@ -9972,6 +10052,36 @@ GRANT ALL ON FUNCTION "public"."st_union"("public"."geometry", double precision)
 
 
 
+GRANT ALL ON TABLE "archive"."functions_before_dropping_handle" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "archive"."polities_english_names" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "archive"."polity_corrections" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "archive"."polity_corrections_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "archive"."polity_corrections_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "archive"."polity_corrections_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "archive"."polity_french" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "archive"."polity_wash_english_names" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "archive"."polity_widen_failed" TO "service_role";
+
+
+
 
 
 
@@ -10042,12 +10152,6 @@ GRANT ALL ON TABLE "public"."events" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."functions_before_dropping_handle" TO "anon";
-GRANT ALL ON TABLE "public"."functions_before_dropping_handle" TO "authenticated";
-GRANT ALL ON TABLE "public"."functions_before_dropping_handle" TO "service_role";
-
-
-
 GRANT ALL ON TABLE "public"."hidden_places" TO "anon";
 GRANT ALL ON TABLE "public"."hidden_places" TO "authenticated";
 GRANT ALL ON TABLE "public"."hidden_places" TO "service_role";
@@ -10072,24 +10176,6 @@ GRANT ALL ON TABLE "public"."polities" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."polities_english_names" TO "anon";
-GRANT ALL ON TABLE "public"."polities_english_names" TO "authenticated";
-GRANT ALL ON TABLE "public"."polities_english_names" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."polity_corrections" TO "anon";
-GRANT ALL ON TABLE "public"."polity_corrections" TO "authenticated";
-GRANT ALL ON TABLE "public"."polity_corrections" TO "service_role";
-
-
-
-GRANT ALL ON SEQUENCE "public"."polity_corrections_id_seq" TO "anon";
-GRANT ALL ON SEQUENCE "public"."polity_corrections_id_seq" TO "authenticated";
-GRANT ALL ON SEQUENCE "public"."polity_corrections_id_seq" TO "service_role";
-
-
-
 GRANT ALL ON TABLE "public"."polity_edges" TO "anon";
 GRANT ALL ON TABLE "public"."polity_edges" TO "authenticated";
 GRANT ALL ON TABLE "public"."polity_edges" TO "service_role";
@@ -10108,27 +10194,9 @@ GRANT ALL ON SEQUENCE "public"."polity_fragments_id_seq" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."polity_french" TO "anon";
-GRANT ALL ON TABLE "public"."polity_french" TO "authenticated";
-GRANT ALL ON TABLE "public"."polity_french" TO "service_role";
-
-
-
 GRANT ALL ON TABLE "public"."polity_wash" TO "anon";
 GRANT ALL ON TABLE "public"."polity_wash" TO "authenticated";
 GRANT ALL ON TABLE "public"."polity_wash" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."polity_wash_english_names" TO "anon";
-GRANT ALL ON TABLE "public"."polity_wash_english_names" TO "authenticated";
-GRANT ALL ON TABLE "public"."polity_wash_english_names" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."polity_widen_failed" TO "anon";
-GRANT ALL ON TABLE "public"."polity_widen_failed" TO "authenticated";
-GRANT ALL ON TABLE "public"."polity_widen_failed" TO "service_role";
 
 
 

@@ -35,19 +35,19 @@ alter table public.polity_wash drop constraint polity_wash_pkey;
 
 update public.polity_wash w
 set name = f.en
-from public.polity_french f
+from archive.polity_french f
 where f.fr = w.name;
 
 alter table public.polity_wash add primary key (name);
 
 update public.polities p
 set name = f.en
-from public.polity_french f
+from archive.polity_french f
 where f.fr = p.name;
 
 update public.hidden_polities h
 set name = f.en
-from public.polity_french f
+from archive.polity_french f
 where f.fr = h.name;
 
 commit;
@@ -62,12 +62,12 @@ commit;
 -- alter table public.polity_wash drop constraint polity_wash_pkey;
 -- delete from public.polity_wash;
 -- insert into public.polity_wash (name, wash)
---   select name, wash from public.polity_wash_english_names;
+--   select name, wash from archive.polity_wash_english_names;
 -- alter table public.polity_wash add primary key (name);
 --
 -- update public.polities p
 -- set name = b.name
--- from public.polities_english_names b
+-- from archive.polities_english_names b
 -- where b.id = p.id;
 -- commit;
 
@@ -75,9 +75,9 @@ commit;
 -- Une fois la traduction adoptée pour de bon, ces trois tables ne servent
 -- plus à rien et pèsent environ un mégaoctet :
 --
---   drop table public.polities_english_names;
---   drop table public.polity_wash_english_names;
---   drop table public.polity_french;
+--   drop table archive.polities_english_names;
+--   drop table archive.polity_wash_english_names;
+--   drop table archive.polity_french;
 --
 -- Garder au moins `polity_french` tant qu'un nouveau chargement du fond de
 -- carte reste envisageable : `scripts/load-cliopatria.mjs` réécrirait les

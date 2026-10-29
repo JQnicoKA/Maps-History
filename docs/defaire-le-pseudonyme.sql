@@ -45,7 +45,7 @@ create unique index if not exists profiles_handle_unique
 do $$
 declare f record;
 begin
-  for f in select definition from public.functions_before_dropping_handle loop
+  for f in select definition from archive.functions_before_dropping_handle loop
     execute f.definition;
   end loop;
 end $$;
@@ -63,4 +63,4 @@ commit;
 -- ---------------------------------------------------------------------------
 -- Une fois la suppression acquise, la sauvegarde ne sert plus :
 --
---   drop table public.functions_before_dropping_handle;
+--   drop table archive.functions_before_dropping_handle;

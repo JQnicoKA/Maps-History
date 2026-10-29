@@ -13,6 +13,12 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 
+CREATE SCHEMA IF NOT EXISTS "archive";
+
+
+ALTER SCHEMA "archive" OWNER TO "postgres";
+
+
 CREATE SCHEMA IF NOT EXISTS "private";
 
 
@@ -33,6 +39,94 @@ CREATE TYPE "storage"."buckettype" AS ENUM (
 
 
 ALTER TYPE "storage"."buckettype" OWNER TO "supabase_storage_admin";
+
+
+CREATE OR REPLACE FUNCTION "archive"."widen_polities"("seconds" integer DEFAULT 85, "metres" integer DEFAULT 20000, "grille" double precision DEFAULT 0.0000001) RETURNS TABLE("fait" integer, "rate" integer, "reste" bigint)
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  deadline timestamptz := clock_timestamp() + make_interval(secs => seconds);
+  r record;
+  n int := 0;
+  bad int := 0;
+begin
+  for r in select id, name from public.polities where geom_wide is null order by id loop
+    exit when clock_timestamp() > deadline;
+    begin
+      update public.polities p
+      set geom_wide = w.g
+      from (
+        select st_multi(st_collectionextract(st_makevalid(
+                 st_union(q.geom, coalesce(b.ajout, st_setsrid('POLYGON EMPTY'::geometry, 4326)))
+               ), 3)) as g
+        from public.polities q
+        -- Combien de degrés de longitude vaut le tampon, à cette latitude.
+        cross join lateral (
+          select metres / (111320.0 * cos(radians(
+                   least(abs(st_y(st_centroid(q.geom))), 80.0)))) * 1.6 as marge
+        ) m
+        -- L'anneau : le tampon posé en Mercator avec la correction de
+        -- latitude, validé, borné au voisinage, puis le territoire ôté.
+        cross join lateral (
+          select st_difference(
+            st_intersection(
+              st_makevalid(st_transform(
+                st_buffer(
+                  st_transform(q.geom, 3857),
+                  metres / cos(radians(least(abs(st_y(st_centroid(q.geom))), 80.0))),
+                  'quad_segs=1'
+                ), 4326)),
+              st_intersection(
+                st_expand(q.geom, m.marge),
+                st_makeenvelope(-180, -89.9, 180, 89.9, 4326)
+              )
+            ),
+            q.geom, grille) as anneau
+        ) a
+        -- Moins les seuls contemporains, et l'on ne garde que les morceaux
+        -- qui touchent le tracé d'origine.
+        cross join lateral (
+          select st_union(d.geom) as garde
+          from st_dump(st_difference(
+            a.anneau,
+            coalesce((
+              select st_makevalid(st_union(o.geom)) from public.polities o
+              where o.id <> q.id
+                and o.start_year <= q.end_year and o.end_year >= q.start_year
+                and o.geom && a.anneau and st_intersects(o.geom, a.anneau)
+            ), st_setsrid('POLYGON EMPTY'::geometry, 4326)),
+            grille
+          )) d
+          where st_intersects(d.geom, q.geom)
+        ) k
+        -- Simplifié, puis trié une seconde fois.
+        cross join lateral (
+          select st_union(d2.geom) as ajout
+          from st_dump(st_simplifypreservetopology(
+            coalesce(k.garde, st_setsrid('POLYGON EMPTY'::geometry, 4326)), 0.03)) d2
+          where st_intersects(d2.geom, q.geom)
+        ) b
+        where q.id = r.id
+      ) w
+      where p.id = r.id;
+      n := n + 1;
+    exception when others then
+      -- Le territoire garde son tracé d'origine et le lot continue. Une côte
+      -- non élargie est l'état d'hier ; un lot interrompu ne laisse rien.
+      update public.polities set geom_wide = st_multi(geom) where id = r.id;
+      insert into archive.polity_widen_failed (id, name, raison)
+        values (r.id, r.name, sqlerrm)
+        on conflict (id) do update set raison = excluded.raison;
+      bad := bad + 1;
+    end;
+  end loop;
+  return query select n, bad, count(*) from public.polities where geom_wide is null;
+end;
+$$;
+
+
+ALTER FUNCTION "archive"."widen_polities"("seconds" integer, "metres" integer, "grille" double precision) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "private"."photo_readable"("path" "text") RETURNS boolean
@@ -1866,6 +1960,79 @@ SET default_tablespace = '';
 SET default_table_access_method = "heap";
 
 
+CREATE TABLE IF NOT EXISTS "archive"."functions_before_dropping_handle" (
+    "name" "text" NOT NULL,
+    "definition" "text" NOT NULL,
+    "kept_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "archive"."functions_before_dropping_handle" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "archive"."polities_english_names" (
+    "id" "uuid" NOT NULL,
+    "name" "text" NOT NULL
+);
+
+
+ALTER TABLE "archive"."polities_english_names" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "archive"."polity_corrections" (
+    "id" bigint NOT NULL,
+    "avant" "text" NOT NULL,
+    "apres" "text" NOT NULL,
+    "pourquoi" "text" NOT NULL,
+    "tranches" integer NOT NULL,
+    "fait_le" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "archive"."polity_corrections" OWNER TO "postgres";
+
+
+ALTER TABLE "archive"."polity_corrections" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "archive"."polity_corrections_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+
+CREATE TABLE IF NOT EXISTS "archive"."polity_french" (
+    "en" "text" NOT NULL,
+    "fr" "text" NOT NULL,
+    "note" "text"
+);
+
+
+ALTER TABLE "archive"."polity_french" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "archive"."polity_wash_english_names" (
+    "name" "text" NOT NULL,
+    "wash" "text"
+);
+
+
+ALTER TABLE "archive"."polity_wash_english_names" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "archive"."polity_widen_failed" (
+    "id" "uuid" NOT NULL,
+    "name" "text",
+    "raison" "text",
+    "at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "archive"."polity_widen_failed" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "storage"."buckets" (
     "id" "text" NOT NULL,
     "name" "text" NOT NULL,
@@ -2013,6 +2180,41 @@ CREATE TABLE IF NOT EXISTS "storage"."vector_indexes" (
 ALTER TABLE "storage"."vector_indexes" OWNER TO "supabase_storage_admin";
 
 
+ALTER TABLE ONLY "archive"."functions_before_dropping_handle"
+    ADD CONSTRAINT "functions_before_dropping_handle_pkey" PRIMARY KEY ("name");
+
+
+
+ALTER TABLE ONLY "archive"."polities_english_names"
+    ADD CONSTRAINT "polities_english_names_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "archive"."polity_corrections"
+    ADD CONSTRAINT "polity_corrections_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "archive"."polity_french"
+    ADD CONSTRAINT "polity_french_fr_key" UNIQUE ("fr");
+
+
+
+ALTER TABLE ONLY "archive"."polity_french"
+    ADD CONSTRAINT "polity_french_pkey" PRIMARY KEY ("en");
+
+
+
+ALTER TABLE ONLY "archive"."polity_wash_english_names"
+    ADD CONSTRAINT "polity_wash_english_names_pkey" PRIMARY KEY ("name");
+
+
+
+ALTER TABLE ONLY "archive"."polity_widen_failed"
+    ADD CONSTRAINT "polity_widen_failed_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "storage"."buckets_analytics"
     ADD CONSTRAINT "buckets_analytics_pkey" PRIMARY KEY ("id");
 
@@ -2155,6 +2357,24 @@ ALTER TABLE ONLY "storage"."vector_indexes"
 
 
 
+ALTER TABLE "archive"."functions_before_dropping_handle" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "archive"."polities_english_names" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "archive"."polity_corrections" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "archive"."polity_french" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "archive"."polity_wash_english_names" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "archive"."polity_widen_failed" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "storage"."buckets" ENABLE ROW LEVEL SECURITY;
 
 
@@ -2208,8 +2428,42 @@ GRANT ALL ON SCHEMA "storage" TO "dashboard_user";
 
 
 
+REVOKE ALL ON FUNCTION "archive"."widen_polities"("seconds" integer, "metres" integer, "grille" double precision) FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "private"."photo_readable"("path" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "private"."photo_readable"("path" "text") TO "authenticated";
+
+
+
+GRANT ALL ON TABLE "archive"."functions_before_dropping_handle" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "archive"."polities_english_names" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "archive"."polity_corrections" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "archive"."polity_corrections_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "archive"."polity_corrections_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "archive"."polity_corrections_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "archive"."polity_french" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "archive"."polity_wash_english_names" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "archive"."polity_widen_failed" TO "service_role";
 
 
 
