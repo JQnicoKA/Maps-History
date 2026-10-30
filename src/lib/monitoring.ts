@@ -25,7 +25,7 @@ export function startMonitoring(): void {
     // Never the email, never the IP: the identifier below is enough to count
     // readers, and it is all this app is willing to say about them.
     sendDefaultPii: false,
-    environment: __DEV__ ? "development" : "production",
+    environment: __DEV__ ? "development" : env.variant,
   });
 }
 

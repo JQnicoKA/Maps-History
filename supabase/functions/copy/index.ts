@@ -29,14 +29,13 @@ import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const SEAU = "event-photos";
 
-type Genre = "event" | "character" | "tree" | "territory";
+type Genre = "event" | "character" | "tree";
 
 /** Quelle porte SQL pour quel genre — même table que côté application. */
 const PORTE: Record<Genre, string> = {
   event: "copy_event",
   character: "copy_character",
   tree: "copy_tree",
-  territory: "copy_territory",
 };
 
 /** Où les photos d'un genre se rangent, et par quelle colonne on les trouve. */
