@@ -26,8 +26,9 @@ if [[ ! -f .env ]]; then
 fi
 
 # Les builds `production` servent l'App Store, les `preview` servent à faire
-# essayer l'app : les deux ont besoin des mêmes clés.
-environnements="production preview"
+# essayer l'app, les `development` à travailler sur un iPhone sans Xcode : tous
+# ont besoin des mêmes clés.
+environnements="production preview development"
 
 while IFS= read -r ligne; do
   [[ "$ligne" =~ ^[[:space:]]*# ]] && continue

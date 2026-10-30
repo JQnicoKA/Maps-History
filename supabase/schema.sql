@@ -3644,6 +3644,10 @@ ALTER TABLE ONLY "public"."withheld"
 
 
 
+CREATE INDEX "blocks_blocked_idx" ON "public"."blocks" USING "btree" ("blocked");
+
+
+
 CREATE INDEX "character_photos_character_idx" ON "public"."character_photos" USING "btree" ("character_id", "position");
 
 
@@ -3693,6 +3697,10 @@ CREATE INDEX "characters_user_idx" ON "public"."characters" USING "btree" ("user
 
 
 CREATE INDEX "contact_messages_by_author" ON "public"."contact_messages" USING "btree" ("user_id", "created_at" DESC);
+
+
+
+CREATE INDEX "copies_user_id_idx" ON "public"."copies" USING "btree" ("user_id");
 
 
 
@@ -3788,7 +3796,15 @@ CREATE INDEX "review_who" ON "public"."review" USING "btree" ("who") WHERE ("who
 
 
 
+CREATE INDEX "tree_links_child_id_idx" ON "public"."tree_links" USING "btree" ("child_id");
+
+
+
 CREATE INDEX "tree_links_tree_idx" ON "public"."tree_links" USING "btree" ("tree_id");
+
+
+
+CREATE INDEX "tree_members_character_id_idx" ON "public"."tree_members" USING "btree" ("character_id");
 
 
 
@@ -4083,77 +4099,77 @@ CREATE POLICY "on voit ses propres signalements" ON "public"."reports" FOR SELEC
 
 CREATE POLICY "own character photos" ON "public"."character_photos" TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."characters" "c"
-  WHERE (("c"."id" = "character_photos"."character_id") AND ("c"."user_id" = "auth"."uid"()))))) WITH CHECK ((EXISTS ( SELECT 1
+  WHERE (("c"."id" = "character_photos"."character_id") AND ("c"."user_id" = ( SELECT "auth"."uid"() AS "uid")))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."characters" "c"
-  WHERE (("c"."id" = "character_photos"."character_id") AND ("c"."user_id" = "auth"."uid"())))));
+  WHERE (("c"."id" = "character_photos"."character_id") AND ("c"."user_id" = ( SELECT "auth"."uid"() AS "uid"))))));
 
 
 
-CREATE POLICY "own characters" ON "public"."characters" TO "authenticated" USING (("user_id" = "auth"."uid"())) WITH CHECK (("user_id" = "auth"."uid"()));
+CREATE POLICY "own characters" ON "public"."characters" TO "authenticated" USING (("user_id" = ( SELECT "auth"."uid"() AS "uid"))) WITH CHECK (("user_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "own dismissals" ON "public"."dismissed" TO "authenticated" USING (("user_id" = "auth"."uid"())) WITH CHECK (("user_id" = "auth"."uid"()));
+CREATE POLICY "own dismissals" ON "public"."dismissed" TO "authenticated" USING (("user_id" = ( SELECT "auth"."uid"() AS "uid"))) WITH CHECK (("user_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "own drawn places" ON "public"."drawn_places" USING (("user_id" = "auth"."uid"())) WITH CHECK (("user_id" = "auth"."uid"()));
+CREATE POLICY "own drawn places" ON "public"."drawn_places" USING (("user_id" = ( SELECT "auth"."uid"() AS "uid"))) WITH CHECK (("user_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "own drawn polities" ON "public"."drawn_polities" TO "authenticated" USING (("user_id" = "auth"."uid"())) WITH CHECK (("user_id" = "auth"."uid"()));
+CREATE POLICY "own drawn polities" ON "public"."drawn_polities" TO "authenticated" USING (("user_id" = ( SELECT "auth"."uid"() AS "uid"))) WITH CHECK (("user_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
 CREATE POLICY "own event characters" ON "public"."event_characters" TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."events" "e"
-  WHERE (("e"."id" = "event_characters"."event_id") AND ("e"."user_id" = "auth"."uid"()))))) WITH CHECK (((EXISTS ( SELECT 1
+  WHERE (("e"."id" = "event_characters"."event_id") AND ("e"."user_id" = ( SELECT "auth"."uid"() AS "uid")))))) WITH CHECK (((EXISTS ( SELECT 1
    FROM "public"."events" "e"
-  WHERE (("e"."id" = "event_characters"."event_id") AND ("e"."user_id" = "auth"."uid"())))) AND (EXISTS ( SELECT 1
+  WHERE (("e"."id" = "event_characters"."event_id") AND ("e"."user_id" = ( SELECT "auth"."uid"() AS "uid"))))) AND (EXISTS ( SELECT 1
    FROM "public"."characters" "c"
-  WHERE (("c"."id" = "event_characters"."character_id") AND ("c"."user_id" = "auth"."uid"()))))));
+  WHERE (("c"."id" = "event_characters"."character_id") AND ("c"."user_id" = ( SELECT "auth"."uid"() AS "uid")))))));
 
 
 
 CREATE POLICY "own event photos" ON "public"."event_photos" TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."events" "e"
-  WHERE (("e"."id" = "event_photos"."event_id") AND ("e"."user_id" = "auth"."uid"()))))) WITH CHECK ((EXISTS ( SELECT 1
+  WHERE (("e"."id" = "event_photos"."event_id") AND ("e"."user_id" = ( SELECT "auth"."uid"() AS "uid")))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."events" "e"
-  WHERE (("e"."id" = "event_photos"."event_id") AND ("e"."user_id" = "auth"."uid"())))));
+  WHERE (("e"."id" = "event_photos"."event_id") AND ("e"."user_id" = ( SELECT "auth"."uid"() AS "uid"))))));
 
 
 
-CREATE POLICY "own events" ON "public"."events" TO "authenticated" USING (("user_id" = "auth"."uid"())) WITH CHECK (("user_id" = "auth"."uid"()));
+CREATE POLICY "own events" ON "public"."events" TO "authenticated" USING (("user_id" = ( SELECT "auth"."uid"() AS "uid"))) WITH CHECK (("user_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "own hidden places" ON "public"."hidden_places" USING (("user_id" = "auth"."uid"())) WITH CHECK (("user_id" = "auth"."uid"()));
+CREATE POLICY "own hidden places" ON "public"."hidden_places" USING (("user_id" = ( SELECT "auth"."uid"() AS "uid"))) WITH CHECK (("user_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
-CREATE POLICY "own hidden polities" ON "public"."hidden_polities" TO "authenticated" USING (("user_id" = "auth"."uid"())) WITH CHECK (("user_id" = "auth"."uid"()));
+CREATE POLICY "own hidden polities" ON "public"."hidden_polities" TO "authenticated" USING (("user_id" = ( SELECT "auth"."uid"() AS "uid"))) WITH CHECK (("user_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
 CREATE POLICY "own tree links" ON "public"."tree_links" TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."trees" "t"
-  WHERE (("t"."id" = "tree_links"."tree_id") AND ("t"."user_id" = "auth"."uid"()))))) WITH CHECK ((EXISTS ( SELECT 1
+  WHERE (("t"."id" = "tree_links"."tree_id") AND ("t"."user_id" = ( SELECT "auth"."uid"() AS "uid")))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."trees" "t"
-  WHERE (("t"."id" = "tree_links"."tree_id") AND ("t"."user_id" = "auth"."uid"())))));
+  WHERE (("t"."id" = "tree_links"."tree_id") AND ("t"."user_id" = ( SELECT "auth"."uid"() AS "uid"))))));
 
 
 
 CREATE POLICY "own tree members" ON "public"."tree_members" TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."trees" "t"
-  WHERE (("t"."id" = "tree_members"."tree_id") AND ("t"."user_id" = "auth"."uid"()))))) WITH CHECK (((EXISTS ( SELECT 1
+  WHERE (("t"."id" = "tree_members"."tree_id") AND ("t"."user_id" = ( SELECT "auth"."uid"() AS "uid")))))) WITH CHECK (((EXISTS ( SELECT 1
    FROM "public"."trees" "t"
-  WHERE (("t"."id" = "tree_members"."tree_id") AND ("t"."user_id" = "auth"."uid"())))) AND (("character_id" IS NULL) OR (EXISTS ( SELECT 1
+  WHERE (("t"."id" = "tree_members"."tree_id") AND ("t"."user_id" = ( SELECT "auth"."uid"() AS "uid"))))) AND (("character_id" IS NULL) OR (EXISTS ( SELECT 1
    FROM "public"."characters" "c"
-  WHERE (("c"."id" = "tree_members"."character_id") AND ("c"."user_id" = "auth"."uid"())))))));
+  WHERE (("c"."id" = "tree_members"."character_id") AND ("c"."user_id" = ( SELECT "auth"."uid"() AS "uid"))))))));
 
 
 
-CREATE POLICY "own trees" ON "public"."trees" TO "authenticated" USING (("user_id" = "auth"."uid"())) WITH CHECK (("user_id" = "auth"."uid"()));
+CREATE POLICY "own trees" ON "public"."trees" TO "authenticated" USING (("user_id" = ( SELECT "auth"."uid"() AS "uid"))) WITH CHECK (("user_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
@@ -4203,9 +4219,9 @@ ALTER TABLE "public"."review" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "the library reviews" ON "public"."review" USING ((EXISTS ( SELECT 1
    FROM "public"."profiles" "p"
-  WHERE (("p"."user_id" = "auth"."uid"()) AND "p"."library")))) WITH CHECK ((EXISTS ( SELECT 1
+  WHERE (("p"."user_id" = ( SELECT "auth"."uid"() AS "uid")) AND "p"."library")))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."profiles" "p"
-  WHERE (("p"."user_id" = "auth"."uid"()) AND "p"."library"))));
+  WHERE (("p"."user_id" = ( SELECT "auth"."uid"() AS "uid")) AND "p"."library"))));
 
 
 
