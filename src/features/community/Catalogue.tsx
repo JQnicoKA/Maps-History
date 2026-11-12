@@ -674,7 +674,9 @@ export function Catalogue({
   const filed = search.folders.length > 0;
   const narrowed = (filed ? 1 : 0) + (era ? 1 : 0) + (region ? 1 : 0);
   /** The date in the wheels, which stand on today when nothing was said. */
-  const when = search.at ?? { year: new Date().getFullYear() };
+  const when = search.at ?? {
+    year: year === null ? new Date().getFullYear() : yearOf(year),
+  };
   /**
    * Ce que la feuille des classeurs attend : deux tables, par nom.
    *

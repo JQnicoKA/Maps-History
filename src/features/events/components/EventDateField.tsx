@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   Pressable,
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } from "react-native";
 
@@ -12,9 +13,9 @@ import {
   InkButton,
   SegmentedControl,
   Sheet,
-  useNotice,
 } from "../../../components/ui";
 import { HISTORY } from "../../../config/history";
+import { useEvents } from "../EventsProvider";
 import {
   ABOUT,
   formatDateYear,
@@ -22,6 +23,7 @@ import {
   formatYear,
   MONTHS,
   toSortKey,
+  yearOf,
 } from "../historicalDate";
 import type { HistoricalDate } from "../types";
 import { palette } from "../../../theme/palette";
@@ -34,40 +36,140 @@ const PAD = (VISIBLE - 1) / 2;
 const FIRST_YEAR = HISTORY.from;
 const LAST_YEAR = HISTORY.to;
 
-/** A snapping column. Virtualized, because the year wheel holds 5 200 rows. */
+const clampYear = (year: number) =>
+  Math.min(Math.max(year, FIRST_YEAR), LAST_YEAR);
+
+/**
+ * Une rangée de roue, qui ne se redessine que si elle change.
+ *
+ * La roue des années tient 5 100 rangées et en garde plusieurs dizaines
+ * montées : chaque cran tourné, chaque chiffre tapé les redessinait toutes,
+ * et React Native s'en plaignait (« large list that is slow to update »).
+ * Seules deux rangées changent vraiment à chaque fois : celle qu'on quitte et
+ * celle où l'on arrive.
+ */
+const Cell = memo(function Cell({
+  label,
+  current,
+  onPress,
+  pressLabel,
+}: {
+  label: string;
+  current: boolean;
+  onPress?: () => void;
+  pressLabel?: string;
+}) {
+  const text = (
+    <Text style={[styles.cellText, current && styles.cellCurrent]} numberOfLines={1}>
+      {label}
+    </Text>
+  );
+  return onPress ? (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={pressLabel}
+      onPress={onPress}
+      style={styles.cell}
+    >
+      {text}
+    </Pressable>
+  ) : (
+    <View style={styles.cell}>{text}</View>
+  );
+});
+
+const keyOf = (_: string, position: number) => String(position);
+
+const layoutOf = (_: ArrayLike<string> | null | undefined, position: number) => ({
+  length: ROW,
+  offset: ROW * position,
+  index: position,
+});
+
+/** A snapping column. Virtualized, because the year wheel holds 5 100 rows. */
 function Wheel({
   data,
   index,
   onIndexChange,
+  onPressCurrent,
+  currentLabel,
   flex,
 }: {
   data: string[];
   index: number;
   onIndexChange: (index: number) => void;
+  /** Toucher la rangée choisie, quand cela fait quelque chose. */
+  onPressCurrent?: () => void;
+  currentLabel?: string;
   flex: number;
 }) {
   const ref = useRef<FlatList<string>>(null);
 
-  const settle = (offset: number) =>
-    onIndexChange(
-      Math.min(Math.max(Math.round(offset / ROW), 0), data.length - 1),
-    );
+  /**
+   * La rangée que la roue montre, telle qu'elle l'a dite.
+   *
+   * La roue suit aussi ce qui la change du dehors — une année tapée au
+   * clavier, le passage du début à la fin, un mois retiré qui emporte son
+   * jour. Elle ne lisait que sa première valeur, et restait ensuite où le
+   * doigt l'avait laissée, quoi que dise la date.
+   */
+  const shown = useRef(index);
+  useEffect(() => {
+    if (index === shown.current) return;
+    shown.current = index;
+    ref.current?.scrollToOffset({ offset: ROW * index, animated: false });
+  }, [index]);
+
+  /**
+   * Ne dit que ce qui a changé.
+   *
+   * iOS signale aussi la fin d'un défilement commandé, et la roue se serait
+   * alors annoncée elle-même : à la première année tapée, elle se croyait
+   * roulée à la main et refermait le clavier avant le second chiffre.
+   */
+  const settle = (offset: number) => {
+    const at = Math.min(Math.max(Math.round(offset / ROW), 0), data.length - 1);
+    if (at === shown.current) return;
+    shown.current = at;
+    onIndexChange(at);
+  };
+
+  /* Lu au moment du toucher plutôt que capturé : le parent recrée sa
+     fonction à chaque rendu, et la rangée choisie se redessinerait avec. */
+  const press = useRef(onPressCurrent);
+  press.current = onPressCurrent;
+  const onPress = useCallback(() => press.current?.(), []);
+  const pressable = onPressCurrent !== undefined;
+
+  const renderItem = useCallback(
+    ({ item, index: position }: { item: string; index: number }) => (
+      <Cell
+        label={item}
+        current={position === index}
+        onPress={pressable && position === index ? onPress : undefined}
+        pressLabel={currentLabel}
+      />
+    ),
+    [index, pressable, onPress, currentLabel],
+  );
 
   return (
     <View style={{ flex }}>
       <FlatList
         ref={ref}
         data={data}
-        keyExtractor={(_, position) => String(position)}
+        extraData={index}
+        keyExtractor={keyOf}
         showsVerticalScrollIndicator={false}
         snapToInterval={ROW}
         decelerationRate="fast"
         initialScrollIndex={index}
-        getItemLayout={(_, position) => ({
-          length: ROW,
-          offset: ROW * position,
-          index: position,
-        })}
+        getItemLayout={layoutOf}
+        // Cinq rangées à l'écran : une fenêtre de sept écrans suffit à un
+        // lancer vif, là où la valeur par défaut en tenait vingt et un.
+        initialNumToRender={VISIBLE * 2}
+        maxToRenderPerBatch={VISIBLE * 2}
+        windowSize={7}
         contentContainerStyle={{ paddingVertical: ROW * PAD }}
         // A slow drag ends without momentum, so both events have to be heard
         // or the wheel would settle on a row without reporting it.
@@ -75,16 +177,7 @@ function Wheel({
         onMomentumScrollEnd={(event) =>
           settle(event.nativeEvent.contentOffset.y)
         }
-        renderItem={({ item, index: position }) => (
-          <View style={styles.cell}>
-            <Text
-              style={[styles.cellText, position === index && styles.cellCurrent]}
-              numberOfLines={1}
-            >
-              {item}
-            </Text>
-          </View>
-        )}
+        renderItem={renderItem}
       />
     </View>
   );
@@ -120,10 +213,32 @@ export function DateWheels({
   );
   const months = useMemo(() => ["—", ...MONTHS], []);
 
-  const yearIndex = Math.min(
-    Math.max(value.year - FIRST_YEAR, 0),
-    years.length - 1,
-  );
+  const yearIndex = clampYear(value.year) - FIRST_YEAR;
+
+  /**
+   * L'année tapée plutôt que roulée.
+   *
+   * Cinq mille rangées, c'est beaucoup de pouce pour aller de 2000 à 487.
+   * Toucher l'année ouvre le pavé numérique à sa place. Rien ne s'ajoute à
+   * l'écran : le geste se découvre en touchant, comme on le ferait d'une
+   * roue d'horloge.
+   *
+   * Le pavé n'a pas de signe moins : l'année tapée garde l'ère de celle
+   * qu'elle remplace, et c'est la roue qui fait passer le zéro.
+   *
+   * Chaque chiffre est porté aussitôt sur la date, et non à la sortie du
+   * champ : « Valider » touché clavier ouvert lirait sinon l'année d'avant.
+   */
+  const [typed, setTyped] = useState<string | null>(null);
+  const beforeChrist = value.year < 0;
+
+  const typeYear = (text: string) => {
+    const digits = text.replace(/\D/g, "").slice(0, 4);
+    setTyped(digits);
+    if (digits === "") return;
+    const year = Number(digits);
+    onChange({ ...value, year: clampYear(beforeChrist ? -year : year) });
+  };
 
   return (
     <View style={styles.wheels}>
@@ -151,12 +266,42 @@ export function DateWheels({
           onChange(index === 0 ? withoutMonth(value) : { ...value, month: index })
         }
       />
-      <Wheel
-        flex={1.6}
-        data={years}
-        index={yearIndex}
-        onIndexChange={(index) => onChange({ ...value, year: FIRST_YEAR + index })}
-      />
+      <View style={styles.yearColumn}>
+        <Wheel
+          flex={1}
+          data={years}
+          index={yearIndex}
+          onIndexChange={(index) => {
+            // Rouler pendant qu'on tape : la roue l'emporte, le champ se
+            // retire plutôt que d'afficher une année qui n'est plus la bonne.
+            setTyped(null);
+            onChange({ ...value, year: FIRST_YEAR + index });
+          }}
+          onPressCurrent={() => setTyped(String(Math.abs(value.year)))}
+          currentLabel="Taper l'année"
+        />
+        {typed !== null ? (
+          <TextInput
+            autoFocus
+            value={typed}
+            onChangeText={typeYear}
+            onBlur={() => setTyped(null)}
+            keyboardType="number-pad"
+            // Le pavé numérique d'iOS n'a pas de touche de validation :
+            // demander « done » fait poser par React Native une barre
+            // au-dessus de lui, et le libellé la met en français. Android a
+            // déjà la sienne. Une `InputAccessoryView` à nous ne s'accrochait
+            // au champ qu'une fois sur deux : elle le cherche à son propre
+            // montage, et le rate s'il n'est pas encore là.
+            returnKeyType="done"
+            inputAccessoryViewButtonLabel="OK"
+            maxLength={4}
+            selectTextOnFocus
+            accessibilityLabel="Année"
+            style={styles.typing}
+          />
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -284,10 +429,18 @@ export function EventDateField({
   labels = EVENT_LABELS,
 }: EventDateFieldProps) {
   const [open, setOpen] = useState(false);
-  const { say, dialog } = useNotice();
+  const { year: frieze } = useEvents();
+
+  /**
+   * Une date encore vide s'ouvre sur l'année de la frise, et non sur
+   * aujourd'hui : on crée presque toujours à l'époque qu'on regarde, et
+   * partir de 2026 pour un événement de 487 coûtait quinze siècles de roue.
+   */
+  const blank = () =>
+    firstDayOf(frieze === null ? new Date().getFullYear() : yearOf(frieze));
 
   const [draftStart, setDraftStart] = useState<HistoricalDate>(
-    start ?? firstDayOf(new Date().getFullYear()),
+    () => start ?? blank(),
   );
   const [draftEnd, setDraftEnd] = useState<HistoricalDate | null>(end);
   const [editing, setEditing] = useState<"start" | "end">("start");
@@ -301,19 +454,25 @@ export function EventDateField({
   };
 
   const reopen = () => {
-    setDraftStart(start ?? firstDayOf(new Date().getFullYear()));
+    setDraftStart(start ?? blank());
     setDraftEnd(end);
     setEditing("start");
     setOpen(true);
   };
 
+  /**
+   * Une période à l'envers, comme la base la refuse (`end_after_start`).
+   *
+   * Dite sous les roues et non dans une alerte : l'alerte s'ouvrait sous la
+   * feuille, invisible, et « Valider » semblait ne rien faire. Le bouton
+   * s'éteint, la phrase dit pourquoi, et l'une comme l'autre se défont dès
+   * que la roue remet les dates dans l'ordre.
+   */
+  const backwards =
+    draftEnd !== null && toSortKey(draftEnd) < toSortKey(draftStart);
+
   const confirm = () => {
-    // Mirrors the database's own `end_after_start`, so a period the wrong way
-    // round is caught here with a sentence rather than there with an error.
-    if (draftEnd && toSortKey(draftEnd) < toSortKey(draftStart)) {
-      say(labels.backwards[0], labels.backwards[1]);
-      return;
-    }
+    if (backwards) return;
     onChange(draftStart, draftEnd);
     setOpen(false);
   };
@@ -322,7 +481,6 @@ export function EventDateField({
 
   return (
     <View style={styles.container}>
-      {dialog}
       <Text style={styles.label}>{labels.field}</Text>
 
       <Pressable
@@ -369,7 +527,13 @@ export function EventDateField({
               grow
               onPress={() => setOpen(false)}
             />
-            <InkButton label="Valider" variant="solid" grow onPress={confirm} />
+            <InkButton
+              label="Valider"
+              variant="solid"
+              grow
+              disabled={backwards}
+              onPress={confirm}
+            />
           </>
         }
       >
@@ -395,6 +559,9 @@ export function EventDateField({
               ? `${formatHistoricalDate(draftStart)} → ${formatHistoricalDate(draftEnd)}`
               : formatHistoricalDate(draftStart)}
           </Text>
+          {backwards ? (
+            <Text style={styles.backwards}>{labels.backwards[1]}</Text>
+          ) : null}
 
           {/* La seconde date avant l'incertitude, et l'ordre dit le rapport
               entre les deux : ajouter une fin décide **de quoi** on parle,
@@ -497,6 +664,23 @@ const styles = StyleSheet.create({
 
   sheet: { paddingHorizontal: space.xl, gap: space.lg },
   wheels: { flexDirection: "row", height: ROW * VISIBLE, gap: space.sm },
+  yearColumn: { flex: 1.6 },
+  // Posé sur la rangée choisie, à sa place exacte : on tape là où on lisait.
+  typing: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: ROW * PAD,
+    height: ROW,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: palette.wax,
+    backgroundColor: palette.paper,
+    textAlign: "center",
+    fontSize: 19,
+    fontWeight: "600",
+    color: palette.ink,
+  },
   band: {
     position: "absolute",
     left: 0,
@@ -534,6 +718,7 @@ const styles = StyleSheet.create({
     color: palette.wax,
     fontWeight: "600",
   },
+  backwards: { ...type.caption, textAlign: "center", color: palette.danger },
   // Dashed, so it reads as a slot waiting to be filled rather than a button.
   add: {
     flexDirection: "row",
