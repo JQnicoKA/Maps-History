@@ -204,7 +204,7 @@ export type Character = {
    *
    * Le pendant exact de celle d'un événement, et réglée au même endroit :
    * dans le formulaire, une fois pour toutes. Les arbres s'en servent pour
-   * le poids du nœud — un majeur se détache, un discret s'efface — et ne
+   * le poids du nœud — deux étoiles, une, aucune — et ne
    * l'offrent plus à régler chez eux : on ne décide pas de ce que quelqu'un
    * vaut dessin par dessin.
    */

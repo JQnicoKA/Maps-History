@@ -25,7 +25,13 @@ export type Face = {
 
 export type TreeFaceProps = {
   face: Face | undefined;
-  importance: Importance;
+  /**
+   * Ce que la personne pèse, dit en étoiles sous la carte.
+   *
+   * Absente, aucune étoile : l'arbre d'un autre, regardé dans la
+   * bibliothèque, ne publie pas ce réglage — voir `TreePreview`.
+   */
+  importance?: Importance;
   /** Ringed in ink: the one being worked on, or one already linked to it. */
   active?: boolean;
   /** Out of reach, or merely being pressed. */
@@ -43,10 +49,12 @@ export type TreeFaceProps = {
  * portrait keeps the wax.
  *
  * Every face is the same size — that of a major figure. **Weight in the tree
- * is carried by opacity**: a minor figure recedes into the paper, a founder
- * sits full on it. Size was tried and given up, because shrinking a portrait
- * makes a face harder to recognise, and a likeness should stay legible
- * whatever rank it holds.
+ * is carried by stars**, pinned half on, half off the foot of the card: none
+ * for a minor figure, one for an ordinary one, two for a founder. Size was
+ * tried and given up, because shrinking a portrait makes a face harder to
+ * recognise; opacity came next, and was given up too — a pale card read as
+ * one out of reach, and the name on it as harder to read, when neither was
+ * meant. A star says the weight without taking anything from the face.
  *
  * The box is fixed and the portrait hangs from a band, so a generation reads
  * as one line and the connectors never move.
@@ -82,15 +90,8 @@ export function TreeFace({
        * cas, c'est un calque de plus pour rien, et un arbre en porte
        * quarante.
        */
-      needsOffscreenAlphaCompositing={
-        dimmed || pressed || WEIGHT[importance] < 1
-      }
-      style={[
-        styles.node,
-        {
-          opacity: dimmed ? 0.25 : pressed ? 0.6 : WEIGHT[importance],
-        },
-      ]}
+      needsOffscreenAlphaCompositing={dimmed || pressed}
+      style={[styles.node, { opacity: dimmed ? 0.25 : pressed ? 0.6 : 1 }]}
     >
       {/* Drawn first so everything else sits over it; positioned rather than
           in the flow, since it begins halfway up the portrait. */}
@@ -141,21 +142,52 @@ export function TreeFace({
           </Text>
         )}
       </View>
+
+      {importance === undefined || STARS[importance] === 0 ? null : (
+        <View
+          style={styles.stars}
+          accessibilityLabel={
+            STARS[importance] === 2 ? "Importance élevée" : "Importance moyenne"
+          }
+        >
+          {Array.from({ length: STARS[importance] }, (_, index) => (
+            <Text key={index} style={styles.star}>
+              ★
+            </Text>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
 
-/**
- * How present a face is, by the weight its member carries.
- *
- * `low` stays well clear of the 0.25 a dimmed node uses while a line is
- * being drawn: "minor" and "out of reach right now" must not look alike.
- */
-const WEIGHT: Record<Importance, number> = {
-  high: 1,
-  medium: 0.78,
-  low: 0.5,
+/** Combien d'étoiles pour quel poids : aucune, une, deux. */
+const STARS: Record<Importance, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
 };
+
+/** La taille d'une étoile, dont la moitié dépasse sous la carte. */
+const STAR = 24;
+
+/**
+ * La boîte d'une étoile, un peu plus haute que l'étoile.
+ *
+ * À hauteur égale, iOS rognait le sommet : le « ★ » de sa police monte un
+ * rien au-dessus de sa taille annoncée, et le liseré d'ombre avec lui. Deux
+ * points de plus lui laissent la place, et le bloc reste centré sur le bord.
+ */
+const STAR_BOX = 26;
+
+/**
+ * Un jaune d'or, seul de son espèce dans l'application.
+ *
+ * Pris hors de la palette exprès : la cire, l'encre et le papier sont tous
+ * sur la carte ou autour d'elle, et une étoile dans l'un d'eux se perdrait
+ * sur la moitié des fonds qu'elle traverse.
+ */
+const GOLD = "#F4C431";
 
 const styles = StyleSheet.create({
   node: {
@@ -216,6 +248,34 @@ const styles = StyleSheet.create({
    * bon endroit.
    */
   words: { alignSelf: "stretch", alignItems: "center", gap: 3, elevation: 5 },
+  /**
+   * Au pied de la carte, à cheval sur son bord : la moitié sur la cire, la
+   * moitié sur le papier. Au-dessus de la carte sur Android aussi, pour la
+   * même raison d'élévation que les mots.
+   */
+  stars: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: -STAR_BOX / 2,
+    height: STAR_BOX,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 2,
+    elevation: 6,
+  },
+  /**
+   * Un liseré d'encre autour de l'or, par l'ombre du texte : sans lui, le
+   * jaune se noie dans le papier crème qu'il chevauche.
+   */
+  star: {
+    fontSize: STAR,
+    lineHeight: STAR_BOX,
+    color: GOLD,
+    textShadowColor: "rgba(36, 27, 16, 0.55)",
+    textShadowOffset: { width: 0, height: 0.5 },
+    textShadowRadius: 1.5,
+  },
   /** Sans portrait : les mots au milieu de la carte, et non sous un vide. */
   wordsAlone: {
     position: "absolute",

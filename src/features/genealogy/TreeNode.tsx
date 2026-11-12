@@ -113,10 +113,7 @@ const columnsTravelled = (dx: number, magnification: number): number =>
  * Someone, drawn: a round portrait, a name, two dates.
  *
  * Every face is the same size — that of a major figure. **Weight in the tree
- * is carried by opacity**: a minor figure recedes into the paper, a founder
- * sits full on it. Size was tried and given up, because shrinking a portrait
- * makes a face harder to recognise, and a likeness should stay legible
- * whatever rank it holds.
+ * is carried by stars** under the card — see `TreeFace`.
  *
  * The box is fixed and the portrait hangs from a band, so a generation reads
  * as one line and the connectors never move.

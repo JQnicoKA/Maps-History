@@ -189,9 +189,9 @@ const HELP: { question: string; answer: string }[] = [
       "Restez appuyé sur sa carte : le menu qui s'ouvre permet de l'en retirer. Il reste néanmoins dans votre collection.",
   },
   {
-    question: "Comment rendre quelqu'un plus ou moins visible ?",
+    question: "Que veulent dire les étoiles ?",
     answer:
-      "Restez appuyé sur sa carte, puis choisissez discret, normal ou majeur",
+      "L'importance du personnage, réglée dans sa fiche : aucune étoile pour faible, une pour moyenne, deux pour élevée",
   },
   {
     question: "Comment déplacer quelqu'un dans sa ligne ?",
