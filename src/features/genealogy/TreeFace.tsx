@@ -63,6 +63,7 @@ export function TreeFace({
   dimmed = false,
   pressed = false,
 }: TreeFaceProps) {
+  const photo = face?.photo ?? null;
   return (
     <View
       accessibilityRole="button"
@@ -102,18 +103,19 @@ export function TreeFace({
       />
 
       {/* The band is what keeps the axis: the circle is centred in it, so its
-          middle is always FACE_BAND / 2 below the top of the box. */}
-      <View style={styles.band}>
-        <View style={styles.face}>
-          {face?.photo ? (
-            <Image source={{ uri: face.photo }} style={styles.image} />
-          ) : (
-            <Text style={styles.initial}>
-              {face?.name.charAt(0).toUpperCase() ?? "?"}
-            </Text>
-          )}
+          middle is always FACE_BAND / 2 below the top of the box.
+
+          Pas de portrait, pas de cercle. Il portait autrefois l'initiale, un
+          gros rond pour une seule lettre que le nom écrit juste dessous
+          répétait déjà. La carte reste à sa place — la boîte est fixe, les
+          traits s'y accrochent — et le nom descend en son milieu. */}
+      {photo ? (
+        <View style={styles.band}>
+          <View style={styles.face}>
+            <Image source={{ uri: photo }} style={styles.image} />
+          </View>
         </View>
-      </View>
+      ) : null}
 
       {/**
         * Les mots, dans une vue qui les porte **au-dessus de la carte**.
@@ -129,7 +131,7 @@ export function TreeFace({
         * Android tire l'ombre du contour, et un contour vide n'en projette pas.
         * Elle ne sert qu'à l'ordre.
         */}
-      <View style={styles.words}>
+      <View style={[styles.words, !photo && styles.wordsAlone]}>
         <Text style={styles.name} numberOfLines={2}>
           {face?.name ?? "Supprimé"}
         </Text>
@@ -205,7 +207,6 @@ const styles = StyleSheet.create({
   // Clipped to the circle by the parent's radius — which is why the portrait
   // is a child of the frame rather than the frame itself.
   image: { width: "100%", height: "100%", borderRadius: 999 },
-  initial: { fontSize: FACE * 0.36, fontWeight: "700", color: palette.inkFaint },
   /**
    * Le porteur des mots — voir le commentaire de son emploi.
    *
@@ -215,6 +216,15 @@ const styles = StyleSheet.create({
    * bon endroit.
    */
   words: { alignSelf: "stretch", alignItems: "center", gap: 3, elevation: 5 },
+  /** Sans portrait : les mots au milieu de la carte, et non sous un vide. */
+  wordsAlone: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: CARD_TOP,
+    bottom: 0,
+    justifyContent: "center",
+  },
   /**
    * Sized to the room the card actually has.
    *

@@ -54,7 +54,17 @@ export function TreePreview({
   inset = { top: 0, bottom: 0 },
 }: TreePreviewProps) {
   const placed = useMemo(() => place(tree), [tree]);
-  const lines = useMemo(() => connectors(tree, placed), [tree, placed]);
+  const lines = useMemo(
+    () =>
+      connectors(
+        tree,
+        placed,
+        // Le même critère que `TreeFace` : pas de photo, pas de rond.
+        (member) =>
+          member.kind === "person" && !faces.get(member.characterId)?.photo,
+      ),
+    [tree, placed, faces],
+  );
   const size = useMemo(() => canvasSize(tree), [tree]);
 
   return (

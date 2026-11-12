@@ -396,8 +396,20 @@ export function TreeBuilder({
 
   const placed = useMemo(() => (tree ? place(tree) : []), [tree]);
   const lines = useMemo(
-    () => (tree ? connectors(tree, placed) : []),
-    [tree, placed],
+    () =>
+      tree
+        ? connectors(
+            tree,
+            placed,
+            // Le même critère que `TreeFace` : pas de première photo, pas de
+            // rond — un personnage effacé compris.
+            (member) =>
+              member.kind === "person" &&
+              !characters.find((person) => person.id === member.characterId)
+                ?.photos[0],
+          )
+        : [],
+    [tree, placed, characters],
   );
   const size = useMemo(
     () => (tree ? canvasSize(tree) : { width: 0, height: 0 }),

@@ -254,7 +254,18 @@ export function canvasSize(tree: Tree): { width: number; height: number } {
  *   belongs to both. The run still sits at mid-gap, so it lines up with every
  *   other family on the row.
  */
-export function connectors(tree: Tree, placed: Placed[]): Segment[] {
+export function connectors(
+  tree: Tree,
+  placed: Placed[],
+  /**
+   * Qui est dessiné sans portrait.
+   *
+   * Le trait qui descend vers un enfant s'arrête au haut de sa boîte, là où
+   * commence le rond. Sans rond, il n'y a là que du papier : le trait doit
+   * descendre jusqu'à la carte, à `CARD_TOP`, sinon il flotte au-dessus.
+   */
+  bare: (member: TreeMember) => boolean = () => false,
+): Segment[] {
   const at = new Map(placed.map((node) => [node.member.id, node]));
   const out: Segment[] = [];
 
@@ -295,11 +306,17 @@ export function connectors(tree: Tree, placed: Placed[]): Segment[] {
       const start = bar
         ? { x: (bar.from + bar.to) / 2, y: bar.y }
         : { x: parent.x + NODE.width / 2, y: parent.y + NODE.height };
-      const to = { x: child.x + NODE.width / 2, y: child.y };
+      const to = {
+        x: child.x + NODE.width / 2,
+        y: child.y + (bare(child.member) ? CARD_TOP : 0),
+      };
       // Measured from the foot of the row and not from the start, so a line
       // dropping from a marriage bar crosses the gap at the same height as one
-      // leaving a single parent's box.
-      const mid = parent.y + NODE.height + (to.y - parent.y - NODE.height) / 2;
+      // leaving a single parent's box — and from the top of the child's box,
+      // not from where its line stops, so a child without a portrait does not
+      // pull the run of its whole family lower.
+      const mid =
+        parent.y + NODE.height + (child.y - parent.y - NODE.height) / 2;
 
       out.push({
         left: start.x - STROKE / 2,

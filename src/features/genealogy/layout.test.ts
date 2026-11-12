@@ -119,6 +119,28 @@ describe("le trait d'une filiation", () => {
     ).toBe(true);
   });
 
+  it("descend jusqu'à la carte d'un enfant sans portrait, coude inchangé", () => {
+    const subject = tree(
+      [at("f", 0, 0), at("a", 1, 0)],
+      [{ kind: "descent", from: "f", to: "a" }],
+    );
+    const placed = place(subject);
+    const child = placed.find((node) => node.member.id === "a")!;
+    const withFace = connectors(subject, placed);
+    const without = connectors(subject, placed, (member) => member.id === "a");
+
+    // La dernière pièce entre dans l'enfant : en haut de la boîte avec un
+    // rond, au haut de la carte sans.
+    const foot = (segments: typeof withFace) => {
+      const drop = segments[segments.length - 1]!;
+      return drop.top + drop.height;
+    };
+    expect(foot(withFace)).toBeCloseTo(child.y, 9);
+    expect(foot(without)).toBeCloseTo(child.y + CARD_TOP, 9);
+    // Le coude reste à mi-gouttière : la famille garde une seule hauteur.
+    expect(without[1]!.top).toBeCloseTo(withFace[1]!.top, 9);
+  });
+
   it("part du milieu de la barre quand les deux parents sont mariés", () => {
     const subject = tree(
       [at("f", 0, 0), at("m", 0, 1), at("a", 1, 0), at("b", 1, 1)],
