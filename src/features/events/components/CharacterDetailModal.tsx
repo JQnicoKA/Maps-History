@@ -258,16 +258,19 @@ export function CharacterDetailModal({
 
         {person.bio ? <Text style={styles.bio}>{person.bio}</Text> : null}
 
-        {/* Every portrait, not just the first: the head of the sheet shows one
-            and the rest would otherwise exist only inside the form. */}
-        {person.photos.length > 1 ? (
+        {/* Toutes les photos, la première comprise, comme sur la fiche d'un
+            événement. Elle n'apparaissait qu'à partir de deux, au motif que
+            l'en-tête montre déjà la première — mais en petit rond, qu'on ne
+            peut pas agrandir : avec une seule photo, on ne la voyait jamais
+            qu'en dehors du formulaire. */}
+        {person.photos.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.photos}>
               {person.photos.map((photo) => (
                 <Pressable
                   key={photo.id}
                   accessibilityRole="imagebutton"
-                  accessibilityLabel="Agrandir le portrait"
+                  accessibilityLabel="Agrandir la photo"
                   onPress={() => setViewing(photo)}
                   style={({ pressed }) => (pressed ? styles.dim : undefined)}
                 >
@@ -427,7 +430,7 @@ const styles = StyleSheet.create({
   chevron: { fontSize: 20, lineHeight: 22, color: palette.inkFaint },
 
   photos: { flexDirection: "row", gap: space.md },
-  photo: { width: 120, height: 150, borderRadius: radius.md },
+  photo: { width: 168, height: 120, borderRadius: radius.md },
   dim: { opacity: 0.6 },
 
   /**
