@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { CharacterManager } from "./CharacterManager";
@@ -12,6 +12,17 @@ export type CharacterSelectorProps = {
   characters: Character[];
   value: string[];
   onChange: (ids: string[]) => void;
+  /** Part écrire quelqu'un de neuf — voir `EventFormModal`. */
+  onNewPerson: () => void;
+  /** Part chercher quelqu'un dans la bibliothèque. */
+  onSeekPerson: () => void;
+  /**
+   * Rouvre la liste : au retour d'un des deux détours, on retrouve la
+   * fenêtre qu'on avait quittée, comme dans un arbre. Remis à faux par
+   * `onReopened` aussitôt honoré, pour qu'un remontage ne la rouvre pas.
+   */
+  reopen: boolean;
+  onReopened: () => void;
 };
 
 /**
@@ -33,8 +44,26 @@ export function CharacterSelector({
   characters,
   value,
   onChange,
+  onNewPerson,
+  onSeekPerson,
+  reopen,
+  onReopened,
 }: CharacterSelectorProps) {
   const [open, setOpen] = useState(false);
+  /**
+   * La porte prise dans la liste, franchie une fois la liste descendue.
+   *
+   * Descendre d'abord, partir ensuite : iOS refuse de présenter une page
+   * depuis une feuille qui s'en va encore. `onClosed` attend qu'elle soit
+   * vraiment partie — c'est ce que fait l'arbre.
+   */
+  const [door, setDoor] = useState<"new" | "seek" | null>(null);
+
+  useEffect(() => {
+    if (!reopen) return;
+    setOpen(true);
+    onReopened();
+  }, [reopen, onReopened]);
 
   const toggle = (id: string) =>
     onChange(
@@ -100,6 +129,13 @@ export function CharacterSelector({
       <Sheet
         visible={open}
         onClose={() => setOpen(false)}
+        onClosed={() => {
+          if (door === null) return;
+          const taken = door;
+          setDoor(null);
+          if (taken === "new") onNewPerson();
+          else onSeekPerson();
+        }}
         title="Lier un personnage"
         // La liste grandit avec la collection ; un panneau qui se
         // redimensionnerait autour d'elle ne tiendrait jamais en place.
@@ -113,9 +149,13 @@ export function CharacterSelector({
           />
         }
       >
-        {/* Ni crayon, ni « Nouveau personnage », ni porte vers la
-            bibliothèque : chacune serait une sortie d'un événement à
-            moitié écrit. Seules les rangées, qui rendent la personne.
+        {/* Les deux mêmes portes que dans un arbre : « Nouveau
+            personnage » et la bibliothèque. Elles furent longtemps
+            absentes, de peur qu'elles fassent quitter un événement à moitié
+            écrit ; le formulaire se met désormais de côté le temps du
+            détour et revient tel qu'on l'a laissé, cette liste rouverte.
+            Pas de crayon sur les rangées : on ne corrige pas quelqu'un au
+            moment de le choisir.
 
             Et elle reste ouverte après un choix, pour qu'on en lie
             plusieurs d'affilée : le nom qu'on vient de prendre passe en
@@ -125,6 +165,14 @@ export function CharacterSelector({
           unavailable={(person) =>
             value.includes(person.id) ? "déjà lié" : null
           }
+          onEdit={() => {
+            setDoor("new");
+            setOpen(false);
+          }}
+          onSeek={() => {
+            setDoor("seek");
+            setOpen(false);
+          }}
         />
       </Sheet>
     </View>

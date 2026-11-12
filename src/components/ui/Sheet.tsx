@@ -102,6 +102,14 @@ export type SheetProps = {
    * delay.
    */
   onClosed?: () => void;
+  /**
+   * Appelé une fois le panneau présenté par iOS.
+   *
+   * Pour ce qui doit s'ouvrir *par-dessus* lui : une feuille demandée dans le
+   * même souffle que celle qui la porte arrive pendant que celle-ci se
+   * présente encore, et iOS la refuse.
+   */
+  onShown?: () => void;
   title?: string;
   /**
    * Une image en bandeau, tout en haut du panneau, de bord à bord.
@@ -187,6 +195,7 @@ export function Sheet({
   visible,
   onClose,
   onClosed,
+  onShown,
   title,
   banner,
   icon,
@@ -321,6 +330,7 @@ export function Sheet({
       transparent
       statusBarTranslucent
       onRequestClose={onClose}
+      onShow={onShown}
     >
       <View style={styles.root}>
         <Animated.View

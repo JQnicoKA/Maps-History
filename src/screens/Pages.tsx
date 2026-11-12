@@ -116,6 +116,18 @@ export function usePages({
   const [editing, setEditing] = useState<HistoricalEvent | null>(null);
   /** Combien de fois un formulaire vierge a été demandé, ce qui le clé. */
   const [drafts, setDrafts] = useState(0);
+  /**
+   * Le formulaire mis de côté le temps d'un détour — écrire un personnage,
+   * en chercher un dans la bibliothèque — pour le lier ensuite.
+   *
+   * Caché et non fermé : `composing` reste vrai, l'événement à moitié écrit
+   * reste tenu. Le détour peut s'allonger — d'une entrée de la bibliothèque à
+   * une autre — et le formulaire ne revient qu'au bout, quand plus aucune
+   * page ne reste à lever.
+   */
+  const [aside, setAside] = useState(false);
+  /** Combien de détours ont pris fin, ce qui rouvre la liste des personnages. */
+  const [returns, setReturns] = useState(0);
 
   const raise = (target: Page) => {
     setPage(target);
@@ -141,9 +153,21 @@ export function usePages({
       deed();
       return;
     }
-    if (back === null) return;
-    setBack(null);
-    raise(back);
+    if (back !== null) {
+      setBack(null);
+      raise(back);
+      return;
+    }
+    if (aside) {
+      setAside(false);
+      setReturns((count) => count + 1);
+    }
+  };
+
+  /** Met le formulaire de côté, puis lève cette page une fois qu'il est parti. */
+  const detour = (target: Page) => {
+    setNext(() => () => raise(target));
+    setAside(true);
   };
 
   const compose = (event: HistoricalEvent | null) => {
@@ -207,8 +231,11 @@ export function usePages({
           // Remonter re-sème chaque champ : sur l'événement qu'on corrige, ou
           // sur le nombre de formulaires vierges demandés.
           key={editing?.id ?? `new-${drafts}`}
-          visible={composing}
+          visible={composing && !aside}
           event={editing}
+          onNewPerson={() => detour({ kind: "editPerson", id: null })}
+          onSeekPerson={() => detour({ kind: "searchCharacters" })}
+          returns={returns}
           // Descendre d'abord, ouvrir ensuite : `onClosed` lève la fiche une
           // fois cette feuille réellement partie.
           onSeeEntry={(id) => {

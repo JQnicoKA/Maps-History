@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { LikelyDuplicates } from "../../community/LikelyDuplicates";
@@ -160,6 +160,15 @@ export type EventFormModalProps = {
   /** Fired once the sheet is off the screen — see `Sheet`. */
   onClosed?: () => void;
   onSaved: () => void;
+  /**
+   * Les deux détours de la liste des personnages : en écrire un, en prendre
+   * un dans la bibliothèque. Le parent met ce formulaire de côté — caché,
+   * pas démonté, comme pour viser la carte — et le relève au retour.
+   */
+  onNewPerson: () => void;
+  onSeekPerson: () => void;
+  /** Compte les retours de détour : chacun rouvre la liste des personnages. */
+  returns: number;
 };
 
 /**
@@ -184,7 +193,20 @@ export function EventFormModal({
   onCancel,
   onClosed,
   onSaved,
+  onNewPerson,
+  onSeekPerson,
+  returns,
 }: EventFormModalProps) {
+  /**
+   * Le retour de détour à honorer, une fois la feuille présentée.
+   *
+   * Rouvrir la liste dans le même souffle que la feuille qui la porte la
+   * ferait présenter pendant que celle-ci se présente encore, ce qu'iOS
+   * refuse. On attend donc `onShown`.
+   */
+  const honoured = useRef(returns);
+  const [recast, setRecast] = useState(false);
+  const recastDone = useCallback(() => setRecast(false), []);
   const {
     folderNames,
     characters,
@@ -332,6 +354,11 @@ export function EventFormModal({
       onClose={onCancel}
       // Not while it is merely standing aside for the reticle.
       onClosed={aiming ? undefined : onClosed}
+      onShown={() => {
+        if (returns === honoured.current) return;
+        honoured.current = returns;
+        setRecast(true);
+      }}
       // Seven steps live in here; a panel that resized itself for each would
       // never be still.
       tall
@@ -526,6 +553,10 @@ export function EventFormModal({
               characters={characters}
               value={cast}
               onChange={setCast}
+              onNewPerson={onNewPerson}
+              onSeekPerson={onSeekPerson}
+              reopen={recast}
+              onReopened={recastDone}
             />
           </Section>
         ) : null}
