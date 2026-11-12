@@ -90,7 +90,6 @@ export function CharacterEditModal({
   onClosed,
 }: CharacterEditModalProps) {
   const {
-    characters,
     events,
     folderNames,
     addCharacter,
@@ -188,16 +187,9 @@ export function CharacterEditModal({
       say("Nom manquant", "Un personnage a besoin d'un nom.");
       return;
     }
-    if (
-      characters.some(
-        (other) =>
-          other.id !== person?.id &&
-          other.name.toLowerCase() === trimmed.toLowerCase(),
-      )
-    ) {
-      say("Personnage existant", `« ${trimmed} » est déjà dans la liste.`);
-      return;
-    }
+    // Deux personnages peuvent porter le même nom — un père et son fils,
+    // deux rois homonymes à des siècles d'écart. Rien ne l'interdit : le
+    // formulaire refusait autrefois un nom déjà pris, à tort.
 
     // A person is drawn on the map from their birth onward, at one point.
     // Neither can be guessed, so neither is optional — a death can be: not
