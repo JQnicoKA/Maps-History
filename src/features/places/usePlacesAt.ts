@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { yearOf } from "../events/historicalDate";
 import { fetchPlacesAt, type PlaceCollection } from "./api";
 import { fetchMyPlacesAt } from "./mine";
 import { useMyPlaces } from "./MyPlacesProvider";
@@ -27,9 +28,9 @@ export function usePlacesAt(year: number | null): PlaceCollection | null {
   const [posed, setPosed] = useState<PlaceCollection>(EMPTY);
   const cache = useRef(new Map<number, PlaceCollection>());
 
-  // Whole years only: the extract has no finer resolution, and rounding turns
-  // a drag's worth of near-identical dates into cache hits.
-  const at = year === null ? null : Math.round(year);
+  // Whole years only: the extract has no finer resolution, and keeping only
+  // the year turns a drag's worth of near-identical dates into cache hits.
+  const at = year === null ? null : yearOf(year);
 
   useEffect(() => {
     if (at === null) {

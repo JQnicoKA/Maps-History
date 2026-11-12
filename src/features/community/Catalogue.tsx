@@ -64,7 +64,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useEvents } from "../events/EventsProvider";
 import { CharacterDetailModal } from "../events/components/CharacterDetailModal";
 import { EventDetailModal } from "../events/components/EventDetailModal";
-import { formatHistoricalDate, formatYear } from "../events/historicalDate";
+import { formatHistoricalDate, formatYear, yearOf } from "../events/historicalDate";
 import { widthsFor } from "./period";
 import { usePlacement } from "../placement";
 import { ANSWER_SAID, CONTACT, LOOKED_AT_WITHIN } from "../../config/contact";
@@ -614,7 +614,7 @@ export function Catalogue({
     if (!visible) return;
     setSearch((was) => ({
       ...was,
-      at: was.at ?? (year === null ? null : { year: Math.trunc(year) }),
+      at: was.at ?? (year === null ? null : { year: yearOf(year) }),
       near: was.near ?? looking.current,
     }));
     // Once, on opening: following the frieze would move the filter under the

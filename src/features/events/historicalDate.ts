@@ -16,6 +16,19 @@ export function toSortKey({ year, month, day }: HistoricalDate): number {
 }
 
 /**
+ * L'année qui contient une position de l'axe.
+ *
+ * Arrondie vers le bas, jamais à la plus proche : le 23 décembre 487 vaut
+ * 487,98 sur l'axe, et l'arrondi l'affichait en 488 — la frise, les villes et
+ * les frontières avançaient d'un an dès le second semestre. Vers le bas aussi
+ * avant Jésus-Christ : décembre de -50 vaut -49,08, qui doit rester -50, ce
+ * que `Math.trunc` ne fait pas.
+ */
+export function yearOf(at: number): number {
+  return Math.floor(at);
+}
+
+/**
  * The mark an uncertain date wears, wherever it is written.
  *
  * One tilde, in one place, so a date cannot be approximate in the detail sheet

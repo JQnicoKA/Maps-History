@@ -6,6 +6,7 @@ import {
   fetchTerritoryIdsAt,
   type TerritoryFeature,
 } from "./api";
+import { yearOf } from "../events/historicalDate";
 import { fetchDrawnAt } from "./drawn";
 
 export type TerritoryCollection = FeatureCollection<Polygon | MultiPolygon>;
@@ -68,8 +69,13 @@ export function useTerritoriesAt(
   const [loading, setLoading] = useState(false);
   const entities = useRef(new Map<string, TerritoryFeature>());
 
+  // L'année pleine, comme la frise l'affiche : les frontières finissent à une
+  // année incluse, et décembre 487 passé tel quel (487,98) effaçait celles qui
+  // s'arrêtent en 487. Un glissement dans l'année ne redemande plus rien.
+  const at = year === null ? null : yearOf(year);
+
   useEffect(() => {
-    if (year === null) {
+    if (at === null) {
       setCollection(null);
       setLoading(false);
       return;
@@ -83,8 +89,8 @@ export function useTerritoriesAt(
         // Asked together: the reference set is a list of identifiers, the
         // reader's own territories come whole. Neither waits on the other.
         const [ids, mine] = await Promise.all([
-          fetchTerritoryIdsAt(year, detailed ? LEVEL.fief : LEVEL.sovereign),
-          fetchDrawnAt(year),
+          fetchTerritoryIdsAt(at, detailed ? LEVEL.fief : LEVEL.sovereign),
+          fetchDrawnAt(at),
         ]);
         const missing = ids.filter((id) => !entities.current.has(id));
 
@@ -144,7 +150,7 @@ export function useTerritoriesAt(
     return () => {
       current = false;
     };
-  }, [year, detailed, mask]);
+  }, [at, detailed, mask]);
 
   return { collection, loading };
 }

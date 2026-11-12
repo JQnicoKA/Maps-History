@@ -10,7 +10,7 @@ import {
 
 import { HISTORY } from "../../config/history";
 import { useEvents } from "../events/EventsProvider";
-import { formatYear } from "../events/historicalDate";
+import { formatYear, yearOf } from "../events/historicalDate";
 import { palette } from "../../theme/palette";
 import { radius, space } from "../../theme/tokens";
 
@@ -130,15 +130,15 @@ export function Timeline() {
   /**
    * Avance ou recule d'une année pleine.
    *
-   * Arrondi avant d'ajouter : la frise rend une année fractionnaire pendant
-   * qu'on la fait glisser, et partir de 1515,4 pour atterrir sur 1516,4
-   * n'aurait aucun sens à l'affichage, qui arrondit de toute façon.
+   * Ramené à l'année pleine avant d'ajouter : la frise rend une année
+   * fractionnaire pendant qu'on la fait glisser, et partir de 1515,4 pour
+   * atterrir sur 1516,4 n'aurait aucun sens à l'affichage, qui lit 1515.
    *
    * Et `null` en second argument : changer d'année n'est pas choisir un
    * événement, et garder la sélection ferait mentir la fiche du bas.
    */
   const stepYear = (by: number) => {
-    const wanted = clamp(Math.round(at) + by, HISTORY.from, HISTORY.to);
+    const wanted = clamp(yearOf(at) + by, HISTORY.from, HISTORY.to);
     setLocal(null);
     scrubTo(wanted, null);
   };
@@ -340,16 +340,16 @@ export function Timeline() {
         <Step
           glyph="‹"
           label="Année précédente"
-          disabled={Math.round(at) <= HISTORY.from}
+          disabled={yearOf(at) <= HISTORY.from}
           onPress={() => stepYear(-1)}
         />
         <View style={styles.pill}>
-          <Text style={styles.year}>{formatYear(Math.round(at))}</Text>
+          <Text style={styles.year}>{formatYear(yearOf(at))}</Text>
         </View>
         <Step
           glyph="›"
           label="Année suivante"
-          disabled={Math.round(at) >= HISTORY.to}
+          disabled={yearOf(at) >= HISTORY.to}
           onPress={() => stepYear(1)}
         />
         <Step

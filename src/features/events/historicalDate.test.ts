@@ -7,6 +7,7 @@ import {
   formatHistoricalDate,
   formatYear,
   toSortKey,
+  yearOf,
 } from "./historicalDate";
 import type { EventSummary } from "./types";
 
@@ -93,5 +94,23 @@ describe("ordonner des dates", () => {
 
   it("ignore l'incertitude, qui ne déplace pas une date", () => {
     expect(key({ year: 1066, approximate: true })).toBe(key({ year: 1066 }));
+  });
+});
+
+describe("relire l'année sur l'axe", () => {
+  it("garde l'année d'une date de fin d'année", () => {
+    /* La faute d'autrefois : le 23 décembre 487 s'affichait en 488. */
+    expect(yearOf(toSortKey({ year: 487, month: 12, day: 23 }))).toBe(487);
+    expect(yearOf(toSortKey({ year: 1453, month: 12, day: 31 }))).toBe(1453);
+  });
+
+  it("garde l'année avant Jésus-Christ", () => {
+    expect(yearOf(toSortKey({ year: -50, month: 12, day: 31 }))).toBe(-50);
+    expect(yearOf(toSortKey({ year: -50 }))).toBe(-50);
+  });
+
+  it("ne bouge pas une année pleine", () => {
+    expect(yearOf(487)).toBe(487);
+    expect(yearOf(-3000)).toBe(-3000);
   });
 });
