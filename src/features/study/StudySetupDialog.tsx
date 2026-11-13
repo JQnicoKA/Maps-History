@@ -13,6 +13,7 @@ import {
 } from "../../components/ui";
 import { HISTORY } from "../../config/history";
 import { useEvents } from "../events/EventsProvider";
+import { typedYear } from "../events/historicalDate";
 import { FolderSelector } from "../events/components/FolderSelector";
 import type { Importance } from "../events/types";
 import { palette } from "../../theme/palette";
@@ -124,7 +125,7 @@ export function StudySetupDialog({
    */
   const stuck =
     (face === "aim" && setup.aims.length === 0) ||
-    (face === "part" && setup.part === null);
+    (face === "part" && setup.parts.length === 0);
 
   /**
    * Le réglage arrêté, qui attend que la carte soit partie.
@@ -171,7 +172,7 @@ export function StudySetupDialog({
             : face === "importance"
               ? "Quelle importance voulez-vous étudier ?"
               : face === "part"
-                ? "Quelle partie du monde ?"
+                ? "Quelles parties du monde ?"
                 : face === "years"
                   ? "Entre quelles années ?"
                   : "Dans quel ordre poser les questions ?"
@@ -255,9 +256,16 @@ export function StudySetupDialog({
               <AimButton
                 key={part.value}
                 label={part.label}
-                chosen={setup.part === part.value}
+                chosen={setup.parts.includes(part.value)}
+                // Plusieurs à la fois, comme les buts : les quatre ensemble
+                // font le monde entier.
                 onPress={() =>
-                  setSetup((one) => ({ ...one, part: part.value }))
+                  setSetup((one) => ({
+                    ...one,
+                    parts: one.parts.includes(part.value)
+                      ? one.parts.filter((kept) => kept !== part.value)
+                      : [...one.parts, part.value],
+                  }))
                 }
               />
             ))}
@@ -271,18 +279,20 @@ export function StudySetupDialog({
                 <InkField
                   label="De l'année"
                   value={from}
-                  onChangeText={setFrom}
+                  onChangeText={(text) => setFrom(typedYear(text))}
                   placeholder="800"
                   keyboardType="numbers-and-punctuation"
+                  maxLength={5}
                 />
               </View>
               <View style={styles.year}>
                 <InkField
                   label="À l'année"
                   value={to}
-                  onChangeText={setTo}
+                  onChangeText={(text) => setTo(typedYear(text))}
                   placeholder="1200"
                   keyboardType="numbers-and-punctuation"
+                  maxLength={5}
                 />
               </View>
             </View>

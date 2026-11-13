@@ -1,4 +1,4 @@
-import type { StudyPart } from "./parts";
+import { PARTS, type StudyPart } from "./parts";
 import { supabase } from "../../lib/supabase";
 
 /**
@@ -35,8 +35,30 @@ export type StudyTerritory = {
  * carte n'a pas à revenir en question.
  */
 export async function fetchTerritoriesToStudy(
-  part: StudyPart | null,
+  parts: StudyPart[],
 ): Promise<StudyTerritory[]> {
+  // Les quatre ensemble sont le monde entier : la base le rend en un appel
+  // quand on ne nomme aucune partie, ses quatre règles couvrant tout.
+  if (parts.length === 0 || parts.length === PARTS.length) {
+    return fetchPart(null);
+  }
+
+  /*
+   * Une partie par appel, puis réunies : le découpage reste écrit dans la
+   * base seulement. Un même nom peut-il revenir de deux parties ? Ses tranches
+   * ont chacune leur ancre, donc oui en théorie — on n'en garde qu'un, sans
+   * quoi deux propositions pourraient porter le même nom.
+   */
+  const found = await Promise.all(parts.map(fetchPart));
+  const seen = new Set<string>();
+  return found.flat().filter((territory) => {
+    if (seen.has(territory.name)) return false;
+    seen.add(territory.name);
+    return true;
+  });
+}
+
+async function fetchPart(part: StudyPart | null): Promise<StudyTerritory[]> {
   const { data, error } = await supabase().rpc("territories_to_study", {
     part,
   });

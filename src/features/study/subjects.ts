@@ -25,14 +25,15 @@ export type StudySetup = {
   importance: Importance[];
   window: StudyWindow;
   /**
-   * La partie du monde, pour les territoires seuls.
+   * Les parties du monde, pour les territoires seuls : une ou plusieurs, et
+   * les quatre pour le monde entier. Vide tant qu'on n'a rien choisi.
    *
-   * Elle décide ce qu'on va chercher au serveur, et non ce qu'on tamise
-   * ensuite : `stock.territories` ne contient déjà que cette partie-là. Elle
-   * est gardée dans le réglage parce que le bandeau de l'étude l'annonce et
-   * que recommencer la même séance doit redonner la même.
+   * Elles décident ce qu'on va chercher au serveur, et non ce qu'on tamise
+   * ensuite : `stock.territories` ne contient déjà que ces parties-là. Elles
+   * sont gardées dans le réglage pour que recommencer la même séance redonne
+   * les mêmes.
    */
-  part: StudyPart | null;
+  parts: StudyPart[];
   order: StudyOrder;
 };
 
@@ -42,7 +43,7 @@ export const BLANK_SETUP: StudySetup = {
   folders: [],
   importance: [],
   window: null,
-  part: null,
+  parts: [],
   order: "chronological",
 };
 

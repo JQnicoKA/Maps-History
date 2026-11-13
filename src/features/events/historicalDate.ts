@@ -62,3 +62,19 @@ export function formatEventPeriod(event: EventSummary): string {
   const start = formatHistoricalDate(event.start);
   return event.end ? `${start} – ${formatHistoricalDate(event.end)}` : start;
 }
+
+/**
+ * Ce qu'on garde d'une année en train d'être tapée : des chiffres, quatre au
+ * plus, et un signe moins en tête pour avant notre ère.
+ *
+ * Le clavier « chiffres et ponctuation » d'iOS laisse passer des lettres d'une
+ * simple bascule, et le pavé numérique n'a pas de moins ; on filtre donc ce
+ * qui arrive plutôt que de compter sur le clavier. Le tiret long que certains
+ * claviers substituent compte comme un moins.
+ */
+export function typedYear(text: string): string {
+  const trimmed = text.trim();
+  const negative = /^[-−–]/.test(trimmed);
+  const digits = trimmed.replace(/\D/g, "").slice(0, 4);
+  return negative ? `-${digits}` : digits;
+}

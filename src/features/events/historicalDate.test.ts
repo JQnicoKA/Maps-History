@@ -7,6 +7,7 @@ import {
   formatHistoricalDate,
   formatYear,
   toSortKey,
+  typedYear,
   yearOf,
 } from "./historicalDate";
 import type { EventSummary } from "./types";
@@ -112,5 +113,24 @@ describe("relire l'année sur l'axe", () => {
   it("ne bouge pas une année pleine", () => {
     expect(yearOf(487)).toBe(487);
     expect(yearOf(-3000)).toBe(-3000);
+  });
+});
+
+describe("typedYear", () => {
+  it("ne garde que les chiffres", () => {
+    expect(typedYear("12a0b")).toBe("120");
+    expect(typedYear("abc")).toBe("");
+    expect(typedYear("1 000")).toBe("1000");
+  });
+
+  it("garde un moins en tête, et seulement là", () => {
+    expect(typedYear("-500")).toBe("-500");
+    expect(typedYear("−500")).toBe("-500");
+    expect(typedYear("-")).toBe("-");
+    expect(typedYear("5-00")).toBe("500");
+  });
+
+  it("s'arrête à quatre chiffres", () => {
+    expect(typedYear("123456")).toBe("1234");
   });
 });
