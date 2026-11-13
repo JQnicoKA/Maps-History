@@ -540,7 +540,9 @@ export function MapScreen({
           {/* Settlements first, territories after: MapLibre places symbols
               from the topmost layer down, so the country name wins the room
               against the town names crowding around its anchor. */}
-          {MAP_FEATURES.places ? (
+          {/* Pas de villes pendant une étude : ce sont des noms, et le fond
+              d'une question n'en porte aucun — ils souffleraient la réponse. */}
+          {MAP_FEATURES.places && !studying ? (
             <PlaceLayers
               zoom={zoom}
               // Pas pendant qu'on vise ou qu'on peint : chaque touche
@@ -560,6 +562,9 @@ export function MapScreen({
               // donc l'effet qui le rapporte ne se redéclenche que sur le
               // chargement lui-même.
               onBusy={setLoadingTerritories}
+              // Pendant une étude, le monde de la question et non celui de
+              // la frise, sans noms et sans le territoire demandé.
+              backdrop={studying ? study.backdrop : null}
             />
           ) : null}
           {drawing ? (

@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import type { StudyTerritory } from "./api";
-import { BLANK_SETUP, aimAt, gather, type StudySetup } from "./subjects";
+import {
+  BLANK_SETUP,
+  aimAt,
+  backdropOf,
+  gather,
+  type Quarry,
+  type StudySetup,
+} from "./subjects";
 import type { Character, EventSummary, Importance } from "../events/types";
 
 /**
@@ -257,5 +264,42 @@ describe("gather", () => {
     const found = quarry.get("a");
     expect(found?.kind).toBe("event");
     expect(found?.kind === "event" ? found.event : null).toBe(event);
+  });
+});
+
+describe("backdropOf", () => {
+  const empire = (from: number, to: number): Quarry => ({
+    kind: "territory",
+    subject: { id: "e", label: "Empire", at: from },
+    territory: { id: "e", name: "Empire", from, to },
+  });
+
+  it("montre un territoire à sa première année dans la fenêtre, sans lui", () => {
+    expect(backdropOf(empire(800, 1500), { from: 1000, to: 1200 })).toEqual({
+      year: 1000,
+      without: "e",
+    });
+  });
+
+  it("prend sa naissance quand elle tombe dans la fenêtre", () => {
+    expect(backdropOf(empire(1066, 1300), { from: 1000, to: 1200 }).year).toBe(
+      1066,
+    );
+  });
+
+  it("prend sa naissance sans fenêtre", () => {
+    expect(backdropOf(empire(1066, 1300), null).year).toBe(1066);
+  });
+
+  it("montre l'année d'un événement, sans rien ôter", () => {
+    const event = {
+      kind: "event",
+      subject: { id: "x", label: "Hastings", at: 1066.8 },
+      event: anEvent("x", 1066.8),
+    } as Quarry;
+    expect(backdropOf(event, { from: 1000, to: 1200 })).toEqual({
+      year: 1066.8,
+      without: null,
+    });
   });
 });

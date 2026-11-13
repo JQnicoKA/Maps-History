@@ -206,3 +206,27 @@ export function gather(setup: StudySetup, stock: StudyStock): Gathered {
     quarry,
   };
 }
+
+/**
+ * Le fond de carte d'une question : l'année à montrer, et ce qu'il faut en ôter.
+ *
+ * La carte garde sinon l'année de la frise — l'an 2000 sous une question sur
+ * l'an 1100, et des étiquettes modernes qui soufflent la réponse. Elle montre
+ * plutôt le monde de la question.
+ *
+ * Pour un territoire, la première année où il existe **dans la fenêtre
+ * étudiée** : un empire de 800 à 1500, interrogé sur 1000-1200, se montre
+ * parmi ses voisins de l'an 1000 et non de l'an 800, qui n'est pas ce qu'on
+ * révise. Et il est ôté du fond, où il ferait doublon sous la forme qui bat.
+ */
+export function backdropOf(
+  quarry: Quarry,
+  window: StudyWindow,
+): { year: number; without: string | null } {
+  if (quarry.kind !== "territory") {
+    return { year: quarry.subject.at, without: null };
+  }
+  const { from, to, id } = quarry.territory;
+  const year = window === null ? from : Math.min(Math.max(from, window.from), to);
+  return { year, without: id };
+}

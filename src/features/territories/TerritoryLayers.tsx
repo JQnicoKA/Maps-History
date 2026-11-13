@@ -111,16 +111,41 @@ export type TerritoryLayersProps = {
    * à l'autre bout de l'écran. C'est `MapScreen` qui tient les deux.
    */
   onBusy?: (busy: boolean) => void;
+  /**
+   * Une autre année que celle de la frise, et la carte qui va avec.
+   *
+   * Pour une étude : le fond montre le monde de la question, **sans aucun
+   * nom** — ils donneraient la réponse — et sans le territoire demandé, qui
+   * bat déjà par-dessus. Voir `backdropOf`.
+   */
+  backdrop?: { year: number; without: string | null } | null;
 };
 
 export function TerritoryLayers({
   detailed,
   onTouch,
   onBusy,
+  backdrop,
 }: TerritoryLayersProps) {
   const { year } = useEvents();
   const { mask } = useHidden();
-  const { collection, loading } = useTerritoriesAt(year, detailed, mask);
+  const { collection: everything, loading } = useTerritoriesAt(
+    backdrop ? backdrop.year : year,
+    detailed,
+    mask,
+  );
+  const without = backdrop?.without ?? null;
+  const named = !backdrop;
+
+  const collection = useMemo<typeof everything>(() => {
+    if (!everything || without === null) return everything;
+    return {
+      ...everything,
+      features: everything.features.filter(
+        (feature) => feature.properties?.["id"] !== without,
+      ),
+    };
+  }, [everything, without]);
 
   useEffect(() => {
     onBusy?.(loading);
@@ -198,47 +223,52 @@ export function TerritoryLayers({
           id="territory-fill"
           type="fill"
           beforeId="water"
-          paint={{ "fill-color": ["get", "wash"], "fill-opacity": FILL_OPACITY }}
+          paint={{
+            "fill-color": ["get", "wash"],
+            "fill-opacity": FILL_OPACITY,
+          }}
         />
       </GeoJSONSource>
 
-      <GeoJSONSource id="territory-anchors" data={anchors}>
-        {/* The only political naming on this map, and it is period-correct:
+      {named ? (
+        <GeoJSONSource id="territory-anchors" data={anchors}>
+          {/* The only political naming on this map, and it is period-correct:
             "Francia occidentalis" in 900, not "FRANCE". Drawn from the anchor
             points rather than the polygons — one name per polity instead of one
             per island. Sized by area, the way an atlas gives an empire larger
             letters than a duchy. No `beforeId`, so these sit above the rest of
             the lettering. */}
-        <Layer
-          id="territory-label"
-          type="symbol"
-          layout={{
-            "text-field": LABEL,
-            "text-font": fonts.country,
-            "text-transform": "uppercase",
-            "text-letter-spacing": 0.18,
-            "text-max-width": 7,
-            "text-padding": 4,
-            "text-size": [
-              "interpolate",
-              ["linear"],
-              ["zoom"],
-              1,
-              ["interpolate", ["linear"], ["get", "area"], 0, 7.5, 60, 13],
-              6,
-              ["interpolate", ["linear"], ["get", "area"], 0, 11, 60, 19],
-            ],
-            // Top rank before subordinates, then the larger of each, when
-            // labels compete for room.
-            "symbol-sort-key": [
-              "+",
-              ["case", isSubordinate, 1000, 0],
-              ["-", 0, ["get", "area"]],
-            ],
-          }}
-          paint={{ ...HALO, "text-color": palette.ink }}
-        />
-      </GeoJSONSource>
+          <Layer
+            id="territory-label"
+            type="symbol"
+            layout={{
+              "text-field": LABEL,
+              "text-font": fonts.country,
+              "text-transform": "uppercase",
+              "text-letter-spacing": 0.18,
+              "text-max-width": 7,
+              "text-padding": 4,
+              "text-size": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                1,
+                ["interpolate", ["linear"], ["get", "area"], 0, 7.5, 60, 13],
+                6,
+                ["interpolate", ["linear"], ["get", "area"], 0, 11, 60, 19],
+              ],
+              // Top rank before subordinates, then the larger of each, when
+              // labels compete for room.
+              "symbol-sort-key": [
+                "+",
+                ["case", isSubordinate, 1000, 0],
+                ["-", 0, ["get", "area"]],
+              ],
+            }}
+            paint={{ ...HALO, "text-color": palette.ink }}
+          />
+        </GeoJSONSource>
+      ) : null}
     </>
   );
 }

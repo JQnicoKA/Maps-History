@@ -8,7 +8,13 @@ import {
   type Quizzed,
   type StudyScore,
 } from "./plan";
-import { gather, type Quarry, type StudySetup } from "./subjects";
+import {
+  backdropOf,
+  gather,
+  type Quarry,
+  type StudySetup,
+  type StudyWindow,
+} from "./subjects";
 import { useEvents } from "../events/EventsProvider";
 import {
   fetchTerritoriesByIds,
@@ -47,6 +53,11 @@ export type StudySession = {
   subject: Quarry | null;
   /** La forme du territoire demandé, quand c'en est un. */
   shape: TerritoryFeature | null;
+  /**
+   * Le monde de la question, pour le fond de carte : voir `backdropOf`.
+   * Rien hors d'une question.
+   */
+  backdrop: { year: number; without: string | null } | null;
   /** Le rang de la question courante, à partir de un. */
   at: number;
   total: number;
@@ -104,12 +115,16 @@ export function useStudySession(): StudySession {
    */
   const run = useRef(0);
 
+  /** La fenêtre de la séance en cours, pour le fond de chaque question. */
+  const [span, setSpan] = useState<StudyWindow>(null);
+
   const begin = useCallback(
     (setup: StudySetup) => {
       run.current += 1;
       const mine = run.current;
 
       setFailure(null);
+      setSpan(setup.window);
       setGiven(null);
       setAnswers(new Map());
       setShape(null);
@@ -226,6 +241,11 @@ export function useStudySession(): StudySession {
 
   const score = useMemo(() => tally(questions, answers), [questions, answers]);
 
+  const backdrop = useMemo(
+    () => (subject === null ? null : backdropOf(subject, span)),
+    [subject, span],
+  );
+
   return {
     live: stage !== "off",
     busy: stage === "busy",
@@ -237,6 +257,7 @@ export function useStudySession(): StudySession {
     question,
     subject,
     shape,
+    backdrop,
     at: at + 1,
     total: questions.length,
     given,
