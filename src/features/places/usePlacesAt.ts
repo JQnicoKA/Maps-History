@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { latestOnly, wait, type LatestOnly } from "../../lib/latestOnly";
 import { yearOf } from "../events/historicalDate";
 import { fetchPlacesAt, type PlaceCollection } from "./api";
 import { fetchMyPlacesAt } from "./mine";
@@ -32,32 +33,36 @@ export function usePlacesAt(year: number | null): PlaceCollection | null {
   // the year turns a drag's worth of near-identical dates into cache hits.
   const at = year === null ? null : yearOf(year);
 
-  useEffect(() => {
-    if (at === null) {
-      setReference(null);
-      setPosed(EMPTY);
-      return;
-    }
+  /**
+   * Une passe à la fois, vers la dernière année : voir `latestOnly`. Le délai
+   * de pose se tient dans la passe elle-même, et une année quittée pendant ce
+   * délai ou pendant le chargement n'est jamais posée par-dessus la bonne.
+   */
+  const pump = useRef<LatestOnly<number> | null>(null);
+  if (pump.current === null) {
+    pump.current = latestOnly<number>(async (year, { stale, cancelled }) => {
+      const gone = () => stale() || cancelled();
 
-    // A year already read is shown at once: it is in hand, and making the
-    // reader wait out the settling delay for it would be waiting on nothing.
-    const cached = cache.current.get(at);
-    if (cached) setReference(cached);
+      // A year already read is shown at once: it is in hand, and making the
+      // reader wait out the settling delay for it would be waiting on nothing.
+      const cached = cache.current.get(year);
+      if (cached) setReference(cached);
 
-    let current = true;
-    const timer = setTimeout(() => {
-      if (!cache.current.has(at)) {
-        fetchPlacesAt(at)
-          .then((loaded) => {
-            cache.current.set(at, loaded);
-            while (cache.current.size > CACHE_LIMIT) {
-              cache.current.delete(cache.current.keys().next().value!);
-            }
-            // The previous snapshot stays until this one lands, so stepping
-            // through events never flashes an empty plate.
-            if (current) setReference(loaded);
-          })
-          .catch(() => undefined);
+      await wait(SETTLE_MS);
+      if (gone()) return;
+
+      if (!cached) {
+        const loaded = await fetchPlacesAt(year).catch(() => null);
+        if (loaded) {
+          cache.current.set(year, loaded);
+          while (cache.current.size > CACHE_LIMIT) {
+            cache.current.delete(cache.current.keys().next().value!);
+          }
+          // The previous snapshot stays until this one lands, so stepping
+          // through events never flashes an empty plate.
+          if (!gone()) setReference(loaded);
+        }
+        if (gone()) return;
       }
 
       /**
@@ -68,21 +73,25 @@ export function usePlacesAt(year: number | null): PlaceCollection | null {
        * dire vider ce cache-là à chaque geste, ce qui revient à ne pas en
        * avoir. Le jeu de référence, lui, ne bouge jamais.
        */
-      fetchMyPlacesAt(at)
-        .then((loaded) => {
-          if (current) setPosed(loaded);
-        })
-        .catch(() => undefined);
-    }, SETTLE_MS);
+      const posedNow = await fetchMyPlacesAt(year).catch(() => null);
+      if (posedNow && !gone()) setPosed(posedNow);
+    });
+  }
 
-    return () => {
-      clearTimeout(timer);
-      current = false;
-    };
+  useEffect(() => {
+    if (at === null) {
+      pump.current?.stop();
+      setReference(null);
+      setPosed(EMPTY);
+      return;
+    }
+    pump.current?.want(at);
     // `mine` fait redemander les siennes : une ville posée doit paraître sans
     // changer d'année. Le jeu de référence est servi par son cache, donc cela
     // ne coûte pas la grosse requête.
   }, [at, mine]);
+
+  useEffect(() => () => pump.current?.stop(), []);
 
   return useMemo(() => {
     if (reference === null) {

@@ -6,6 +6,7 @@ import {
   fetchTerritoryIdsAt,
   type TerritoryFeature,
 } from "./api";
+import { latestOnly, wait, type LatestOnly } from "../../lib/latestOnly";
 import { yearOf } from "../events/historicalDate";
 import { fetchDrawnAt } from "./drawn";
 
@@ -74,83 +75,109 @@ export function useTerritoriesAt(
   // s'arrêtent en 487. Un glissement dans l'année ne redemande plus rien.
   const at = year === null ? null : yearOf(year);
 
+  /**
+   * Une seule passe à la fois, vers la dernière année demandée.
+   *
+   * Voir `latestOnly` : glisser de 400 à 2000 lançait une passe par année
+   * survolée, toutes en même temps, et le serveur les laissait toutes tomber.
+   * Une passe qui finit pendant le glissement est quand même posée — c'est une
+   * vraie planche, plus proche du doigt que la précédente — mais seule la
+   * dernière éteint le témoin.
+   */
+  const pump = useRef<LatestOnly<Ask> | null>(null);
+  if (pump.current === null) {
+    pump.current = latestOnly<Ask>(async (ask, { stale, cancelled }) => {
+      for (let attempt = 0; ; attempt++) {
+        try {
+          const features = await assemble(ask, entities.current);
+          if (cancelled()) return;
+          setCollection({ type: "FeatureCollection", features });
+          if (!stale()) setLoading(false);
+          return;
+        } catch {
+          // Plus la peine d'insister pour une année déjà quittée.
+          if (stale() || cancelled()) return;
+          if (attempt >= RETRIES) {
+            setLoading(false);
+            return;
+          }
+          await wait(RETRY_MS * (attempt + 1));
+          if (stale() || cancelled()) return;
+        }
+      }
+    });
+  }
+
   useEffect(() => {
     if (at === null) {
+      pump.current?.stop();
       setCollection(null);
       setLoading(false);
       return;
     }
-
-    let current = true;
     setLoading(true);
-
-    (async () => {
-      try {
-        // Asked together: the reference set is a list of identifiers, the
-        // reader's own territories come whole. Neither waits on the other.
-        const [ids, mine] = await Promise.all([
-          fetchTerritoryIdsAt(at, detailed ? LEVEL.fief : LEVEL.sovereign),
-          fetchDrawnAt(at),
-        ]);
-        const missing = ids.filter((id) => !entities.current.has(id));
-
-        for (const feature of await fetchTerritoriesByIds(missing)) {
-          entities.current.set(String(feature.properties?.["id"]), feature);
-        }
-
-        // Re-inserting marks these as most recently used: a Map keeps insertion
-        // order, so eviction below takes the oldest first.
-        const features: TerritoryFeature[] = [];
-        for (const id of ids) {
-          const feature = entities.current.get(id);
-          if (!feature) continue;
-          entities.current.delete(id);
-          entities.current.set(id, feature);
-          features.push(feature);
-        }
-
-        while (entities.current.size > CACHE_LIMIT) {
-          entities.current.delete(entities.current.keys().next().value!);
-        }
-
-        /**
-         * The reader's own territories last, and therefore on top.
-         *
-         * A painted region is almost always drawn over something — that is the
-         * point of drawing it — and it would be strange for the reference set
-         * to cover what the reader put there deliberately.
-         *
-         * They are never cached: there are a few dozen at most, they arrive
-         * whole, and they change as soon as one is drawn or erased.
-         */
-        const drawn = (mine.features ?? []) as TerritoryFeature[];
-
-        // The previous snapshot stays on screen until this one is ready, so
-        // stepping through events never flashes an empty map.
-        if (current) {
-          setCollection({
-            type: "FeatureCollection",
-            features: [...features, ...drawn],
-          });
-        }
-      } finally {
-        /**
-         * Seulement si cette passe est encore la bonne.
-         *
-         * Changer d'année pendant un chargement laisse la précédente passe
-         * finir dans le vide — `current` est déjà faux et son résultat est
-         * jeté. Si elle éteignait quand même le témoin, elle éteindrait celui
-         * de la passe en cours, et la roue s'arrêterait de tourner devant une
-         * carte qui charge encore.
-         */
-        if (current) setLoading(false);
-      }
-    })().catch(() => undefined);
-
-    return () => {
-      current = false;
-    };
+    pump.current?.want({ at, detailed });
   }, [at, detailed, mask]);
 
+  useEffect(() => () => pump.current?.stop(), []);
+
   return { collection, loading };
+}
+
+type Ask = { at: number; detailed: boolean };
+
+/** Des essais en plus du premier, pour l'année où l'on s'est arrêté. */
+const RETRIES = 2;
+const RETRY_MS = 1500;
+
+/**
+ * Les territoires d'une année, pris dans le cache ou demandés pour ce qui manque.
+ */
+async function assemble(
+  { at, detailed }: Ask,
+  entities: Map<string, TerritoryFeature>,
+): Promise<TerritoryFeature[]> {
+  // Asked together: the reference set is a list of identifiers, the
+  // reader's own territories come whole. Neither waits on the other.
+  const [ids, mine] = await Promise.all([
+    fetchTerritoryIdsAt(at, detailed ? LEVEL.fief : LEVEL.sovereign),
+    fetchDrawnAt(at),
+  ]);
+  const missing = ids.filter((id) => !entities.has(id));
+
+  // Gardés morceau par morceau : si l'un manque son délai, un nouvel essai ne
+  // redemande que celui-là.
+  await fetchTerritoriesByIds(missing, (arrived) => {
+    for (const feature of arrived) {
+      entities.set(String(feature.properties?.["id"]), feature);
+    }
+  });
+
+  // Re-inserting marks these as most recently used: a Map keeps insertion
+  // order, so eviction below takes the oldest first.
+  const features: TerritoryFeature[] = [];
+  for (const id of ids) {
+    const feature = entities.get(id);
+    if (!feature) continue;
+    entities.delete(id);
+    entities.set(id, feature);
+    features.push(feature);
+  }
+
+  while (entities.size > CACHE_LIMIT) {
+    entities.delete(entities.keys().next().value!);
+  }
+
+  /**
+   * The reader's own territories last, and therefore on top.
+   *
+   * A painted region is almost always drawn over something — that is the
+   * point of drawing it — and it would be strange for the reference set
+   * to cover what the reader put there deliberately.
+   *
+   * They are never cached: there are a few dozen at most, they arrive
+   * whole, and they change as soon as one is drawn or erased.
+   */
+  const drawn = (mine.features ?? []) as TerritoryFeature[];
+  return [...features, ...drawn];
 }

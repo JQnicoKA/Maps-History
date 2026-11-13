@@ -76,9 +76,17 @@ async function fetchChunk(ids: string[]): Promise<TerritoryFeature[]> {
   }));
 }
 
-/** Geometry for entities the caller does not already hold. */
+/**
+ * Geometry for entities the caller does not already hold.
+ *
+ * Each chunk that arrives is handed to `keep` straight away, even if another
+ * fails: a retry then asks only for what is still missing, instead of throwing
+ * away the two chunks that made it because the third ran out of time. The
+ * failure is still reported, once every wave has had its chance.
+ */
 export async function fetchTerritoriesByIds(
   ids: string[],
+  keep?: (features: TerritoryFeature[]) => void,
 ): Promise<TerritoryFeature[]> {
   const chunks: string[][] = [];
   for (let at = 0; at < ids.length; at += CHUNK) {
@@ -86,11 +94,20 @@ export async function fetchTerritoriesByIds(
   }
 
   const features: TerritoryFeature[] = [];
+  let failure: unknown = null;
   for (let at = 0; at < chunks.length; at += IN_FLIGHT) {
-    const wave = await Promise.all(
+    const wave = await Promise.allSettled(
       chunks.slice(at, at + IN_FLIGHT).map(fetchChunk),
     );
-    for (const part of wave) features.push(...part);
+    for (const part of wave) {
+      if (part.status === "fulfilled") {
+        keep?.(part.value);
+        features.push(...part.value);
+      } else {
+        failure ??= part.reason;
+      }
+    }
   }
+  if (failure !== null) throw failure;
   return features;
 }
