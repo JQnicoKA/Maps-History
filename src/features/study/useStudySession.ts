@@ -166,7 +166,7 @@ export function useStudySession(): StudySession {
         return;
       }
 
-      fetchTerritoriesToStudy(setup.parts)
+      fetchTerritoriesToStudy(setup.parts, setup.window)
         .then(lay)
         .catch((bad: unknown) => {
           if (run.current !== mine) return;
