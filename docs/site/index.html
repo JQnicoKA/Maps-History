@@ -3,16 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HistoryNote — L'histoire, dans la poche</title>
-<meta name="description" content="Des événements, des personnages, des territoires, posés sur une carte ancienne à l'endroit et à l'année exacts — et une communauté qui l'écrit ensemble. Application iPhone.">
-<link rel="icon" href="/icone.png" type="image/png">
-<link rel="apple-touch-icon" href="/icone.png">
+<title>HistoryNote — L'histoire prend vie</title>
+<meta name="description" content="Une carte ancienne qui traverse le temps : des événements, des personnages et des territoires posés à l'endroit et à l'année exacts, des arbres généalogiques, un mode étude — et une communauté qui l'écrit ensemble. Application iPhone.">
+<link rel="icon" href="icone.png" type="image/png">
+<link rel="apple-touch-icon" href="icone.png">
 <meta property="og:type" content="website">
-<meta property="og:title" content="HistoryNote — L'histoire, dans la poche">
-<meta property="og:description" content="Des événements, des personnages, des territoires, sur cinq mille ans de frontières mouvantes.">
-<meta property="og:image" content="https://historynote.fr/icone.png">
+<meta property="og:title" content="HistoryNote — L'histoire prend vie">
+<meta property="og:description" content="Explorez l'histoire sur une carte qui traverse le temps. Organisez événements et personnages. Apprenez en jouant.">
+<meta property="og:image" content="https://historynote.fr/medias/affiche.jpg">
 <meta property="og:url" content="https://historynote.fr/">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#E7D8B8">
+<script>document.documentElement.classList.add("js");</script>
 <style>
   :root {
     --papier:        #E7D8B8;
@@ -25,20 +27,23 @@
     --creux:         #E3D6B8;
     --cire:          #8C3A2B;
     --cire-profonde: #6E2C21;
+    --cuir:          #4A2418;
 
-    /* Les trois piliers, chacun sa couleur — prises à la carte elle-même :
-       la cire des marqueurs, l'encre des eaux, le vert des forêts assombri
-       jusqu'à devenir lisible. Toutes trois dépassent 4,5:1 sur les deux
-       papiers, donc elles peuvent porter un titre comme une étiquette. */
+    /* Les couleurs de la carte elle-même : la cire des marqueurs, l'encre des
+       eaux, le vert des forêts assombri jusqu'à devenir lisible. */
     --eau:           #4A6166;
     --terre:         #566134;
+    --juste:         #4F6B45;
 
-    --serif: ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    --serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+    /* La largeur du téléphone : assez grand pour qu'on lise l'écran, jamais
+       plus haut que la fenêtre. */
+    --tel: min(19rem, calc((100svh - 8rem) * .47));
   }
 
   * { box-sizing: border-box; }
-
   html { scroll-behavior: smooth; }
 
   body {
@@ -46,7 +51,7 @@
     color: var(--encre);
     font: 17px/1.7 var(--sans);
     background: var(--papier);
-    /* Le grain du papier : deux voiles de lumière, aucun fichier à charger. */
+    /* Le grain du papier : des voiles de lumière, aucun fichier à charger. */
     background-image:
       radial-gradient(ellipse at 20% -10%, rgba(255,255,255,.55), transparent 55%),
       radial-gradient(ellipse at 90% 15%, rgba(255,255,255,.35), transparent 45%),
@@ -54,19 +59,23 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  .colonne { width: min(100% - 2.5rem, 60rem); margin-inline: auto; }
+  img, video { display: block; max-width: 100%; }
+
+  .colonne { width: min(100% - 2.5rem, 64rem); margin-inline: auto; }
   .texte   { width: min(100% - 2.5rem, 40rem); margin-inline: auto; }
 
-  /* ---------------------------------------------------------------- hero -- */
+  a { color: var(--cire); text-underline-offset: .18em; }
+  a:hover { color: var(--cire-profonde); }
 
-  header { padding: clamp(3rem, 9vw, 6rem) 0 clamp(2rem, 5vw, 3.5rem); text-align: center; }
+  /* ---------------------------------------------------------------- tête -- */
+
+  header { padding: clamp(2.5rem, 7vw, 4.5rem) 0 clamp(1.5rem, 4vw, 2.5rem); text-align: center; }
 
   .icone {
-    width: clamp(92px, 18vw, 124px);
-    height: clamp(92px, 18vw, 124px);
+    width: clamp(80px, 15vw, 104px);
+    height: clamp(80px, 15vw, 104px);
     border-radius: 24%;
-    display: block;
-    margin: 0 auto clamp(1.25rem, 3vw, 2rem);
+    margin: 0 auto clamp(1rem, 2.5vw, 1.5rem);
     box-shadow:
       0 1px 0 rgba(255,255,255,.6) inset,
       0 18px 40px -18px rgba(42, 31, 18, .55);
@@ -75,36 +84,30 @@
   h1 {
     font-family: var(--serif);
     font-weight: 400;
-    font-size: clamp(2.6rem, 9vw, 4.4rem);
+    font-size: clamp(2.5rem, 8.5vw, 4.2rem);
     line-height: 1.02;
     letter-spacing: -.5px;
-    margin: 0 0 .5rem;
+    margin: 0 0 .45rem;
   }
 
   .devise {
     font-family: var(--serif);
     font-style: italic;
-    font-size: clamp(1.15rem, 3.4vw, 1.5rem);
+    font-size: clamp(1.15rem, 3.4vw, 1.45rem);
     color: var(--cire);
-    margin: 0 0 1.5rem;
+    margin: 0 0 1.1rem;
   }
 
   .pitch {
     color: var(--encre-douce);
-    font-size: clamp(1rem, 2.4vw, 1.15rem);
+    font-size: clamp(1rem, 2.4vw, 1.12rem);
     max-width: 34rem;
     margin: 0 auto;
   }
-  /* Les trois mots du pitch portent la couleur de leur pilier : le lecteur a
-     déjà vu le code couleur avant d'arriver aux trois cartes. */
-  .pitch b { font-weight: 600; }
-  .pitch .e { color: var(--cire); }
-  .pitch .p { color: var(--eau); }
-  .pitch .t { color: var(--terre); }
 
   .badge {
     display: inline-block;
-    margin-top: 2rem;
+    margin-top: 1.5rem;
     padding: .55rem 1.25rem;
     border-radius: 999px;
     background: var(--creux);
@@ -114,164 +117,396 @@
     letter-spacing: .3px;
   }
 
-  /* -------------------------------------------------------------- frise --- */
+  /* --------------------------------------------------------------- vidéo -- */
 
-  .frise-cadre {
-    margin: clamp(2.5rem, 7vw, 4.5rem) 0 clamp(3rem, 8vw, 5rem);
-    padding: 2.25rem 0 1.5rem;
-    background: linear-gradient(180deg, var(--papier-clair), var(--papier-profond));
-    border-block: 1px solid var(--ligne);
-    position: relative;
-    overflow: hidden;
+  .film {
+    width: min(100% - 2rem, 62rem);
+    margin: 0 auto;
+    padding: clamp(.4rem, 1vw, .6rem);
+    border-radius: clamp(16px, 2.5vw, 24px);
+    background: linear-gradient(160deg, #6a3524, var(--cuir));
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.18) inset,
+      0 40px 70px -40px rgba(42, 20, 10, .75);
+  }
+  .film video {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: clamp(11px, 1.8vw, 17px);
+    background: var(--cuir);
+  }
+  .film-legende {
+    text-align: center;
+    color: var(--encre-pale);
+    font-size: .88rem;
+    margin: 1rem auto 0;
   }
 
-  .annee {
+  .defiler {
     display: block;
     width: max-content;
-    margin: 0 auto .9rem;
-    padding: .3rem 1.1rem;
+    margin: clamp(2.5rem, 6vw, 4rem) auto 0;
+    color: var(--encre-pale);
+    font-size: .85rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-decoration: none;
+    text-align: center;
+  }
+  .defiler::after {
+    content: "";
+    display: block;
+    width: 1px;
+    height: 42px;
+    margin: .6rem auto 0;
+    background: linear-gradient(var(--cire), transparent);
+  }
+
+  /* ------------------------------------------------------------- récit -- */
+
+  /* Sur grand écran : le texte défile à gauche, le téléphone reste à droite
+     et change d'écran à chaque étape — la vidéo, mais à son rythme. Sur un
+     téléphone, ou sans JavaScript, chaque étape porte son propre écran. */
+  .recit { position: relative; margin-top: clamp(2rem, 6vw, 4rem); }
+
+  .etape { padding-block: clamp(2.5rem, 7vw, 4rem); }
+
+  .surtitre {
+    display: inline-block;
+    margin: 0 0 1rem;
+    padding-bottom: .55rem;
+    font-size: .76rem;
+    font-weight: 600;
+    letter-spacing: 2.4px;
+    text-transform: uppercase;
+    color: var(--cire);
+    position: relative;
+  }
+  /* Le petit trait sous le chapitre, comme une graduation de la frise. */
+  .surtitre::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 2.2rem;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--cire);
+    opacity: .55;
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(1.85rem, 5vw, 2.6rem);
+    line-height: 1.15;
+    letter-spacing: -.3px;
+    margin: 0 0 1rem;
+  }
+
+  .etape p { color: var(--encre-douce); margin: 0 0 1rem; max-width: 31rem; }
+
+  /* ----------------------------------------------------------- téléphone -- */
+
+  .telephone {
+    position: relative;
+    width: var(--tel);
+    aspect-ratio: 1290 / 2796;
+    padding: calc(var(--tel) * .035);
+    box-sizing: content-box;
+    border-radius: calc(var(--tel) * .17);
+    background: #1d1712;
+    box-shadow:
+      0 0 0 1px #3a2f26 inset,
+      0 0 0 2px #0e0b08,
+      0 45px 70px -35px rgba(42, 31, 18, .7),
+      0 18px 30px -20px rgba(42, 31, 18, .45);
+  }
+  .telephone .ecran {
+    position: absolute;
+    inset: calc(var(--tel) * .035);
+    border-radius: calc(var(--tel) * .135);
+    overflow: hidden;
+    background: var(--papier-clair);
+  }
+  .telephone img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* L'écran d'une étape, sous son texte, quand rien ne reste à droite. */
+  .etape .telephone { margin: 2rem auto 0; --tel: min(16.5rem, 72vw); }
+
+  .scene { display: none; }
+
+  @media (min-width: 900px) {
+    .js .recit {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: clamp(3rem, 7vw, 6rem);
+    }
+    .js .etape {
+      min-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .js .etape .telephone { display: none; }
+
+    .js .scene {
+      display: block;
+      position: sticky;
+      top: calc(50svh - (var(--tel) * 2796 / 1290) / 2 - var(--tel) * .035);
+      align-self: start;
+      margin-top: 6vh;
+      margin-bottom: 6vh;
+    }
+    /* Les écrans se relaient en fondu, le nouveau montant d'un rien. */
+    .scene img {
+      opacity: 0;
+      transform: scale(1.025);
+      transition: opacity .55s ease, transform .8s cubic-bezier(.22,.61,.36,1);
+    }
+    .scene img.actif { opacity: 1; transform: none; }
+
+    /* Le compteur sous le téléphone : où l'on en est du récit. */
+    .points {
+      display: flex;
+      justify-content: center;
+      gap: 7px;
+      margin-top: 1.5rem;
+    }
+    .points i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--encre-pale);
+      opacity: .35;
+      transition: opacity .3s, transform .3s, background .3s;
+    }
+    .points i.actif { background: var(--cire); opacity: 1; transform: scale(1.35); }
+  }
+
+  /* ---------------------------------------------------------- vignettes -- */
+
+  /* Les petites cartes qui flottent à côté du téléphone dans la vidéo :
+     un détail de l'écran, agrandi pour qu'on le lise. */
+  .vignette {
+    margin-top: 1.5rem;
+    max-width: 24rem;
+    padding: .9rem 1rem 1rem;
+    background: #FBF6EC;
+    border: 1px solid var(--ligne);
+    border-radius: 16px;
+    box-shadow: 0 18px 34px -26px rgba(42, 31, 18, .8);
+  }
+  .vignette > b {
+    display: block;
+    margin-bottom: .6rem;
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    color: var(--encre-pale);
+  }
+
+  /* La frise, telle qu'elle est en bas de la carte. */
+  .frise-mini { text-align: center; padding-top: .3rem; }
+  .annee {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    margin-bottom: .7rem;
+  }
+  .annee span, .annee i {
+    display: inline-grid;
+    place-items: center;
+    height: 1.7rem;
     border-radius: 999px;
     background: var(--cire);
     color: var(--papier-clair);
+    font-style: normal;
     font-weight: 700;
-    font-size: 1.3rem;
-    letter-spacing: .5px;
-    box-shadow: 0 8px 20px -10px var(--cire-profonde);
   }
-
+  .annee i { width: 1.7rem; font-size: .8rem; }
+  .annee span { padding: 0 .95rem; font-size: 1.02rem; letter-spacing: .5px; }
   .frise {
     position: relative;
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    gap: 9px;
-    height: 34px;
-    /* Les traits s'effacent aux bords, comme dans l'application. */
-    -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-            mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+    gap: 6px;
+    height: 26px;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
   }
   .frise i { display: block; width: 2px; background: var(--encre); border-radius: 1px; }
-  .frise .min  { height: 13px; opacity: .55; }
-  .frise .maj  { height: 27px; }
-  .frise .evt  { height: 19px; background: var(--cire); }
-
-  /* Le trait qui dit où l'année se lit — au centre, comme dans
-     l'application. Un `span` et non un `i` : la règle `.frise i` ci-dessus
-     est plus spécifique et lui rendrait l'encre des graduations. */
-  .aiguille {
+  .frise .min { height: 10px; opacity: .5; }
+  .frise .maj { height: 21px; }
+  .frise .evt { height: 15px; background: var(--cire); }
+  .frise .aiguille {
     position: absolute;
     left: 50%;
-    top: -7px;
-    bottom: -7px;
+    top: -4px;
+    bottom: -4px;
     width: 2px;
     border-radius: 1px;
     background: var(--cire);
     transform: translateX(-50%);
   }
 
-  .frise-legende {
-    text-align: center;
-    color: var(--encre-pale);
-    font-size: .88rem;
-    margin: 1.25rem 0 0;
-  }
-
-  /* ------------------------------------------------------------ sections -- */
-
-  section { padding-block: clamp(2rem, 6vw, 3.5rem); }
-
-  h2 {
-    font-family: var(--serif);
-    font-weight: 400;
-    font-size: clamp(1.6rem, 4.5vw, 2.1rem);
-    margin: 0 0 .5rem;
-    text-align: center;
-  }
-
-  .chapeau {
-    text-align: center;
-    color: var(--encre-pale);
-    max-width: 34rem;
-    margin: 0 auto 2rem;
-    font-size: .97rem;
-  }
-
-  .grille {
+  /* Une ligne de liste, comme dans l'application. */
+  .fiche {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-    gap: 1.25rem;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: .8rem;
+    padding: .7rem .8rem;
+    background: #fff;
+    border-radius: 13px;
+    box-shadow: 0 1px 0 var(--ligne);
   }
+  .fiche + .fiche { margin-top: .45rem; }
+  .fiche .portrait {
+    width: 46px;
+    height: 46px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: var(--creux);
+  }
+  .fiche .rond { border-radius: 50%; }
+  .fiche small { display: block; color: var(--cire); font-weight: 600; font-size: .72rem; line-height: 1.3; }
+  .fiche strong { display: block; font-size: .93rem; line-height: 1.3; color: #1d1712; }
+  .fiche em {
+    display: inline-block;
+    margin-top: .3rem;
+    padding: .05rem .55rem;
+    border-radius: 999px;
+    background: #EEE7D8;
+    color: var(--encre-pale);
+    font-style: normal;
+    font-size: .72rem;
+  }
+  .fiche .chevron { color: var(--encre-pale); font-size: 1.1rem; }
 
-  article {
-    padding: 1.6rem 1.5rem;
-    background: var(--papier-clair);
-    border: 1px solid var(--ligne);
-    border-radius: 18px;
-    box-shadow: 0 14px 30px -24px rgba(42, 31, 18, .8);
+  .liens { list-style: none; margin: 0; padding: 0; }
+  .liens li {
+    display: flex;
+    justify-content: space-between;
+    padding: .55rem .8rem;
+    border-radius: 10px;
+    background: #EEE7D8;
+    font-size: .9rem;
+    color: #1d1712;
   }
-  article h3 {
+  .liens li + li { margin-top: .4rem; }
+  .liens li span { color: var(--encre-pale); }
+
+  /* Les chiffres de l'arbre. */
+  .chiffres { display: flex; gap: 1.6rem; margin-top: 1.4rem; flex-wrap: wrap; }
+  .chiffres div { line-height: 1.2; }
+  .chiffres strong {
+    display: block;
     font-family: var(--serif);
     font-weight: 400;
-    font-size: 1.22rem;
-    margin: .9rem 0 .4rem;
+    font-size: 2.1rem;
+    color: var(--cire);
   }
-  article p { margin: 0; color: var(--encre-douce); font-size: .97rem; }
+  .chiffres span { font-size: .82rem; color: var(--encre-pale); }
 
-  .glyphe { width: 30px; height: 30px; display: block; }
-  .glyphe * { fill: none; stroke: var(--cire); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-
-  /* -------------------------------------------------------------- piliers -- */
-
-  /* Les trois cartes du haut sont les trois choses dont l'histoire est faite,
-     et elles doivent se lire comme un trio : même forme, trois couleurs.
-     Chacune pose `--ton`, et tout en dessous s'y accorde. */
-  .piliers { gap: 1.1rem; }
-
-  .pilier {
-    --ton: var(--cire);
+  /* Les pas du réglage d'une étude. */
+  .pas { list-style: none; margin: 1.3rem 0 0; padding: 0; }
+  .pas li {
     position: relative;
-    padding-top: 1.9rem;
-    overflow: hidden;
-    /* Le fond uni d'abord, pour les navigateurs qui ignorent la ligne
-       suivante : le voile coloré est un agrément, pas la lisibilité. */
-    background: var(--papier-clair);
-    background: color-mix(in srgb, var(--ton) 6%, var(--papier-clair));
-    border-color: color-mix(in srgb, var(--ton) 22%, var(--ligne));
+    padding-left: 1.6rem;
+    color: var(--encre-douce);
+    font-size: .97rem;
+    line-height: 2.05;
   }
-  /* Le bandeau de couleur : la seule chose qui distingue les trois au premier
-     regard, et il se voit avant qu'on ait lu un mot. */
-  .pilier::before {
+  .pas li::before {
     content: "";
     position: absolute;
-    inset: 0 0 auto;
-    height: 5px;
-    background: var(--ton);
-  }
-  .pilier .glyphe * { stroke: var(--ton); }
-  .pilier h3 { color: var(--ton); font-size: 1.35rem; }
-
-  .rang {
-    position: absolute;
-    top: 1.5rem;
-    right: 1.4rem;
-    font-family: var(--serif);
-    font-size: 1.15rem;
-    letter-spacing: 1px;
-    color: var(--ton);
-    opacity: .4;
+    left: .1rem;
+    top: .68rem;
+    width: .62rem;
+    height: .62rem;
+    border-radius: 50%;
+    border: 1.5px solid var(--cire);
+    background: color-mix(in srgb, var(--cire) 30%, transparent);
   }
 
-  .evenements { --ton: var(--cire); }
-  .personnages { --ton: var(--eau); }
-  .territoires { --ton: var(--terre); }
+  /* Les quatre réponses, une juste, une fausse. */
+  .reponses { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; }
+  .reponses span {
+    display: grid;
+    place-items: center;
+    min-height: 3.1rem;
+    padding: .4rem .5rem;
+    border-radius: 11px;
+    background: #EEE7D8;
+    color: var(--encre-pale);
+    font-size: .82rem;
+    line-height: 1.25;
+    text-align: center;
+  }
+  .reponses .faux { background: #B5452F; color: #fff; }
+  .reponses .juste { background: var(--juste); color: #fff; }
+
+  /* Le choix Territoires / Villes. */
+  .bascule {
+    display: inline-flex;
+    margin-top: 1.4rem;
+    padding: 4px;
+    border-radius: 999px;
+    background: var(--creux);
+    border: 1px solid var(--ligne);
+  }
+  .bascule span {
+    padding: .45rem 1.4rem;
+    border-radius: 999px;
+    font-size: .93rem;
+    color: var(--encre-pale);
+  }
+  .bascule .choisi { background: #fff; color: var(--encre); box-shadow: 0 2px 6px -3px rgba(42,31,18,.5); }
+
+  /* ---------------------------------------------------------- communauté -- */
+
+  .communaute { padding-block: clamp(3rem, 8vw, 5rem) clamp(1rem, 3vw, 2rem); text-align: center; }
+  .communaute h2 { margin-bottom: .6rem; }
+  .communaute .chapeau { color: var(--encre-douce); max-width: 36rem; margin: 0 auto; }
+
+  /* --------------------------------------------------------------- fin -- */
+
+  .fin {
+    margin-top: clamp(3rem, 8vw, 5rem);
+    padding: clamp(3.5rem, 9vw, 6rem) 1.25rem;
+    text-align: center;
+    color: #F3E6CF;
+    background:
+      radial-gradient(ellipse at 30% 40%, rgba(160, 82, 50, .55), transparent 60%),
+      radial-gradient(ellipse at 80% 90%, rgba(20, 8, 4, .45), transparent 55%),
+      var(--cuir);
+  }
+  .fin .icone { box-shadow: 0 20px 40px -18px rgba(0,0,0,.7); }
+  .fin h2 { color: #FBF3E4; font-size: clamp(2.2rem, 7vw, 3.4rem); margin: 0; }
+  .fin .regle { width: 3.5rem; height: 1px; margin: 1.1rem auto; background: rgba(243, 230, 207, .5); }
+  .fin .devise { color: #E9D3B4; margin: 0; }
+  .fin .badge {
+    background: rgba(255,255,255,.08);
+    border-color: rgba(243, 230, 207, .25);
+    color: #F3E6CF;
+  }
 
   /* ------------------------------------------------------------- crédits -- */
 
-  .credits { color: var(--encre-pale); font-size: .92rem; text-align: center; }
+  .credits { color: var(--encre-pale); font-size: .9rem; text-align: center; padding-top: 2.5rem; }
   .credits a { color: var(--encre-douce); }
 
   footer {
-    margin-top: clamp(2rem, 6vw, 3.5rem);
+    margin-top: 1.5rem;
     padding: 1.75rem 0 3rem;
     border-top: 1px solid var(--ligne);
     color: var(--encre-pale);
@@ -282,154 +517,279 @@
     justify-content: space-between;
   }
   footer a { color: var(--encre-douce); }
-  a { color: var(--cire); text-underline-offset: .18em; }
-  a:hover { color: var(--cire-profonde); }
 
-  /* Une entrée en douceur, que le système peut refuser. */
+  /* Les textes montent doucement en entrant — et rien ne bouge si le système
+     demande moins de mouvement. */
   @media (prefers-reduced-motion: no-preference) {
-    .monte { animation: monte .8s cubic-bezier(.22,.61,.36,1) backwards; }
-    .monte:nth-of-type(2) { animation-delay: .08s; }
-    .monte:nth-of-type(3) { animation-delay: .16s; }
-    @keyframes monte {
-      from { opacity: 0; transform: translateY(14px); }
-      to   { opacity: 1; transform: none; }
-    }
+    .js .monte { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .9s cubic-bezier(.22,.61,.36,1); }
+    .js .monte.vu { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .scene img { transition: none !important; }
   }
 </style>
 </head>
 <body>
 
 <header class="texte">
-  <img class="icone" src="/icone.png" alt="" width="124" height="124">
+  <img class="icone" src="icone.png" alt="" width="104" height="104">
   <h1>HistoryNote</h1>
-  <p class="devise">L'histoire, dans la poche.</p>
-  <p class="pitch">
-    <b class="e">Des événements</b>, <b class="p">des personnages</b>,
-    <b class="t">des territoires</b> — posés sur une carte ancienne, à
-    l'endroit et à l'année exacts. Et une communauté qui les met en commun.
-  </p>
-  <span class="badge">iPhone · bientôt sur l'App&nbsp;Store</span>
+  <p class="devise">L'histoire prend vie.</p>
 </header>
 
-<div class="frise-cadre" role="img"
-     aria-label="La frise chronologique de l'application, arrêtée sur l'année 1453.">
-  <span class="annee">1453</span>
-  <div class="frise">
-    <span class="aiguille"></span>
-    <i class="min"></i><i class="min"></i><i class="maj"></i><i class="min"></i>
-    <i class="min"></i><i class="evt"></i><i class="min"></i><i class="maj"></i>
-    <i class="min"></i><i class="min"></i><i class="min"></i><i class="evt"></i>
-    <i class="maj"></i><i class="min"></i><i class="min"></i><i class="min"></i>
-    <i class="maj"></i><i class="evt"></i><i class="min"></i><i class="min"></i>
-    <i class="maj"></i><i class="min"></i><i class="min"></i><i class="evt"></i>
-    <i class="min"></i><i class="maj"></i><i class="min"></i><i class="min"></i>
-    <i class="min"></i><i class="maj"></i><i class="min"></i><i class="evt"></i>
-    <i class="min"></i><i class="maj"></i><i class="min"></i><i class="min"></i>
-  </div>
-  <p class="frise-legende">
-    On fait glisser le doigt : les frontières changent, les villes
-    apparaissent, les événements s'allument à leur date.
-  </p>
+<div class="film">
+  <video controls playsinline preload="metadata"
+         poster="medias/affiche.jpg"
+         aria-label="Présentation de HistoryNote en une minute">
+    <source src="medias/presentation.mp4" type="video/mp4">
+  </video>
 </div>
+<p class="film-legende">HistoryNote en un peu plus d'une minute.</p>
 
-<section class="colonne">
-  <h2>L'histoire tient en trois choses</h2>
-  <p class="chapeau">
-    Ce qui s'est passé, ceux qui l'ont fait, et le sol sur lequel cela s'est
-    passé. L'application est bâtie sur ces trois-là, et sur rien d'autre.
-  </p>
+<a class="defiler" href="#carte">Découvrir pas à pas</a>
 
-  <div class="grille piliers">
+<main class="colonne recit">
 
-    <article class="pilier evenements monte">
-      <span class="rang" aria-hidden="true">I</span>
-      <svg class="glyphe" viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M24 43s13-12.4 13-22a13 13 0 1 0-26 0c0 9.6 13 22 13 22z"/>
-        <circle cx="24" cy="20" r="4.5"/>
-      </svg>
-      <h3>Des événements</h3>
-      <p>
-        Datés à l'année, au mois ou au jour, et posés à l'endroit exact où ils
-        ont eu lieu. Quand la date est incertaine, elle le dit : une vague
-        précède le millésime plutôt qu'une précision qu'on n'a pas.
-      </p>
-    </article>
+  <div class="etapes">
 
-    <article class="pilier personnages monte">
-      <span class="rang" aria-hidden="true">II</span>
-      <svg class="glyphe" viewBox="0 0 48 48" aria-hidden="true">
-        <circle cx="24" cy="17" r="7.5"/>
-        <path d="M10.5 38.5c1.8-6.6 7.1-10.5 13.5-10.5s11.7 3.9 13.5 10.5"/>
-      </svg>
-      <h3>Des personnages</h3>
-      <p>
-        Portraits, naissance et mort. Chacun se tient sur la carte à l'endroit
-        qu'on lui donne, et seulement entre ces deux dates — faites glisser le
-        temps et la carte se dépeuple.
-      </p>
-    </article>
+    <!-- 01 — La carte -->
+    <section class="etape" id="carte" data-ecran="0">
+      <div class="monte">
+        <span class="surtitre">01 — Carte interactive</span>
+        <h2>Explorez l'histoire<br>à travers le temps.</h2>
+        <p>
+          Faites défiler la frise chronologique, année après année : les
+          frontières se redessinent, les villes apparaissent, les événements
+          s'allument à leur date.
+        </p>
+        <div class="vignette frise-mini" aria-hidden="true">
+          <b>Frise chronologique</b>
+          <div class="annee"><i>‹</i><span>476</span><i>›</i></div>
+          <div class="frise">
+            <span class="aiguille"></span>
+            <i class="min"></i><i class="maj"></i><i class="min"></i><i class="min"></i>
+            <i class="evt"></i><i class="min"></i><i class="maj"></i><i class="min"></i>
+            <i class="evt"></i><i class="min"></i><i class="min"></i><i class="maj"></i>
+            <i class="evt"></i><i class="min"></i><i class="maj"></i><i class="min"></i>
+            <i class="min"></i><i class="evt"></i><i class="min"></i><i class="maj"></i>
+            <i class="min"></i><i class="evt"></i><i class="min"></i><i class="min"></i>
+            <i class="maj"></i><i class="min"></i><i class="evt"></i><i class="min"></i>
+          </div>
+        </div>
+      </div>
+      <div class="telephone"><div class="ecran">
+        <img src="medias/carte.jpg" alt="La carte en 476 : les royaumes barbares, Clovis et Clotilde posés en Gaule, la chute de l'Empire romain d'Occident en bas de l'écran." loading="lazy" width="860" height="1864">
+      </div></div>
+    </section>
 
-    <article class="pilier territoires monte">
-      <span class="rang" aria-hidden="true">III</span>
-      <svg class="glyphe" viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M7 17l11-8 13 6 10-5v22l-11 7-12-6-11 5z"/>
-      </svg>
-      <h3>Des territoires</h3>
-      <p>
-        Cinq mille ans de frontières mouvantes, qui se redessinent au fil des
-        siècles. Et les vôtres, peintes au doigt sur la carte, valables entre
-        les années que vous leur fixez.
-      </p>
-    </article>
+    <!-- 01 bis — Tout sur une carte -->
+    <section class="etape" data-ecran="0">
+      <div class="monte">
+        <span class="surtitre">01 — Carte interactive</span>
+        <h2>Une carte.<br>Des siècles d'histoire.</h2>
+        <p>
+          Territoires, événements et personnages réunis au même endroit.
+          Chaque personnage se tient sur la carte entre sa naissance et sa
+          mort : faites glisser le temps, et la carte se peuple puis se
+          dépeuple.
+        </p>
+        <p>
+          Cinq mille ans de frontières, des royaumes francs au Saint-Empire —
+          et tous les noms à la graphie de leur époque.
+        </p>
+      </div>
+    </section>
+
+    <!-- 02 — Événements -->
+    <section class="etape" data-ecran="1">
+      <div class="monte">
+        <span class="surtitre">02 — Événements &amp; personnages</span>
+        <h2>Organisez les événements historiques.</h2>
+        <p>
+          Dates, images et classements : chaque élément à sa place. Un
+          événement se date à l'année, au mois ou au jour — et quand la date
+          est incertaine, elle le dit.
+        </p>
+        <div class="vignette" aria-hidden="true">
+          <b>Événements</b>
+          <div class="fiche">
+            <img class="portrait" src="medias/vignette-chute.jpg" alt="" width="46" height="46" loading="lazy">
+            <span><small>4 septembre 476</small><strong>Chute de l'Empire romain d'Occident</strong><em>Empire romain</em></span>
+            <span class="chevron">›</span>
+          </div>
+        </div>
+      </div>
+      <div class="telephone"><div class="ecran">
+        <img src="medias/evenements.jpg" alt="La liste des événements, de la chute de l'Empire romain d'Occident au mariage de Théodoric, rangés dans le classeur Mérovingiens." loading="lazy" width="860" height="1864">
+      </div></div>
+    </section>
+
+    <!-- 02 — Personnages -->
+    <section class="etape" data-ecran="2">
+      <div class="monte">
+        <span class="surtitre">02 — Événements &amp; personnages</span>
+        <h2>Et ceux qui les ont faits.</h2>
+        <p>
+          Un portrait, une naissance, une mort, et le classeur auquel le
+          personnage appartient. Les vôtres, ou ceux que la communauté a déjà
+          écrits.
+        </p>
+        <div class="vignette" aria-hidden="true">
+          <b>Personnages</b>
+          <div class="fiche">
+            <img class="portrait rond" src="medias/vignette-clovis.jpg" alt="" width="46" height="46" loading="lazy">
+            <span><small>~466 – 511</small><strong>Clovis</strong><em>Mérovingiens</em></span>
+            <span class="chevron">›</span>
+          </div>
+        </div>
+      </div>
+      <div class="telephone"><div class="ecran">
+        <img src="medias/personnages.jpg" alt="La liste des personnages : Mérovée, Childéric Ier, Clovis, Clotilde, Thierry Ier." loading="lazy" width="860" height="1864">
+      </div></div>
+    </section>
+
+    <!-- 02 — Fiche -->
+    <section class="etape" data-ecran="3">
+      <div class="monte">
+        <span class="surtitre">02 — Événements &amp; personnages</span>
+        <h2>Tout se tient.</h2>
+        <p>
+          Chaque personnage est relié à ses propres événements : de sa fiche,
+          on passe à la bataille, et de la bataille, au lieu où elle s'est
+          déroulée.
+        </p>
+        <div class="vignette" aria-hidden="true">
+          <b>Clovis · événements liés</b>
+          <ul class="liens">
+            <li>Clovis monte sur le trône <span>481</span></li>
+            <li>Bataille de Soissons <span>486</span></li>
+            <li>Vase de Soissons <span>486</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="telephone"><div class="ecran">
+        <img src="medias/fiche.jpg" alt="La fiche de Clovis : sa biographie, son portrait, son classeur, son importance et la liste de ses événements." loading="lazy" width="860" height="1864">
+      </div></div>
+    </section>
+
+    <!-- 03 — Arbres -->
+    <section class="etape" data-ecran="4">
+      <div class="monte">
+        <span class="surtitre">03 — Arbres généalogiques</span>
+        <h2>Visualisez les liens entre les générations.</h2>
+        <p>
+          Des généalogies construites à la main : couples, filiations, et des
+          étoiles pour dire qui compte le plus dans la lignée.
+        </p>
+        <div class="chiffres">
+          <div><strong>20</strong><span>personnages</span></div>
+          <div><strong>6</strong><span>générations</span></div>
+          <div><strong>21</strong><span>liens</span></div>
+        </div>
+        <p style="margin-top:.6rem;font-size:.88rem;color:var(--encre-pale)">Les Mérovingiens, de Mérovée à Clotaire II.</p>
+      </div>
+      <div class="telephone"><div class="ecran">
+        <img src="medias/arbre.jpg" alt="L'arbre des Mérovingiens : Mérovée, Childéric Ier, Clovis et Clotilde, puis leurs descendants." loading="lazy" width="860" height="1864">
+      </div></div>
+    </section>
+
+    <!-- 04 — Étudier -->
+    <section class="etape" data-ecran="5">
+      <div class="monte">
+        <span class="surtitre">04 — Mode étudier</span>
+        <h2>Apprenez. Testez vos connaissances. Progressez.</h2>
+        <p>
+          Les questions se posent sur la carte elle-même. Vous choisissez ce
+          que vous révisez :
+        </p>
+        <ul class="pas">
+          <li>Événements, personnages ou territoires</li>
+          <li>Un classeur, ou tous</li>
+          <li>Un niveau d'importance</li>
+          <li>Pour les territoires : les parties du monde et la période</li>
+          <li>L'ordre chronologique ou aléatoire</li>
+        </ul>
+      </div>
+      <div class="telephone"><div class="ecran">
+        <img src="medias/etudier.jpg" alt="Une question d'étude : quel événement s'est passé ici en 476 ? Quatre réponses, la bonne en vert." loading="lazy" width="860" height="1864">
+      </div></div>
+    </section>
+
+    <!-- 04 — Retour -->
+    <section class="etape" data-ecran="5">
+      <div class="monte">
+        <span class="surtitre">04 — Mode étudier</span>
+        <h2>La réponse, tout de suite.</h2>
+        <p>
+          Le lieu bat sur la carte, quatre réponses s'offrent à vous. Une
+          erreur se voit en rouge, la bonne réponse en vert — et à la fin, le
+          relevé de la séance.
+        </p>
+        <div class="vignette" aria-hidden="true">
+          <b>Retour visuel immédiat</b>
+          <div class="reponses">
+            <span>Bataille de Soissons</span>
+            <span class="faux">Mort de Thierry</span>
+            <span>Clovis reçoit les ornements consulaires</span>
+            <span class="juste">Chute de l'Empire romain d'Occident</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 — Dessiner -->
+    <section class="etape" data-ecran="6">
+      <div class="monte">
+        <span class="surtitre">05 — Dessiner</span>
+        <h2>La carte aussi est l'œuvre de la communauté.</h2>
+        <p>
+          Peignez un territoire au doigt, ou posez une ville, valables entre
+          les années que vous leur fixez. Vos ajouts peuvent enrichir la carte
+          commune.
+        </p>
+        <div class="bascule" aria-hidden="true">
+          <span class="choisi">Territoires</span><span>Villes</span>
+        </div>
+      </div>
+      <div class="telephone"><div class="ecran">
+        <img src="medias/dessiner.jpg" alt="Un territoire peint au pinceau autour de Genève, avec les outils Pinceau, Gomme et Déplacer." loading="lazy" width="394" height="856">
+      </div></div>
+    </section>
 
   </div>
+
+  <!-- Le téléphone qui reste, sur grand écran. -->
+  <aside class="scene" aria-hidden="true">
+    <div class="telephone"><div class="ecran">
+      <img class="actif" src="medias/carte.jpg" alt="">
+      <img src="medias/evenements.jpg" alt="" loading="lazy">
+      <img src="medias/personnages.jpg" alt="" loading="lazy">
+      <img src="medias/fiche.jpg" alt="" loading="lazy">
+      <img src="medias/arbre.jpg" alt="" loading="lazy">
+      <img src="medias/etudier.jpg" alt="" loading="lazy">
+      <img src="medias/dessiner.jpg" alt="" loading="lazy">
+    </div></div>
+    <div class="points"><i class="actif"></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  </aside>
+
+</main>
+
+<section class="texte communaute monte">
+  <span class="surtitre">Et ensemble</span>
+  <h2>L'histoire écrite à plusieurs mains.</h2>
+  <p class="chapeau">
+    Ce que vous choisissez de partager sert à remplir la bibliothèque commune
+    On peut y copier les événements, les personnages, ou les arbres
+  </p>
 </section>
 
-<section class="colonne">
-  <h2>Et pour les tenir ensemble</h2>
-  <div class="grille">
-
-    <article class="monte">
-      <svg class="glyphe" viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M10 14h28M10 24h28M10 34h28"/>
-      </svg>
-      <h3>Des classeurs</h3>
-      <p>
-        Un nom sur l'événement, et rien de plus :
-        <em>Guerres de Religion</em>, <em>Carolingiens</em>. La carte se
-        filtre par sujet, et le sujet suit l'événement quand on le copie.
-      </p>
-    </article>
-
-    <article class="monte">
-      <svg class="glyphe" viewBox="0 0 48 48" aria-hidden="true">
-        <circle cx="24" cy="11" r="5"/>
-        <circle cx="13" cy="37" r="5"/>
-        <circle cx="35" cy="37" r="5"/>
-        <path d="M24 16v8M13 32v-8h22v8"/>
-      </svg>
-      <h3>Des arbres</h3>
-      <p>
-        Des généalogies construites à la main : couples, filiations, et la
-        place que chacun tient dans la lignée — à côté, en dessous, au premier
-        rang ou en retrait.
-      </p>
-    </article>
-
-    <article class="monte">
-      <svg class="glyphe" viewBox="0 0 48 48" aria-hidden="true">
-        <circle cx="24" cy="24" r="15"/>
-        <path d="M9 24h30M24 9c4 4.5 6 9.5 6 15s-2 10.5-6 15c-4-4.5-6-9.5-6-15s2-10.5 6-15z"/>
-      </svg>
-      <h3>Une communauté</h3>
-      <p>
-        Ce que vous écrivez est partagé avec les autres lecteurs : on y
-        cherche un événement, un personnage, un territoire, et on en prend
-        copie chez soi. L'histoire écrite à plusieurs mains.
-      </p>
-    </article>
-
-  </div>
+<section class="fin">
+  <img class="icone" src="icone.png" alt="" width="104" height="104" loading="lazy">
+  <h2>HistoryNote</h2>
+  <div class="regle"></div>
+  <p class="devise">Explorez. Organisez. Apprenez.</p>
+  <span class="badge">iOS · Android</span>
 </section>
 
 <section class="texte credits">
@@ -444,11 +804,48 @@
 <footer class="colonne">
   <span>© 2026 Nicolas Lecas</span>
   <span>
-    <a href="/conditions.html">Conditions</a> ·
-    <a href="/confidentialite.html">Confidentialité</a> ·
+    <a href="conditions.html">Conditions</a> ·
+    <a href="confidentialite.html">Confidentialité</a> ·
     <a href="mailto:contact@historynote.fr">contact@historynote.fr</a>
   </span>
 </footer>
+
+<script>
+(() => {
+  const etapes = [...document.querySelectorAll(".etape")];
+  const ecrans = [...document.querySelectorAll(".scene img")];
+  const points = [...document.querySelectorAll(".points i")];
+
+  // L'écran du téléphone suit l'étape qui passe au milieu de la fenêtre.
+  const montrer = (n) => {
+    ecrans.forEach((img, i) => img.classList.toggle("actif", i === n));
+    points.forEach((p, i) => p.classList.toggle("actif", i === n));
+  };
+
+  if (!("IntersectionObserver" in window)) {
+    document.querySelectorAll(".monte").forEach((el) => el.classList.add("vu"));
+    return;
+  }
+
+  const milieu = new IntersectionObserver((entrees) => {
+    for (const e of entrees) {
+      if (e.isIntersecting) montrer(Number(e.target.dataset.ecran));
+    }
+  }, { rootMargin: "-50% 0px -50% 0px" });
+  etapes.forEach((el) => milieu.observe(el));
+
+  // Les textes montent une fois, en entrant.
+  const entree = new IntersectionObserver((entrees) => {
+    for (const e of entrees) {
+      if (e.isIntersecting) {
+        e.target.classList.add("vu");
+        entree.unobserve(e.target);
+      }
+    }
+  }, { rootMargin: "0px 0px -12% 0px" });
+  document.querySelectorAll(".monte").forEach((el) => entree.observe(el));
+})();
+</script>
 
 </body>
 </html>
