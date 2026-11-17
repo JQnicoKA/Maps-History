@@ -219,15 +219,18 @@ export function gather(setup: StudySetup, stock: StudyStock): Gathered {
  * étudiée** : un empire de 800 à 1500, interrogé sur 1000-1200, se montre
  * parmi ses voisins de l'an 1000 et non de l'an 800, qui n'est pas ce qu'on
  * révise. Et il est ôté du fond, où il ferait doublon sous la forme qui bat.
+ *
+ * Les noms des territoires ne s'effacent que lorsqu'on révise des
+ * territoires : là, ils souffleraient la réponse. Pour un événement ou un
+ * personnage, ils aident au contraire à situer la question dans son monde.
  */
-export function backdropOf(
-  quarry: Quarry,
-  window: StudyWindow,
-): { year: number; without: string | null } {
+export type Backdrop = { year: number; without: string | null; named: boolean };
+
+export function backdropOf(quarry: Quarry, window: StudyWindow): Backdrop {
   if (quarry.kind !== "territory") {
-    return { year: quarry.subject.at, without: null };
+    return { year: quarry.subject.at, without: null, named: true };
   }
   const { from, to, id } = quarry.territory;
   const year = window === null ? from : Math.min(Math.max(from, window.from), to);
-  return { year, without: id };
+  return { year, without: id, named: false };
 }

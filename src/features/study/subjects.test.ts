@@ -278,6 +278,7 @@ describe("backdropOf", () => {
     expect(backdropOf(empire(800, 1500), { from: 1000, to: 1200 })).toEqual({
       year: 1000,
       without: "e",
+      named: false,
     });
   });
 
@@ -291,7 +292,7 @@ describe("backdropOf", () => {
     expect(backdropOf(empire(1066, 1300), null).year).toBe(1066);
   });
 
-  it("montre l'année d'un événement, sans rien ôter", () => {
+  it("montre l'année d'un événement, sans rien ôter ni taire les noms", () => {
     const event = {
       kind: "event",
       subject: { id: "x", label: "Hastings", at: 1066.8 },
@@ -300,6 +301,7 @@ describe("backdropOf", () => {
     expect(backdropOf(event, { from: 1000, to: 1200 })).toEqual({
       year: 1066.8,
       without: null,
+      named: true,
     });
   });
 });

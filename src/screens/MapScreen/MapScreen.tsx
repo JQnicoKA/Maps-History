@@ -563,7 +563,8 @@ export function MapScreen({
               // chargement lui-même.
               onBusy={setLoadingTerritories}
               // Pendant une étude, le monde de la question et non celui de
-              // la frise, sans noms et sans le territoire demandé.
+              // la frise, sans le territoire demandé — et sans noms quand on
+              // révise des territoires.
               backdrop={studying ? study.backdrop : null}
             />
           ) : null}

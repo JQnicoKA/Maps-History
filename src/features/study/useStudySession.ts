@@ -10,6 +10,7 @@ import {
 } from "./plan";
 import {
   backdropOf,
+  type Backdrop,
   gather,
   type Quarry,
   type StudySetup,
@@ -57,7 +58,7 @@ export type StudySession = {
    * Le monde de la question, pour le fond de carte : voir `backdropOf`.
    * Rien hors d'une question.
    */
-  backdrop: { year: number; without: string | null } | null;
+  backdrop: Backdrop | null;
   /** Le rang de la question courante, à partir de un. */
   at: number;
   total: number;

@@ -8,6 +8,7 @@ import { ZOOM } from "../../config/map";
 import { fonts, HALO } from "../../map/style/typography";
 import { useEvents } from "../events/EventsProvider";
 import { useHidden } from "./HiddenProvider";
+import type { Backdrop } from "../study/subjects";
 import { palette } from "../../theme/palette";
 
 /**
@@ -114,11 +115,12 @@ export type TerritoryLayersProps = {
   /**
    * Une autre année que celle de la frise, et la carte qui va avec.
    *
-   * Pour une étude : le fond montre le monde de la question, **sans aucun
-   * nom** — ils donneraient la réponse — et sans le territoire demandé, qui
-   * bat déjà par-dessus. Voir `backdropOf`.
+   * Pour une étude : le fond montre le monde de la question, sans le
+   * territoire demandé, qui bat déjà par-dessus, et sans noms quand ce sont
+   * des territoires qu'on révise — ils donneraient la réponse. Voir
+   * `backdropOf`.
    */
-  backdrop?: { year: number; without: string | null } | null;
+  backdrop?: Backdrop | null;
 };
 
 export function TerritoryLayers({
@@ -135,7 +137,7 @@ export function TerritoryLayers({
     mask,
   );
   const without = backdrop?.without ?? null;
-  const named = !backdrop;
+  const named = backdrop?.named ?? true;
 
   const collection = useMemo<typeof everything>(() => {
     if (!everything || without === null) return everything;
