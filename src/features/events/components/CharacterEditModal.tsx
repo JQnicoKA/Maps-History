@@ -46,6 +46,7 @@ import { palette } from "../../../theme/palette";
  */
 const BANNER = require("../../../../assets/banniere_personnage.png");
 import { radius, space, TOUCH, type } from "../../../theme/tokens";
+import { LIMITS } from "../../../config/limits";
 
 const TRASH = require("../../../../assets/icons/trash.png");
 
@@ -312,6 +313,7 @@ export function CharacterEditModal({
         <InkField
           label="Nom"
           value={name}
+          maxLength={LIMITS.name}
           onChangeText={setName}
           placeholder="Napoléon Bonaparte"
         />
@@ -371,6 +373,7 @@ export function CharacterEditModal({
         <InkField
           label="À son sujet"
           value={bio}
+          maxLength={LIMITS.story}
           onChangeText={setBio}
           multiline
           placeholder="Quelques lignes…"

@@ -19,6 +19,7 @@ import { pickPhotos } from "../pickPhotos";
 import type { StoredPhoto, PickedPhoto } from "../types";
 import { palette } from "../../../theme/palette";
 import { radius, space, type } from "../../../theme/tokens";
+import { LIMITS } from "../../../config/limits";
 
 export type PhotoPickerProps = {
   photos: PickedPhoto[];
@@ -205,6 +206,7 @@ export function PhotoPicker({
           <InkField
             label="Source"
             value={opened?.source ?? ""}
+            maxLength={LIMITS.source}
             onChangeText={setSource}
             placeholder="Lien ou référence"
             autoCapitalize="none"

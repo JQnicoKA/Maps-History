@@ -15,6 +15,7 @@ import { headOf } from "../../features/genealogy/head";
 import { generationCount } from "../../features/genealogy/layout";
 import { palette } from "../../theme/palette";
 import { space } from "../../theme/tokens";
+import { LIMITS } from "../../config/limits";
 
 export type TreesScreenProps = {
   /** Demande qu'un arbre soit dessiné, plein écran. */
@@ -182,6 +183,7 @@ export function TreesScreen({ onOpen, onSeek, unread, onProfile }: TreesScreenPr
           <InkField
             label="Nom de l'arbre"
             value={name}
+            maxLength={LIMITS.name}
             onChangeText={setName}
             placeholder="Les Capétiens"
             autoFocus

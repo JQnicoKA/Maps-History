@@ -9,6 +9,7 @@ import {
 } from "../events/types";
 import { palette } from "../../theme/palette";
 import { space, type } from "../../theme/tokens";
+import { LIMITS } from "../../config/limits";
 
 export type LabelSheetProps = {
   visible: boolean;
@@ -98,7 +99,7 @@ export function LabelSheet({
           value={text}
           onChangeText={setText}
           placeholder="Maison de Bourgogne, 1066, la branche cadette…"
-          maxLength={80}
+          maxLength={LIMITS.label}
         />
 
         <View style={styles.rule} />

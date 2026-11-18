@@ -48,6 +48,7 @@ import { LabelSheet } from "./LabelSheet";
 import { lifted as tapLifted } from "../../lib/touch";
 import { palette } from "../../theme/palette";
 import { radius, shadow, space, TOUCH, type } from "../../theme/tokens";
+import { LIMITS } from "../../config/limits";
 
 export type TreeBuilderProps = {
   tree: Tree | null;
@@ -1149,6 +1150,7 @@ export function TreeBuilder({
               <InkField
                 label="Nom de l'arbre"
                 value={name}
+                maxLength={LIMITS.name}
                 onChangeText={setName}
                 returnKeyType="done"
                 onSubmitEditing={saveName}

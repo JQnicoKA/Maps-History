@@ -12,6 +12,7 @@ import { Chip, InkButton, InkField, Sheet } from "../../../components/ui";
 import { matching, propre, same } from "../folderNames";
 import { palette } from "../../../theme/palette";
 import { BACKDROP, radius, shadow, space, type } from "../../../theme/tokens";
+import { LIMITS } from "../../../config/limits";
 
 /** Le dossier pour la feuille, les deux flèches pour sa carte de tri. */
 const FOLDERS_ICON = require("../../../../assets/icons/folders.png");
@@ -210,14 +211,19 @@ export function FolderSheet({
 
   /** Rien de tel sous ce nom : il reste à l'écrire. */
   const creatable =
-    allowNew && wanted !== "" && !all.some((one) => same(one, wanted));
+    allowNew &&
+    wanted !== "" &&
+    !all.some((one) => same(one, wanted)) &&
+    value.length < LIMITS.folders;
 
   const toggle = (name: string) => {
-    onChange(
-      value.includes(name)
-        ? value.filter((one) => one !== name)
-        : [...value, name],
-    );
+    if (value.includes(name)) {
+      onChange(value.filter((one) => one !== name));
+      return;
+    }
+    // Au-delà, la base refuserait l'enregistrement : voir `LIMITS`.
+    if (value.length >= LIMITS.folders) return;
+    onChange([...value, name]);
   };
 
   const create = () => {
@@ -251,6 +257,7 @@ export function FolderSheet({
         <InkField
           value={typed}
           onChangeText={setTyped}
+          maxLength={LIMITS.folder}
           placeholder="Rechercher un classeur..."
           autoFocus={all.length > ASSEZ_POUR_CHERCHER}
           autoCorrect={false}

@@ -31,6 +31,7 @@ import {
   type PickedPhoto,
 } from "../types";
 import { palette } from "../../../theme/palette";
+import { LIMITS } from "../../../config/limits";
 
 /**
  * Le bandeau du panneau, comme celui de « Dessiner ».
@@ -444,6 +445,7 @@ export function EventFormModal({
             <InkField
               label="Titre"
               value={title}
+              maxLength={LIMITS.title}
               onChangeText={setTitle}
               placeholder="Prise de Constantinople"
             />
@@ -521,6 +523,7 @@ export function EventFormModal({
             <InkField
               label="Ce que l'on en retient"
               value={description}
+              maxLength={LIMITS.story}
               onChangeText={setDescription}
               multiline
               placeholder="Ce que l'on en retient…"

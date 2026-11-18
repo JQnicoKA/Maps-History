@@ -5,6 +5,8 @@ import { Dialog, InkButton, InkField } from "../../components/ui";
 import { HISTORY } from "../../config/history";
 import { palette } from "../../theme/palette";
 import { space, type } from "../../theme/tokens";
+import { LIMITS } from "../../config/limits";
+import { typedYear } from "../events/historicalDate";
 
 export type NamedPlace = { name: string; from: number; to: number | null };
 
@@ -63,6 +65,7 @@ export function NamePlaceDialog({
       <InkField
         label="Nom"
         value={name}
+        maxLength={LIMITS.name}
         onChangeText={setName}
         placeholder="Carthage"
         autoFocus
@@ -73,7 +76,8 @@ export function NamePlaceDialog({
           <InkField
             label="Fondée en"
             value={from}
-            onChangeText={setFrom}
+            onChangeText={(text) => setFrom(typedYear(text))}
+            maxLength={5}
             placeholder="-814"
             keyboardType="numbers-and-punctuation"
           />
@@ -82,7 +86,8 @@ export function NamePlaceDialog({
           <InkField
             label="Disparue en"
             value={to}
-            onChangeText={setTo}
+            onChangeText={(text) => setTo(typedYear(text))}
+            maxLength={5}
             placeholder="facultatif"
             keyboardType="numbers-and-punctuation"
           />

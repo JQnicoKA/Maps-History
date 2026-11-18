@@ -5,6 +5,8 @@ import { Dialog, InkButton, InkField } from "../../components/ui";
 import { HISTORY } from "../../config/history";
 import { palette } from "../../theme/palette";
 import { space, type } from "../../theme/tokens";
+import { LIMITS } from "../../config/limits";
+import { typedYear } from "../events/historicalDate";
 
 export type NamedPolity = { name: string; from: number; to: number };
 
@@ -71,6 +73,7 @@ export function NamePolityDialog({
       <InkField
         label="Nom"
         value={name}
+        maxLength={LIMITS.name}
         onChangeText={setName}
         placeholder="Duché de Bourgogne"
         autoFocus
@@ -81,7 +84,8 @@ export function NamePolityDialog({
           <InkField
             label="De l'année"
             value={from}
-            onChangeText={setFrom}
+            onChangeText={(text) => setFrom(typedYear(text))}
+            maxLength={5}
             placeholder="1363"
             keyboardType="numbers-and-punctuation"
           />
@@ -90,7 +94,8 @@ export function NamePolityDialog({
           <InkField
             label="À l'année"
             value={to}
-            onChangeText={setTo}
+            onChangeText={(text) => setTo(typedYear(text))}
+            maxLength={5}
             placeholder="1477"
             keyboardType="numbers-and-punctuation"
           />
