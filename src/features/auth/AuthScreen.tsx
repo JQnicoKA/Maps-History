@@ -292,14 +292,15 @@ export function AuthScreen() {
                 <Pressable
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: agreed }}
-                  accessibilityLabel="J'accepte les conditions d'utilisation"
+                  accessibilityLabel="J'ai au moins 15 ans ou l'accord d'un parent, et j'accepte les conditions d'utilisation"
                   onPress={() => setAgreed((was) => !was)}
                   style={({ pressed }) => [styles.box, agreed && styles.boxOn, pressed && styles.dim]}
                 >
                   {agreed ? <Text style={styles.tick}>✓</Text> : null}
                 </Pressable>
                 <Text style={styles.pactText}>
-                  J'accepte les{" "}
+                  J'ai au moins 15 ans ou l'accord d'un parent, et j'accepte
+                  les{" "}
                   <Text
                     style={styles.link}
                     onPress={() => void Linking.openURL(TERMS_URL)}

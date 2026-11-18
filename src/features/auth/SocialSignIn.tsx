@@ -258,7 +258,8 @@ export function SocialSignIn({
           trois autres n'ont rien à cocher, et les rappeler sous les quatre est
           la façon ordinaire de les faire accepter. */}
       <Text style={styles.pact}>
-        En continuant, vous acceptez les{" "}
+        En continuant, vous confirmez avoir au moins 15 ans ou l'accord d'un
+        parent, et vous acceptez les{" "}
         <Text style={styles.link} onPress={() => void Linking.openURL(TERMS_URL)}>
           conditions d'utilisation
         </Text>{" "}
